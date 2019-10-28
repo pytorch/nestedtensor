@@ -122,6 +122,24 @@ class _BufferNestedTensor(object):
     def requires_grad(self):
         return self._requires_grad
 
+    @property
+    def grad(self):
+        return _BufferNestedTensor(self._buffer.grad,
+                    self.nested_size(), self.nested_stride())
+
+    def requires_grad_(self, requires_grad=True):
+        self._buffer.requires_grad_(requires_grad)
+        return self
+
+    def detach(self):
+        return nested.NestedTensor(
+                _BufferNestedTensor(self._buffer.detach,
+                    self.nested_size(), self.nested_stride()))
+
+    def backward(self, gradient, retain_graph, create_graph):
+        for t, g in zip(self.unbind(), gradient.unbind()):
+            t.backward(g, retain_graph, create_graph)
+
     def nested_dim(self):
         return self._nested_dim
 
@@ -167,14 +185,6 @@ class _BufferNestedTensor(object):
             self._buffer = _nested_tensor_to_buffer(self)
         self._is_contiguous = True
         return self
-
-    def flatten(self, start_dim, end_dim):
-        if start_dim == 0:
-            if end_dim == self.dim() - 1:
-                return self._buffer
-            else:
-                return torch.as_nested_tensor([t.flatten(0, end_dim - 1) for t in self.unbind()])
-        return torch.as_nested_tensor([t.flatten(start_dim - 1, end_dim - 1) for t in self.unbind()])
 
     def nested_size(self):
         return self._nested_size

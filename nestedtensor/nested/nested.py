@@ -113,6 +113,28 @@ class NestedTensor(object):
         """
         return self._impl._requires_grad
 
+    @property
+    def grad(self):
+        """
+        This attribute is None by default and becomes a NestedTensor the
+        first time a call to backward() computes gradients for self.
+        The attribute will then contain the gradients computed and future
+        calls to backward() will accumulate (add) gradients into it.
+        """
+        return NestedTensor(self._impl.grad)
+
+    def requires_grad_(self, requires_grad=True):
+        """
+        Is ```True``` if gradients need to be computed for this Tensor.
+        """
+        return NestedTensor(self._impl.requires_grad_(requires_grad))
+
+    def detach(self, gradient=None, retain_graph=None, create_graph=False):
+        return NestedTensor(self._impl.detach(gradient, retain_graph, create_graph))
+
+    def backward(self, gradient=None, retain_graph=None, create_graph=False):
+        self._impl.backward(gradient, retain_graph, create_graph)
+
     def nested_dim(self):
         """
         The nested dimension of ```self``` NestedTensor.
@@ -145,19 +167,6 @@ class NestedTensor(object):
 
     def contiguous(self):
         return self._impl.contiguous()
-
-    def flatten(self, start_dim=0, end_dim=-1):
-        """
-        TODO: Not covered by RFCs 0.0.1 or 0.0.2
-        NOTE: Returns view
-        NOTE: to_tensor will return copy, flatten always a view
-        If fully flattening this returns a Tensor, but only works if
-        the NestedTensor is contiguous
-        flatten returns a view, but it's not necessarily contiguous
-        """
-        start_dim, end_dim = utils._wrap_dim(self, (start_dim, end_dim))
-        assert start_dim <= end_dim
-        return self._impl.flatten(start_dim, end_dim)
 
     def size(self, dim=None):
         return self._impl.size(dim)
@@ -230,7 +239,6 @@ class NestedTensor(object):
         # TODO: This relies on the fact that repr is not implemented compliant with
         # the purpose of repr for torch.Tensor. Therefore returning str is ok.
         return self.__str__()
-
 
     def nested_size(self, dim=None):
         # TODO: Negative dims and slices

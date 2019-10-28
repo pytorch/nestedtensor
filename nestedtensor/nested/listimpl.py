@@ -58,6 +58,35 @@ class _ListNestedTensor(object):
     def requires_grad(self):
         return self._default_tensor.requires_grad
 
+    @property
+    def grad(self):
+        def _gather_grad_tensors(self):
+            if self.nested_dim() == 1:
+                return list(t.grad for t in self.unbind())
+            else:
+                return list(_gather_grad_tensors(t) for t in self.unbind())
+        return _ListNestedTensor(_gather_grad_tensors(self))
+
+    def requires_grad_(self, requires_grad=True):
+        def _gather_requires_grad__tensors(self):
+            if self.nested_dim() == 1:
+                return list(t.requires_grad_(requires_grad) for t in self.unbind())
+            else:
+                return list(_gather_requires_grad__tensors(t) for t in self.unbind())
+        return _ListNestedTensor(_gather_requires_grad__tensors(self))
+
+    def detach(self):
+        def _gather_detach_tensors(self):
+            if self.nested_dim() == 1:
+                return list(t.detach for t in self.unbind())
+            else:
+                return list(_gather_detach_tensors(t) for t in self.unbind())
+        return _ListNestedTensor(_gather_detach_tensors(self))
+
+    def backward(self, gradient, retain_graph, create_graph):
+        for t, g in zip(self.unbind(), gradient.unbind()):
+            t.backward(g, retain_graph, create_graph)
+
     # Cannot be decorated as _nested_property since
     # it's used for dispatch within the function
     def nested_dim(self):
@@ -83,11 +112,6 @@ class _ListNestedTensor(object):
 
     def contiguous(self):
         return creation.nested_tensor(self.unbind())
-
-    def flatten(self, start_dim, end_dim):
-        if start_dim == 0:
-            raise ValueError("NestedTensor must be contiguous")
-        return creation.as_nested_tensor([t.flatten(start_dim - 1, end_dim - 1) for t in self.unbind()])
 
     def __str__(self):
         result = "nestedtensor([\n"
@@ -138,7 +162,7 @@ class _ListNestedTensor(object):
         return (len(self),) + result_size
 
     def to(self, *args, **kwargs):
-        return nested.NestedTensor(_ListNestedTensor([t.to(*args, **kwargs) for t in self.unbind()]))
+        return _ListNestedTensor([t.to(*args, **kwargs) for t in self.unbind()])
 
     def numel(self):
         return sum(t.numel() for t in self.unbind())
