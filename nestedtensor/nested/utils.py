@@ -49,7 +49,7 @@ def _verify_tensors(tensors):
     requires_grad = default_tensor.requires_grad
     # TODO: Doesn't work in DataLoader
     # TODO: Make this DEBUG only
-    # is_pinned = default_tensor.is_pinned()
+    # TODO: support is_pinned = default_tensor.is_pinned()
     for tensor in tensors:
         if not (dim == tensor.dim() and
                 layout == tensor.layout and
@@ -251,11 +251,8 @@ def _arg_apply(fn, args, kwargs):
     return new_args, new_kwargs
 
 
-# TODO: Create function that takes buffer and nested_size() to create a NestedTensor
-# TODO: Implement view_as
-# TODO: Combine with improved dispatch key detection
-# View result as dispatch key
 def pointwise(unbind_args=None, dim_args=None):
+    # TODO: make internal for now
     def wrapper(f):
         tf = tensorwise(unbind_args=unbind_args, dim_args=dim_args)(f)
 

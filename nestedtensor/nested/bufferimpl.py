@@ -29,7 +29,7 @@ def _prod(tup):
 def _infer_nested_dim(nested_size):
     if isinstance(nested_size, torch.Size):
         return 0
-    # TODO: This is 1 beause nested_size and therefore size is an empty tuple of length 0
+    # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
     # This is consistent with the behavior of torch.tensor([])
     if len(nested_size) == 0:
         return 1
@@ -40,7 +40,7 @@ def _infer_dim(nested_size):
     if isinstance(nested_size, torch.Size):
         return len(nested_size)
     else:
-        # TODO: This is 1 beause nested_size and therefore size is an empty tuple of length 0
+        # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
         # This is consistent with the behavior of torch.tensor([])
         if len(nested_size) == 0:
             return 1
@@ -71,28 +71,6 @@ def _nested_tensor_to_buffer(nested_tensor):
 
 
 class _BufferNestedTensor(object):
-    # The attributes must match across all constiuents
-    #
-    # The NestedTensor's attributes then become that of its
-    # constiuents.
-    #
-    # data must be a list of Tensors or NestedTensors
-    #
-    # Attributes:
-    #     dim()
-    #     layout
-    #     device
-    #     dtype
-    #     requires_grad
-    #     is_pinned()
-    # TODO: Need to extend RFC by empty NestedTensor semantics
-    # TODO: Need to think about mutability and caching numel etc. at::Tensor does caching too.
-    # TODO: Reimplement to be backed by a single buffer and create Tensor views adhoc.
-    # -> How to do "as_nested_tensor"?
-    # -> Store offsets + buffers used up dynamically
-    # Neighbors may share data, maybe all share data.
-    # Levels of contiguity
-    # nested_stride allows for non-contiguous BufferNestedTensors
     def __init__(self, buffer_, nested_size, nested_stride=None):
         # Tuple disables changes in size via append etc.
         # assert isinstance(tensors, tuple)
@@ -155,7 +133,6 @@ class _BufferNestedTensor(object):
             utils._verify_tensors(self)
         return self._element_size
 
-    # TODO: For now this is sometimes a list sometimes a tuple
     def unbind(self):
         if self._unbound_tensors is not None:
             return self._unbound_tensors
@@ -183,8 +160,6 @@ class _BufferNestedTensor(object):
         return self._unbound_tensors
 
     def is_contiguous(self):
-        # TODO: Deal with strided Tensors created via unbind or construtor
-        # TODO: Deal with non-contiguous nested strides
         return self._is_contiguous
 
     def contiguous(self):
@@ -201,7 +176,6 @@ class _BufferNestedTensor(object):
                 return torch.as_nested_tensor([t.flatten(0, end_dim - 1) for t in self.unbind()])
         return torch.as_nested_tensor([t.flatten(start_dim - 1, end_dim - 1) for t in self.unbind()])
 
-    # TODO: Negative dims and slices
     def nested_size(self):
         return self._nested_size
 

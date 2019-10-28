@@ -25,27 +25,6 @@ def _first_tensor(self):
 
 
 class _ListNestedTensor(object):
-    # The attributes must match across all constiuents
-    #
-    # The NestedTensor's attributes then become that of its
-    # constiuents.
-    #
-    # data must be a list of Tensors or NestedTensors
-    #
-    # Attributes:
-    #     dim()
-    #     layout
-    #     device
-    #     dtype
-    #     requires_grad
-    #     is_pinned()
-    # TODO: Need to extend RFC by empty NestedTensor semantics
-    # TODO: Need to think about mutability and caching numel etc. at::Tensor does caching too.
-    # TODO: Reimplement to be backed by a single buffer and create Tensor views adhoc.
-    # -> How to do "as_nested_tensor"?
-    # -> Store offsets + buffers used up dynamically
-    # Neighbors may share data, maybe all share data.
-    # Levels of contiguity
     def __init__(self, tensors):
         # Tuple disables changes in size via append etc.
         # assert isinstance(tensors, tuple)
@@ -124,14 +103,12 @@ class _ListNestedTensor(object):
         result += "])"
         return result
 
-    # TODO: Negative dims and slices
     def nested_size(self):
         if self.nested_dim() == 1:
             return tuple(t.size() for t in self._tensors)
         else:
             return tuple(t.nested_size() for t in self.unbind())
 
-    # TODO: Negative dims and slices
     def nested_stride(self):
         if self.nested_dim() == 1:
             return tuple(t.stride() for t in self._tensors)

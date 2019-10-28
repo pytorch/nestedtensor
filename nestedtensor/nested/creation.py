@@ -19,8 +19,9 @@ def as_nested_tensor(data, dtype=None, device=None):
     return ret
 
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
-    # Arguments match torch.tensor
-    # TODO: Create buffer first, then Tensors so it's contiguous by default
+    """
+    Arguments match torch.tensor
+    """
     if utils.is_nested_tensor(data):
         # This is consistent with torch.tensor(torch.Tensor)
         # but errors out.
@@ -110,7 +111,6 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         if dtype is not None or device is not None:
             result = result.to(dtype=dtype, device=device)
         if requires_grad:
-            # TODO: NestedTensor.requires_grad_
             result = result.requires_grad_(requires_grad)
         if pin_memory:
             result = result.pin_memory()

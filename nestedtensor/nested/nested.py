@@ -63,11 +63,6 @@ class NestedTensor(object):
     #     dtype
     #     requires_grad
     #     is_pinned()
-    # TODO: Need to extend RFC by empty NestedTensor semantics
-    # TODO: Need to think about mutability and caching numel etc. at::Tensor does caching too.
-    # TODO: Reimplement to be backed by a single buffer and create Tensor views adhoc.
-    # -> How to do "as_nested_tensor"?
-    # -> Store offsets + buffers used up dynamically
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
     def __init__(self, impl):
@@ -197,8 +192,6 @@ class NestedTensor(object):
             unbound = tuple(t.unbind(dim - 1) for t in self.unbind(dim - 1))
             return tuple(torch.nested_tensor(t) for t in zip(*unbound))
 
-    # TODO: Semantic change: to_tensor(dim) means from dim onwards all is attempted to be a Tensor
-
     def to_tensor(self, dim=0):
         """
         Not necessarily a view.
@@ -238,9 +231,9 @@ class NestedTensor(object):
         # the purpose of repr for torch.Tensor. Therefore returning str is ok.
         return self.__str__()
 
-    # TODO: Negative dims and slices
 
     def nested_size(self, dim=None):
+        # TODO: Negative dims and slices
         if dim is None:
             return NestedSize(self._impl.nested_size())
         else:
@@ -259,6 +252,7 @@ class NestedTensor(object):
                 return tuple(t.nested_size(dim - 1) for t in self.unbind())
 
     def nested_stride(self, dim=None):
+        # TODO: Negative dims and slices
         if dim is None:
             return self._impl.nested_stride()
         else:
@@ -282,16 +276,15 @@ class NestedTensor(object):
         raise NotImplementedError(
             "This has not been covered by NestedTensor 0.0.1")
 
-    # TODO: Not covered by 0.0.2 or 0.0.1!
-    # NOTE: Returns a view
-    # TODO: Advanced indexing
-    # TODO: Tensor-wise select
-    # TODO: More testing
     def __getitem__(self, key):
+        # TODO: Not covered by 0.0.2 or 0.0.1!
+        # NOTE: Returns a view
+        # TODO: Advanced indexing
+        # TODO: Tensor-wise select
+        # TODO: More testing
         if isinstance(key, numbers.Number):
             return self.unbind()[key]
         if isinstance(key, slice):
-            # TODO: Return ensted tensor..
             return torch.as_nested_tensor(self.unbind()[key])
         assert isinstance(key, tuple)
         if key[0] == Ellipsis:
@@ -303,7 +296,6 @@ class NestedTensor(object):
             return selected_tensors
         return torch.as_nested_tensor([t[key[1:]] for t in selected_tensors])
 
-    # TODO: Covered in 0.0.3+
     def __iter__(self):
         return iter(self.unbind())
 

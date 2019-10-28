@@ -8,7 +8,6 @@ from . import creation
 
 TensorMask = collections.namedtuple('TensorMask', 'tensor mask')
 
-# TODO: Need to define empty-list and 0 numel semantics
 # TODO: Can use masked_select?
 
 def nested_tensor_from_padded_tensor(tensor, nested_dim=None, padding=-1):
