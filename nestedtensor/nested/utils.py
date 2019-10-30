@@ -297,7 +297,10 @@ def reduction(support_nested_dim=True, unbind_args=None, dim_args=None):
                 dim = kwargs.pop('dim', None)
                 dim = _wrap_dim(self, dim)
             if dim is None:
-                return tf(self.flatten(), *args, **kwargs)
+                if self.is_contiguous():
+                    return f(self._impl._buffer, *args, **kwargs)
+                else:
+                    raise ValueError("Not supported")
             elif isinstance(dim, tuple):
                 result = self
                 for d in sorted(list(dim))[::-1]:
