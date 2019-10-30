@@ -126,5 +126,18 @@ class TestNestedTensor(TestCase):
         self.assertTrue(a2.size() == (2, 1, None))
         self.assertTrue(a3.size() == (2, None, 4))
 
+class TestContiguous(TestCase):
+    def test_contiguous(self):
+        for i in range(1, 10):
+            # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
+            data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
+            nt = torch.nested_tensor(data)
+            self.assertTrue(nt.is_contiguous())
+            # buf = nt.flatten()
+            self.assertTrue((nt == nt).all())
+            a = nt + nt
+        nt.cos_()
+        nt.cos()
+
 if __name__ == "__main__":
     unittest.main()
