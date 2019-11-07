@@ -7,6 +7,7 @@ import os
 
 from . import bufferimpl
 from . import utils
+from . import creation
 
 # Set this flag to true, if you want to enable additional verifications.
 DEBUG = int(os.getenv("DEBUG", 1))
@@ -166,12 +167,29 @@ class NestedTensor(object):
         return self._impl.is_contiguous()
 
     def contiguous(self):
-        return NestedTensor(self._impl.contiguous())
+        # TODO: Test autograd support
+        if not self.is_contiguous():
+            return creation.nested_tensor(self.unbind())
+        return self
 
     def size(self, dim=None):
-        return self._impl.size(dim)
+        if dim is not None:
+            return self.size()[dim]
+        all_sizes = tuple(t.size() for t in self.unbind())
+
+        def compare_sizes(size, other_size):
+            result_size = list(size)
+            for i in range(len(size)):
+                result_size[i] = size[i] if size[i] == other_size[i] else None
+            return tuple(result_size)
+
+        result_size = list(all_sizes[0])
+        for size in all_sizes:
+            result_size = compare_sizes(result_size, size)
+        return (len(self),) + result_size
 
     def to(self, *args, **kwargs):
+        # to is never in-place, but it has autograd support (for float and double) via copy
         return self._impl.to(*args, **kwargs)
 
     def numel(self):
@@ -179,6 +197,9 @@ class NestedTensor(object):
 
     def pin_memory(self):
         self._impl.pin_memory()
+
+    def __str__(self):
+        return self._impl.__str__()
 
     # --- impl forward ends ---
 
@@ -196,7 +217,7 @@ class NestedTensor(object):
 
         dim = utils._wrap_dim(self, dim)
         if dim == 0:
-            return self._impl.unbind()
+            return tuple(t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind())
         else:
             unbound = tuple(t.unbind(dim - 1) for t in self.unbind(dim - 1))
             return tuple(torch.nested_tensor(t) for t in zip(*unbound))
@@ -217,23 +238,6 @@ class NestedTensor(object):
             return self
         unbound = [t.to_tensor(dim=dim - 1) for t in self.unbind()]
         return torch.nested_tensor(unbound)
-
-    def __str__(self):
-        def _str(x, indent=0):
-            if x.nested_dim() == 0:
-                return ""
-            s = indent*"\t" + "[\n"
-            if x.nested_dim() == 1:
-                strs = list(map(str, x.unbind()))
-                strs = list(map(lambda xi: "\n".join(
-                    map(lambda xij: (indent + 1)*"\t" + xij, xi.split("\n"))), strs))
-                s += ",\n".join(strs)
-            else:
-                s += ",\n".join(list(map(
-                    lambda xi: _str(xi, indent + 1), x.unbind())))
-            s += "\n" + indent * "\t" + "]"
-            return s
-        return "nested_tensor(" + _str(self) + ")"
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with

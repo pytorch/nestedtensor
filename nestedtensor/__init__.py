@@ -6,3 +6,5 @@ if getattr(torch, "__IS_MONKEY_PATCHED_BY_NESTED_TENSOR", None) is None:
 assert torch.__IS_MONKEY_PATCHED_BY_NESTED_TENSOR == 1
 
 from .nested.utils import tensorwise
+from . import _C
+from ._C import _ListNestedTensor

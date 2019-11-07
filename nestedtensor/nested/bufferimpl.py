@@ -125,7 +125,7 @@ class _BufferNestedTensor(object):
     @property
     def grad(self):
         return _BufferNestedTensor(self._buffer.grad,
-                    self.nested_size(), self.nested_stride())
+                                   self.nested_size(), self.nested_stride())
 
     def requires_grad_(self, requires_grad=True):
         self._buffer.requires_grad_(requires_grad)
@@ -133,8 +133,8 @@ class _BufferNestedTensor(object):
 
     def detach(self):
         return nested.NestedTensor(
-                _BufferNestedTensor(self._buffer.detach,
-                    self.nested_size(), self.nested_stride()))
+            _BufferNestedTensor(self._buffer.detach,
+                                self.nested_size(), self.nested_stride()))
 
     def backward(self, gradient, retain_graph, create_graph):
         for t, g in zip(self.unbind(), gradient.unbind()):
@@ -170,8 +170,8 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(self)):
                 sub_numel = _nested_numel(nested_size[i])
-                result_i = torch.NestedTensor(_BufferNestedTensor(self._buffer.narrow(
-                    0, offset, sub_numel), nested_size[i], nested_stride[i]))
+                result_i = _BufferNestedTensor(self._buffer.narrow(
+                    0, offset, sub_numel), nested_size[i], nested_stride[i])
                 offset += sub_numel
                 result = result + (result_i,)
         self._unbound_tensors = result
@@ -179,12 +179,6 @@ class _BufferNestedTensor(object):
 
     def is_contiguous(self):
         return self._is_contiguous
-
-    def contiguous(self):
-        if not self.is_contiguous():
-            self._buffer = _nested_tensor_to_buffer(self)
-        self._is_contiguous = True
-        return self
 
     def nested_size(self):
         return self._nested_size
@@ -201,6 +195,7 @@ class _BufferNestedTensor(object):
         return self._buffer.reshape(self.size(None))
 
     def size(self, dim):
+        # TODO: Unused until _ListNestedTensor has its own implementation
         if dim is not None:
             return self.size(None)[dim]
 
@@ -225,3 +220,20 @@ class _BufferNestedTensor(object):
 
     def pin_memory(self):
         self._buffer.pin_memory()
+
+    def __str__(self):
+        def _str(x, indent=0):
+            if x.nested_dim() == 0:
+                return ""
+            s = indent*"\t" + "[\n"
+            if x.nested_dim() == 1:
+                strs = list(xi.__str__() for xi in x.unbind())
+                strs = list(map(lambda xi: "\n".join(
+                    map(lambda xij: (indent + 1)*"\t" + xij, xi.split("\n"))), strs))
+                s += ",\n".join(strs)
+            else:
+                s += ",\n".join(list(map(
+                    lambda xi: _str(xi, indent + 1), x.unbind())))
+            s += "\n" + indent * "\t" + "]"
+            return s
+        return "nested_tensor(" + _str(self) + ")"
