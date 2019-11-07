@@ -11,6 +11,8 @@ from . import utils
 import collections
 import os
 
+from torch import _ListNestedTensor
+
 
 DEBUG = int(os.getenv("DEBUG", 1))
 
