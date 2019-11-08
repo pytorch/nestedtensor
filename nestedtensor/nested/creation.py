@@ -7,10 +7,9 @@ from . import bufferimpl
 from . import utils
 
 def as_nested_tensor(data, dtype=None, device=None):
-    # TODO: Needs tests to check failure cases
-    if len(data) > 0:
-        if not(torch.is_tensor(data[0]) or utils.is_nested_tensor(data[0])):
-            data = tuple(as_nested_tensor(data_i) for data_i in data)
+    # Simple wrapper around a nested list of Tensors.
+    # Shares memory with original objects.
+    # # TODO: Needs tests to check failure cases
     ret = nested.NestedTensor(listimpl._ListNestedTensor(data))
     if dtype is not None:
         ret = ret.to(dtype)
