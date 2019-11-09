@@ -17,33 +17,25 @@ from torch import _ListNestedTensor
 DEBUG = int(os.getenv("DEBUG", 1))
 
 
-def _first_tensor(self):
-    if len(self) == 0:
-        return None
-    if self.nested_dim() == 1:
-        return self.unbind()[0]
-    else:
-        return _first_tensor(self.unbind()[0])
-
 def add_to_list_nested_tensor(f):
     setattr(_ListNestedTensor, f.__name__, f)
     return f
 
-@add_to_list_nested_tensor
-def is_contiguous(self):
-    return False
+# @add_to_list_nested_tensor
+# def is_contiguous(self):
+#     return False
 
 @add_to_list_nested_tensor
 def contiguous(self):
     return creation.nested_tensor(self.unbind())
 
-@add_to_list_nested_tensor
-def __str__(self):
-    result = "nestedtensor([\n"
-    for tensor in self.unbind():
-        result += "  " + tensor.__str__() + ",\n"
-    result += "])"
-    return result
+# @add_to_list_nested_tensor
+# def __str__(self):
+#     result = "nestedtensor([\n"
+#     for tensor in self.unbind():
+#         result += "  " + tensor.__str__() + ",\n"
+#     result += "])"
+#     return result
 
 @add_to_list_nested_tensor
 def __repr__(self):
