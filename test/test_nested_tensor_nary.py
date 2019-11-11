@@ -127,7 +127,10 @@ if __name__ == "__main__":
         if func__ == 'fill':
             continue
         for nested_dim in range(1, 5):
-            for device in ['cpu', 'cuda']:
+            avail_devices = ['cpu']
+            if torch.cuda.is_available():
+                avail_devices += ['cuda']
+            for device in avail_devices:
                 setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
                     func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
     globals()['TestBinary'] = type('TestBinary', (DynamicClassBase,), {})
