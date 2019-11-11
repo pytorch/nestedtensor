@@ -32,8 +32,8 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install -r requirements.txt
-            pip3 install torch
+            pip3 install -q -r requirements.txt
+            pip3 install -q torch
 
       - save_cache:
           paths:
