@@ -43,7 +43,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            py.test --runslow -s -v --cov=nestedtensor --durations=20
+            py.test -s -v --cov=nestedtensor --durations=20
 
       - store_artifacts:
           path: test-reports
