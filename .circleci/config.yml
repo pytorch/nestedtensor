@@ -44,7 +44,12 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            py.test -s -v --cov=nestedtensor --durations=20
+            python test/test_nested_tensor_autograd.py
+            python test/test_nested_tensor_class.py
+            python test/test_nested_tensor_functional.py
+            python test/test_nested_tensor_masking.py
+            python test/test_nested_tensor_nary.py
+            python test/test_nested_tensor_tensorwise.py
 
       - store_artifacts:
           path: test-reports
