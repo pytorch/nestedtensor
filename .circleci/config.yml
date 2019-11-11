@@ -44,6 +44,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
+            pip3 install .
             python test/test_nested_tensor_autograd.py
             python test/test_nested_tensor_class.py
             python test/test_nested_tensor_functional.py
