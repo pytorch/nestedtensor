@@ -37,13 +37,13 @@ def contiguous(self):
 #     result += "])"
 #     return result
 
-@add_to_list_nested_tensor
-def __repr__(self):
-    result = "nestedtensor([\n"
-    for tensor in self.unbind():
-        result += "  " + tensor.__repr__() + ",\n"
-    result += "])"
-    return result
+# @add_to_list_nested_tensor
+# def __repr__(self):
+#     result = "nestedtensor([\n"
+#     for tensor in self.unbind():
+#         result += "  " + tensor.__repr__() + ",\n"
+#     result += "])"
+#     return result
 
 @add_to_list_nested_tensor
 def to_tensor(self):
@@ -52,31 +52,31 @@ def to_tensor(self):
     else:
         return torch.stack(list(map(lambda x: x.to_tensor(), self.unbind())))
 
-@add_to_list_nested_tensor
-def size(self, dim):
-    if dim is not None:
-        return self.size()[dim]
-    all_sizes = tuple(t.size() for t in self.unbind())
-
-    def compare_sizes(size, other_size):
-        result_size = list(size)
-        for i in range(len(size)):
-            result_size[i] = size[i] if size[i] == other_size[i] else None
-        return tuple(result_size)
-
-    result_size = list(all_sizes[0])
-    for size in all_sizes:
-        result_size = compare_sizes(result_size, size)
-    return (len(self),) + result_size
+# @add_to_list_nested_tensor
+# def size(self, dim):
+#     if dim is not None:
+#         return self.size()[dim]
+#     all_sizes = tuple(t.size() for t in self.unbind())
+# 
+#     def compare_sizes(size, other_size):
+#         result_size = list(size)
+#         for i in range(len(size)):
+#             result_size[i] = size[i] if size[i] == other_size[i] else None
+#         return tuple(result_size)
+# 
+#     result_size = list(all_sizes[0])
+#     for size in all_sizes:
+#         result_size = compare_sizes(result_size, size)
+#     return (len(self),) + result_size
 
 @add_to_list_nested_tensor
 def to(self, *args, **kwargs):
     return _ListNestedTensor([t.to(*args, **kwargs) for t in self.unbind()])
 
-@add_to_list_nested_tensor
-def numel(self):
-    return sum(t.numel() for t in self.unbind())
+# @add_to_list_nested_tensor
+# def numel(self):
+#     return sum(t.numel() for t in self.unbind())
 
-@add_to_list_nested_tensor
-def pin_memory(self):
-    (t.pin_memory() for t in self.unbind())
+# @add_to_list_nested_tensor
+# def pin_memory(self):
+#     (t.pin_memory() for t in self.unbind())

@@ -243,7 +243,6 @@ class NestedTensor(object):
     def nested_size(self, dim=None):
         # TODO: Negative dims and slices
         if dim is None:
-            print(self._impl.nested_size())
             return NestedSize(self._impl.nested_size())
         else:
             if isinstance(dim, tuple):
