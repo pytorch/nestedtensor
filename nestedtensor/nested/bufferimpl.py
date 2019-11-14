@@ -180,12 +180,6 @@ class _BufferNestedTensor(object):
     def is_contiguous(self):
         return self._is_contiguous
 
-    def contiguous(self):
-        if not self.is_contiguous():
-            self._buffer = _nested_tensor_to_buffer(self)
-        self._is_contiguous = True
-        return self
-
     def nested_size(self):
         return self._nested_size
 

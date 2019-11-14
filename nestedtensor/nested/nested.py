@@ -7,6 +7,7 @@ import os
 
 from . import bufferimpl
 from . import utils
+from . import creation
 
 # Set this flag to true, if you want to enable additional verifications.
 DEBUG = int(os.getenv("DEBUG", 1))
@@ -166,7 +167,9 @@ class NestedTensor(object):
         return self._impl.is_contiguous()
 
     def contiguous(self):
-        return NestedTensor(self._impl.contiguous())
+        if not self.is_contiguous():
+            return creation.nested_tensor(self.unbind())
+        return self
 
     def size(self, dim=None):
         return self._impl.size(dim)
