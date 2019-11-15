@@ -167,6 +167,7 @@ class NestedTensor(object):
         return self._impl.is_contiguous()
 
     def contiguous(self):
+        # TODO: Test autograd support
         if not self.is_contiguous():
             return creation.nested_tensor(self.unbind())
         return self
