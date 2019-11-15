@@ -125,7 +125,7 @@ class _BufferNestedTensor(object):
     @property
     def grad(self):
         return _BufferNestedTensor(self._buffer.grad,
-                    self.nested_size(), self.nested_stride())
+                                   self.nested_size(), self.nested_stride())
 
     def requires_grad_(self, requires_grad=True):
         self._buffer.requires_grad_(requires_grad)
@@ -133,8 +133,8 @@ class _BufferNestedTensor(object):
 
     def detach(self):
         return nested.NestedTensor(
-                _BufferNestedTensor(self._buffer.detach,
-                    self.nested_size(), self.nested_stride()))
+            _BufferNestedTensor(self._buffer.detach,
+                                self.nested_size(), self.nested_stride()))
 
     def backward(self, gradient, retain_graph, create_graph):
         for t, g in zip(self.unbind(), gradient.unbind()):
@@ -195,6 +195,7 @@ class _BufferNestedTensor(object):
         return self._buffer.reshape(self.size(None))
 
     def size(self, dim):
+        # TODO: Unused until _ListNestedTensor has its own implementation
         if dim is not None:
             return self.size(None)[dim]
 

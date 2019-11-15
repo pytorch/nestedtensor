@@ -2,7 +2,6 @@ import torch
 import numbers
 
 from . import nested
-from . import listimpl
 from . import bufferimpl
 from . import utils
 
@@ -10,7 +9,7 @@ def as_nested_tensor(data, dtype=None, device=None):
     # Simple wrapper around a nested list of Tensors.
     # Shares memory with original objects.
     # # TODO: Needs tests to check failure cases
-    ret = nested.NestedTensor(listimpl._ListNestedTensor(data))
+    ret = nested.NestedTensor(torch._ListNestedTensor(data))
     if dtype is not None:
         ret = ret.to(dtype)
     if device is not None:

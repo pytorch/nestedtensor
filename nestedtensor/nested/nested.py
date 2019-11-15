@@ -172,9 +172,23 @@ class NestedTensor(object):
         return self
 
     def size(self, dim=None):
-        return self._impl.size(dim)
+        if dim is not None:
+            return self.size()[dim]
+        all_sizes = tuple(t.size() for t in self.unbind())
+
+        def compare_sizes(size, other_size):
+            result_size = list(size)
+            for i in range(len(size)):
+                result_size[i] = size[i] if size[i] == other_size[i] else None
+            return tuple(result_size)
+
+        result_size = list(all_sizes[0])
+        for size in all_sizes:
+            result_size = compare_sizes(result_size, size)
+        return (len(self),) + result_size
 
     def to(self, *args, **kwargs):
+        # to is never in-place, but it has autograd support (for float and double) via copy
         return self._impl.to(*args, **kwargs)
 
     def numel(self):
