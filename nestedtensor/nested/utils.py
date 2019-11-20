@@ -323,7 +323,7 @@ def reduction(support_nested_dim=True, unbind_args=None, dim_args=None):
                                         ("Cannot reduce across dimension {}. "
                                          "Shapes {} and {} don't match.").format(
                                             dim, nested_size, t.nested_size()))
-                    buffer_ = tf(torch.stack([t.flatten()
+                    buffer_ = tf(torch.stack([t.contiguous()._impl._buffer
                                               for t in unbound]), 0, *args, **kwargs)
                     if is_nested_tensor(unbound[0]):
                         return NestedTensor(bufferimpl._BufferNestedTensor(buffer_,

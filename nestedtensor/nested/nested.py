@@ -166,7 +166,7 @@ class NestedTensor(object):
         return self._impl.is_contiguous()
 
     def contiguous(self):
-        return self._impl.contiguous()
+        return NestedTensor(self._impl.contiguous())
 
     def size(self, dim=None):
         return self._impl.size(dim)

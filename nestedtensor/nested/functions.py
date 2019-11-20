@@ -45,7 +45,7 @@ def linear(input, weight, bias=None):
             None not in input.size() and None not in weight.size() and
             (bias is None or
              (bias.is_contiguous() and None not in bias.size() and torch.is_tensor(bias)))):
-        input_buffer = input.flatten().view(input.size())
+        input_buffer = input._impl._buffer.view(input.size())
         output = torch.matmul(input_buffer, weight.t())
         if bias is not None:
             output = output + bias
@@ -155,7 +155,7 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None, trainin
 
     if utils.is_nested_tensor(input) and input.is_contiguous() and None not in input.size():
         # TODO: The unsqueeze and squeeze needs to depend on input dimension
-        input_buffer = input.flatten().reshape(input.size())
+        input_buffer = input._impl._buffer.reshape(input.size())
         result = orig_batch_norm(
             input_buffer, running_mean, running_var, weight, bias, training, momentum, eps)
         return nested.NestedTensor(bufferimpl._BufferNestedTensor(result.flatten(), input.nested_size()))
