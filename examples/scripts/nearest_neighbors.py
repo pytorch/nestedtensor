@@ -80,7 +80,7 @@ def print_results(results, keys, sub_clusters, print_details=False):
             "result scores for \u001b[31msub cluster {} and key {}\u001b[0m".format(i, i))
         pprint.pprint(result)
 
-def benchmark_fn(fn, run_time = 5.0):
+def benchmark_fn(fn, run_time = 15.0):
     times = []
     num_runs = 0
     t = 0.0
@@ -112,8 +112,16 @@ if __name__ == "__main__":
 
     # print(benchmark_fn(gen_results_naive))
     # print(benchmark_fn(gen_results_mv))
-    import profile
-    profile.runctx('benchmark_fn(gen_results_nested_mv)', globals, locals)
+    import cProfile, pstats, io
+    pr = cProfile.Profile()
+    pr.enable()
+    print(benchmark_fn(gen_results_nested_mv))
+    pr.disable()
+    s = io.StringIO()
+    sortby = 'tottime'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
     # print(benchmark_fn(gen_results_nested_mv))
 
     if args.print_results:

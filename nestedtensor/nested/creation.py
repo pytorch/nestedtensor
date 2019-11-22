@@ -70,10 +70,18 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             return torch.tensor(data)
 
         def _create_buffer(data):
-            if isinstance(data, torch.Tensor):
-                return data.flatten()  # This data will be copied implicitly via cat
-            import pdb; pdb.set_trace()
-            return torch.cat([_create_buffer(data_) for data_ in data], dim=0)
+            def __flatten_data(data):
+                if isinstance(data, torch.Tensor):
+                    return [data.flatten()]  # This data will be copied implicitly via cat
+                elif isinstance(data, nested.NestedTensor):
+                    return [data.contiguous()._impl._buffer]
+                else:
+                    result = []
+                    for data_i in data:
+                        result += __flatten_data(data_i)
+                    return result
+            flat_data = __flatten_data(data)
+            return torch.cat(flat_data)
 
         def _cont_stride(size):
             stride = (1,)
