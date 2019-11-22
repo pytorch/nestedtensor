@@ -1,8 +1,9 @@
 from nestedtensor import torch
+import time
 import random
 import pprint
 
-EMBED_DIM = 200
+EMBED_DIM = 5
 
 SEED = 0
 
@@ -21,8 +22,9 @@ def gen_clusters(num_clusters, size_range):
     return [gen_cluster(random.randint(*size_range)) for _ in range(num_clusters)]
 
 
-def gen_algorithm(keys, sub_clusters):
-    def _algorithm():
+def gen_algorithm_naive(keys, sub_clusters):
+    # For-loops over vectors
+    def _naive():
         results = []
         for sub_cluster, key in zip(sub_clusters, keys):
             sub_cluster_results = []
@@ -31,7 +33,35 @@ def gen_algorithm(keys, sub_clusters):
                     [torch.dot(key, entry).item() for entry in cluster])
             results.append(sub_cluster_results)
         return results
-    return _algorithm
+    return _naive
+
+def gen_algorithm_mv(keys, sub_clusters):
+    # For-loops over vectors and matrices
+    new_sub_clusters = []
+    for sub_cluster in sub_clusters:
+        new_sub_cluster = [torch.tensor(list(map(list, cluster))) for cluster in sub_cluster]
+        new_sub_clusters.append(new_sub_cluster)
+    sub_clusters = new_sub_clusters
+    def _mv():
+        results = []
+        for sub_cluster, key in zip(sub_clusters, keys):
+            sub_cluster_results = []
+            for cluster in sub_cluster:
+                sub_cluster_results.append(torch.mv(cluster, key))
+            results.append(sub_cluster_results)
+        return results
+    return _mv
+
+def gen_algorithm_nested_mv(keys, sub_clusters):
+    # For-loops over vectors and matrices
+    new_sub_clusters = []
+    for sub_cluster in sub_clusters:
+        new_sub_cluster = [torch.tensor(list(map(list, cluster))) for cluster in sub_cluster]
+        new_sub_clusters.append(new_sub_cluster)
+    nested_sub_clusters = torch.nested_tensor(sub_clusters).to_tensor(2)
+    def _nested_mv():
+        return torch.mv(nested_sub_clusters, torch.nested_tensor(keys))
+    return _nested_mv
 
 
 def print_results(results, keys, sub_clusters, print_details=False):
@@ -49,6 +79,16 @@ def print_results(results, keys, sub_clusters, print_details=False):
             "result scores for \u001b[31msub cluster {} and key {}\u001b[0m".format(i, i))
         pprint.pprint(result)
 
+def benchmark_fn(fn, num_runs = 10):
+    times = []
+    for _ in range(num_runs):
+        ti = time.time()
+        fn()
+        ti = time.time() - ti
+        times.append(ti)
+    times = torch.tensor(times)
+    return "fn {} avg: {} std: {}".format(fn.__name__, times.mean().item(), times.std().item())
+
 
 if __name__ == "__main__":
     clusters = gen_clusters(3, (2, 5))
@@ -59,6 +99,17 @@ if __name__ == "__main__":
     sub_clusters = [clusters[:3], clusters[2:]]
 
     # Get algorithm
-    gen_results = gen_algorithm(keys, sub_clusters)
+    gen_results_naive = gen_algorithm_naive(keys, sub_clusters)
+    gen_results_mv = gen_algorithm_mv(keys, sub_clusters)
+    gen_results_nested_mv = gen_algorithm_nested_mv(keys, sub_clusters)
 
-    print_results(gen_results(), keys, sub_clusters)
+    print(benchmark_fn(gen_results_naive))
+    print(benchmark_fn(gen_results_mv))
+    print(benchmark_fn(gen_results_nested_mv))
+
+    print('naive')
+    print_results(gen_results_naive(), keys, sub_clusters)
+    print('\nmv')
+    print_results(gen_results_mv(), keys, sub_clusters)
+    print('\nnested_mv')
+    print_results(gen_results_nested_mv(), keys, sub_clusters)
