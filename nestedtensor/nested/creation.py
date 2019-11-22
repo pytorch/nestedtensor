@@ -72,6 +72,7 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         def _create_buffer(data):
             if isinstance(data, torch.Tensor):
                 return data.flatten()  # This data will be copied implicitly via cat
+            import pdb; pdb.set_trace()
             return torch.cat([_create_buffer(data_) for data_ in data], dim=0)
 
         def _cont_stride(size):

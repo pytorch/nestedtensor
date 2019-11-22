@@ -1,4 +1,5 @@
 from nestedtensor import torch
+import argparse
 import time
 import random
 import pprint
@@ -94,6 +95,9 @@ def benchmark_fn(fn, run_time = 5.0):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--print-results', dest='print_results', action='store_true')
+    args = parser.parse_args()
     clusters = gen_clusters(3, (2, 5))
 
     # Two keys for now
@@ -106,13 +110,16 @@ if __name__ == "__main__":
     gen_results_mv = gen_algorithm_mv(keys, sub_clusters)
     gen_results_nested_mv = gen_algorithm_nested_mv(keys, sub_clusters)
 
-    print(benchmark_fn(gen_results_naive))
-    print(benchmark_fn(gen_results_mv))
-    print(benchmark_fn(gen_results_nested_mv))
+    # print(benchmark_fn(gen_results_naive))
+    # print(benchmark_fn(gen_results_mv))
+    import profile
+    profile.runctx('benchmark_fn(gen_results_nested_mv)', globals, locals)
+    # print(benchmark_fn(gen_results_nested_mv))
 
-    print('naive')
-    print_results(gen_results_naive(), keys, sub_clusters)
-    print('\nmv')
-    print_results(gen_results_mv(), keys, sub_clusters)
-    print('\nnested_mv')
-    print_results(gen_results_nested_mv(), keys, sub_clusters)
+    if args.print_results:
+        print('naive')
+        print_results(gen_results_naive(), keys, sub_clusters)
+        print('\nmv')
+        print_results(gen_results_mv(), keys, sub_clusters)
+        print('\nnested_mv')
+        print_results(gen_results_nested_mv(), keys, sub_clusters)
