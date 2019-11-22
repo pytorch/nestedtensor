@@ -3,7 +3,7 @@ import time
 import random
 import pprint
 
-EMBED_DIM = 5
+EMBED_DIM = 256
 
 SEED = 0
 
@@ -79,15 +79,18 @@ def print_results(results, keys, sub_clusters, print_details=False):
             "result scores for \u001b[31msub cluster {} and key {}\u001b[0m".format(i, i))
         pprint.pprint(result)
 
-def benchmark_fn(fn, num_runs = 10):
+def benchmark_fn(fn, run_time = 5.0):
     times = []
-    for _ in range(num_runs):
+    num_runs = 0
+    t = 0.0
+    while (t < run_time):
         ti = time.time()
         fn()
         ti = time.time() - ti
+        t += ti
         times.append(ti)
-    times = torch.tensor(times)
-    return "fn {} avg: {} std: {}".format(fn.__name__, times.mean().item(), times.std().item())
+    times = torch.tensor(times) * 1e6
+    return "fn {:<15} avg(us): {:10.4f} std(us): {:10.4f} num_runs: {}".format(fn.__name__, times.mean().item(), times.std().item(), len(times))
 
 
 if __name__ == "__main__":
