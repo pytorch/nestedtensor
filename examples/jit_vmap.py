@@ -10,7 +10,7 @@ def vmap(fn):
             return arg.jit_apply(torch.jit.script(asd))
     return decorator
 
-@vmap
+@torch.jit.script
 def my_fun(x):
     x = x + 1
     y = x.abs()
@@ -22,5 +22,4 @@ def my_fun(x):
 a = torch.randn(1, 2)
 b = torch.randn(2, 1)
 n = torch._ListNestedTensor([[a, b], [b]])
-print(my_fun(a))
-print(my_fun(n))
+print(torch.nested_tensor.jit_apply_function(n, my_fun))
