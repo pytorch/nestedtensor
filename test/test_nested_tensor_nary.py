@@ -2,7 +2,7 @@ import traceback
 import functools
 import pdb
 import sys
-from nestedtensor import torch
+import torch
 import nestedtensor
 import unittest
 from unittest import TestCase

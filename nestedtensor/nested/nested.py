@@ -283,8 +283,6 @@ class NestedTensor(object):
 
     def __torch_function__(self, func, args=(), kwargs=None):
         _local_func = None
-        if hasattr(NestedTensor, func.__name__):
-            _local_func = getattr(NestedTensor, func.__name__)
         if func in NestedTensor.__function_dispatch:
             _local_func = NestedTensor.__function_dispatch[func]
         if _local_func is None:

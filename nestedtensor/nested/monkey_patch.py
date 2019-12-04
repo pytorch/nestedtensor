@@ -46,8 +46,8 @@ def monkey_patch(NestedTensor):
         _check_meaningful_overwrite(NestedTensor, name)
         setattr(NestedTensor, name, wrapper(getattr(torch.Tensor, name)))
 
-    def set_wrapped_function(function, wrapper):
-        function_dispatch[function] = wrapper(function)
+    def set_wrapped_torch_function(function_name, wrapper):
+        function_dispatch[getattr(torch, function_name)] = wrapper(getattr(torch, function_name))
 
     def set_function(key, function):
         function_dispatch[key] = function
@@ -70,13 +70,14 @@ def monkey_patch(NestedTensor):
     # module.nested_tensor_from_padded_tensor = masking.nested_tensor_from_padded_tensor
     # # <
 
-    # NOTE: Any torch.* module function that also has a method will dispatch to
-    # that NestedTensor method within __torch_function__. All functions that do not
-    # have a method equivalent are considered "pure" in the context of this
-    # method and stored in a dispatch dictionary within NestedTensor.
-
     # > Python data model methods. We skip functions that torch.Tensor doesn't define.
     # --- Python binary arithmetic operations
+
+    for function_name in codegen.get_python_binary_arithmetic_operations():
+        if function_name in ['truediv', 'floordiv', 'mod', 'divmod', 'lshift', 'rshift', 'and', 'xor', 'or']:
+            continue
+        set_wrapped_torch_function(function_name, utils.pointwise())
+
     for function_name in codegen.get_python_binary_arithmetic_operations():
         if function_name in ['divmod']:
             continue
@@ -94,6 +95,11 @@ def monkey_patch(NestedTensor):
 
     # --- Python unary arithmetic operations
     for function_name in ['neg', 'pos', 'abs', 'invert']:
+        if function_name in ['pos', 'invert']:
+            continue
+        set_wrapped_torch_function(function_name, utils.pointwise())
+
+    for function_name in ['neg', 'pos', 'abs', 'invert']:
         if function_name in ['pos']:
             continue
         set_nt_method("__" + function_name + '__', utils.pointwise())
@@ -106,21 +112,21 @@ def monkey_patch(NestedTensor):
     # > PyTorch pointwise operations
     # --- Module and Tensor pointwise functions and methods
     for function_name in codegen.get_pointwise_functions():
+        set_nt_method(function_name + '_', utils.pointwise())
         if function_name in ['fill']:
             continue
+        set_wrapped_torch_function(function_name, utils.pointwise())
         set_nt_method(function_name, utils.pointwise())
-
-    # --- Tensor pointwise in-place methods
-    for function_name in codegen.get_pointwise_functions():
-        set_nt_method(function_name + '_', utils.pointwise())
     # <
 
     # > PyTorch reduction operations
     # --- Module and Tensor reductions
     for function_name in codegen.get_complete_reductions():
+        set_wrapped_torch_function(function_name, utils.reduction())
         set_nt_method(function_name, utils.reduction())
 
     for function_name in codegen.get_tensorwise_reductions():
+        set_wrapped_torch_function(function_name, utils.reduction(support_nested_dim=False))
         set_nt_method(function_name, utils.reduction(support_nested_dim=False))
     # <
 
@@ -131,6 +137,7 @@ def monkey_patch(NestedTensor):
 
     # > PyTorch BLAS and LAPACK operations
     for function_name in codegen.get_blas_lapack_ops():
+        set_wrapped_torch_function(function_name, utils.tensorwise())
         if function_name in ['chain_matmul', 'lu_unpack', 'matrix_rank', 'trapz']:
             continue
         set_nt_method(function_name, utils.tensorwise())
@@ -147,6 +154,7 @@ def monkey_patch(NestedTensor):
 
     # > PyTorch BLAS and LAPACK operations
     for function_name in codegen.get_other_ops():
+        set_wrapped_torch_function(function_name, utils.tensorwise())
         # Custom implementation
         if function_name in ['flatten']:
             continue
@@ -163,6 +171,14 @@ def monkey_patch(NestedTensor):
             continue
         set_nt_method(function_name + '_', utils.tensorwise())
 
+    # <
+
+    # > PyTorch random sampling operations
+    for function_name in codegen.get_random_sampling_operations():
+        if function_name in ['cauchy', 'exponential', 'geometric', 'log_normal',
+                             'normal', 'random', 'uniform']:
+            continue
+        set_wrapped_torch_function(function_name, utils.tensorwise())
 
     for function_name in codegen.get_random_sampling_operations():
         if function_name in ['cauchy', 'exponential', 'geometric', 'log_normal',
@@ -173,23 +189,6 @@ def monkey_patch(NestedTensor):
     for function_name in codegen.get_random_sampling_operations():
         set_nt_method(function_name + '_', utils.tensorwise())
     # <
-
-    # > Pure PyTorch functions without method equivalents
-
-    for function_name in codegen.get_blas_lapack_ops():
-        set_wrapped_function(getattr(torch, function_name), utils.tensorwise())
-
-    for function_name in codegen.get_other_ops():
-        if function_name in ['flatten']:
-            set_wrapped_function(getattr(torch, function_name), utils.tensorwise(dim_args=[1, 2, 'start_dim', 'end_dim']))
-        else:
-            set_wrapped_function(getattr(torch, function_name), utils.tensorwise())
-
-    # > PyTorch random sampling operations
-    for function_name in codegen.get_random_sampling_operations():
-        if function_name in ['cauchy', 'exponential', 'geometric', 'log_normal', 'uniform']:
-            continue
-        set_wrapped_function(getattr(torch, function_name), utils.tensorwise())
 
     # --- WORK IN PROGRESS ---
 
