@@ -285,12 +285,8 @@ class NestedTensor(object):
         _local_func = None
         if func in NestedTensor.__function_dispatch:
             _local_func = NestedTensor.__function_dispatch[func]
-        if _local_func is None:
-            raise NotImplementedError("NestedTensor doesn't support function {}".format(func))
-        return _local_func(*args) if kwargs is None else _local_func(*args, **kwargs)
-        import pdb
-        pdb.set_trace()
-        print("asdf")
+            return _local_func(*args) if kwargs is None else _local_func(*args, **kwargs)
+        raise NotImplementedError("NestedTensor doesn't support function {}".format(func))
 
     def __bool__(self):
         raise NotImplementedError(
