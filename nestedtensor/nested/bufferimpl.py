@@ -170,8 +170,8 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(self)):
                 sub_numel = _nested_numel(nested_size[i])
-                result_i = torch.NestedTensor(_BufferNestedTensor(self._buffer.narrow(
-                    0, offset, sub_numel), nested_size[i], nested_stride[i]))
+                result_i = _BufferNestedTensor(self._buffer.narrow(
+                    0, offset, sub_numel), nested_size[i], nested_stride[i])
                 offset += sub_numel
                 result = result + (result_i,)
         self._unbound_tensors = result
@@ -220,3 +220,20 @@ class _BufferNestedTensor(object):
 
     def pin_memory(self):
         self._buffer.pin_memory()
+
+    def __str__(self):
+        def _str(x, indent=0):
+            if x.nested_dim() == 0:
+                return ""
+            s = indent*"\t" + "[\n"
+            if x.nested_dim() == 1:
+                strs = list(xi.__str__() for xi in x.unbind())
+                strs = list(map(lambda xi: "\n".join(
+                    map(lambda xij: (indent + 1)*"\t" + xij, xi.split("\n"))), strs))
+                s += ",\n".join(strs)
+            else:
+                s += ",\n".join(list(map(
+                    lambda xi: _str(xi, indent + 1), x.unbind())))
+            s += "\n" + indent * "\t" + "]"
+            return s
+        return "nested_tensor(" + _str(self) + ")"

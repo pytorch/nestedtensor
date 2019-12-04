@@ -26,6 +26,7 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False):
         if use_cprofile:
             pr.enable()
         fn()
+        torch.cuda.synchronize()
         if use_cprofile:
             pr.disable()
         ti = time.time() - ti
