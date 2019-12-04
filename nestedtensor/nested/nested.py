@@ -2,6 +2,7 @@ import torch
 import numbers
 from functools import wraps
 from . import masking
+from . import monkey_patch
 import collections
 import os
 
@@ -279,6 +280,19 @@ class NestedTensor(object):
                 return tuple(t.nested_stride(dim - 1) for t in self.unbind())
 
     # --- dependent on impl ends ---
+
+    def __torch_function__(self, func, args=(), kwargs=None):
+        _local_func = None
+        if hasattr(NestedTensor, func.__name__):
+            _local_func = getattr(NestedTensor, func.__name__)
+        if func in NestedTensor.__function_dispatch:
+            _local_func = NestedTensor.__function_dispatch[func]
+        if _local_func is None:
+            raise NotImplementedError("NestedTensor doesn't support function {}".format(func))
+        return _local_func(*args) if kwargs is None else _local_func(*args, **kwargs)
+        import pdb
+        pdb.set_trace()
+        print("asdf")
 
     def __bool__(self):
         raise NotImplementedError(
