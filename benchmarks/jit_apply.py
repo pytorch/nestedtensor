@@ -38,11 +38,23 @@ def gen_jit():
     n = torch._ListNestedTensor(
         [torch.randn(256, 128).to(device='cuda') for _ in range(128)])
 
-    @torch.jit.script
-    def my_fun(x):
-        x = x + 1
-        y = x.abs()
-        return y
+    def gen_my_fun(scalar, tensor):
+        @torch.jit.ignore
+        def get_scalar() -> float:
+            return scalar
+
+        @torch.jit.ignore
+        def get_tensor() -> torch.Tensor:
+            return tensor
+
+        @torch.jit.script
+        def my_fun(x):
+            x = x + get_scalar()
+            x = x + get_tensor()
+            y = x.abs()
+            return y
+        return my_fun
+    my_fun = gen_my_fun(3.0, torch.randn(1).to(device='cuda'))
 
     def _algorithm():
         torch.jit_apply_function(n, my_fun)
@@ -54,7 +66,7 @@ if __name__ == "__main__":
     # print(utils.benchmark_fn(alg, use_cprofile=True))
     # alg = gen_list_nested_tensor_construction()
     # print(utils.benchmark_fn(alg))
-    # alg1 = gen_current()
-    # print(utils.benchmark_fn(alg1))
+    alg1 = gen_current()
+    print(utils.benchmark_fn(alg1))
     alg2 = gen_jit()
     print(utils.benchmark_fn(alg2))

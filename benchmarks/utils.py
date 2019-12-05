@@ -21,12 +21,14 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False):
     num_runs = 0
     t = 0.0
     pr = cProfile.Profile()
+    cuda_avail = torch.cuda.is_available()
     while (t < run_time):
         ti = time.time()
         if use_cprofile:
             pr.enable()
         fn()
-        torch.cuda.synchronize()
+        if cuda_avail:
+            torch.cuda.synchronize()
         if use_cprofile:
             pr.disable()
         ti = time.time() - ti
