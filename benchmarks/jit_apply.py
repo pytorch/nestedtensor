@@ -48,16 +48,16 @@ def gen_jit():
             return tensor
 
         @torch.jit.script
-        def my_fun(x):
+        def my_fun(x, y):
             x = x + get_scalar()
             x = x + get_tensor()
-            y = x.abs()
+            y = y + x.abs()
             return y
         return my_fun
     my_fun = gen_my_fun(3.0, torch.randn(1).to(device='cuda'))
 
     def _algorithm():
-        torch.jit_apply_function(n, my_fun)
+        torch.jit_apply_function((n, n), my_fun)
 
     return _algorithm
 
