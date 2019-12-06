@@ -4,7 +4,7 @@ import time
 import random
 import pprint
 
-EMBED_DIM = 256
+EMBED_DIM = 1024
 
 SEED = 0
 
@@ -12,7 +12,7 @@ SEED = 0
 def gen_tensor():
     globals()['SEED'] += 1
     # return torch.tensor([globals()['SEED']])
-    return torch.rand(EMBED_DIM)
+    return torch.rand(EMBED_DIM).to(device='cuda')
 
 
 def gen_clusters(num_clusters, size_range):
@@ -40,7 +40,7 @@ def gen_algorithm_mv(keys, sub_clusters):
     # For-loops over vectors and matrices
     new_sub_clusters = []
     for sub_cluster in sub_clusters:
-        new_sub_cluster = [torch.tensor(list(map(list, cluster))) for cluster in sub_cluster]
+        new_sub_cluster = [torch.stack(cluster) for cluster in sub_cluster]
         new_sub_clusters.append(new_sub_cluster)
     sub_clusters = new_sub_clusters
     def _mv():
@@ -60,9 +60,32 @@ def gen_algorithm_nested_mv(keys, sub_clusters):
         new_sub_cluster = [torch.tensor(list(map(list, cluster))) for cluster in sub_cluster]
         new_sub_clusters.append(new_sub_cluster)
     nested_sub_clusters = torch.nested_tensor(sub_clusters).to_tensor(2)
+    nested_keys = torch.nested_tensor(keys)
     def _nested_mv():
-        return torch.mv(nested_sub_clusters, torch.nested_tensor(keys))
+        return torch.mv(nested_sub_clusters, nested_keys)
     return _nested_mv
+
+def gen_algorithm_nested_jit_mv(keys, sub_clusters):
+    # For-loops over vectors and matrices
+    new_sub_clusters = []
+    for sub_cluster in sub_clusters:
+        new_sub_cluster = []
+        for cluster in sub_cluster:
+            new_sub_cluster.append(torch.stack(cluster))
+        new_sub_clusters.append(new_sub_cluster)
+    nested_sub_clusters = torch._ListNestedTensor(new_sub_clusters)
+    print("HERE")
+    print(nested_sub_clusters.nested_size())
+    nested_keys = torch._ListNestedTensor(keys)
+    print(nested_keys.nested_size())
+
+    @torch.jit.script
+    def my_fun(x, y):
+        return torch.mv(x, y)
+
+    def _nested_jit_mv():
+        return torch.jit_apply_function((nested_sub_clusters, nested_keys), my_fun)
+    return _nested_jit_mv
 
 
 def print_results(results, keys, sub_clusters, print_details=False):
@@ -83,10 +106,12 @@ def print_results(results, keys, sub_clusters, print_details=False):
 def benchmark_fn(fn, run_time = 15.0):
     times = []
     num_runs = 0
+    fn()
     t = 0.0
     while (t < run_time):
         ti = time.time()
         fn()
+        torch.cuda.synchronize()
         ti = time.time() - ti
         t += ti
         times.append(ti)
@@ -98,30 +123,36 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--print-results', dest='print_results', action='store_true')
     args = parser.parse_args()
-    clusters = gen_clusters(3, (2, 5))
+    # NOTE: This dodging creating these subclusters from a single set of clusters
+    # This additional memory pressure might be crucial
+    keys = [gen_tensor()] * 1024
+    clusters = gen_clusters(1024, (1024,1024))
+    sub_clusters = [[clusters[random.randint(0, 1023)]] * 8 for _ in range(1024)]
 
     # Two keys for now
-    keys = [gen_tensor(), gen_tensor()]
     # Simulating some overlap
+
     sub_clusters = [clusters[:3], clusters[2:]]
 
     # Get algorithm
     gen_results_naive = gen_algorithm_naive(keys, sub_clusters)
     gen_results_mv = gen_algorithm_mv(keys, sub_clusters)
     gen_results_nested_mv = gen_algorithm_nested_mv(keys, sub_clusters)
+    gen_results_nested_jit_mv = gen_algorithm_nested_jit_mv(keys, sub_clusters)
 
     # print(benchmark_fn(gen_results_naive))
     # print(benchmark_fn(gen_results_mv))
-    import cProfile, pstats, io
-    pr = cProfile.Profile()
-    pr.enable()
-    print(benchmark_fn(gen_results_nested_mv))
-    pr.disable()
-    s = io.StringIO()
-    sortby = 'tottime'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
+    # print(benchmark_fn(gen_results_nested_mv))
+    print(benchmark_fn(gen_results_nested_jit_mv))
+    # import cProfile, pstats, io
+    # pr = cProfile.Profile()
+    # pr.enable()
+    # pr.disable()
+    # s = io.StringIO()
+    # sortby = 'tottime'
+    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    # ps.print_stats()
+    # print(s.getvalue())
     # print(benchmark_fn(gen_results_nested_mv))
 
     if args.print_results:
