@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import numbers
 from functools import wraps
 from . import utils
+from . import nested
 import collections
 import os
 
@@ -170,7 +171,7 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(self)):
                 sub_numel = _nested_numel(nested_size[i])
-                result_i = torch.NestedTensor(_BufferNestedTensor(self._buffer.narrow(
+                result_i = nested.NestedTensor(_BufferNestedTensor(self._buffer.narrow(
                     0, offset, sub_numel), nested_size[i], nested_stride[i]))
                 offset += sub_numel
                 result = result + (result_i,)
@@ -217,7 +218,7 @@ class _BufferNestedTensor(object):
         return _size(self.nested_size())
 
     def to(self, *args, **kwargs):
-        return torch.NestedTensor(_BufferNestedTensor(self._buffer.to(*args, **kwargs),
+        return nested.NestedTensor(_BufferNestedTensor(self._buffer.to(*args, **kwargs),
                                                       self.nested_size(), self.nested_stride()))
 
     def numel(self):

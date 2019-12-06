@@ -26,11 +26,11 @@ def _gen_test_unary(func__, nested_dim, device):
         if func__ in ['mvlgamma']:
             data = utils.nested_map(lambda x: x.clamp(min=1), data)
 
-        a1 = torch.nested_tensor(data)
-        a3 = torch.nested_tensor(data)
+        a1 = nestedtensor.nested_tensor(data)
+        a3 = nestedtensor.nested_tensor(data)
         func_ = getattr(torch, func__)
-        method_ = getattr(torch.NestedTensor, func__)
-        method_inplace_ = getattr(torch.NestedTensor, func__ + "_")
+        method_ = getattr(nestedtensor.NestedTensor, func__)
+        method_inplace_ = getattr(nestedtensor.NestedTensor, func__ + "_")
         if func__ in ['clamp']:
 
             def func(x, out=None):
@@ -85,7 +85,7 @@ def _gen_test_unary(func__, nested_dim, device):
             method = method_
             method_inplace = method_inplace_
 
-        a2 = torch.nested_tensor(utils.nested_map(func, data))
+        a2 = nestedtensor.nested_tensor(utils.nested_map(func, data))
 
         self.assertTrue(a1.nested_dim() == a2.nested_dim())
         self.assertTrue(a2.nested_dim() == a3.nested_dim())
@@ -110,9 +110,9 @@ def _gen_test_binary(func):
         b = utils.gen_float_tensor(2, (2, 3))
         c = utils.gen_float_tensor(3, (2, 3))
         # The constructor is supposed to copy!
-        a1 = torch.nested_tensor([a, b])
-        a2 = torch.nested_tensor([b, c])
-        a3 = torch.nested_tensor([getattr(torch, func)(a, b),
+        a1 = nestedtensor.nested_tensor([a, b])
+        a2 = nestedtensor.nested_tensor([b, c])
+        a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
                                   getattr(torch, func)(b, c)])
         self.assertTrue((a3 == getattr(torch, func)(a1, a2)).all())
         self.assertTrue((a3 == getattr(a1, func)(a2)).all())
