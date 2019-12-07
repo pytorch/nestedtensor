@@ -1,9 +1,10 @@
-#include <torch/extension.h>
-#include <torch/csrc/jit/pybind_utils.h>
 #include <Python.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
+#include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/python_strings.h>
-// NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile error
+#include <torch/extension.h>
+// NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
+// error
 // TODO: enable "to" by fixing this.
 // #include <torch/csrc/autograd/utils/python_arg_parsing.h>
 
@@ -24,33 +25,23 @@ struct _NestedNode {
   _NestedNode(const std::vector<_NestedNode> children)
       : _children(children), _payload() {}
   _NestedNode(c10::IValue payload) : _payload(payload) {}
-  inline bool is_leaf() const {
-    return _children.size() == 0;
-  }
-  inline c10::IValue payload() const {
-    return _payload;
-  }
-  inline const std::vector<_NestedNode> children() const {
-    return _children;
-  }
-  inline _NestedNode children(size_t i) const {
-    return _children[i];
-  }
-  inline const _NestedNode* children_data(size_t i) const {
+  inline bool is_leaf() const { return _children.size() == 0; }
+  inline c10::IValue payload() const { return _payload; }
+  inline const std::vector<_NestedNode> children() const { return _children; }
+  inline _NestedNode children(size_t i) const { return _children[i]; }
+  inline const _NestedNode *children_data(size_t i) const {
     return _children.data() + i;
   }
-  inline size_t degree() const {
-    return _children.size();
-  }
+  inline size_t degree() const { return _children.size(); }
 
- private:
+private:
   const std::vector<_NestedNode> _children;
   // TODO: Make this const?
   // _VariableNode _variable_node;
   c10::IValue _payload;
 };
 
-static inline int64_t _numel(const _NestedNode& meta_node) {
+static inline int64_t _numel(const _NestedNode &meta_node) {
   if (meta_node.is_leaf()) {
     return meta_node.payload().toTensor().numel();
   } else {
@@ -63,7 +54,7 @@ static inline int64_t _numel(const _NestedNode& meta_node) {
 }
 
 static inline at::Tensor _get_first_variable(_NestedNode nested_node) {
-  const _NestedNode* start = &nested_node;
+  const _NestedNode *start = &nested_node;
   while (!start->is_leaf()) {
     start = start->children_data(0);
   }
@@ -73,7 +64,7 @@ static inline at::Tensor _get_first_variable(_NestedNode nested_node) {
     // PyObject* fake_args = PyTuple_New(0);
     // PyObject* fake_kwargs = PyDict_New();
     // TODO: Update if python_variable updates it too
-    // torch::tensor 
+    // torch::tensor
     return torch::ones({2, 2});
     // return torch::utils::legacy_tensor_ctor(
     //     torch::tensors::get_default_tensor_type_id(),
@@ -100,10 +91,8 @@ static inline T map(_NestedNode nested_node, F fn) {
 }
 
 template <class F>
-static inline void apply2(
-    _NestedNode nested_node1,
-    _NestedNode nested_node2,
-    F fn) {
+static inline void apply2(_NestedNode nested_node1, _NestedNode nested_node2,
+                          F fn) {
   if (nested_node1.is_leaf()) {
     fn(nested_node1.payload().toTensor(), nested_node2.payload().toTensor());
   } else {
@@ -113,8 +102,8 @@ static inline void apply2(
   }
 }
 
-static inline torch::autograd::Variable _NestedNode_to_tensor(
-    const _NestedNode& nested_node) {
+static inline torch::autograd::Variable
+_NestedNode_to_tensor(const _NestedNode &nested_node) {
   if (nested_node.is_leaf()) {
     return nested_node.payload().toTensor();
   } else {
@@ -126,9 +115,9 @@ static inline torch::autograd::Variable _NestedNode_to_tensor(
   }
 }
 
-static inline bool _verify_variables(
-    const torch::autograd::Variable& first_variable,
-    const _NestedNode nested_node) {
+static inline bool
+_verify_variables(const torch::autograd::Variable &first_variable,
+                  const _NestedNode nested_node) {
   // The attributes must match across all constiuents
   //
   // The NestedTensor's attributes then become that of its
@@ -172,63 +161,51 @@ struct TORCH_API _ListNestedTensor {
       : _structure(structure),
         _first_variable(_get_first_variable(_structure)) {
     if (__len__() > 0) {
-      TORCH_CHECK(
-          _verify_variables(_first_variable, _structure),
-          "Tensors don't line up.");
+      TORCH_CHECK(_verify_variables(_first_variable, _structure),
+                  "Tensors don't line up.");
     }
   }
-  int64_t element_size() {
-    return _first_variable.element_size();
-  }
+  int64_t element_size() { return _first_variable.element_size(); }
   _NestedNode nested_size() {
     if (nested_dim() == 0) {
       return _NestedNode(at::IntArrayRef());
     }
-    return map<_NestedNode>(
-        _structure, [&](c10::IValue tensor) -> at::IntArrayRef {
-          return tensor.toTensor().sizes();
-        });
+    return map<_NestedNode>(_structure,
+                            [&](c10::IValue tensor) -> at::IntArrayRef {
+                              return tensor.toTensor().sizes();
+                            });
   }
   _NestedNode nested_stride() {
     if (nested_dim() == 0) {
       return _NestedNode(at::IntArrayRef());
     }
-    return map<_NestedNode>(
-        _structure, [&](c10::IValue tensor) -> at::IntArrayRef {
-          return tensor.toTensor().strides();
-        });
+    return map<_NestedNode>(_structure,
+                            [&](c10::IValue tensor) -> at::IntArrayRef {
+                              return tensor.toTensor().strides();
+                            });
   }
-  _ListNestedTensor to(
-      at::TensorOptions options,
-      bool non_blocking,
-      bool copy,
-      c10::optional<c10::MemoryFormat> memory_format) {
+  _ListNestedTensor to(at::TensorOptions options, bool non_blocking, bool copy,
+                       c10::optional<c10::MemoryFormat> memory_format) {
     return _ListNestedTensor(
         map<_NestedNode>(_structure, [&](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().to(
-              options, non_blocking, copy, memory_format);
+          return tensor.toTensor().to(options, non_blocking, copy,
+                                      memory_format);
         }));
   }
-  _ListNestedTensor to(
-      at::ScalarType dtype,
-      bool non_blocking,
-      bool copy,
-      c10::optional<c10::MemoryFormat> memory_format) {
+  _ListNestedTensor to(at::ScalarType dtype, bool non_blocking, bool copy,
+                       c10::optional<c10::MemoryFormat> memory_format) {
     return _ListNestedTensor(
         map<_NestedNode>(_structure, [&](c10::IValue tensor) -> at::Tensor {
           return tensor.toTensor().to(dtype, non_blocking, copy, memory_format);
         }));
   }
-  _ListNestedTensor to(
-      at::Device device,
-      at::ScalarType dtype,
-      bool non_blocking,
-      bool copy,
-      c10::optional<c10::MemoryFormat> memory_format) {
+  _ListNestedTensor to(at::Device device, at::ScalarType dtype,
+                       bool non_blocking, bool copy,
+                       c10::optional<c10::MemoryFormat> memory_format) {
     return _ListNestedTensor(
         map<_NestedNode>(_structure, [&](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().to(
-              device, dtype, non_blocking, copy, memory_format);
+          return tensor.toTensor().to(device, dtype, non_blocking, copy,
+                                      memory_format);
         }));
   }
   _ListNestedTensor pin_memory() {
@@ -255,27 +232,22 @@ struct TORCH_API _ListNestedTensor {
           return tensor.toTensor().requires_grad_(requires_grad);
         }));
   }
-  void backward(
-      _ListNestedTensor gradient,
-      bool retain_graph,
-      bool create_graph) {
+  void backward(_ListNestedTensor gradient, bool retain_graph,
+                bool create_graph) {
     apply2(
-        _structure,
-        gradient.get_structure(),
+        _structure, gradient.get_structure(),
         [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2) {
           tensor1.backward(tensor2, retain_graph, create_graph);
         });
   }
-  int64_t __len__() {
-    return _structure.degree();
-  }
+  int64_t __len__() { return _structure.degree(); }
   std::string __str__();
   std::string __repr__();
   torch::autograd::Variable to_tensor() {
     return _NestedNode_to_tensor(_structure);
   }
   int64_t nested_dim() {
-    const _NestedNode* start_structure = &_structure;
+    const _NestedNode *start_structure = &_structure;
     int64_t depth = 0;
     while (!start_structure->is_leaf()) {
       depth++;
@@ -283,36 +255,16 @@ struct TORCH_API _ListNestedTensor {
     }
     return depth;
   }
-  at::ScalarType scalar_type() {
-    return _first_variable.scalar_type();
-  }
-  at::Backend backend() {
-    return _first_variable.type().backend();
-  }
-  at::Device device() {
-    return _first_variable.device();
-  }
-  at::TensorOptions options() {
-    return _first_variable.options();
-  }
-  bool requires_grad() {
-    return _first_variable.requires_grad();
-  }
-  int64_t dim() {
-    return _first_variable.dim() + nested_dim();
-  }
-  int64_t numel() {
-    return _numel(_structure);
-  }
-  bool is_pinned() {
-    return _first_variable.is_pinned();
-  }
-  bool is_contiguous() {
-    return false;
-  }
-  _NestedNode get_structure() {
-    return _structure;
-  }
+  at::ScalarType scalar_type() { return _first_variable.scalar_type(); }
+  at::Backend backend() { return _first_variable.type().backend(); }
+  at::Device device() { return _first_variable.device(); }
+  at::TensorOptions options() { return _first_variable.options(); }
+  bool requires_grad() { return _first_variable.requires_grad(); }
+  int64_t dim() { return _first_variable.dim() + nested_dim(); }
+  int64_t numel() { return _numel(_structure); }
+  bool is_pinned() { return _first_variable.is_pinned(); }
+  bool is_contiguous() { return false; }
+  _NestedNode get_structure() { return _structure; }
   // TODO: Implement these and call into them isntead of implementing them
   // separately in Variable dispatch functions.
   // _ListNestedTensor to - it's a pain due to the 100s of to overloads
@@ -323,11 +275,10 @@ struct TORCH_API _ListNestedTensor {
   // std::string __repr__();
   // py::tuple size(int64_t dim);
 
- private:
+private:
   const _NestedNode _structure;
   at::Tensor _first_variable;
 };
-
 
 inline PyObject *wrap_list(std::vector<PyObject *> list) {
   auto r = THPObjectPtr{PyTuple_New(list.size())};
@@ -415,32 +366,34 @@ struct THP_ListNestedTensor {
     return py::reinterpret_steal<py::object>(
         wrap_nested_node(_data.nested_stride()));
   }
-//  THP_ListNestedTensor to(py::args args, py::kwargs kwargs) {
-//    auto parsed =
-//        parse_to_conversion(args.ptr(), kwargs.ptr(), /*allow_copy*/ true);
-//    auto &device = std::get<0>(parsed);
-//    auto &scalarType = std::get<1>(parsed);
-//    auto non_blocking = std::get<2>(parsed);
-//    auto copy = std::get<3>(parsed);
-//    auto opt_memory_format = std::get<4>(parsed);
-//    if (device && device->is_cuda()) {
-//      torch::utils::cuda_lazy_init();
-//    }
-//    if (!device && !scalarType && !copy) {
-//      return *this;
-//    } else if (!device) {
-//      return THP_ListNestedTensor(
-//          _data.to(scalarType.value(), non_blocking, copy, opt_memory_format));
-//    } else if (!scalarType) {
-//      return THP_ListNestedTensor(_data.to(_data.options().device(device),
-//                                           non_blocking, copy,
-//                                           opt_memory_format));
-//    } else {
-//      return THP_ListNestedTensor(_data.to(device.value(), scalarType.value(),
-//                                           non_blocking, copy,
-//                                           opt_memory_format));
-//    }
-//  }
+  //  THP_ListNestedTensor to(py::args args, py::kwargs kwargs) {
+  //    auto parsed =
+  //        parse_to_conversion(args.ptr(), kwargs.ptr(), /*allow_copy*/ true);
+  //    auto &device = std::get<0>(parsed);
+  //    auto &scalarType = std::get<1>(parsed);
+  //    auto non_blocking = std::get<2>(parsed);
+  //    auto copy = std::get<3>(parsed);
+  //    auto opt_memory_format = std::get<4>(parsed);
+  //    if (device && device->is_cuda()) {
+  //      torch::utils::cuda_lazy_init();
+  //    }
+  //    if (!device && !scalarType && !copy) {
+  //      return *this;
+  //    } else if (!device) {
+  //      return THP_ListNestedTensor(
+  //          _data.to(scalarType.value(), non_blocking, copy,
+  //          opt_memory_format));
+  //    } else if (!scalarType) {
+  //      return THP_ListNestedTensor(_data.to(_data.options().device(device),
+  //                                           non_blocking, copy,
+  //                                           opt_memory_format));
+  //    } else {
+  //      return THP_ListNestedTensor(_data.to(device.value(),
+  //      scalarType.value(),
+  //                                           non_blocking, copy,
+  //                                           opt_memory_format));
+  //    }
+  //  }
   THP_ListNestedTensor pin_memory() {
     return THP_ListNestedTensor(_data.pin_memory());
   }
@@ -481,6 +434,82 @@ struct THP_ListNestedTensor {
 private:
   _ListNestedTensor _data;
 };
+
+static _NestedNode
+apply_jit_function(const std::vector<_NestedNode> &nested_nodes, Function &fn) {
+  bool all_leaf = true;
+  for (size_t i = 0; i < nested_nodes.size(); i++) {
+    all_leaf = all_leaf && nested_nodes[i].is_leaf();
+  }
+  if (all_leaf) {
+    // NOTE: Assuming this is a pure function not a method (no self!)
+    // NOTE: We assume there is only one Tensor inputs.
+    // NOTE: We assume no named tensors and no sparse variables as
+    // appropriate
+    // for TorchScript. NOTE: We know the IValues of the argument, there is
+    // no
+    // need to cast around.
+    Stack stack;
+    stack.reserve(nested_nodes.size());
+    for (size_t i = 0; i < nested_nodes.size(); i++) {
+      push(stack, nested_nodes[i].payload().toTensor());
+    }
+    fn.run(stack);
+    Variable result = stack.back().toTensor();
+    auto result_node = _NestedNode(result);
+    return result_node;
+  } else {
+    bool broadcastable = true;
+    size_t num_children = 0;
+    for (size_t i = 0; i < nested_nodes.size(); i++) {
+      if (!nested_nodes[i].is_leaf()) {
+        if (num_children > 0) {
+          broadcastable =
+              broadcastable && (num_children == nested_nodes[i].degree());
+        } else {
+          num_children = nested_nodes[i].degree();
+        }
+      }
+    }
+    TORCH_CHECK(broadcastable, "Can't broadcast given nested tensors");
+    std::vector<_NestedNode> result;
+    for (size_t i = 0; i < num_children; i++) {
+      std::vector<_NestedNode> local_args;
+      for (size_t j = 0; j < nested_nodes.size(); j++) {
+        if (nested_nodes[j].is_leaf()) {
+          local_args.push_back(nested_nodes[j]);
+        } else {
+          local_args.push_back(nested_nodes[j].children(i));
+        }
+      }
+      result.push_back(apply_jit_function(local_args, fn));
+    }
+    return _NestedNode(result);
+  }
+}
+static THP_ListNestedTensor
+jit_apply_function(std::vector<THP_ListNestedTensor> nts_, py::object fn) {
+  std::vector<_ListNestedTensor> nts;
+  for (size_t i = 0; i < nts_.size(); i++) {
+    nts.push_back(nts_[i].data());
+  }
+  auto sfn = torch::jit::script::as_function(fn).value();
+  auto tracing_state = tracer::getTracingState();
+  TORCH_CHECK(!tracing_state, "doesnt support tracing");
+  Function &callee = *sfn.function_;
+  auto schema = callee.getSchema();
+  TORCH_CHECK(schema.arguments().size() == nts.size(),
+              "Give NestedTensors don't match function args.");
+  std::vector<_NestedNode> nested_nodes;
+  for (size_t i = 0; i < nts.size(); i++) {
+    nested_nodes.push_back(nts[i].get_structure());
+  }
+  py::gil_scoped_release release;
+  _NestedNode nested_node = apply_jit_function(nested_nodes, callee);
+  py::gil_scoped_acquire acquire;
+  return THP_ListNestedTensor(_ListNestedTensor(nested_node));
+}
+
 } // namespace nested_tensor
 } // namespace torch
 
@@ -491,11 +520,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // via unbind.
   py::class_<torch::nested_tensor::THP_ListNestedTensor>(m, "_ListNestedTensor")
       .def(py::init<py::object>(), py::keep_alive<1, 2>())
-      .def_property_readonly("dtype", &torch::nested_tensor::THP_ListNestedTensor::getDtype)
-      .def_property_readonly("layout", &torch::nested_tensor::THP_ListNestedTensor::getLayout)
-      .def_property_readonly("device", &torch::nested_tensor::THP_ListNestedTensor::getDevice)
-      .def_property_readonly("requires_grad",
-                             &torch::nested_tensor::THP_ListNestedTensor::requires_grad)
+      .def_property_readonly(
+          "dtype", &torch::nested_tensor::THP_ListNestedTensor::getDtype)
+      .def_property_readonly(
+          "layout", &torch::nested_tensor::THP_ListNestedTensor::getLayout)
+      .def_property_readonly(
+          "device", &torch::nested_tensor::THP_ListNestedTensor::getDevice)
+      .def_property_readonly(
+          "requires_grad",
+          &torch::nested_tensor::THP_ListNestedTensor::requires_grad)
       .def("unbind",
            [](torch::nested_tensor::THP_ListNestedTensor self) {
              std::vector<py::object> result;
@@ -507,28 +540,37 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
              } else {
                for (int64_t i = 0; i < self.len(); i++) {
                  result.push_back(
-                     py::cast(torch::nested_tensor::THP_ListNestedTensor(torch::nested_tensor::_ListNestedTensor(
-                         self.data().get_structure().children(i)))));
+                     py::cast(torch::nested_tensor::THP_ListNestedTensor(
+                         torch::nested_tensor::_ListNestedTensor(
+                             self.data().get_structure().children(i)))));
                }
              }
              return result;
            })
       .def("backward", &torch::nested_tensor::THP_ListNestedTensor::backward)
-      .def("element_size", &torch::nested_tensor::THP_ListNestedTensor::element_size)
+      .def("element_size",
+           &torch::nested_tensor::THP_ListNestedTensor::element_size)
       .def("numel", &torch::nested_tensor::THP_ListNestedTensor::numel)
       .def("__len__", &torch::nested_tensor::THP_ListNestedTensor::len)
-      .def("nested_dim", &torch::nested_tensor::THP_ListNestedTensor::nested_dim)
-      .def("is_contiguous", &torch::nested_tensor::THP_ListNestedTensor::is_contiguous)
+      .def("nested_dim",
+           &torch::nested_tensor::THP_ListNestedTensor::nested_dim)
+      .def("is_contiguous",
+           &torch::nested_tensor::THP_ListNestedTensor::is_contiguous)
       .def("is_pinned", &torch::nested_tensor::THP_ListNestedTensor::is_pinned)
       .def("dim", &torch::nested_tensor::THP_ListNestedTensor::dim)
-      .def("nested_size", &torch::nested_tensor::THP_ListNestedTensor::nested_size)
-      .def("nested_stride", &torch::nested_tensor::THP_ListNestedTensor::nested_stride)
-      .def("pin_memory", &torch::nested_tensor::THP_ListNestedTensor::pin_memory)
+      .def("nested_size",
+           &torch::nested_tensor::THP_ListNestedTensor::nested_size)
+      .def("nested_stride",
+           &torch::nested_tensor::THP_ListNestedTensor::nested_stride)
+      .def("pin_memory",
+           &torch::nested_tensor::THP_ListNestedTensor::pin_memory)
       .def("grad", &torch::nested_tensor::THP_ListNestedTensor::grad)
       .def("detach", &torch::nested_tensor::THP_ListNestedTensor::detach)
-      .def("requires_grad_", &torch::nested_tensor::THP_ListNestedTensor::requires_grad_)
+      .def("requires_grad_",
+           &torch::nested_tensor::THP_ListNestedTensor::requires_grad_)
       .def("to_tensor", &torch::nested_tensor::THP_ListNestedTensor::to_tensor)
       .def("__str__", &torch::nested_tensor::THP_ListNestedTensor::str)
       .def("__repr__", &torch::nested_tensor::THP_ListNestedTensor::str);
-      // .def("to", &THP_ListNestedTensor::to);
+  // .def("to", &THP_ListNestedTensor::to);
+  m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
 }
