@@ -46,7 +46,7 @@ def monkey_patch(module):
     from . import functions
     import torch
 
-    module.jit_apply_function = torch.nested_tensor.jit_apply_function
+    module.jit_apply_function = torch.nestedtensor.jit_apply_function
     module.__IS_MONKEY_PATCHED_BY_NESTED_TENSOR = getattr(
         module, "__IS_MONKEY_PATCHED_BY_NESTED_TENSOR", 0) + 1
     module.tensorwise = utils.tensorwise

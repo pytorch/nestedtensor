@@ -35,7 +35,7 @@ def gen_current():
 
 def gen_jit():
 
-    n = torch._ListNestedTensor(
+    n = torch.nestedtensor._ListNestedTensor(
         [torch.randn(256, 128).to(device='cuda') for _ in range(128)])
 
     def gen_my_fun(scalar, tensor):

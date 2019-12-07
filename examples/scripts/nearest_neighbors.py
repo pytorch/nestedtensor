@@ -73,10 +73,10 @@ def gen_algorithm_nested_jit_mv(keys, sub_clusters):
         for cluster in sub_cluster:
             new_sub_cluster.append(torch.stack(cluster))
         new_sub_clusters.append(new_sub_cluster)
-    nested_sub_clusters = torch._ListNestedTensor(new_sub_clusters)
+    nested_sub_clusters = torch.nestedtensor._ListNestedTensor(new_sub_clusters)
     print("HERE")
     print(nested_sub_clusters.nested_size())
-    nested_keys = torch._ListNestedTensor(keys)
+    nested_keys = torch.nestedtensor._ListNestedTensor(keys)
     print(nested_keys.nested_size())
 
     @torch.jit.script
@@ -125,9 +125,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # NOTE: This dodging creating these subclusters from a single set of clusters
     # This additional memory pressure might be crucial
-    keys = [gen_tensor()] * 1024
-    clusters = gen_clusters(1024, (1024,1024))
-    sub_clusters = [[clusters[random.randint(0, 1023)]] * 8 for _ in range(1024)]
+    keys = [gen_tensor()] * 16
+    clusters = gen_clusters(16, (16,16))
+    sub_clusters = [[clusters[random.randint(0, 1023)]] * 8 for _ in range(16)]
 
     # Two keys for now
     # Simulating some overlap
