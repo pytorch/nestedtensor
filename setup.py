@@ -8,7 +8,7 @@ import glob
 import subprocess
 import sys
 
-from torch.utils.cpp_extension import CppExtension, CUDAExtension, CUDA_HOME
+from torch.utils.cpp_extension import CppExtension, CUDAExtension, CUDA_HOME, BuildExtension
 
 
 def read(*names, **kwargs):
@@ -142,13 +142,14 @@ setuptools.setup(
     description="NestedTensors for PyTorch",
     long_description=readme,
     long_description_content_type="text/markdown",
-    url="https://github.com/cpuhrsch/nestedtensor",
+    url="https://github.com/pytorch/nestedtensor",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
     zip_safe=True,
-    cmdclass={'clean': clean},
+    cmdclass={'clean': clean, 'build_ext': BuildExtension},
     install_requires=requirements,
+    ext_modules = get_extensions()
 )
