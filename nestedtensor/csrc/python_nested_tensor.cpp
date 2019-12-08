@@ -13,11 +13,8 @@
 namespace torch {
 namespace nested_tensor {
 
-// using namespace at;
-// using namespace torch::autograd;
-using namespace torch::autograd::utils;
 using namespace torch::jit;
-// using namespace torch::jit::script;
+using namespace torch::autograd::utils;
 namespace py = pybind11;
 
 // The implicit contract is that, if there are no children, variable_node is
@@ -200,39 +197,6 @@ struct TORCH_API _ListNestedTensor {
         _structure, [&](c10::IValue tensor) -> at::IntArrayRef {
           return tensor.toTensor().strides();
         });
-  }
-  _ListNestedTensor to(
-      at::TensorOptions options,
-      bool non_blocking,
-      bool copy,
-      c10::optional<c10::MemoryFormat> memory_format) {
-    return _ListNestedTensor(
-        map<_NestedNode>(_structure, [&](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().to(
-              options, non_blocking, copy, memory_format);
-        }));
-  }
-  _ListNestedTensor to(
-      at::ScalarType dtype,
-      bool non_blocking,
-      bool copy,
-      c10::optional<c10::MemoryFormat> memory_format) {
-    return _ListNestedTensor(
-        map<_NestedNode>(_structure, [&](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().to(dtype, non_blocking, copy, memory_format);
-        }));
-  }
-  _ListNestedTensor to(
-      at::Device device,
-      at::ScalarType dtype,
-      bool non_blocking,
-      bool copy,
-      c10::optional<c10::MemoryFormat> memory_format) {
-    return _ListNestedTensor(
-        map<_NestedNode>(_structure, [&](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().to(
-              device, dtype, non_blocking, copy, memory_format);
-        }));
   }
   _ListNestedTensor pin_memory() {
     return _ListNestedTensor(
@@ -419,34 +383,6 @@ struct THP_ListNestedTensor {
     return py::reinterpret_steal<py::object>(
         wrap_nested_node(_data.nested_stride()));
   }
-  //  THP_ListNestedTensor to(py::args args, py::kwargs kwargs) {
-  //    auto parsed =
-  //        parse_to_conversion(args.ptr(), kwargs.ptr(), /*allow_copy*/ true);
-  //    auto &device = std::get<0>(parsed);
-  //    auto &scalarType = std::get<1>(parsed);
-  //    auto non_blocking = std::get<2>(parsed);
-  //    auto copy = std::get<3>(parsed);
-  //    auto opt_memory_format = std::get<4>(parsed);
-  //    if (device && device->is_cuda()) {
-  //      torch::utils::cuda_lazy_init();
-  //    }
-  //    if (!device && !scalarType && !copy) {
-  //      return *this;
-  //    } else if (!device) {
-  //      return THP_ListNestedTensor(
-  //          _data.to(scalarType.value(), non_blocking, copy,
-  //          opt_memory_format));
-  //    } else if (!scalarType) {
-  //      return THP_ListNestedTensor(_data.to(_data.options().device(device),
-  //                                           non_blocking, copy,
-  //                                           opt_memory_format));
-  //    } else {
-  //      return THP_ListNestedTensor(_data.to(device.value(),
-  //      scalarType.value(),
-  //                                           non_blocking, copy,
-  //                                           opt_memory_format));
-  //    }
-  //  }
   THP_ListNestedTensor pin_memory() {
     return THP_ListNestedTensor(_data.pin_memory());
   }
