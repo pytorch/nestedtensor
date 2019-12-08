@@ -85,7 +85,7 @@ def get_extensions():
 
     define_macros = []
 
-    extra_compile_args = {'cxx': ['-O0']}
+    extra_compile_args = {'cxx': ['-O3']}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         define_macros += [('WITH_CUDA', None)]
@@ -110,9 +110,6 @@ def get_extensions():
             include_dirs=include_dirs,
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
-#            runtime_library_dirs=["/private/home/cpuhrsch/miniconda3/envs/binary/lib/python3.7/site-packages/torch/lib"],
-#            library_dirs=["/private/home/cpuhrsch/miniconda3/envs/binary/lib/python3.7/site-packages/torch/lib"],
-#            libraries=["torch_python"],
         )
     ]
 
