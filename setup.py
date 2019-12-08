@@ -85,7 +85,7 @@ def get_extensions():
 
     define_macros = []
 
-    extra_compile_args = {}
+    extra_compile_args = {'cxx': ['-O3']}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         define_macros += [('WITH_CUDA', None)]
@@ -94,10 +94,7 @@ def get_extensions():
             nvcc_flags = []
         else:
             nvcc_flags = nvcc_flags.split(' ')
-        extra_compile_args = {
-            'cxx': ['-O0'],
-            'nvcc': nvcc_flags,
-        }
+        extra_compile_args['nvcc'] = nvcc_flags
 
     if sys.platform == 'win32':
         define_macros += [('nestedtensor_EXPORTS', None)]
@@ -151,5 +148,5 @@ setuptools.setup(
     zip_safe=True,
     cmdclass={'clean': clean, 'build_ext': BuildExtension},
     install_requires=requirements,
-    ext_modules = get_extensions()
+    ext_modules=get_extensions()
 )
