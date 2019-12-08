@@ -85,7 +85,7 @@ def get_extensions():
 
     define_macros = []
 
-    extra_compile_args = {}
+    extra_compile_args = {'cxx': ['-O0']}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         define_macros += [('WITH_CUDA', None)]
@@ -94,10 +94,7 @@ def get_extensions():
             nvcc_flags = []
         else:
             nvcc_flags = nvcc_flags.split(' ')
-        extra_compile_args = {
-            'cxx': ['-O0'],
-            'nvcc': nvcc_flags,
-        }
+        extra_compile_args['nvcc'] = nvcc_flags
 
     if sys.platform == 'win32':
         define_macros += [('nestedtensor_EXPORTS', None)]
@@ -113,6 +110,9 @@ def get_extensions():
             include_dirs=include_dirs,
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
+#            runtime_library_dirs=["/private/home/cpuhrsch/miniconda3/envs/binary/lib/python3.7/site-packages/torch/lib"],
+#            library_dirs=["/private/home/cpuhrsch/miniconda3/envs/binary/lib/python3.7/site-packages/torch/lib"],
+#            libraries=["torch_python"],
         )
     ]
 
@@ -151,5 +151,5 @@ setuptools.setup(
     zip_safe=True,
     cmdclass={'clean': clean, 'build_ext': BuildExtension},
     install_requires=requirements,
-    ext_modules = get_extensions()
+    ext_modules=get_extensions()
 )

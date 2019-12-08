@@ -3,7 +3,8 @@
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/python_strings.h>
 #include <torch/extension.h>
-#include <torch/csrc/jit/script/python_sugared_value.h>
+// NOTE: Causes linktime error for requested symbol as_function
+// #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
 // error
 // TODO: enable "to" by fixing this.
@@ -575,7 +576,7 @@ static THP_ListNestedTensor jit_apply_function(
   for (size_t i = 0; i < nts_.size(); i++) {
     nts.push_back(nts_[i].data());
   }
-  auto sfn = torch::jit::script::as_function(fn).value();
+  auto sfn = py::cast<StrongFunctionPtr>(fn);
   auto tracing_state = tracer::getTracingState();
   TORCH_CHECK(!tracing_state, "doesnt support tracing");
   Function& callee = *sfn.function_;

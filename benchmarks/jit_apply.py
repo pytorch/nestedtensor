@@ -1,4 +1,5 @@
 from nestedtensor import torch
+import nestedtensor
 import utils
 
 
@@ -35,7 +36,7 @@ def gen_current():
 
 def gen_jit():
 
-    n = torch.nestedtensor._ListNestedTensor(
+    n = nestedtensor._ListNestedTensor(
         [torch.randn(256, 128).to(device='cuda') for _ in range(128)])
 
     def gen_my_fun(scalar, tensor):
@@ -57,7 +58,7 @@ def gen_jit():
     my_fun = gen_my_fun(3.0, torch.randn(1).to(device='cuda'))
 
     def _algorithm():
-        torch.jit_apply_function((n, n), my_fun)
+        nestedtensor._C.jit_apply_function((n, n), my_fun)
 
     return _algorithm
 
