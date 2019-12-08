@@ -1,4 +1,5 @@
-import torch
+from nestedtensor import torch
+import nestedtensor
 
 def vmap(fn):
     def decorator(arg):
@@ -21,5 +22,5 @@ def my_fun(x):
 
 a = torch.randn(1, 2)
 b = torch.randn(2, 1)
-n = torch._ListNestedTensor([[a, b], [b]])
-print(torch.nested_tensor.jit_apply_function(n, my_fun))
+n = (nestedtensor._ListNestedTensor([[a, b], [b]]),)
+print(nestedtensor._C.jit_apply_function(n, my_fun))
