@@ -70,16 +70,7 @@ static inline at::Tensor _get_first_variable(_NestedNode nested_node) {
   if (!start->payload().isNone()) {
     return start->payload().toTensor();
   } else {
-    // PyObject* fake_args = PyTuple_New(0);
-    // PyObject* fake_kwargs = PyDict_New();
-    // TODO: Update if python_variable updates it too
-    // torch::tensor
-    return torch::ones({2, 2});
-    // return torch::utils::legacy_tensor_ctor(
-    //     torch::tensors::get_default_tensor_type_id(),
-    //     torch::tensors::get_default_scalar_type(),
-    //     fake_args,
-    //     fake_kwargs);
+    return torch::ones({1});
   }
 }
 
