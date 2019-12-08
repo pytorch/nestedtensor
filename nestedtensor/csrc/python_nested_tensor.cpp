@@ -464,7 +464,7 @@ static _NestedNode apply_jit_function(
       push(stack, nested_nodes[i].payload().toTensor());
     }
     fn.run(stack);
-    Variable result = stack.back().toTensor();
+    torch::autograd::Variable result = stack.back().toTensor();
     auto result_node = _NestedNode(result);
     return result_node;
   } else {
