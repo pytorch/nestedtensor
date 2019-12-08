@@ -70,16 +70,7 @@ static inline at::Tensor _get_first_variable(_NestedNode nested_node) {
   if (!start->payload().isNone()) {
     return start->payload().toTensor();
   } else {
-    // PyObject* fake_args = PyTuple_New(0);
-    // PyObject* fake_kwargs = PyDict_New();
-    // TODO: Update if python_variable updates it too
-    // torch::tensor
-    return torch::ones({2, 2});
-    // return torch::utils::legacy_tensor_ctor(
-    //     torch::tensors::get_default_tensor_type_id(),
-    //     torch::tensors::get_default_scalar_type(),
-    //     fake_args,
-    //     fake_kwargs);
+    return torch::ones({1});
   }
 }
 
@@ -219,7 +210,7 @@ struct TORCH_API _ListNestedTensor {
   _ListNestedTensor requires_grad_(bool requires_grad) {
     return _ListNestedTensor(map<_NestedNode>(
         _structure, [requires_grad](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().requires_grad_(requires_grad);
+          return tensor.toTensor().set_requires_grad(requires_grad);
         }));
   }
   void backward(
@@ -473,7 +464,7 @@ static _NestedNode apply_jit_function(
       push(stack, nested_nodes[i].payload().toTensor());
     }
     fn.run(stack);
-    Variable result = stack.back().toTensor();
+    torch::autograd::Variable result = stack.back().toTensor();
     auto result_node = _NestedNode(result);
     return result_node;
   } else {
