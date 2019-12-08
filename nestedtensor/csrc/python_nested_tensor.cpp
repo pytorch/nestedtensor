@@ -210,7 +210,7 @@ struct TORCH_API _ListNestedTensor {
   _ListNestedTensor requires_grad_(bool requires_grad) {
     return _ListNestedTensor(map<_NestedNode>(
         _structure, [requires_grad](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().requires_grad_(requires_grad);
+          return tensor.toTensor().set_requires_grad(requires_grad);
         }));
   }
   void backward(
