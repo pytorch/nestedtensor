@@ -75,7 +75,7 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
                 if isinstance(data, torch.Tensor):
                     return [data.flatten()]  # This data will be copied implicitly via cat
                 elif isinstance(data, nested.NestedTensor):
-                    return [data.contiguous()._impl._buffer]
+                    return [data.contiguous()._impl.get_buffer()]
                 else:
                     result = []
                     for data_i in data:

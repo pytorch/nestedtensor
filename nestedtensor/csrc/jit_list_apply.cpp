@@ -1,9 +1,4 @@
-#include <Python.h>
-#include <torch/csrc/autograd/utils/wrap_outputs.h>
-#include <torch/csrc/jit/pybind_utils.h>
-#include <torch/csrc/utils/python_strings.h>
-#include <torch/extension.h>
-#include <python_list_nested_tensor.h>
+#include <jit_list_apply.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -60,7 +55,7 @@ static _NestedNode apply_jit_function(
     return _NestedNode(result);
   }
 }
-static THP_ListNestedTensor jit_apply_function(
+THP_ListNestedTensor jit_apply_function(
     std::vector<THP_ListNestedTensor> nts_,
     py::object fn) {
   std::vector<_ListNestedTensor> nts;
@@ -87,7 +82,3 @@ static THP_ListNestedTensor jit_apply_function(
 
 } // namespace nested_tensor
 } // namespace torch
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
-}

@@ -14,6 +14,9 @@ struct TORCH_API _BufferNestedTensor {
   _BufferNestedTensor() = delete;
   _BufferNestedTensor(torch::autograd::Variable buffer)
       : _buffer(buffer) {}
+  torch::autograd::Variable get_buffer() {
+    return _buffer;
+  }
  private:
   at::Tensor _buffer;
 };

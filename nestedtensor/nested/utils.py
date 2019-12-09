@@ -268,7 +268,7 @@ def pointwise(unbind_args=None, dim_args=None):
             if all((nt_arg.is_contiguous() and nt0 == nt_arg.nested_size()) for nt_arg in nt_args):
                 tt_args = _get_tensortype_args(args, kwargs)
                 if all(nt0_numel == t.numel() for t in tt_args):
-                    args, kwargs = _arg_apply(lambda x: x._impl._buffer
+                    args, kwargs = _arg_apply(lambda x: x._impl.get_buffer()
                                               if is_nested_tensor(x) else x, args, kwargs)
                     buffer_ = f(*args, **kwargs)
                     return NestedTensor(
@@ -298,7 +298,7 @@ def reduction(support_nested_dim=True, unbind_args=None, dim_args=None):
                 dim = _wrap_dim(self, dim)
             if dim is None:
                 if self.is_contiguous():
-                    return f(self._impl._buffer, *args, **kwargs)
+                    return f(self._impl.get_buffer(), *args, **kwargs)
                 else:
                     raise ValueError("Not supported")
             elif isinstance(dim, tuple):
@@ -323,7 +323,7 @@ def reduction(support_nested_dim=True, unbind_args=None, dim_args=None):
                                         ("Cannot reduce across dimension {}. "
                                          "Shapes {} and {} don't match.").format(
                                             dim, nested_size, t.nested_size()))
-                    buffer_ = tf(torch.stack([t.contiguous()._impl._buffer
+                    buffer_ = tf(torch.stack([t.contiguous()._impl.get_buffer()
                                               for t in unbound]), 0, *args, **kwargs)
                     if is_nested_tensor(unbound[0]):
                         return NestedTensor(bufferimpl._BufferNestedTensor(buffer_,

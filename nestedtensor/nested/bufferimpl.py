@@ -5,6 +5,7 @@ from functools import wraps
 from . import utils
 import collections
 import os
+import nestedtensor
 
 DEBUG = int(os.getenv("DEBUG", 0))
 
@@ -72,11 +73,11 @@ def _nested_tensor_to_buffer(nested_tensor):
 
 class _BufferNestedTensor(object):
     def __init__(self, buffer_, nested_size, nested_stride=None):
+        self._buffer = nestedtensor._C._BufferNestedTensor(buffer_)
         # Tuple disables changes in size via append etc.
         # assert isinstance(tensors, tuple)
         if DEBUG:
             assert buffer_.dim() == 1
-        self._buffer = buffer_
         self._nested_size = nested_size
         # Lazily initialized if None
         self._nested_stride = nested_stride
@@ -96,12 +97,15 @@ class _BufferNestedTensor(object):
         # Used to cache unbind
         self._unbound_tensors = None
 
+    def get_buffer(self):
+        return self._buffer.get_buffer()
+
     def dim(self):
         return self._dim
 
     def is_pinned(self):
         if len(self) > 0:
-            return self._buffer.is_pinned()
+            return self.get_buffer().is_pinned()
         else:
             return False
 
@@ -124,16 +128,16 @@ class _BufferNestedTensor(object):
 
     @property
     def grad(self):
-        return _BufferNestedTensor(self._buffer.grad,
+        return _BufferNestedTensor(self.get_buffer().grad,
                                    self.nested_size(), self.nested_stride())
 
     def requires_grad_(self, requires_grad=True):
-        self._buffer.requires_grad_(requires_grad)
+        self.get_buffer().requires_grad_(requires_grad)
         return self
 
     def detach(self):
         return nested.NestedTensor(
-            _BufferNestedTensor(self._buffer.detach,
+            _BufferNestedTensor(self.get_buffer().detach,
                                 self.nested_size(), self.nested_stride()))
 
     def backward(self, gradient, retain_graph, create_graph):
@@ -160,7 +164,7 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(nested_size)):
                 size = nested_size[i]
-                tensor = self._buffer.narrow(
+                tensor = self.get_buffer().narrow(
                     0, offset, _prod(size)).reshape(size)
                 offset += tensor.numel()
                 result = result + (tensor,)
@@ -170,7 +174,7 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(self)):
                 sub_numel = _nested_numel(nested_size[i])
-                result_i = _BufferNestedTensor(self._buffer.narrow(
+                result_i = _BufferNestedTensor(self.get_buffer().narrow(
                     0, offset, sub_numel), nested_size[i], nested_stride[i])
                 offset += sub_numel
                 result = result + (result_i,)
@@ -192,7 +196,7 @@ class _BufferNestedTensor(object):
         """
         Not a view.
         """
-        return self._buffer.reshape(self.size(None))
+        return self.get_buffer().reshape(self.size(None))
 
     def size(self, dim):
         # TODO: Unused until _ListNestedTensor has its own implementation
@@ -206,20 +210,21 @@ class _BufferNestedTensor(object):
             else:
                 sizes = iter(_size(x) for x in nested_size)
 
-            result = tuple(k[0] if k[1:] == k[:-1] else None for k in zip(*sizes))
+            result = tuple(k[0] if k[1:] == k[:-1]
+                           else None for k in zip(*sizes))
             return (len_sizes,) + result
 
         return _size(self.nested_size())
 
     def to(self, *args, **kwargs):
-        return torch.NestedTensor(_BufferNestedTensor(self._buffer.to(*args, **kwargs),
+        return torch.NestedTensor(_BufferNestedTensor(self.get_buffer().to(*args, **kwargs),
                                                       self.nested_size(), self.nested_stride()))
 
     def numel(self):
-        return self._buffer.numel()
+        return self.get_buffer().numel()
 
     def pin_memory(self):
-        self._buffer.pin_memory()
+        self.get_buffer().pin_memory()
 
     def __str__(self):
         def _str(x, indent=0):
