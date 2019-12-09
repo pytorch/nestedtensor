@@ -112,7 +112,7 @@ class NestedTensor(object):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return self._impl._requires_grad
+        return self._impl.requires_grad
 
     @property
     def grad(self):

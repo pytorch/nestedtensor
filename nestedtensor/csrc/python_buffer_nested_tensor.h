@@ -21,6 +21,24 @@ struct THP_BufferNestedTensor {
   torch::autograd::Variable get_buffer() {
     return _data.get_buffer();
   }
+  int64_t element_size() {
+    return _data.element_size();
+  }
+
+  py::object getDtype() {
+    return py::reinterpret_steal<py::object>(
+        wrap(torch::getDtype(_data.scalar_type())));
+  }
+  py::object getLayout() {
+    return py::reinterpret_steal<py::object>(
+        wrap(torch::getLayout(_data.backend())));
+  }
+  py::object getDevice() {
+    return toPyObject(_data.device());
+  }
+  bool requires_grad() {
+    return _data.requires_grad();
+  }
 
 
  private:

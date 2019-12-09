@@ -72,6 +72,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   py::class_<torch::nested_tensor::THP_BufferNestedTensor>(
       m, "_BufferNestedTensor")
       .def(py::init<py::object>(), py::keep_alive<1, 2>())
+      .def_property_readonly(
+          "dtype", &torch::nested_tensor::THP_BufferNestedTensor::getDtype)
+      .def_property_readonly(
+          "layout", &torch::nested_tensor::THP_BufferNestedTensor::getLayout)
+      .def_property_readonly(
+          "device", &torch::nested_tensor::THP_BufferNestedTensor::getDevice)
+      .def_property_readonly(
+          "requires_grad",
+          &torch::nested_tensor::THP_BufferNestedTensor::requires_grad)
       .def("get_buffer", &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
 
 

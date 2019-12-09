@@ -73,7 +73,7 @@ def _nested_tensor_to_buffer(nested_tensor):
 
 class _BufferNestedTensor(object):
     def __init__(self, buffer_, nested_size, nested_stride=None):
-        self._buffer = nestedtensor._C._BufferNestedTensor(buffer_)
+        self._c_impl = nestedtensor._C._BufferNestedTensor(buffer_)
         # Tuple disables changes in size via append etc.
         # assert isinstance(tensors, tuple)
         if DEBUG:
@@ -82,23 +82,13 @@ class _BufferNestedTensor(object):
         # Lazily initialized if None
         self._nested_stride = nested_stride
         self._nested_dim = _infer_nested_dim(self._nested_size)
-        if len(self) > 0:
-            self._meta_tensor = buffer_
-        else:
-            self._meta_tensor = torch.rand(1)[0]
-        self._element_size = self._meta_tensor.element_size()
         self._dim = _infer_dim(self._nested_size)
-        # self._is_pinned = _meta_tensor.is_pinned() NOTE: Expensive op!
-        self._dtype = self._meta_tensor.dtype
-        # self._layout = self._meta_tensor.layout NOTE: Can't pickle torch.layout object
-        self._device = self._meta_tensor.device
-        self._requires_grad = self._meta_tensor.requires_grad
         self._is_contiguous = True
         # Used to cache unbind
         self._unbound_tensors = None
 
     def get_buffer(self):
-        return self._buffer.get_buffer()
+        return self._c_impl.get_buffer()
 
     def dim(self):
         return self._dim
@@ -111,20 +101,20 @@ class _BufferNestedTensor(object):
 
     @property
     def dtype(self):
-        return self._dtype
+        return self._c_impl.dtype
 
     @property
     def layout(self):
         # NOTE: Can't pickle torch.layout object
-        return self._meta_tensor.layout
+        return self._c_impl.layout
 
     @property
     def device(self):
-        return self._device
+        return self._c_impl.device
 
     @property
     def requires_grad(self):
-        return self._requires_grad
+        return self._c_impl.requires_grad
 
     @property
     def grad(self):
@@ -153,7 +143,7 @@ class _BufferNestedTensor(object):
     def element_size(self):
         if DEBUG:
             utils._verify_tensors(self)
-        return self._element_size
+        return self._c_impl.element_size()
 
     def unbind(self):
         if self._unbound_tensors is not None:
