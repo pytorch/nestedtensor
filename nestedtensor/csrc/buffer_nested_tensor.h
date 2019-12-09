@@ -6,9 +6,9 @@ namespace torch {
 namespace nested_tensor {
 
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
-struct TORCH_API _ListNestedTensor {
-  _ListNestedTensor() = delete;
-  _ListNestedTensor(_NestedNode structure)
+struct TORCH_API _BufferNestedTensor {
+  _BufferNestedTensor() = delete;
+  _BufferNestedTensor(_NestedNode structure)
       : _structure(structure),
         _first_variable(_get_first_variable(_structure)) {
     if (__len__() > 0) {
@@ -38,32 +38,32 @@ struct TORCH_API _ListNestedTensor {
           return tensor.toTensor().strides();
         });
   }
-  _ListNestedTensor pin_memory() {
-    return _ListNestedTensor(
+  _BufferNestedTensor pin_memory() {
+    return _BufferNestedTensor(
         map<_NestedNode>(_structure, [](c10::IValue tensor) -> at::Tensor {
           return tensor.toTensor().pin_memory();
         }));
   }
-  _ListNestedTensor grad() {
-    return _ListNestedTensor(
+  _BufferNestedTensor grad() {
+    return _BufferNestedTensor(
         map<_NestedNode>(_structure, [](c10::IValue tensor) -> at::Tensor {
           return tensor.toTensor().grad();
         }));
   }
-  _ListNestedTensor detach() {
-    return _ListNestedTensor(
+  _BufferNestedTensor detach() {
+    return _BufferNestedTensor(
         map<_NestedNode>(_structure, [](c10::IValue tensor) -> at::Tensor {
           return tensor.toTensor().detach();
         }));
   }
-  _ListNestedTensor requires_grad_(bool requires_grad) {
-    return _ListNestedTensor(map<_NestedNode>(
+  _BufferNestedTensor requires_grad_(bool requires_grad) {
+    return _BufferNestedTensor(map<_NestedNode>(
         _structure, [requires_grad](c10::IValue tensor) -> at::Tensor {
           return tensor.toTensor().set_requires_grad(requires_grad);
         }));
   }
   void backward(
-      _ListNestedTensor gradient,
+      _BufferNestedTensor gradient,
       bool retain_graph,
       bool create_graph) {
     apply2(
@@ -120,7 +120,7 @@ struct TORCH_API _ListNestedTensor {
   }
   // TODO: Implement these and call into them isntead of implementing them
   // separately in Variable dispatch functions.
-  // _ListNestedTensor to - it's a pain due to the 100s of to overloads
+  // _BufferNestedTensor to - it's a pain due to the 100s of to overloads
   // py::tuple size(int64_t dim);
   // separately in Variable dispatch functions.
   // std::vector<py::object> unbind();
