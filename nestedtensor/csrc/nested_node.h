@@ -1,8 +1,48 @@
 #pragma once
 #include <torch/extension.h>
+#include <Python.h>
+#include <torch/csrc/autograd/utils/wrap_outputs.h>
+#include <torch/csrc/jit/pybind_utils.h>
+#include <torch/csrc/utils/python_strings.h>
+#include <torch/extension.h>
 
 namespace torch {
 namespace nested_tensor {
+
+using namespace torch::jit;
+using namespace torch::autograd::utils;
+// The implicit contract is that, if there are no children, variable_node is
+// defined.
+struct _NestedNode {
+  _NestedNode() : _payload() {}
+  _NestedNode(const std::vector<_NestedNode> children)
+      : _children(children), _payload() {}
+  _NestedNode(c10::IValue payload) : _payload(payload) {}
+  inline bool is_leaf() const {
+    return _children.size() == 0;
+  }
+  inline c10::IValue payload() const {
+    return _payload;
+  }
+  inline const std::vector<_NestedNode> children() const {
+    return _children;
+  }
+  inline _NestedNode children(size_t i) const {
+    return _children[i];
+  }
+  inline const _NestedNode* children_data(size_t i) const {
+    return _children.data() + i;
+  }
+  inline size_t degree() const {
+    return _children.size();
+  }
+
+ private:
+  const std::vector<_NestedNode> _children;
+  // TODO: Make this const?
+  // _VariableNode _variable_node;
+  c10::IValue _payload;
+};
 
 inline PyObject* wrap_list(std::vector<PyObject*> list) {
   auto r = THPObjectPtr{PyTuple_New(list.size())};
@@ -75,41 +115,6 @@ static inline torch::autograd::Variable _get_first_tensor(PyObject* tensors) {
     return _get_first_tensor(PyList_GetItem(tensors, 0));
   }
 }
-
-using namespace torch::jit;
-using namespace torch::autograd::utils;
-// The implicit contract is that, if there are no children, variable_node is
-// defined.
-struct _NestedNode {
-  _NestedNode() : _payload() {}
-  _NestedNode(const std::vector<_NestedNode> children)
-      : _children(children), _payload() {}
-  _NestedNode(c10::IValue payload) : _payload(payload) {}
-  inline bool is_leaf() const {
-    return _children.size() == 0;
-  }
-  inline c10::IValue payload() const {
-    return _payload;
-  }
-  inline const std::vector<_NestedNode> children() const {
-    return _children;
-  }
-  inline _NestedNode children(size_t i) const {
-    return _children[i];
-  }
-  inline const _NestedNode* children_data(size_t i) const {
-    return _children.data() + i;
-  }
-  inline size_t degree() const {
-    return _children.size();
-  }
-
- private:
-  const std::vector<_NestedNode> _children;
-  // TODO: Make this const?
-  // _VariableNode _variable_node;
-  c10::IValue _payload;
-};
 
 static inline int64_t _numel(const _NestedNode& meta_node) {
   if (meta_node.is_leaf()) {

@@ -1,3 +1,4 @@
+#pragma once
 #include <Python.h>
 #include <list_nested_tensor.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
