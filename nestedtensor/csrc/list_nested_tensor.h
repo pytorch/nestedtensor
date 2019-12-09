@@ -1,3 +1,4 @@
+#pragma once
 #include <torch/extension.h>
 
 namespace torch {
@@ -271,3 +272,5 @@ struct TORCH_API _ListNestedTensor {
   const _NestedNode _structure;
   at::Tensor _first_variable;
 };
+}
+}
