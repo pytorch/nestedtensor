@@ -1,4 +1,4 @@
-PLEASE NOTE, NESTEDTENSORS ARE IN AN ACTIVE DEVELOPMENT AND EVERYTHING HERE IS A SUBJECT TO CHANGE.
+PLEASE NOTE, NESTEDTENSORS IS UNDER ACTIVE DEVELOPMENT AND EVERYTHING HERE IS SUBJECT TO CHANGE.
 
 ## Motivation
 
@@ -23,9 +23,9 @@ In general, there are two cases for which NestedTensors provide computational re
 
 ## Prerequisites
 
-You will need this packages to be installed:
+You will need these packages to be installed:
 - pytorch
-- torchvision
+- torchvision (needed for examples)
 - ipython (needed for examples)
 - notebook (needed for examples)
 
@@ -43,7 +43,7 @@ python setup.py develop
 ## Usage
 Import nested tensors and torch via ```from nestedtensor import torch```
 ### Creation
-You can create a nester tensor by initializing its values direcrtly or by creating tensors first and then add them to nested tensor.
+You can create a nester tensor by initializing its values directly or by creating tensors first and then add them to nested tensor.
 
 ```
 nt = torch.nested_tensor(
@@ -96,7 +96,6 @@ Decorating the function as tensorwise does not affect its behavior with respect 
 
 ```
 @tensorwise()
-@tensorwise()
 def simple_fn(t1, t2):
     return t1 + 1 + t2
 
@@ -104,7 +103,9 @@ def simple_fn(t1, t2):
 a = torch.tensor([1, 2])
 b = torch.tensor([7, 8])
 print(simple_fn(a, b))
+
+>> tensor([ 9, 11])
 ```
 
 ## Contribution
-The project is in an active development. If you have a suggestions or have found an issue, please file an issue!
+The project is undcer active development. If you have a suggestions or have found an issue, please file an issue!
