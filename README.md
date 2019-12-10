@@ -1,6 +1,8 @@
-PLEASE NOTE, NESTEDTENSOR IS UNDER ACTIVE DEVELOPMENT AND EVERYTHING HERE IS SUBJECT TO CHANGE.
+# The nestedtensor package
 
-# Motivation
+NOTE: PLEASE NOTE, NESTEDTENSOR IS UNDER ACTIVE DEVELOPMENT AND EVERYTHING HERE IS SUBJECT TO CHANGE.
+
+## Motivation
 
 We often want to manipulate collections of Tensors of different shapes. For example, paragraphs of text, images of different sizes or audio files of different lengths. We don't have a first class generalization that eases the concurrent manipulation of collections of this type of data. We further often want to batch arbitrary data and operations for efficiency, which then leads us to write awkward workarounds such as padding.
 
@@ -71,14 +73,43 @@ If given a NestedTensor or Tensor it will return a detached copy, which is consi
 A user can retrieve the constituent Tensors via unbind. Unbind is currently used by torch to turn Tensors into tuples of Tensors. Unbind always returns a tuple of views.
 
 ```
-a = [ \
-       [torch.rand(2, 3), torch.rand(4, 5)], \
-       [torch.rand(6, 7)] \
-      ]
-
-b = torch.nested_tensor(a)
-b1 = b.unbind() # Tuple of 2 NestedTensors
-b2 = b1[0].unbind() # Tuple of 2 Tensors
+>>> from nestedtensor import torch
+>>>
+>>> a = [
+...        [torch.rand(1, 2), torch.rand(2, 1)],
+...        [torch.rand(3, 2)]
+...     ]
+>>>
+>>> b = torch.nested_tensor(a)
+>>> print(b)
+nested_tensor([
+    [
+        tensor([[0.5356, 0.5609]]),
+        tensor([[0.1567],
+                [0.8880]])
+    ],
+    [
+        tensor([[0.4060, 0.4359],
+                [0.4069, 0.3802],
+                [0.0040, 0.3759]])
+    ]
+])
+>>> b1 = b.unbind() # Tuple of 2 NestedTensors
+>>> print(b1)
+(nested_tensor([
+    tensor([[0.5356, 0.5609]]),
+    tensor([[0.1567],
+            [0.8880]])
+]), nested_tensor([
+    tensor([[0.4060, 0.4359],
+            [0.4069, 0.3802],
+            [0.0040, 0.3759]])
+]))
+>>> b2 = b1[0].unbind() # Tuple of 2 Tensors
+>>> print(b2)
+(tensor([[0.5356, 0.5609]]),
+ tensor([[0.1567],
+		 [0.8880]]))
 ```
 
 ### Other Ops
@@ -89,8 +120,7 @@ We currently lack detailed documentation for all supported ops. Please see the e
 The nestedtensor package allows the user to decorate existing functions with a tensorwise decorator. This decorator lifts the given function to check for NestedTensor arguments and recursively apply it to their constituents.
 
 ```
->>> import torch
->>> import nestedtensor
+>>> from nestedtensor import torch
 >>>
 >>> @torch.tensorwise()
 ... def simple_fn(t1, t2):
