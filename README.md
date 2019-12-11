@@ -44,7 +44,7 @@ Import nested tensors and torch via ```from nestedtensor import torch```
 ### Creation
 
 ```
-nt = torch.nested_tensor(
+nt = nestedtensor.nested_tensor(
     [
         [
             torch.rand(2, 3),
@@ -62,12 +62,14 @@ b = torch.tensor([[2, 2],
                   [3, 3],
                   [4, 4],
                   [5, 5]])
-nt2 = torch.nested_tensor([[a],[b]])
+nt2 = nestedtensor.nested_tensor([[a],[b]])
 ```
 
 The level of nesting is inferred from the input. The constructor always copies. Whatever you pass into the constructor will share no data with what the constructor returns. This matches torch.tensor's behavior.
 
 If given a NestedTensor or Tensor it will return a detached copy, which is consistent with the behavior of torch.tensor. Remember that you cannot mix Tensors and NestedTensors within a given list.
+
+A side-note on naming: nestedtensor is a python packed and as such [shouldn't have underscores and is lower case](https://www.python.org/dev/peps/pep-0008/#package-and-module-names), but nested_tensor is a python function and as [such should use underscores](https://www.python.org/dev/peps/pep-0008/#function-and-variable-names) in contrast to the [CapWorded NestedTensor class](https://www.python.org/dev/peps/pep-0008/#class-names).
 
 ### Conversion/unbind()
 A user can retrieve the constituent Tensors via unbind. Unbind is currently used by torch to turn Tensors into tuples of Tensors. Unbind always returns a tuple of views.
@@ -80,7 +82,7 @@ A user can retrieve the constituent Tensors via unbind. Unbind is currently used
 ...        [torch.rand(3, 2)]
 ...     ]
 >>>
->>> b = torch.nested_tensor(a)
+>>> b = nestedtensor.nested_tensor(a)
 >>> print(b)
 nested_tensor([
     [
@@ -136,8 +138,8 @@ tensor([ 9, 11])
 >>> print(simple_fn(c, d))
 tensor([10, 10])
 >>>
->>> n = torch.nested_tensor([a, c])
->>> m = torch.nested_tensor([b, d])
+>>> n = nestedtensor.nested_tensor([a, c])
+>>> m = nestedtensor.nested_tensor([b, d])
 >>> print(simple_fn(n, m))
 nested_tensor([
     tensor([ 9, 11]),
