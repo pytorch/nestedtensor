@@ -71,7 +71,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // via unbind.
   py::class_<torch::nested_tensor::THP_BufferNestedTensor>(
       m, "_BufferNestedTensor")
-      .def(py::init<py::object>(), py::keep_alive<1, 2>())
+      .def(py::init<py::object, py::object, py::object>(), py::keep_alive<1, 2>())
       .def_property_readonly(
           "dtype", &torch::nested_tensor::THP_BufferNestedTensor::getDtype)
       .def_property_readonly(
@@ -81,6 +81,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def_property_readonly(
           "requires_grad",
           &torch::nested_tensor::THP_BufferNestedTensor::requires_grad)
+      .def(
+          "nested_size",
+          &torch::nested_tensor::THP_BufferNestedTensor::nested_size)
+      .def(
+          "nested_stride",
+          &torch::nested_tensor::THP_BufferNestedTensor::nested_stride)
       .def("get_buffer", &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
 
 

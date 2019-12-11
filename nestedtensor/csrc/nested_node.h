@@ -1,5 +1,4 @@
 #pragma once
-#include <torch/extension.h>
 #include <Python.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
 #include <torch/csrc/jit/pybind_utils.h>
@@ -44,25 +43,25 @@ struct _NestedNode {
   c10::IValue _payload;
 };
 
-inline PyObject* wrap_list(std::vector<PyObject*> list) {
-  auto r = THPObjectPtr{PyTuple_New(list.size())};
-  if (!r)
-    throw python_error();
-  for (size_t i = 0; i < list.size(); ++i) {
-    PyTuple_SET_ITEM(r.get(), i, list[i]);
-  }
-  return r.release();
-}
+// inline PyObject* wrap_list(std::vector<PyObject*> list) {
+//   auto r = THPObjectPtr{PyTuple_New(list.size())};
+//   if (!r)
+//     throw python_error();
+//   for (size_t i = 0; i < list.size(); ++i) {
+//     PyTuple_SET_ITEM(r.get(), i, list[i]);
+//   }
+//   return r.release();
+// }
 
-inline PyObject* wrap_nested_node(_NestedNode nested_node) {
+inline py::object wrap_nested_node(_NestedNode nested_node) {
   if (nested_node.is_leaf()) {
-    return torch::jit::toPyObject(nested_node.payload()).release().ptr();
+    return torch::jit::toPyObject(nested_node.payload());
   } else {
-    std::vector<PyObject*> result;
+    std::vector<py::object> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
-    return wrap_list(result);
+    return py::object(result);
   }
 }
 
@@ -87,24 +86,22 @@ static std::string _NestedNode___str__(const _NestedNode& nested_node) {
   }
 }
 
-static inline _NestedNode _get_structure(PyObject* tensors) {
-  if (THPVariable_Check(tensors)) {
-    auto variable = THPVariable_Unpack(tensors);
-    return _NestedNode(variable);
-  } else {
+static inline _NestedNode _get_structure(py::object py_obj) {
+  if (py::isinstance<py::sequence>(py_obj)) {
+    py::sequence py_obj_s = py::cast<py::sequence>(py_obj);
     std::vector<_NestedNode> meta_nodes;
-    Py_ssize_t i, n;
-    n = PyObject_Length(tensors);
-    PyObject* item;
-    if (n < 0 || !PySequence_Check(tensors)) {
-      throw python_error();
-    }
-    for (i = 0; i < n; i++) {
-      item = PySequence_GetItem(tensors, i);
-      _NestedNode node = _get_structure(item);
+    for (size_t i = 0; i < py_obj_s.size(); i++) {
+      _NestedNode node = _get_structure(py_obj_s[i]);
       meta_nodes.push_back(node);
     }
     return _NestedNode(meta_nodes);
+  } else {
+    auto inferred_type = tryToInferType(py_obj);
+    if (!inferred_type.success()) {
+      throw python_error();
+    }
+    auto payload = toIValue(py_obj, inferred_type.type());
+    return _NestedNode(payload);
   }
 }
 
