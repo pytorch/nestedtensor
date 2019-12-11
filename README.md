@@ -1,6 +1,7 @@
 # The nestedtensor package
 
-NOTE: PLEASE NOTE, NESTEDTENSOR IS UNDER ACTIVE DEVELOPMENT AND EVERYTHING HERE IS SUBJECT TO CHANGE.
+NOTE: nestedtensor is under active development and various aspects may change.
+NOTE: We test and develop against nightlies! Please use the most recent version of PyTorch if you plan to use this code.
 
 ## Motivation
 
