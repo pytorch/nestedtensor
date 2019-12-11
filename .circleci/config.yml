@@ -6,7 +6,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: "308535385114.dkr.ecr.us-east-1.amazonaws.com/pytorch/pytorch-linux-xenial-py3.5:405"
+      - image: continuumio/miniconda3
 
     working_directory: ~/repo
 
@@ -16,7 +16,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
+            conda install pytorch cpuonly -c pytorch-nightly
             pip3 install .
             python test/test_nested_tensor_autograd.py
             python test/test_nested_tensor_class.py
