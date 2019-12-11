@@ -6,6 +6,7 @@ from . import utils
 from . import nested
 import collections
 import os
+import nestedtensor
 
 DEBUG = int(os.getenv("DEBUG", 0))
 
@@ -73,69 +74,62 @@ def _nested_tensor_to_buffer(nested_tensor):
 
 class _BufferNestedTensor(object):
     def __init__(self, buffer_, nested_size, nested_stride=None):
+        self._c_impl = nestedtensor._C._BufferNestedTensor(buffer_)
         # Tuple disables changes in size via append etc.
         # assert isinstance(tensors, tuple)
         if DEBUG:
             assert buffer_.dim() == 1
-        self._buffer = buffer_
         self._nested_size = nested_size
         # Lazily initialized if None
         self._nested_stride = nested_stride
         self._nested_dim = _infer_nested_dim(self._nested_size)
-        if len(self) > 0:
-            self._meta_tensor = buffer_
-        else:
-            self._meta_tensor = torch.rand(1)[0]
-        self._element_size = self._meta_tensor.element_size()
         self._dim = _infer_dim(self._nested_size)
-        # self._is_pinned = _meta_tensor.is_pinned() NOTE: Expensive op!
-        self._dtype = self._meta_tensor.dtype
-        # self._layout = self._meta_tensor.layout NOTE: Can't pickle torch.layout object
-        self._device = self._meta_tensor.device
-        self._requires_grad = self._meta_tensor.requires_grad
         self._is_contiguous = True
         # Used to cache unbind
         self._unbound_tensors = None
+
+    def get_buffer(self):
+        return self._c_impl.get_buffer()
 
     def dim(self):
         return self._dim
 
     def is_pinned(self):
         if len(self) > 0:
-            return self._buffer.is_pinned()
+            return self.get_buffer().is_pinned()
         else:
             return False
 
     @property
     def dtype(self):
-        return self._dtype
+        return self._c_impl.dtype
 
     @property
     def layout(self):
         # NOTE: Can't pickle torch.layout object
-        return self._meta_tensor.layout
+        return self._c_impl.layout
 
     @property
     def device(self):
-        return self._device
+        return self._c_impl.device
 
     @property
     def requires_grad(self):
-        return self._requires_grad
+        return self._c_impl.requires_grad
 
     @property
     def grad(self):
-        return _BufferNestedTensor(self._buffer.grad,
-                    self.nested_size(), self.nested_stride())
+        return _BufferNestedTensor(self.get_buffer().grad,
+                                   self.nested_size(), self.nested_stride())
 
     def requires_grad_(self, requires_grad=True):
-        self._buffer.requires_grad_(requires_grad)
+        self.get_buffer().requires_grad_(requires_grad)
         return self
 
     def detach(self):
         return nested.NestedTensor(
-                _BufferNestedTensor(self._buffer.detach,
-                    self.nested_size(), self.nested_stride()))
+            _BufferNestedTensor(self.get_buffer().detach,
+                                self.nested_size(), self.nested_stride()))
 
     def backward(self, gradient, retain_graph, create_graph):
         for t, g in zip(self.unbind(), gradient.unbind()):
@@ -150,7 +144,7 @@ class _BufferNestedTensor(object):
     def element_size(self):
         if DEBUG:
             utils._verify_tensors(self)
-        return self._element_size
+        return self._c_impl.element_size()
 
     def unbind(self):
         if self._unbound_tensors is not None:
@@ -161,7 +155,7 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(nested_size)):
                 size = nested_size[i]
-                tensor = self._buffer.narrow(
+                tensor = self.get_buffer().narrow(
                     0, offset, _prod(size)).reshape(size)
                 offset += tensor.numel()
                 result = result + (tensor,)
@@ -171,8 +165,8 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(self)):
                 sub_numel = _nested_numel(nested_size[i])
-                result_i = nested.NestedTensor(_BufferNestedTensor(self._buffer.narrow(
-                    0, offset, sub_numel), nested_size[i], nested_stride[i]))
+                result_i = nested.NestedTensor(_BufferNestedTensor(self.get_buffer().narrow(
+                    0, offset, sub_numel), nested_size[i], nested_stride[i])
                 offset += sub_numel
                 result = result + (result_i,)
         self._unbound_tensors = result
@@ -180,12 +174,6 @@ class _BufferNestedTensor(object):
 
     def is_contiguous(self):
         return self._is_contiguous
-
-    def contiguous(self):
-        if not self.is_contiguous():
-            self._buffer = _nested_tensor_to_buffer(self)
-        self._is_contiguous = True
-        return self
 
     def nested_size(self):
         return self._nested_size
@@ -199,9 +187,10 @@ class _BufferNestedTensor(object):
         """
         Not a view.
         """
-        return self._buffer.reshape(self.size(None))
+        return self.get_buffer().reshape(self.size(None))
 
     def size(self, dim):
+        # TODO: Unused until _ListNestedTensor has its own implementation
         if dim is not None:
             return self.size(None)[dim]
 
@@ -212,17 +201,35 @@ class _BufferNestedTensor(object):
             else:
                 sizes = iter(_size(x) for x in nested_size)
 
-            result = tuple(k[0] if k[1:] == k[:-1] else None for k in zip(*sizes))
+            result = tuple(k[0] if k[1:] == k[:-1]
+                           else None for k in zip(*sizes))
             return (len_sizes,) + result
 
         return _size(self.nested_size())
 
     def to(self, *args, **kwargs):
-        return nested.NestedTensor(_BufferNestedTensor(self._buffer.to(*args, **kwargs),
+        return nested.NestedTensor(_BufferNestedTensor(self.get_buffer().to(*args, **kwargs),
                                                       self.nested_size(), self.nested_stride()))
 
     def numel(self):
-        return self._buffer.numel()
+        return self.get_buffer().numel()
 
     def pin_memory(self):
-        self._buffer.pin_memory()
+        self.get_buffer().pin_memory()
+
+    def __str__(self):
+        def _str(x, indent=0):
+            if x.nested_dim() == 0:
+                return ""
+            s = indent*"\t" + "[\n"
+            if x.nested_dim() == 1:
+                strs = list(xi.__str__() for xi in x.unbind())
+                strs = list(map(lambda xi: "\n".join(
+                    map(lambda xij: (indent + 1)*"\t" + xij, xi.split("\n"))), strs))
+                s += ",\n".join(strs)
+            else:
+                s += ",\n".join(list(map(
+                    lambda xi: _str(xi, indent + 1), x.unbind())))
+            s += "\n" + indent * "\t" + "]"
+            return s
+        return "nested_tensor(" + _str(self) + ")"

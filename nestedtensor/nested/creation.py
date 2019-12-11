@@ -2,16 +2,15 @@ import torch
 import numbers
 
 from . import nested
-from . import listimpl
 from . import bufferimpl
 from . import utils
+from nestedtensor import _C
 
 def as_nested_tensor(data, dtype=None, device=None):
-    # TODO: Needs tests to check failure cases
-    if len(data) > 0:
-        if not(torch.is_tensor(data[0]) or utils.is_nested_tensor(data[0])):
-            data = tuple(as_nested_tensor(data_i) for data_i in data)
-    ret = nested.NestedTensor(listimpl._ListNestedTensor(data))
+    # Simple wrapper around a nested list of Tensors.
+    # Shares memory with original objects.
+    # # TODO: Needs tests to check failure cases
+    ret = nested.NestedTensor(_C._ListNestedTensor(data))
     if dtype is not None:
         ret = ret.to(dtype)
     if device is not None:
@@ -72,9 +71,18 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             return torch.tensor(data)
 
         def _create_buffer(data):
-            if isinstance(data, torch.Tensor):
-                return data.flatten()  # This data will be copied implicitly via cat
-            return torch.cat([_create_buffer(data_) for data_ in data], dim=0)
+            def __flatten_data(data):
+                if isinstance(data, torch.Tensor):
+                    return [data.flatten()]  # This data will be copied implicitly via cat
+                elif isinstance(data, nested.NestedTensor):
+                    return [data.contiguous()._impl.get_buffer()]
+                else:
+                    result = []
+                    for data_i in data:
+                        result += __flatten_data(data_i)
+                    return result
+            flat_data = __flatten_data(data)
+            return torch.cat(flat_data)
 
         def _cont_stride(size):
             stride = (1,)

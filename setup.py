@@ -8,7 +8,7 @@ import glob
 import subprocess
 import sys
 
-from torch.utils.cpp_extension import CppExtension, CUDAExtension, CUDA_HOME
+from torch.utils.cpp_extension import CppExtension, CUDAExtension, CUDA_HOME, BuildExtension
 
 
 def read(*names, **kwargs):
@@ -85,7 +85,7 @@ def get_extensions():
 
     define_macros = []
 
-    extra_compile_args = {}
+    extra_compile_args = {'cxx': ['-O0', '-g']}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         define_macros += [('WITH_CUDA', None)]
@@ -94,10 +94,7 @@ def get_extensions():
             nvcc_flags = []
         else:
             nvcc_flags = nvcc_flags.split(' ')
-        extra_compile_args = {
-            'cxx': ['-O0'],
-            'nvcc': nvcc_flags,
-        }
+        extra_compile_args['nvcc'] = nvcc_flags
 
     if sys.platform == 'win32':
         define_macros += [('nestedtensor_EXPORTS', None)]
@@ -142,13 +139,14 @@ setuptools.setup(
     description="NestedTensors for PyTorch",
     long_description=readme,
     long_description_content_type="text/markdown",
-    url="https://github.com/cpuhrsch/nestedtensor",
+    url="https://github.com/pytorch/nestedtensor",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
     zip_safe=True,
-    cmdclass={'clean': clean},
+    cmdclass={'clean': clean, 'build_ext': BuildExtension},
     install_requires=requirements,
+    ext_modules=get_extensions()
 )
