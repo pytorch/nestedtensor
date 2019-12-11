@@ -96,11 +96,11 @@ static inline _NestedNode _get_structure(PyObject* tensors) {
     Py_ssize_t i, n;
     n = PyObject_Length(tensors);
     PyObject* item;
-    if (n < 0) {
+    if (n < 0 || !PySequence_Check(tensors)) {
       throw python_error();
     }
     for (i = 0; i < n; i++) {
-      item = PyList_GetItem(tensors, i);
+      item = PySequence_GetItem(tensors, i);
       _NestedNode node = _get_structure(item);
       meta_nodes.push_back(node);
     }

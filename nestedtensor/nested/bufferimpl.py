@@ -127,9 +127,8 @@ class _BufferNestedTensor(object):
         return self
 
     def detach(self):
-        return nested.NestedTensor(
-            _BufferNestedTensor(self.get_buffer().detach,
-                                self.nested_size(), self.nested_stride()))
+        return _BufferNestedTensor(self.get_buffer().detach,
+                                self.nested_size(), self.nested_stride())
 
     def backward(self, gradient, retain_graph, create_graph):
         for t, g in zip(self.unbind(), gradient.unbind()):
@@ -165,8 +164,8 @@ class _BufferNestedTensor(object):
             offset = 0
             for i in range(len(self)):
                 sub_numel = _nested_numel(nested_size[i])
-                result_i = nested.NestedTensor(_BufferNestedTensor(self.get_buffer().narrow(
-                    0, offset, sub_numel), nested_size[i], nested_stride[i]))
+                result_i = _BufferNestedTensor(self.get_buffer().narrow(
+                    0, offset, sub_numel), nested_size[i], nested_stride[i])
                 offset += sub_numel
                 result = result + (result_i,)
         self._unbound_tensors = result
@@ -208,8 +207,8 @@ class _BufferNestedTensor(object):
         return _size(self.nested_size())
 
     def to(self, *args, **kwargs):
-        return nested.NestedTensor(_BufferNestedTensor(self.get_buffer().to(*args, **kwargs),
-                                                      self.nested_size(), self.nested_stride()))
+        return _BufferNestedTensor(self.get_buffer().to(*args, **kwargs),
+                                                      self.nested_size(), self.nested_stride())
 
     def numel(self):
         return self.get_buffer().numel()

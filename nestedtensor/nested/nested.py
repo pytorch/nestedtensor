@@ -191,7 +191,7 @@ class NestedTensor(object):
 
     def to(self, *args, **kwargs):
         # to is never in-place, but it has autograd support (for float and double) via copy
-        return self._impl.to(*args, **kwargs)
+        return NestedTensor(self._impl.to(*args, **kwargs))
 
     def numel(self):
         return self._impl.numel()
@@ -221,7 +221,7 @@ class NestedTensor(object):
             return tuple(t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind())
         else:
             unbound = tuple(t.unbind(dim - 1) for t in self.unbind(dim - 1))
-            return tuple(torch.nested_tensor(t) for t in zip(*unbound))
+            return tuple(creation.nested_tensor(t) for t in zip(*unbound))
 
     def to_tensor(self, dim=0):
         """
@@ -238,7 +238,7 @@ class NestedTensor(object):
         if self.nested_dim() == 1:
             return self
         unbound = [t.to_tensor(dim=dim - 1) for t in self.unbind()]
-        return torch.nested_tensor(unbound)
+        return creation.nested_tensor(unbound)
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
@@ -305,7 +305,7 @@ class NestedTensor(object):
         if isinstance(key, numbers.Number):
             return self.unbind()[key]
         if isinstance(key, slice):
-            return torch.as_nested_tensor(self.unbind()[key])
+            return creation.as_nested_tensor(self.unbind()[key])
         assert isinstance(key, tuple)
         if key[0] == Ellipsis:
             raise NotImplementedError(
@@ -314,7 +314,7 @@ class NestedTensor(object):
         selected_tensors = self.unbind()[key[0]]
         if len(key) == 1:
             return selected_tensors
-        return torch.as_nested_tensor([t[key[1:]] for t in selected_tensors])
+        return creation.as_nested_tensor([t[key[1:]] for t in selected_tensors])
 
     def __iter__(self):
         return iter(self.unbind())
@@ -328,9 +328,9 @@ class NestedTensor(object):
             raise ValueError("Given dimension is already nested")
         else:
             if self.nested_dim == dim:
-                return torch.nested_tensor(list(t.unbind() for t in self.unbind()))
+                return creation.nested_tensor(list(t.unbind() for t in self.unbind()))
             else:
-                return torch.nested_tensor(list(t.to_nested_tensor(dim - 1) for t in self.unbind()))
+                return creation.nested_tensor(list(t.to_nested_tensor(dim - 1) for t in self.unbind()))
 
     def to_list(self):
         if self.nested_dim() == 1:
