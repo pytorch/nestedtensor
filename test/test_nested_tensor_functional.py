@@ -2,7 +2,7 @@ import traceback
 import functools
 import pdb
 import sys
-from nestedtensor import torch
+import torch
 import nestedtensor
 import unittest
 from unittest import TestCase
@@ -17,7 +17,7 @@ class TestFunctional(TestCase):
 
     def test_addmm(self):
         a, b = torch.rand(5), torch.rand(4, 5)
-        nt = torch.nested_tensor(
+        nt = nestedtensor.nested_tensor(
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)])
 
     def test_conv2d(self):
@@ -31,7 +31,7 @@ class TestFunctional(TestCase):
         weight = torch.rand(64, 3, 7, 7)
         tf = nestedtensor.tensorwise()(_conv2d)
         images = [torch.rand(3, (i * 16) % 40 + 40, (i * 16) % 50 + 40) for i in range(128)]
-        nt = torch.nested_tensor(images)
+        nt = nestedtensor.nested_tensor(images)
         result = tf(nt, weight)
         result2 = torch.nn.functional.conv2d(nt, weight)
         for r, r2 in zip(result, result2):

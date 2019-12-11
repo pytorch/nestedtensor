@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import numbers
 from functools import wraps
 from . import utils
+from . import nested
 import collections
 import os
 import nestedtensor
@@ -126,9 +127,8 @@ class _BufferNestedTensor(object):
         return self
 
     def detach(self):
-        return nested.NestedTensor(
-            _BufferNestedTensor(self.get_buffer().detach,
-                                self.nested_size(), self.nested_stride()))
+        return _BufferNestedTensor(self.get_buffer().detach,
+                                self.nested_size(), self.nested_stride())
 
     def backward(self, gradient, retain_graph, create_graph):
         for t, g in zip(self.unbind(), gradient.unbind()):
@@ -207,8 +207,8 @@ class _BufferNestedTensor(object):
         return _size(self.nested_size())
 
     def to(self, *args, **kwargs):
-        return torch.NestedTensor(_BufferNestedTensor(self.get_buffer().to(*args, **kwargs),
-                                                      self.nested_size(), self.nested_stride()))
+        return _BufferNestedTensor(self.get_buffer().to(*args, **kwargs),
+                                                      self.nested_size(), self.nested_stride())
 
     def numel(self):
         return self.get_buffer().numel()

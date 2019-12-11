@@ -6,52 +6,24 @@ version: 2
 jobs:
   build:
     docker:
-      # specify the version you desire here
-      # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
-      - image: circleci/python:3.6.1
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
+      - image: continuumio/miniconda3
 
     working_directory: ~/repo
 
     steps:
       - checkout
 
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-
-      - run:
-          name: install dependencies
-          command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip3 install -q -r requirements.txt
-            pip3 install -q torch
-
-      - save_cache:
-          paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
-
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
-            pip3 install .
+            conda install pytorch cpuonly -c pytorch-nightly -q -y
+            apt-get update
+            apt-get install -y gcc
+            apt-get install -y g++
+            pip install .
             python test/test_nested_tensor_autograd.py
             python test/test_nested_tensor_class.py
             python test/test_nested_tensor_functional.py
             python test/test_nested_tensor_masking.py
             python test/test_nested_tensor_nary.py
             python test/test_nested_tensor_tensorwise.py
-
-      - store_artifacts:
-          path: test-reports
-          destination: test-reports

@@ -2,7 +2,7 @@ import traceback
 import functools
 import pdb
 import sys
-from nestedtensor import torch
+import torch
 import nestedtensor
 import unittest
 from unittest import TestCase
@@ -16,7 +16,7 @@ class TestTensorMask(TestCase):
     def test_simple(self):
         values = [torch.rand(i) for i in range(10)]
         random.shuffle(values)
-        nt = torch.nested_tensor(values)
+        nt = nestedtensor.nested_tensor(values)
         tensor, mask = nt.to_tensor_mask()
 
     def test_nested(self):
@@ -26,17 +26,17 @@ class TestTensorMask(TestCase):
     def test_tensor_mask(self):
         nt = utils.gen_nested_tensor(2, 2, 2, size_low=1, size_high=2)
         tensor, mask = nt.to_tensor_mask()
-        nt1 = torch.nested_tensor_from_tensor_mask(
+        nt1 = nestedtensor.nested_tensor_from_tensor_mask(
             tensor, mask, nested_dim=nt.nested_dim())
         self.assertTrue((nt == nt1).all())
-        nt2 = torch.nested_tensor_from_tensor_mask(
+        nt2 = nestedtensor.nested_tensor_from_tensor_mask(
             tensor, mask)
         self.assertTrue((nt == nt2).all())
 
     def test_tensor_mask_lowdim(self):
         values = [torch.rand(1, 2) for i in range(10)]
         values = [values[1:i] for i in range(2, 10)]
-        nt = torch.nested_tensor(values)
+        nt = nestedtensor.nested_tensor(values)
         tensor, mask = nt.to_tensor_mask()
         self.assertTrue([len(value) for value in values] == list(mask.sum(-1)))
 

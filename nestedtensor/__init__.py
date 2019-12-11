@@ -1,10 +1,21 @@
 import torch
-if getattr(torch, "__IS_MONKEY_PATCHED_BY_NESTED_TENSOR", None) is None:
-    from .nested.monkey_patch import monkey_patch
-    torch = monkey_patch(torch)
-# Confirm that this function was only applied once
-assert torch.__IS_MONKEY_PATCHED_BY_NESTED_TENSOR == 1
 
 from .nested.utils import tensorwise
+from .nested.utils import is_nested_tensor
+
+from .nested.creation import as_nested_tensor
+from .nested.creation import nested_tensor
+
+from .nested.masking import nested_tensor_from_tensor_mask
+from .nested.masking import nested_tensor_from_padded_tensor
+
+from .nested.nested import NestedTensor
+
+from .nested.monkey_patch import monkey_patch
+
+from . import nested
+
 from . import _C
 from ._C import _ListNestedTensor
+
+nested.monkey_patch.monkey_patch(NestedTensor)
