@@ -17,3 +17,5 @@ from . import nested
 
 from . import _C
 from ._C import _ListNestedTensor
+
+nested.monkey_patch.monkey_patch(NestedTensor)
