@@ -105,4 +105,4 @@ def nested_map(fn, data):
 
 
 def gen_nested_tensor(seed, nested_dim, tensor_dim, size_low=1, size_high=10):
-    return torch.nested_tensor(gen_nested_list(seed, nested_dim, tensor_dim, size_low=size_low, size_high=size_high))
+    return nestedtensor.nested_tensor(gen_nested_list(seed, nested_dim, tensor_dim, size_low=size_low, size_high=size_high))

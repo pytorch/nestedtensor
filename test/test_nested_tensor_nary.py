@@ -110,11 +110,11 @@ def _gen_test_binary(func):
         b = utils.gen_float_tensor(2, (2, 3))
         c = utils.gen_float_tensor(3, (2, 3))
         # The constructor is supposed to copy!
-        a1 = torch.nested_tensor([a, b])
-        a2 = torch.nested_tensor([b, c])
-        a1_l = torch.as_nested_tensor([a.clone(), b.clone()])
-        a2_l = torch.as_nested_tensor([b.clone(), c.clone()])
-        a3 = torch.nested_tensor([getattr(torch, func)(a, b),
+        a1 = nestedtensor.nested_tensor([a, b])
+        a2 = nestedtensor.nested_tensor([b, c])
+        a1_l = nestedtensor.as_nested_tensor([a.clone(), b.clone()])
+        a2_l = nestedtensor.as_nested_tensor([b.clone(), c.clone()])
+        a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
                                   getattr(torch, func)(b, c)])
         self.assertTrue((a3 == getattr(torch, func)(a1_l, a2_l)).all())
         self.assertTrue((a3 == getattr(torch, func)(a1, a2)).all())

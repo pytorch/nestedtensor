@@ -166,7 +166,7 @@ class _BufferNestedTensor(object):
             for i in range(len(self)):
                 sub_numel = _nested_numel(nested_size[i])
                 result_i = nested.NestedTensor(_BufferNestedTensor(self.get_buffer().narrow(
-                    0, offset, sub_numel), nested_size[i], nested_stride[i])
+                    0, offset, sub_numel), nested_size[i], nested_stride[i]))
                 offset += sub_numel
                 result = result + (result_i,)
         self._unbound_tensors = result

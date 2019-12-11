@@ -361,3 +361,5 @@ class NestedTensor(object):
     def to_padded_tensor(self, mask_dim=None, padding=-1):
         tensor, mask = masking.make_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)
+
+monkey_patch.monkey_patch(NestedTensor)
