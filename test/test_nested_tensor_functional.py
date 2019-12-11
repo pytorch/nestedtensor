@@ -20,6 +20,7 @@ class TestFunctional(TestCase):
         nt = nestedtensor.nested_tensor(
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)])
 
+    @unittest.skip("Temporarily disabled.")
     def test_conv2d(self):
         def _conv2d(input, *args, **kwargs):
             if input.dim() == 3:
