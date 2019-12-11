@@ -16,7 +16,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            conda install pytorch cpuonly -c pytorch-nightly
+            conda install pytorch cpuonly -c pytorch-nightly -q -y
             pip3 install .
             python test/test_nested_tensor_autograd.py
             python test/test_nested_tensor_class.py
