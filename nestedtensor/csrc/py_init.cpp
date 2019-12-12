@@ -71,6 +71,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // via unbind.
   py::class_<torch::nested_tensor::THP_BufferNestedTensor>(
       m, "_BufferNestedTensor")
+      // .def(py::init<py::object, py::object>(), py::keep_alive<1, 2>())
       .def(py::init<py::object, py::object, py::object>(), py::keep_alive<1, 2>())
       .def_property_readonly(
           "dtype", &torch::nested_tensor::THP_BufferNestedTensor::getDtype)

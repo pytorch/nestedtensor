@@ -9,10 +9,30 @@
 namespace torch {
 namespace nested_tensor {
 
+_NestedNode _infer_stride(_NestedNode nested_size) {
+  if (nested_size.is_leaf()) {
+    auto stride = nested_size.payload().toIntList().copy();
+    return _NestedNode(stride);
+  } else {
+    std::vector<_NestedNode> result;
+    for (size_t i = 0; i < nested_size.degree(); i++) {
+      result.push_back(_infer_stride(nested_size.children(i)));
+    }
+    return _NestedNode(result);
+  }
+}
+
+
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
 struct TORCH_API _BufferNestedTensor {
   // TODO: Deal with default initialization
   _BufferNestedTensor() = delete;
+  _BufferNestedTensor(
+      torch::autograd::Variable buffer,
+      _NestedNode nested_size)
+      : _buffer(buffer),
+        _nested_size(nested_size),
+        _nested_stride(_infer_stride(nested_size)) {}
   _BufferNestedTensor(
       torch::autograd::Variable buffer,
       _NestedNode nested_size,

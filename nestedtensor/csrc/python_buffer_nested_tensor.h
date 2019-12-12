@@ -16,6 +16,10 @@ using namespace torch::autograd::utils;
 
 struct THP_BufferNestedTensor {
   THP_BufferNestedTensor() = delete;
+  THP_BufferNestedTensor(py::object buffer, py::object nested_size)
+      : _data(_BufferNestedTensor(
+            py::cast<at::Tensor>(buffer),
+            _get_structure(nested_size))) {}
   THP_BufferNestedTensor(
       py::object buffer,
       py::object nested_size,
@@ -47,10 +51,10 @@ struct THP_BufferNestedTensor {
   }
 
   py::object nested_size() {
-        wrap_nested_node(_data.nested_size());
+    wrap_nested_node(_data.nested_size());
   }
   py::object nested_stride() {
-        wrap_nested_node(_data.nested_stride());
+    wrap_nested_node(_data.nested_stride());
   }
 
  private:

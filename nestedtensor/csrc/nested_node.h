@@ -4,6 +4,7 @@
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/python_strings.h>
 #include <torch/extension.h>
+#include <pybind11/stl.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -61,7 +62,7 @@ inline py::object wrap_nested_node(_NestedNode nested_node) {
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
-    return py::object(result);
+    return py::cast(result);
   }
 }
 
