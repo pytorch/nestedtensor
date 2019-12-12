@@ -1,10 +1,10 @@
 #pragma once
 #include <Python.h>
+#include <pybind11/stl.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/python_strings.h>
 #include <torch/extension.h>
-#include <pybind11/stl.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -56,13 +56,15 @@ struct _NestedNode {
 
 inline py::object wrap_nested_node(_NestedNode nested_node) {
   if (nested_node.is_leaf()) {
-    return torch::jit::toPyObject(nested_node.payload());
+    py::object result = torch::jit::toPyObject(nested_node.payload());
+    return result;
   } else {
     std::vector<py::object> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
-    return py::cast(result);
+    py::tuple result1 = py::cast(result);
+    return result1;
   }
 }
 
@@ -87,12 +89,13 @@ static std::string _NestedNode___str__(const _NestedNode& nested_node) {
   }
 }
 
-static inline _NestedNode _get_structure(py::object py_obj) {
+// TODO: Rewrite this using toTensorList
+static inline _NestedNode _get_tensor_structure(py::object py_obj) {
   if (py::isinstance<py::sequence>(py_obj)) {
     py::sequence py_obj_s = py::cast<py::sequence>(py_obj);
     std::vector<_NestedNode> meta_nodes;
     for (size_t i = 0; i < py_obj_s.size(); i++) {
-      _NestedNode node = _get_structure(py_obj_s[i]);
+      _NestedNode node = _get_tensor_structure(py_obj_s[i]);
       meta_nodes.push_back(node);
     }
     return _NestedNode(meta_nodes);
@@ -103,6 +106,27 @@ static inline _NestedNode _get_structure(py::object py_obj) {
     }
     auto payload = toIValue(py_obj, inferred_type.type());
     return _NestedNode(payload);
+  }
+}
+
+static inline _NestedNode _get_tuple_structure(py::list py_obj) {
+  auto inferred_type = tryToInferType(py_obj);
+  if (!inferred_type.success()) {
+    throw python_error();
+  }
+  auto payload = toIValue(py_obj, inferred_type.type());
+  if (payload.isIntList()) {
+    // std::cout << "HEEE" << std::endl;
+    // std::cout << py_obj << std::endl;
+    return _NestedNode(payload);
+  } else {
+    py::sequence py_obj_s = py::cast<py::sequence>(py_obj);
+    std::vector<_NestedNode> meta_nodes;
+    for (size_t i = 0; i < py_obj_s.size(); i++) {
+      _NestedNode node = _get_tuple_structure(py_obj_s[i]);
+      meta_nodes.push_back(node);
+    }
+    return _NestedNode(meta_nodes);
   }
 }
 

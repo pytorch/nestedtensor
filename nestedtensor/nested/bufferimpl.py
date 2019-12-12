@@ -19,40 +19,30 @@ def _prod(tup):
 
 
 def _nested_numel(nested_size):
-    if len(nested_size) == 0 or not isinstance(nested_size[0], tuple):
+    if len(nested_size) == 0 or not isinstance(nested_size[0], list):
         return _prod(nested_size)
     else:
         return sum(_nested_numel(t) for t in nested_size)
 
-def _infer_nested_dim(nested_size):
-    if len(nested_size) == 0 or not isinstance(nested_size[0], tuple):
-        return 0
-    # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
-    # This is consistent with the behavior of torch.tensor([])
-    if len(nested_size) == 0:
-        return 1
-    return _infer_nested_dim(nested_size[0]) + 1
+# def _infer_nested_dim(nested_size):
+#     if len(nested_size) == 0 or not isinstance(nested_size[0], list):
+#         return 0
+#     # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
+#     # This is consistent with the behavior of torch.tensor([])
+#     if len(nested_size) == 0:
+#         return 1
+#     return _infer_nested_dim(nested_size[0]) + 1
 
 
-def _infer_dim(nested_size):
-    if len(nested_size) == 0:
-        return 1
-    if not isinstance(nested_size[0], tuple):
-        return len(nested_size)
-    else:
-        # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
-        # This is consistent with the behavior of torch.tensor([])
-        return _infer_dim(nested_size[0]) + 1
-
-
-def _cont_strides(nested_size):
-    if len(nested_size) == 0 or not isinstance(nested_size[0], tuple):
-        stride=(1,)
-        for s in nested_size[:-1]:
-            stride=(stride[-1] * s,) + stride
-        return stride
-    else:
-        return tuple(map(_cont_strides, nested_size))
+# def _infer_dim(nested_size):
+#     if len(nested_size) == 0:
+#         return 1
+#     if not isinstance(nested_size[0], tuple):
+#         return len(nested_size)
+#     else:
+#         # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
+#         # This is consistent with the behavior of torch.tensor([])
+#         return _infer_dim(nested_size[0]) + 1
 
 
 def _nested_tensor_to_buffer(nested_tensor):
@@ -74,13 +64,23 @@ class _BufferNestedTensor(object):
         # assert isinstance(tensors, tuple)
         if DEBUG:
             assert buffer_.dim() == 1
-        nested_size=tuple(nested_size)
+        nested_size=list(nested_size)
         if nested_stride is None:
-            nested_stride=_cont_strides(nested_size)
-        self._c_impl=nestedtensor._C._BufferNestedTensor(
-            buffer_, nested_size, nested_stride)
-        self._nested_dim=_infer_nested_dim(nested_size)
-        self._dim=_infer_dim(nested_size)
+            # print('nested_size')
+            # print(nested_size)
+            self._c_impl = nestedtensor._C._BufferNestedTensor(
+                buffer_, nested_size)
+        else:
+            # nested_size = [list(nested_size[0]), list(nested_size[1])]
+            # nested_stride = [list(nested_stride[0]), list(nested_stride[1])]
+            # print('nested_size1')
+            # print(nested_size)
+            # print('nested_stride1')
+            # print(nested_stride)
+            self._c_impl = nestedtensor._C._BufferNestedTensor(
+                buffer_, nested_size, nested_stride)
+        # self._nested_dim=_infer_nested_dim(nested_size)
+        # self._dim=_infer_dim(nested_size)
         self._is_contiguous=True
         # Used to cache unbind
         self._unbound_tensors=None
@@ -89,7 +89,7 @@ class _BufferNestedTensor(object):
         return self._c_impl.get_buffer()
 
     def dim(self):
-        return self._dim
+        return self._c_impl.dim()
 
     def is_pinned(self):
         if len(self) > 0:
@@ -132,7 +132,7 @@ class _BufferNestedTensor(object):
             t.backward(g, retain_graph, create_graph)
 
     def nested_dim(self):
-        return self._nested_dim
+        return self._c_impl.nested_dim()
 
     def __len__(self):
         return len(self.nested_size())

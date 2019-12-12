@@ -1,6 +1,6 @@
+#include <jit_list_apply.h>
 #include <python_buffer_nested_tensor.h>
 #include <python_list_nested_tensor.h>
-#include <jit_list_apply.h>
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: Never forget about pybind return value policies
@@ -71,8 +71,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // via unbind.
   py::class_<torch::nested_tensor::THP_BufferNestedTensor>(
       m, "_BufferNestedTensor")
-      // .def(py::init<py::object, py::object>(), py::keep_alive<1, 2>())
-      .def(py::init<py::object, py::object, py::object>(), py::keep_alive<1, 2>())
+      .def(py::init<py::object, py::object>(), py::keep_alive<1, 2>())
+      .def(
+          py::init<py::object, py::object, py::object>(),
+          py::keep_alive<1, 2>())
       .def_property_readonly(
           "dtype", &torch::nested_tensor::THP_BufferNestedTensor::getDtype)
       .def_property_readonly(
@@ -88,8 +90,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "nested_stride",
           &torch::nested_tensor::THP_BufferNestedTensor::nested_stride)
-      .def("get_buffer", &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
-
+      .def(
+          "dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
+      .def(
+          "nested_dim", &torch::nested_tensor::THP_BufferNestedTensor::nested_dim)
+      .def(
+          "get_buffer",
+          &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
 
   m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
 }

@@ -11,7 +11,14 @@ namespace nested_tensor {
 
 _NestedNode _infer_stride(_NestedNode nested_size) {
   if (nested_size.is_leaf()) {
-    auto stride = nested_size.payload().toIntList().copy();
+    c10::List<int64_t> size = nested_size.payload().toIntList();
+    std::vector<int64_t> stride_;
+    int64_t p = 1;
+    for (int64_t i = 0; i < size.size(); i++) {
+      stride_.push_back(p);
+      p *= size[i];
+    }
+    c10::List<int64_t> stride(stride_);
     return _NestedNode(stride);
   } else {
     std::vector<_NestedNode> result;
@@ -67,6 +74,23 @@ struct TORCH_API _BufferNestedTensor {
   }
   _NestedNode nested_stride() {
     return _nested_stride;
+  }
+  int64_t nested_dim() {
+    const _NestedNode* start_structure = &_nested_size;
+    int64_t depth = 0;
+    while (!start_structure->is_leaf()) {
+      depth++;
+      start_structure = start_structure->children_data(0);
+    }
+    return depth;
+  }
+  int64_t dim() {
+    const _NestedNode* start_structure = &_nested_size;
+    while (!start_structure->is_leaf()) {
+      start_structure = start_structure->children_data(0);
+    }
+    int64_t tensor_dim = start_structure->payload().toIntList().size();
+    return tensor_dim + nested_dim();
   }
 
  private:

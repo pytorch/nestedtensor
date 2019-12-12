@@ -10,7 +10,7 @@ import random
 
 import utils
 
-class TestNestedTensor(TestCase):
+class TestNestedTensorBuffer(TestCase):
 
     def test_nested_constructor(self):
         num_nested_tensor = 3

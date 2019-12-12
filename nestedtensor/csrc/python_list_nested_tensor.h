@@ -24,7 +24,7 @@ namespace py = pybind11;
 struct THP_ListNestedTensor {
   THP_ListNestedTensor() = delete;
   THP_ListNestedTensor(py::object list)
-      : _data(_ListNestedTensor(_get_structure(list))) {}
+      : _data(_ListNestedTensor(_get_tensor_structure(list))) {}
   THP_ListNestedTensor(_ListNestedTensor data) : _data(data) {}
   int64_t element_size() {
     return _data.element_size();
@@ -49,7 +49,6 @@ struct THP_ListNestedTensor {
   THP_ListNestedTensor requires_grad_(py::bool_ requires_grad) {
     return THP_ListNestedTensor(_data.requires_grad_(requires_grad));
   }
-  // ADD
   int64_t nested_dim() {
     return _data.nested_dim();
   }
