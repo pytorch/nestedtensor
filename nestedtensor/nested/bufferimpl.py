@@ -151,6 +151,8 @@ class _BufferNestedTensor(object):
             offset=0
             for i in range(len(nested_size)):
                 size=nested_size[i]
+                print('size')
+                print(size)
                 tensor=self.get_buffer().narrow(
                     0, offset, _prod(size)).reshape(size)
                 offset += tensor.numel()

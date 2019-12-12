@@ -15,12 +15,12 @@ import utils
 class TestNestedTensorBuffer(TestCase):
 
     def test_default_constructor(self):
-        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor())
         # nested_dim is 1 and dim is 1 too.
-        default_nested_tensor = nestedtensor.nested_tensor([])
+        default_nested_tensor = _BufferNestedTensor(torch.tensor([]), [], [])
         default_tensor = torch.tensor([])
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
-        self.assertEqual(default_nested_tensor.nested_size(), ())
+        self.assertEqual(default_nested_tensor.nested_size(), [])
+        self.assertEqual(default_nested_tensor.nested_stride(), [])
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
         self.assertEqual(default_nested_tensor.layout, default_tensor.layout)
         self.assertEqual(default_nested_tensor.device, default_tensor.device)

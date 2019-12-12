@@ -63,7 +63,7 @@ inline py::object wrap_nested_node(_NestedNode nested_node) {
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
-    py::tuple result1 = py::cast(result);
+    py::list result1 = py::cast(result);
     return result1;
   }
 }
@@ -109,9 +109,13 @@ static inline _NestedNode _get_tensor_structure(py::object py_obj) {
   }
 }
 
-static inline _NestedNode _get_tuple_structure(py::list py_obj) {
+static inline _NestedNode _get_list_structure(py::list py_obj) {
+  if (py_obj.size() == 0) {
+    return _NestedNode(c10::List<int64_t>());
+  }
   auto inferred_type = tryToInferType(py_obj);
   if (!inferred_type.success()) {
+    std::cerr << inferred_type.reason() << std::endl;
     throw python_error();
   }
   auto payload = toIValue(py_obj, inferred_type.type());
@@ -123,7 +127,7 @@ static inline _NestedNode _get_tuple_structure(py::list py_obj) {
     py::sequence py_obj_s = py::cast<py::sequence>(py_obj);
     std::vector<_NestedNode> meta_nodes;
     for (size_t i = 0; i < py_obj_s.size(); i++) {
-      _NestedNode node = _get_tuple_structure(py_obj_s[i]);
+      _NestedNode node = _get_list_structure(py_obj_s[i]);
       meta_nodes.push_back(node);
     }
     return _NestedNode(meta_nodes);
@@ -158,7 +162,7 @@ static inline at::Tensor _get_first_variable(_NestedNode nested_node) {
   if (!start->payload().isNone()) {
     return start->payload().toTensor();
   } else {
-    return torch::ones({1});
+    return torch::ones({});
   }
 }
 

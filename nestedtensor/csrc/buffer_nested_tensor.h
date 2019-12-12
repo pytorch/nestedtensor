@@ -69,6 +69,9 @@ struct TORCH_API _BufferNestedTensor {
   bool requires_grad() {
     return _buffer.requires_grad();
   }
+  bool is_pinned() {
+    return _buffer.is_pinned();
+  }
   _NestedNode nested_size() {
     return _nested_size;
   }
@@ -77,7 +80,7 @@ struct TORCH_API _BufferNestedTensor {
   }
   int64_t nested_dim() {
     const _NestedNode* start_structure = &_nested_size;
-    int64_t depth = 0;
+    int64_t depth = 1;
     while (!start_structure->is_leaf()) {
       depth++;
       start_structure = start_structure->children_data(0);

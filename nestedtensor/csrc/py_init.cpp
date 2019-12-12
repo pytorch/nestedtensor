@@ -2,6 +2,19 @@
 #include <python_buffer_nested_tensor.h>
 #include <python_list_nested_tensor.h>
 
+// TODO: Add a field such as is_empty to _NestedNode?
+// TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
+// TODO: Abstract the common recursive patterns.
+
+// NOTE: A NestedTensor without any constituents, i.e.
+// nested_tensor([]) is of dimension 1 because
+// tensor([]) is of dimension 1, but it is also
+// of nested_dim 1, since there are no constituents
+// and thus we choose that to imply that the constituents
+// tensor dimension is 0.
+// If depth is 0, it means that the current structure
+// is already a leaf, i.e. has no children.
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
@@ -90,10 +103,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "nested_stride",
           &torch::nested_tensor::THP_BufferNestedTensor::nested_stride)
+      .def("dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
       .def(
-          "dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
+          "nested_dim",
+          &torch::nested_tensor::THP_BufferNestedTensor::nested_dim)
       .def(
-          "nested_dim", &torch::nested_tensor::THP_BufferNestedTensor::nested_dim)
+          "is_pinned", &torch::nested_tensor::THP_BufferNestedTensor::is_pinned)
       .def(
           "get_buffer",
           &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);

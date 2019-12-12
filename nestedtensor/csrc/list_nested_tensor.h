@@ -21,7 +21,7 @@ struct TORCH_API _ListNestedTensor {
     return _first_variable.element_size();
   }
   _NestedNode nested_size() {
-    if (nested_dim() == 0) {
+    if (nested_dim() == 1 && _structure.degree() == 0) {
       return _NestedNode(at::IntArrayRef());
     }
     return map<_NestedNode>(
@@ -30,7 +30,7 @@ struct TORCH_API _ListNestedTensor {
         });
   }
   _NestedNode nested_stride() {
-    if (nested_dim() == 0) {
+    if (nested_dim() == 1 && _structure.degree() == 0) {
       return _NestedNode(at::IntArrayRef());
     }
     return map<_NestedNode>(
@@ -85,6 +85,9 @@ struct TORCH_API _ListNestedTensor {
     while (!start_structure->is_leaf()) {
       depth++;
       start_structure = start_structure->children_data(0);
+    }
+    if (depth == 0) {
+      depth = 1;
     }
     return depth;
   }
