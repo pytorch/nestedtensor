@@ -10,14 +10,14 @@ import random
 
 import utils
 
-class TestNestedTensorBuffer(TestCase):
+class TestNestedTensor(TestCase):
 
-    def test_nested_constructor(self):
-        num_nested_tensor = 3
-        # TODO: Shouldn't be constructable
-        nested_tensors = [utils.gen_nested_tensor(i, i, 3)
-                          for i in range(1, num_nested_tensor)]
-        nested_tensor = nestedtensor.nested_tensor(nested_tensors)
+    # def test_nested_constructor(self):
+    #     num_nested_tensor = 3
+    #     # TODO: Shouldn't be constructable
+    #     nested_tensors = [utils.gen_nested_tensor(i, i, 3)
+    #                       for i in range(1, num_nested_tensor)]
+    #     nested_tensor = nestedtensor.nested_tensor(nested_tensors)
 
     def test_constructor(self):
         tensors = []

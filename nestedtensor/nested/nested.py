@@ -16,15 +16,27 @@ DEBUG = int(os.getenv("DEBUG", 1))
 
 # -------------------------NestedTensor core---------------------------
 
-class NestedSize(tuple):
+def _construct_nested_sizes(raw_nested_size):
+    if len(raw_nested_size) == 0 or not isinstance(raw_nested_size[0], list):
+        return torch.Size(raw_nested_size)
+    else:
+        assert isinstance(raw_nested_size, list)
+        assert isinstance(raw_nested_size[0], list)
+        return tuple(_construct_nested_sizes(t) for t in raw_nested_size)
+
+
+class NestedSize(object):
     """
     This class stores a nested tuple of torch.Sizes that eases
     string representation and enables certain methods, such as
     numel, common to torch.Size but not implemented by tuple.
     """
 
-    def __init__(self, nested_size: tuple):
-        self._nested_size = nested_size
+    def __init__(self, raw_nested_size: list):
+        """We expect this to be constructed from one of the impls.
+        That means we get a nested list of integers which we need to convert."""
+        assert isinstance(raw_nested_size, list)
+        self._nested_size = _construct_nested_sizes(raw_nested_size)
 
     def __str__(self):
         def _str(x, indent=0):
@@ -40,13 +52,19 @@ class NestedSize(tuple):
                 s += ",\n".join(tuple(_str(xi, indent + 1) for xi in x))
             s += "\n" + indent * "\t" + ")"
             return s
-        return "torch.NestedSize(" + _str(self) + ")"
+        return "torch.NestedSize(" + _str(self._nested_size) + ")"
+
+    def __len__(self):
+        return len(self._nested_size)
 
     def __repr__(self):
         return self.__str__()
 
     def __iter__(self):
-        return iter(self._nested_size)
+        if isinstance(self._nested_size[0], list):
+            return iter(NestedSize(t) for t in self._nested_size)
+        else:
+            return iter(list(self._nested_size))
 
 
 # NOTE: Methods entirely dependent on unbind don't need to be repeated in impl
@@ -256,18 +274,18 @@ class NestedTensor(object):
                     if dimi < self.nested_dim():
                         raise ValueError("Tuples only support for Tensor dims")
                     nested_sizes.append(self.nested_size(dimi))
-                return tuple(t for t in zip(*nested_sizes))
+                return NestedSize(tuple(t for t in zip(*nested_sizes)))
             else:
                 if dim == 0:
                     return len(self)
                 if self.nested_dim() == 1:
                     return tuple(s[dim - 1] for s in self.nested_size())
-                return tuple(t.nested_size(dim - 1) for t in self.unbind())
+                return NestedSize(tuple(t.nested_size(dim - 1) for t in self.unbind()))
 
     def nested_stride(self, dim=None):
         # TODO: Negative dims and slices
         if dim is None:
-            return self._impl.nested_stride()
+            return NestedSize(self._impl.nested_stride())
         else:
             if isinstance(dim, tuple):
                 nested_strides = []
@@ -275,13 +293,13 @@ class NestedTensor(object):
                     if dimi < self.nested_dim():
                         raise ValueError("Tuples only support for Tensor dims")
                     nested_strides.append(self.nested_stride(dimi))
-                return tuple(t for t in zip(*nested_strides))
+                return NestedSize(tuple(t for t in zip(*nested_strides)))
             else:
                 if dim == 0:
                     return len(self)
                 if self.nested_dim() == 1:
                     return tuple(s[dim - 1] for s in self.nested_stride())
-                return tuple(t.nested_stride(dim - 1) for t in self.unbind())
+                return NestedSize(tuple(t.nested_stride(dim - 1) for t in self.unbind()))
 
     # --- dependent on impl ends ---
 

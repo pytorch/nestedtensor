@@ -110,6 +110,9 @@ static inline _NestedNode _get_tensor_structure(py::object py_obj) {
 }
 
 static inline _NestedNode _get_list_structure(py::list py_obj) {
+  // TODO: Deal with list of scalar tensor [torch.tensor(3.0)]
+  // This will input a [[]] list, which is valid since
+  // torch.tensor(3.0).size() is torch.Size([])
   if (py_obj.size() == 0) {
     return _NestedNode(c10::List<int64_t>());
   }

@@ -94,14 +94,14 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             if isinstance(data, torch.Tensor):
                 return list(data.size())
             if isinstance(data, nested.NestedTensor):
-                return _nested_size(data.nested_size())
+                return data._impl.nested_size()
             return list(_nested_size(t) for t in data)
 
         def _nested_stride(data):
             if isinstance(data, torch.Tensor):
                 return list(data.stride())
             if isinstance(data, nested.NestedTensor):
-                return _nested_stride(data.nested_stride())
+                return data._impl.nested_stride()
             return list(_nested_stride(t) for t in data)
 
         _type_check(data)
@@ -110,6 +110,11 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             buffer_ = _create_buffer(data)
             nested_size = _nested_size(data)
             nested_stride = _nested_stride(data)
+            print("HERE")
+            print(data)
+            print(buffer_)
+            print(nested_size)
+            print(nested_stride)
             impl = bufferimpl._BufferNestedTensor(
                 buffer_, nested_size, nested_stride)
         else:
