@@ -146,13 +146,15 @@ class _BufferNestedTensor(object):
         if self._unbound_tensors is not None:
             return self._unbound_tensors
         nested_size=self.nested_size()
+        # print('nested_size')
+        # print(nested_size)
+        # print('self.nested_dim()')
+        # print(self.nested_dim())
         if self.nested_dim() == 1:
             result=()
             offset=0
             for i in range(len(nested_size)):
                 size=nested_size[i]
-                print('size')
-                print(size)
                 tensor=self.get_buffer().narrow(
                     0, offset, _prod(size)).reshape(size)
                 offset += tensor.numel()

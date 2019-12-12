@@ -5,6 +5,7 @@
 // TODO: Add a field such as is_empty to _NestedNode?
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
 // TODO: Abstract the common recursive patterns.
+// TODO: NestedSize C++ object
 
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because
@@ -14,6 +15,11 @@
 // tensor dimension is 0.
 // If depth is 0, it means that the current structure
 // is already a leaf, i.e. has no children.
+
+// NOTE: Implementations _ListNestedTensor and _BufferNestedTEnsor
+// return lists of lists of integers for nested_size and nested_stride
+// for now. It's up to the consumer to correct this if required.
+
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: Never forget about pybind return value policies

@@ -80,10 +80,13 @@ struct TORCH_API _BufferNestedTensor {
   }
   int64_t nested_dim() {
     const _NestedNode* start_structure = &_nested_size;
-    int64_t depth = 1;
+    int64_t depth = 0;
     while (!start_structure->is_leaf()) {
       depth++;
       start_structure = start_structure->children_data(0);
+    }
+    if (depth == 0) {
+      depth = 1;
     }
     return depth;
   }
