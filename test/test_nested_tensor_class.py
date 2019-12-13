@@ -97,10 +97,14 @@ class TestNestedTensor(TestCase):
 
     def test_nested_dim(self):
         nt = nestedtensor.nested_tensor([torch.tensor(3)])
-        self.assertTrue(nt.nested_dim() == 1)
+        print(nt)
+        print(nt.nested_dim())
+        print(nt.nested_size())
+        print(nt.nested_stride())
+        self.assertEqual(nt.nested_dim(), 1)
         for i in range(2, 5):
             nt = utils.gen_nested_tensor(i, i, 3)
-            self.assertTrue(nt.nested_dim() == i)
+            self.assertEqual(nt.nested_dim(), i)
 
     def test_unbind(self):
         a = torch.tensor([1, 2])

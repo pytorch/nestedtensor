@@ -9,7 +9,7 @@
 namespace torch {
 namespace nested_tensor {
 
-std::vector<int64_t> _cont_stride(c10::IntArrayRef size) {
+std::vector<int64_t> _cont_stride(c10::List<int64_t> size) {
   std::vector<int64_t> stride;
   int64_t p = 1;
   for (size_t i = 0; i < size.size(); i++) {
@@ -21,11 +21,11 @@ std::vector<int64_t> _cont_stride(c10::IntArrayRef size) {
 
 SizeNode _infer_stride(SizeNode nested_size) {
   if (nested_size.is_leaf()) {
-    c10::List<c10::IntArrayRef> result;
+    c10::List<c10::List<int64_t>> result;
     for (size_t i = 0; i < nested_size.degree(); i++) {
-      std::vector<int64_t> stride = _cont_stride(nested_size.payload(i);
-      c10::IntArrayRef stride(stride.data<int64_t>(), stride.size());
-      result.push_back(stride);
+      // std::vector<int64_t> stride = _cont_stride(nested_size.payload(i);
+      // c10::IntArrayRef stride(stride.data<int64_t>(), stride.size());
+      result.emplace_back(_cont_stride(nested_size.payload(i)));
     }
     return SizeNode(result);
   } else {
@@ -95,7 +95,7 @@ struct TORCH_API _BufferNestedTensor {
   int64_t dim() {
     SizeNode leaf = get_first_leaf(_nested_size);
     if (leaf.degree()) {
-      c10::IntArrayRef first_size = leaf.payload(0);
+      c10::List<int64_t> first_size = leaf.payload(0);
       return first_size.size() + nested_dim();
     } else {
       return nested_dim();

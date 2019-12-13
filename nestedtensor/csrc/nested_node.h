@@ -44,17 +44,30 @@ struct NestedNode {
 };
 
 using TensorNode = NestedNode<at::Tensor>;
-using SizeNode = NestedNode<c10::IntArrayRef>;
 
-// inline PyObject* wrap_list(std::vector<PyObject*> list) {
-//   auto r = THPObjectPtr{PyTuple_New(list.size())};
-//   if (!r)
-//     throw python_error();
-//   for (size_t i = 0; i < list.size(); ++i) {
-//     PyTuple_SET_ITEM(r.get(), i, list[i]);
-//   }
-//   return r.release();
-// }
+// This is a C++ representation of a nested list of torch.Sizes
+//
+// It can never be a list of just numbers, because torch.Size
+// is always a list and NestedTensors represent lists of torch.Tensors
+//
+// Noteworthy cases:
+//
+// This is an empty list of lists if we construct
+// nested_tensor([])
+// which is of nested_dim 1, dim 1 and tensor_dim 0
+//
+// This is a list of empty lists if we construct e.g.
+// nested_tensor([torch.tensor(0), torch.tensor(1), ...])
+// which is of nested_dim 1, dim 1 and tensor_dim 0
+//
+// This is a list of list of numbers if we construct e.g.
+// nested_tensor([torch.tensor([1]), torch.tensor([2]), ...])
+// which is of nested_dim 1, dim 2 and tensor_dim 1
+//
+// That means, if the list is not empty it is either a list of
+// lists of numbers or a list of empty lists.
+
+using SizeNode = NestedNode<c10::List<int64_t>>;
 
 template <typename A>
 inline py::object wrap_nested_node(NestedNode<A> nested_node) {
@@ -90,6 +103,16 @@ static std::string _NestedNode___str__(const TensorNode& nested_node) {
   return result.str();
 }
 
+static IValue py_obj_to_ivalue(py::object py_obj) {
+  auto inferred_type = tryToInferType(py_obj);
+  if (!inferred_type.success()) {
+    std::cerr << inferred_type.reason() << std::endl;
+    throw python_error();
+  }
+  auto payload = toIValue(py_obj, inferred_type.type());
+  return payload;
+}
+
 static inline TensorNode _get_tensor_structure(py::list py_obj) {
   if (py_obj.size() == 0) {
     return TensorNode();
@@ -112,39 +135,39 @@ static inline TensorNode _get_tensor_structure(py::list py_obj) {
   }
 }
 
-static IValue py_obj_to_ivalue(py::object py_obj) {
-  auto inferred_type = tryToInferType(py_obj);
-  if (!inferred_type.success()) {
-    std::cerr << inferred_type.reason() << std::endl;
-    throw python_error();
-  }
-  auto payload = toIValue(py_obj, inferred_type.type());
-  return payload;
-}
-
 static inline SizeNode _get_size_structure(py::list py_obj) {
-  // TODO: Deal with list of scalar tensor [torch.tensor(3.0)]
-  // This will input a [[]] list, which is valid since
-  // torch.tensor(3.0).size() is torch.Size([])
-  // NOTE: This is most easily fixed by introducing a NestedSize
-  // class.
+  // Empty list of lists
   if (py_obj.size() == 0) {
     return SizeNode();
   }
-  IValue first_elem = py_obj_to_ivalue(py_obj[0]);
-  if (first_elem.isIntList()) {
-    c10::List<c10::IntArrayRef> result;
+
+  // List of empty lists
+  py::list py_obj_0 = py_obj[0];
+  if (py_obj_0.size() == 0) {
+    c10::List<c10::List<int64_t>> result;
     for (size_t i = 0; i < py_obj.size(); i++) {
-      result.push_back(py_obj_to_ivalue(py_obj[i]).toIntListRef());
-    }
-    return SizeNode(result);
-  } else {
-    std::vector<SizeNode> result;
-    for (size_t i = 0; i < py_obj.size(); i++) {
-      result.emplace_back(_get_size_structure(py_obj[i]));
+      result.push_back(c10::List<int64_t>());
     }
     return SizeNode(result);
   }
+
+  // List of lists of numbers
+  InferredType inferred_type = tryToInferType(py_obj[0]);
+  if (inferred_type.success() && py_obj_to_ivalue(py_obj[0]).isIntList()) {
+    c10::List<c10::List<int64_t>> result;
+    for (size_t i = 0; i < py_obj.size(); i++) {
+      result.push_back(py_obj_to_ivalue(py_obj[i]).toIntList());
+    }
+    return SizeNode(result);
+  }
+
+  // List of lists of lists...
+  std::vector<SizeNode> result;
+  for (size_t i = 0; i < py_obj.size(); i++) {
+    py::list py_obj_i = py_obj[i];
+    result.emplace_back(_get_size_structure(py_obj_i));
+  }
+  return SizeNode(result);
 }
 
 static inline int64_t nested_node_numel(
@@ -178,13 +201,10 @@ static inline at::Tensor _get_first_variable(TensorNode nested_node) {
   }
 }
 
-template <
-    typename A = typename std::result_of<F(B)>::type,
-    typename B,
-    typename F>
+template <typename B, typename A, typename F>
 static inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
   if (nested_node.is_leaf()) {
-    c10::List<A>::type > result;
+    c10::List<A> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.emplace_back(fn(nested_node.payload(i)));
     }
@@ -192,7 +212,7 @@ static inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
   } else {
     std::vector<NestedNode<A>> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
-      result.emplace_back(map(nested_node.children(i), fn));
+      result.emplace_back(map<B, A, F>(nested_node.children(i), fn));
     }
     return NestedNode<A>(result);
   }

@@ -24,29 +24,38 @@ struct _ListNestedTensor {
     if (nested_dim() == 1 && _structure.degree() == 0) {
       return SizeNode();
     }
-    return map(_structure, [](at::Tensor tensor) -> c10::IntArrayRef { return tensor.sizes(); });
+    return map<at::Tensor, c10::List<int64_t>>(
+        _structure, [](at::Tensor tensor) -> c10::List<int64_t> {
+          return c10::List<int64_t>(tensor.sizes());
+        });
   }
   SizeNode nested_stride() {
     if (nested_dim() == 1 && _structure.degree() == 0) {
       return SizeNode();
     }
-    return map(_structure, [](at::Tensor tensor) -> c10::IntArrayRef { return tensor.strides(); });
+    return map<at::Tensor, c10::List<int64_t>>(
+        _structure, [](at::Tensor tensor) -> c10::List<int64_t> {
+          return c10::List<int64_t>(tensor.strides());
+        });
   }
   _ListNestedTensor pin_memory() {
-    return _ListNestedTensor(
-        map(_structure, [](at::Tensor tensor) -> at::Tensor { return tensor.pin_memory(); }));
+    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
+        _structure,
+        [](at::Tensor tensor) -> at::Tensor { return tensor.pin_memory(); }));
   }
   _ListNestedTensor grad() {
-    return _ListNestedTensor(
-        map(_structure, [](at::Tensor tensor) -> at::Tensor { return tensor.grad(); }));
+    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
+        _structure,
+        [](at::Tensor tensor) -> at::Tensor { return tensor.grad(); }));
   }
   _ListNestedTensor detach() {
-    return _ListNestedTensor(
-        map(_structure, [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); }));
+    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
+        _structure,
+        [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); }));
   }
   _ListNestedTensor requires_grad_(bool requires_grad) {
-    return _ListNestedTensor(
-        map(_structure, [requires_grad](at::Tensor tensor)  -> at::Tensor {
+    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
+        _structure, [requires_grad](at::Tensor tensor) -> at::Tensor {
           return tensor.set_requires_grad(requires_grad);
         }));
   }
