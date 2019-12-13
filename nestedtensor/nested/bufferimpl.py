@@ -24,26 +24,6 @@ def _nested_numel(nested_size):
     else:
         return sum(_nested_numel(t) for t in nested_size)
 
-# def _infer_nested_dim(nested_size):
-#     if len(nested_size) == 0 or not isinstance(nested_size[0], list):
-#         return 0
-#     # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
-#     # This is consistent with the behavior of torch.tensor([])
-#     if len(nested_size) == 0:
-#         return 1
-#     return _infer_nested_dim(nested_size[0]) + 1
-
-
-# def _infer_dim(nested_size):
-#     if len(nested_size) == 0:
-#         return 1
-#     if not isinstance(nested_size[0], tuple):
-#         return len(nested_size)
-#     else:
-#         # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
-#         # This is consistent with the behavior of torch.tensor([])
-#         return _infer_dim(nested_size[0]) + 1
-
 
 def _nested_tensor_to_buffer(nested_tensor):
     """
@@ -66,17 +46,9 @@ class _BufferNestedTensor(object):
             assert buffer_.dim() == 1
         nested_size=list(nested_size)
         if nested_stride is None:
-            # print('nested_size')
-            # print(nested_size)
             self._c_impl = nestedtensor._C._BufferNestedTensor(
                 buffer_, nested_size)
         else:
-            # nested_size = [list(nested_size[0]), list(nested_size[1])]
-            # nested_stride = [list(nested_stride[0]), list(nested_stride[1])]
-            # print('nested_size1')
-            # print(nested_size)
-            # print('nested_stride1')
-            # print(nested_stride)
             self._c_impl = nestedtensor._C._BufferNestedTensor(
                 buffer_, nested_size, nested_stride)
         # self._nested_dim=_infer_nested_dim(nested_size)
@@ -146,10 +118,6 @@ class _BufferNestedTensor(object):
         if self._unbound_tensors is not None:
             return self._unbound_tensors
         nested_size=self.nested_size()
-        # print('nested_size')
-        # print(nested_size)
-        # print('self.nested_dim()')
-        # print(self.nested_dim())
         if self.nested_dim() == 1:
             result=()
             offset=0

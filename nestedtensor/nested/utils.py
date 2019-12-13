@@ -203,14 +203,6 @@ def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
                 else:
                     args = _args
                     kwargs = _kwargs
-                # if 'out' in kwargs:
-                #     # TODO: Need to support tuples for out flag
-                #     # Need inverse of unwrap. Can use to_list
-                #     print('kwargs1.keys()')
-                #     print(kwargs.keys())
-                #     import pdb; pdb.set_trace()
-                #     return kwargs['out']
-                # else:
                 results = _func(*args, **kwargs)
                 results = _unwrap_tensor_tuples(results)
                 if len(results) == 1:

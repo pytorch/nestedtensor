@@ -110,11 +110,6 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             buffer_ = _create_buffer(data)
             nested_size = _nested_size(data)
             nested_stride = _nested_stride(data)
-            # print("HERE")
-            # print(data)
-            # print(buffer_)
-            # print(nested_size)
-            # print(nested_stride)
             impl = bufferimpl._BufferNestedTensor(
                 buffer_, nested_size, nested_stride)
         else:

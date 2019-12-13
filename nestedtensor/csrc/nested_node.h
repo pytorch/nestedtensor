@@ -121,16 +121,13 @@ static IValue py_obj_to_ivalue(py::object py_obj) {
 }
 
 static inline TensorNode _get_tensor_structure(py::list py_obj) {
-  // std::cout << "111" << std::endl;
   // Empty list of Tensors
   if (py_obj.size() == 0) {
     return TensorNode();
   }
   IValue payload = py_obj_to_ivalue(py_obj);
-  // std::cout << "222" << std::endl;
   if (payload.isTensorList()) {
     // List of Tensors
-    // std::cout << "333" << std::endl;
     return TensorNode(payload.toTensorList());
   } else {
     // List of lists of Tensors
@@ -139,7 +136,6 @@ static inline TensorNode _get_tensor_structure(py::list py_obj) {
       py::list py_obj_i = py::list(py_obj[i]);
       result.push_back(_get_tensor_structure(py_obj_i));
     }
-    // std::cout << "444" << std::endl;
     return TensorNode(result);
   }
 }
@@ -215,10 +211,8 @@ static inline at::Tensor _get_first_variable(TensorNode nested_node) {
 template <typename B, typename A, typename F>
 static inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
   if (nested_node.is_leaf()) {
-    // std::cout << "HERE1" << std::endl;
     c10::List<A> result;
     for (size_t i = 0; i < nested_node.size(); i++) {
-      // std::cout << "HERE1i " << i << std::endl;
       result.emplace_back(fn(nested_node.payload(i)));
     }
     return NestedNode<A>(result);

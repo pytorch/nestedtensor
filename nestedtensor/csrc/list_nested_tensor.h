@@ -21,10 +21,8 @@ struct _ListNestedTensor {
     return _first_variable.element_size();
   }
   SizeNode nested_size() {
-    // std::cout << "HERE" << std::endl;
     return map<at::Tensor, c10::List<int64_t>>(
         _structure, [](at::Tensor tensor) -> c10::List<int64_t> {
-          // std::cout << "ts: " << tensor.sizes() << std::endl;
           return c10::List<int64_t>(tensor.sizes());
         });
   }
