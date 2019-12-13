@@ -21,18 +21,14 @@ struct _ListNestedTensor {
     return _first_variable.element_size();
   }
   SizeNode nested_size() {
-    if (nested_dim() == 1 && _structure.degree() == 0) {
-      return SizeNode();
-    }
+    // std::cout << "HERE" << std::endl;
     return map<at::Tensor, c10::List<int64_t>>(
         _structure, [](at::Tensor tensor) -> c10::List<int64_t> {
+          // std::cout << "ts: " << tensor.sizes() << std::endl;
           return c10::List<int64_t>(tensor.sizes());
         });
   }
   SizeNode nested_stride() {
-    if (nested_dim() == 1 && _structure.degree() == 0) {
-      return SizeNode();
-    }
     return map<at::Tensor, c10::List<int64_t>>(
         _structure, [](at::Tensor tensor) -> c10::List<int64_t> {
           return c10::List<int64_t>(tensor.strides());
@@ -71,7 +67,11 @@ struct _ListNestedTensor {
         });
   }
   int64_t __len__() {
-    return _structure.degree();
+    if (nested_dim() == 1) {
+      return _structure.size();
+    } else {
+      return _structure.degree();
+    }
   }
   at::Tensor to_tensor() {
     return NestedNode_to_tensor(_structure);

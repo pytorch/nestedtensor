@@ -34,6 +34,9 @@ struct NestedNode {
   inline size_t degree() const {
     return _children.size();
   }
+  inline size_t size() const {
+    return _payload.size();
+  }
 
  private:
   bool _is_leaf;
@@ -72,10 +75,12 @@ using SizeNode = NestedNode<c10::List<int64_t>>;
 template <typename A>
 inline py::object wrap_nested_node(NestedNode<A> nested_node) {
   std::vector<py::object> result;
-  for (size_t i = 0; i < nested_node.degree(); i++) {
-    if (nested_node.is_leaf()) {
+  if (nested_node.is_leaf()) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
       result.push_back(torch::jit::toPyObject(nested_node.payload(i)));
-    } else {
+    }
+  } else {
+    for (size_t i = 0; i < nested_node.degree(); i++) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
   }
@@ -87,13 +92,15 @@ static std::string _NestedNode___str__(const TensorNode& nested_node) {
   std::stringstream result;
   result << "nested_tensor([";
   result << std::endl;
-  for (size_t i = 0; i < nested_node.degree(); i++) {
-    result << "  ";
-    if (nested_node.is_leaf()) {
+  if (nested_node.is_leaf()) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
       PyObject* objectsRepresentation =
           PyObject_Str(THPVariable_Wrap(nested_node.payload(i)));
       result << THPUtils_unpackString(objectsRepresentation);
-    } else {
+    }
+  } else {
+    result << "  ";
+    for (size_t i = 0; i < nested_node.degree(); i++) {
       result << _NestedNode___str__(nested_node.children(i));
     }
     result << ",";
@@ -114,23 +121,25 @@ static IValue py_obj_to_ivalue(py::object py_obj) {
 }
 
 static inline TensorNode _get_tensor_structure(py::list py_obj) {
+  // std::cout << "111" << std::endl;
+  // Empty list of Tensors
   if (py_obj.size() == 0) {
     return TensorNode();
   }
-  InferredType inferred_type = tryToInferType(py_obj);
-  if (!inferred_type.success()) {
-    std::cerr << inferred_type.reason() << std::endl;
-    throw python_error();
-  }
-  IValue payload = toIValue(py_obj, inferred_type.type());
+  IValue payload = py_obj_to_ivalue(py_obj);
+  // std::cout << "222" << std::endl;
   if (payload.isTensorList()) {
+    // List of Tensors
+    // std::cout << "333" << std::endl;
     return TensorNode(payload.toTensorList());
   } else {
-    TORCH_CHECK(payload.isGenericList(), "Shouldn't see this.");
+    // List of lists of Tensors
     std::vector<TensorNode> result;
     for (size_t i = 0; i < py_obj.size(); i++) {
-      result.push_back(_get_tensor_structure(py_obj[i]));
+      py::list py_obj_i = py::list(py_obj[i]);
+      result.push_back(_get_tensor_structure(py_obj_i));
     }
+    // std::cout << "444" << std::endl;
     return TensorNode(result);
   }
 }
@@ -173,10 +182,12 @@ static inline SizeNode _get_size_structure(py::list py_obj) {
 static inline int64_t nested_node_numel(
     const NestedNode<at::Tensor>& meta_node) {
   int64_t result = 0;
-  for (size_t i = 0; i < meta_node.degree(); i++) {
-    if (meta_node.is_leaf()) {
+  if (meta_node.is_leaf()) {
+    for (size_t i = 0; i < meta_node.size(); i++) {
       result += meta_node.payload(i).numel();
-    } else {
+    }
+  } else {
+    for (size_t i = 0; i < meta_node.degree(); i++) {
       result += nested_node_numel(meta_node.children(i));
     }
   }
@@ -194,7 +205,7 @@ static NestedNode<A> get_first_leaf(NestedNode<A> nested_node) {
 
 static inline at::Tensor _get_first_variable(TensorNode nested_node) {
   TensorNode leaf = get_first_leaf(nested_node);
-  if (leaf.degree()) {
+  if (leaf.size()) {
     return leaf.payload(0);
   } else {
     return torch::ones({});
@@ -204,8 +215,10 @@ static inline at::Tensor _get_first_variable(TensorNode nested_node) {
 template <typename B, typename A, typename F>
 static inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
   if (nested_node.is_leaf()) {
+    // std::cout << "HERE1" << std::endl;
     c10::List<A> result;
-    for (size_t i = 0; i < nested_node.degree(); i++) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      // std::cout << "HERE1i " << i << std::endl;
       result.emplace_back(fn(nested_node.payload(i)));
     }
     return NestedNode<A>(result);
@@ -224,7 +237,7 @@ static inline void apply2(
     NestedNode<A> nested_node2,
     F fn) {
   if (nested_node1.is_leaf()) {
-    for (size_t i = 0; i < nested_node1.degree(); i++) {
+    for (size_t i = 0; i < nested_node1.size(); i++) {
       fn(nested_node1.payload(i), nested_node2.payload(i));
     }
   } else {
@@ -237,10 +250,12 @@ static inline void apply2(
 static inline at::Tensor NestedNode_to_tensor(
     const NestedNode<at::Tensor>& nested_node) {
   std::vector<at::Tensor> variables;
-  for (size_t i = 0; i < nested_node.degree(); i++) {
-    if (nested_node.is_leaf()) {
+  if (nested_node.is_leaf()) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
       variables.emplace_back(nested_node.payload(i));
-    } else {
+    }
+  } else {
+    for (size_t i = 0; i < nested_node.degree(); i++) {
       variables.emplace_back(NestedNode_to_tensor(nested_node.children(i)));
     }
   }
@@ -265,8 +280,8 @@ static inline bool _verify_variables(
   //     requires_grad
   //     is_pinned()
   bool valid = true;
-  for (size_t i = 0; i < nested_node.degree(); i++) {
-    if (nested_node.is_leaf()) {
+  if (nested_node.is_leaf()) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
       at::Tensor variable = nested_node.payload(i);
       // TODO: Add more checks?
       valid = valid && (variable.dim() == first_variable.dim());
@@ -278,12 +293,15 @@ static inline bool _verify_variables(
       // NOTE: This is a very costly check! For now we'll let this to be enabled
       // manually. valid = valid && (variable_.is_pinned() ==
       // first_variable.is_pinned());
-    } else {
+    }
+  } else {
+    for (size_t i = 0; i < nested_node.degree(); i++) {
       valid =
           valid && _verify_variables(first_variable, nested_node.children(i));
     }
   }
   return valid;
 }
+
 } // namespace nested_tensor
 } // namespace torch

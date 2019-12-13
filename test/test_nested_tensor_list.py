@@ -134,6 +134,10 @@ class Test_ListNestedTensor(TestCase):
             [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
         # TODO: Return torch.NestedSize instead of lists
         na = [[1, 2], [2, 3], [4, 5]]
+        print('a.nested_dim()')
+        print(a.nested_dim())
+        print('a.nested_size()')
+        print(a.nested_size())
         self.assertEqual(a.nested_size(), na)
 
     def test_nested_stride(self):
