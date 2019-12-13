@@ -43,7 +43,7 @@ class TestNestedTensor(TestCase):
         default_nested_tensor = nestedtensor.nested_tensor([])
         default_tensor = torch.tensor([])
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
-        self.assertEqual(default_nested_tensor.nested_size(), ())
+        self.assertEqual(default_nested_tensor.nested_size(), nestedtensor.NestedSize([]))
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
         self.assertEqual(default_nested_tensor.layout, default_tensor.layout)
         self.assertEqual(default_nested_tensor.device, default_tensor.device)
@@ -61,7 +61,7 @@ class TestNestedTensor(TestCase):
     def test_nested_size(self):
         a = nestedtensor.nested_tensor(
             [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-        na = (torch.Size([1, 2]), torch.Size([2, 3]), torch.Size([4, 5]))
+        na = nestedtensor.NestedSize([[1, 2], [2, 3], [4, 5]])
         self.assertEqual(a.nested_size(), na)
         values = [torch.rand(1, 2) for i in range(10)]
         values = [values[1:i] for i in range(2, 10)]
@@ -97,11 +97,6 @@ class TestNestedTensor(TestCase):
 
     def test_nested_dim(self):
         nt = nestedtensor.nested_tensor([torch.tensor(3)])
-        # print(nt)
-        # print(nt.nested_dim())
-        # print(nt.nested_size())
-        # print(nt.nested_stride())
-        # self.assertEqual(nt.nested_dim(), 1)
         for i in range(2, 5):
             nt = utils.gen_nested_tensor(i, i, 3)
             self.assertEqual(nt.nested_dim(), i)

@@ -35,9 +35,11 @@ class NestedSize(object):
     def __init__(self, raw_nested_size: list):
         """We expect this to be constructed from one of the impls.
         That means we get a nested list of integers which we need to convert."""
-        assert isinstance(raw_nested_size, list)
+        if not isinstance(raw_nested_size, list):
+            raise RuntimeError(str(raw_nested_size))
         self._nested_size = _construct_nested_sizes(raw_nested_size)
 
+    # TODO: Test the string output explicitly
     def __str__(self):
         def _str(x, indent=0):
             if len(x) == 0:
@@ -59,6 +61,9 @@ class NestedSize(object):
 
     def __repr__(self):
         return self.__str__()
+
+    def __eq__(self, other):
+        return self._nested_size == other._nested_size
 
     def __iter__(self):
         if isinstance(self._nested_size[0], list):
@@ -274,13 +279,13 @@ class NestedTensor(object):
                     if dimi < self.nested_dim():
                         raise ValueError("Tuples only support for Tensor dims")
                     nested_sizes.append(self.nested_size(dimi))
-                return NestedSize(tuple(t for t in zip(*nested_sizes)))
+                return tuple(t for t in zip(*nested_sizes))
             else:
                 if dim == 0:
                     return len(self)
                 if self.nested_dim() == 1:
                     return tuple(s[dim - 1] for s in self.nested_size())
-                return NestedSize(tuple(t.nested_size(dim - 1) for t in self.unbind()))
+                return tuple(t.nested_size(dim - 1) for t in self.unbind())
 
     def nested_stride(self, dim=None):
         # TODO: Negative dims and slices
