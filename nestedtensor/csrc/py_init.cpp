@@ -1,4 +1,4 @@
-// #include <jit_list_apply.h>
+#include <jit_list_apply.h>
 #include <python_buffer_nested_tensor.h>
 #include <python_list_nested_tensor.h>
 
@@ -19,7 +19,6 @@
 // NOTE: Implementations _ListNestedTensor and _BufferNestedTEnsor
 // return lists of lists of integers for nested_size and nested_stride
 // for now. It's up to the consumer to correct this if required.
-
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: Never forget about pybind return value policies
@@ -119,5 +118,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           "get_buffer",
           &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
 
-//  m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
+  m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
 }
