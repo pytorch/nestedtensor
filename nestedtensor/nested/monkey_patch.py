@@ -43,47 +43,47 @@ def monkey_patch(NestedTensor):
     for function_name in codegen.get_python_binary_arithmetic_operations():
         if function_name in ['truediv', 'floordiv', 'mod', 'divmod', 'lshift', 'rshift', 'and', 'xor', 'or']:
             continue
-        set_wrapped_torch_function(function_name, utils.pointwise())
+        set_wrapped_torch_function(function_name, utils.tensorwise())
 
     for function_name in codegen.get_python_binary_arithmetic_operations():
         if function_name in ['divmod']:
             continue
-        set_nt_method("__" + function_name + '__', utils.pointwise())
+        set_nt_method("__" + function_name + '__', utils.tensorwise())
 
     for function_name in codegen.get_python_binary_arithmetic_operations():
         if function_name in ['matmul', 'floordiv', 'mod', 'divmod']:
             continue
-        set_nt_method("__i" + function_name + '__', utils.pointwise())
+        set_nt_method("__i" + function_name + '__', utils.tensorwise())
 
     for function_name in codegen.get_python_binary_arithmetic_operations():
         if function_name in ['matmul', 'mod', 'divmod', 'lshift', 'rshift', 'and', 'xor', 'or']:
             continue
-        set_nt_method("__r" + function_name + '__', utils.pointwise())
+        set_nt_method("__r" + function_name + '__', utils.tensorwise())
 
     # --- Python unary arithmetic operations
     for function_name in ['neg', 'pos', 'abs', 'invert']:
         if function_name in ['pos', 'invert']:
             continue
-        set_wrapped_torch_function(function_name, utils.pointwise())
+        set_wrapped_torch_function(function_name, utils.tensorwise())
 
     for function_name in ['neg', 'pos', 'abs', 'invert']:
         if function_name in ['pos']:
             continue
-        set_nt_method("__" + function_name + '__', utils.pointwise())
+        set_nt_method("__" + function_name + '__', utils.tensorwise())
 
     # --- Python rich comparison operations
     for function_name in codegen.get_python_rich_comparison_functions():
-        set_nt_method("__" + function_name + '__', utils.pointwise())
+        set_nt_method("__" + function_name + '__', utils.tensorwise())
     # <
 
-    # > PyTorch pointwise operations
-    # --- Module and Tensor pointwise functions and methods
+    # > PyTorch tensorwise operations
+    # --- Module and Tensor tensorwise functions and methods
     for function_name in codegen.get_pointwise_functions():
-        set_nt_method(function_name + '_', utils.pointwise())
+        set_nt_method(function_name + '_', utils.tensorwise())
         if function_name in ['fill']:
             continue
-        set_wrapped_torch_function(function_name, utils.pointwise())
-        set_nt_method(function_name, utils.pointwise())
+        set_wrapped_torch_function(function_name, utils.tensorwise())
+        set_nt_method(function_name, utils.tensorwise())
     # <
 
     # > PyTorch reduction operations
@@ -100,7 +100,7 @@ def monkey_patch(NestedTensor):
 
     # > PyTorch conversion methods
     for function_name in codegen.get_conversion_functions():
-        set_nt_method(function_name, utils.pointwise())
+        set_nt_method(function_name, utils.tensorwise())
     # <
 
     # > PyTorch BLAS and LAPACK operations
@@ -188,7 +188,7 @@ def monkey_patch(NestedTensor):
     #                          'batch_norm', 'max_pool2d', 'interpolate']:
     #         continue
     #     if function_name in ['relu', 'relu_']:
-    #         set_module(module.nn.functional, function_name, utils.pointwise())
+    #         set_module(module.nn.functional, function_name, utils.tensorwise())
     #     else:
     #         set_module(module.nn.functional, function_name, utils.tensorwise())
 

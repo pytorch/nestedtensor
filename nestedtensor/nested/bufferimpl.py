@@ -11,16 +11,6 @@ import nestedtensor
 DEBUG = int(os.getenv("DEBUG", 0))
 
 
-def _nested_numel(tup):
-    if isinstance(tup, torch.Size):
-        p = 1
-        for t in tup:
-            p *= t
-        return p
-    else:
-        return sum(_nested_numel(t) for t in tup)
-
-
 def _prod(tup):
     p = 1
     for t in tup:
@@ -28,35 +18,11 @@ def _prod(tup):
     return p
 
 
-def _infer_nested_dim(nested_size):
-    if isinstance(nested_size, torch.Size):
-        return 0
-    # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
-    # This is consistent with the behavior of torch.tensor([])
-    if len(nested_size) == 0:
-        return 1
-    return _infer_nested_dim(nested_size[0]) + 1
-
-
-def _infer_dim(nested_size):
-    if isinstance(nested_size, torch.Size):
-        return len(nested_size)
+def _nested_numel(nested_size):
+    if len(nested_size) == 0 or not isinstance(nested_size[0], list):
+        return _prod(nested_size)
     else:
-        # NOTE: This is 1 beause nested_size and therefore size is an empty tuple of length 0
-        # This is consistent with the behavior of torch.tensor([])
-        if len(nested_size) == 0:
-            return 1
-        return _infer_dim(nested_size[0]) + 1
-
-
-def _cont_strides(nested_size):
-    if isinstance(nested_size, torch.Size):
-        stride = (1,)
-        for s in nested_size[:-1]:
-            stride = (stride[-1] * s,) + stride
-        return stride
-    else:
-        return tuple(map(_cont_strides, nested_size))
+        return sum(_nested_numel(t) for t in nested_size)
 
 
 def _nested_tensor_to_buffer(nested_tensor):
@@ -74,25 +40,28 @@ def _nested_tensor_to_buffer(nested_tensor):
 
 class _BufferNestedTensor(object):
     def __init__(self, buffer_, nested_size, nested_stride=None):
-        self._c_impl = nestedtensor._C._BufferNestedTensor(buffer_)
         # Tuple disables changes in size via append etc.
         # assert isinstance(tensors, tuple)
         if DEBUG:
             assert buffer_.dim() == 1
-        self._nested_size = nested_size
-        # Lazily initialized if None
-        self._nested_stride = nested_stride
-        self._nested_dim = _infer_nested_dim(self._nested_size)
-        self._dim = _infer_dim(self._nested_size)
-        self._is_contiguous = True
+        nested_size=list(nested_size)
+        if nested_stride is None:
+            self._c_impl = nestedtensor._C._BufferNestedTensor(
+                buffer_, nested_size)
+        else:
+            self._c_impl = nestedtensor._C._BufferNestedTensor(
+                buffer_, nested_size, nested_stride)
+        # self._nested_dim=_infer_nested_dim(nested_size)
+        # self._dim=_infer_dim(nested_size)
+        self._is_contiguous=True
         # Used to cache unbind
-        self._unbound_tensors = None
+        self._unbound_tensors=None
 
     def get_buffer(self):
         return self._c_impl.get_buffer()
 
     def dim(self):
-        return self._dim
+        return self._c_impl.dim()
 
     def is_pinned(self):
         if len(self) > 0:
@@ -135,10 +104,10 @@ class _BufferNestedTensor(object):
             t.backward(g, retain_graph, create_graph)
 
     def nested_dim(self):
-        return self._nested_dim
+        return self._c_impl.nested_dim()
 
     def __len__(self):
-        return len(self._nested_size)
+        return len(self.nested_size())
 
     def element_size(self):
         if DEBUG:
@@ -148,39 +117,37 @@ class _BufferNestedTensor(object):
     def unbind(self):
         if self._unbound_tensors is not None:
             return self._unbound_tensors
-        nested_size = self._nested_size
+        nested_size=self.nested_size()
         if self.nested_dim() == 1:
-            result = ()
-            offset = 0
+            result=()
+            offset=0
             for i in range(len(nested_size)):
-                size = nested_size[i]
-                tensor = self.get_buffer().narrow(
+                size=nested_size[i]
+                tensor=self.get_buffer().narrow(
                     0, offset, _prod(size)).reshape(size)
                 offset += tensor.numel()
-                result = result + (tensor,)
+                result=result + (tensor,)
         else:
-            nested_stride = self.nested_stride()
-            result = ()
-            offset = 0
+            nested_stride=self.nested_stride()
+            result=()
+            offset=0
             for i in range(len(self)):
-                sub_numel = _nested_numel(nested_size[i])
-                result_i = _BufferNestedTensor(self.get_buffer().narrow(
+                sub_numel=_nested_numel(nested_size[i])
+                result_i=_BufferNestedTensor(self.get_buffer().narrow(
                     0, offset, sub_numel), nested_size[i], nested_stride[i])
                 offset += sub_numel
-                result = result + (result_i,)
-        self._unbound_tensors = result
+                result=result + (result_i,)
+        self._unbound_tensors=result
         return self._unbound_tensors
 
     def is_contiguous(self):
         return self._is_contiguous
 
     def nested_size(self):
-        return self._nested_size
+        return self._c_impl.nested_size()
 
     def nested_stride(self):
-        if self._nested_stride is None:
-            self._nested_stride = _cont_strides(self.nested_size())
-        return self._nested_stride
+        return self._c_impl.nested_stride()
 
     def to_tensor(self):
         """
@@ -194,13 +161,13 @@ class _BufferNestedTensor(object):
             return self.size(None)[dim]
 
         def _size(nested_size):
-            len_sizes = len(nested_size)
+            len_sizes=len(nested_size)
             if isinstance(nested_size[0], torch.Size):
-                sizes = nested_size
+                sizes=nested_size
             else:
-                sizes = iter(_size(x) for x in nested_size)
+                sizes=iter(_size(x) for x in nested_size)
 
-            result = tuple(k[0] if k[1:] == k[:-1]
+            result=tuple(k[0] if k[1:] == k[:-1]
                            else None for k in zip(*sizes))
             return (len_sizes,) + result
 
@@ -220,10 +187,10 @@ class _BufferNestedTensor(object):
         def _str(x, indent=0):
             if x.nested_dim() == 0:
                 return ""
-            s = indent*"\t" + "[\n"
+            s=indent*"\t" + "[\n"
             if x.nested_dim() == 1:
-                strs = list(xi.__str__() for xi in x.unbind())
-                strs = list(map(lambda xi: "\n".join(
+                strs=list(xi.__str__() for xi in x.unbind())
+                strs=list(map(lambda xi: "\n".join(
                     map(lambda xij: (indent + 1)*"\t" + xij, xi.split("\n"))), strs))
                 s += ",\n".join(strs)
             else:

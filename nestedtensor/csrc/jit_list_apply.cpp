@@ -2,8 +2,8 @@
 
 namespace torch {
 namespace nested_tensor {
-static _NestedNode apply_jit_function(
-    const std::vector<_NestedNode>& nested_nodes,
+static TensorNode apply_jit_function(
+    const std::vector<TensorNode>& nested_nodes,
     Function& fn) {
   bool all_leaf = true;
   for (size_t i = 0; i < nested_nodes.size(); i++) {
@@ -17,15 +17,16 @@ static _NestedNode apply_jit_function(
     // for TorchScript. NOTE: We know the IValues of the argument, there is
     // no
     // need to cast around.
-    Stack stack;
-    stack.reserve(nested_nodes.size());
-    for (size_t i = 0; i < nested_nodes.size(); i++) {
-      push(stack, nested_nodes[i].payload().toTensor());
+    c10::List<at::Tensor> result;
+    for (size_t j = 0; j < nested_nodes[0].size(); j++) {
+      Stack stack;
+      for (size_t i = 0; i < nested_nodes.size(); i++) {
+        push(stack, nested_nodes[i].payload(j));
+      }
+      fn.run(stack);
+      result.push_back(stack.back().toTensor());
     }
-    fn.run(stack);
-    torch::autograd::Variable result = stack.back().toTensor();
-    auto result_node = _NestedNode(result);
-    return result_node;
+    return TensorNode(result);
   } else {
     bool broadcastable = true;
     size_t num_children = 0;
@@ -40,9 +41,9 @@ static _NestedNode apply_jit_function(
       }
     }
     TORCH_CHECK(broadcastable, "Can't broadcast given nested tensors");
-    std::vector<_NestedNode> result;
+    std::vector<TensorNode> result;
     for (size_t i = 0; i < num_children; i++) {
-      std::vector<_NestedNode> local_args;
+      std::vector<TensorNode> local_args;
       for (size_t j = 0; j < nested_nodes.size(); j++) {
         if (nested_nodes[j].is_leaf()) {
           local_args.push_back(nested_nodes[j]);
@@ -52,7 +53,7 @@ static _NestedNode apply_jit_function(
       }
       result.push_back(apply_jit_function(local_args, fn));
     }
-    return _NestedNode(result);
+    return TensorNode(result);
   }
 }
 THP_ListNestedTensor jit_apply_function(
@@ -70,12 +71,12 @@ THP_ListNestedTensor jit_apply_function(
   TORCH_CHECK(
       schema.arguments().size() == nts.size(),
       "Give NestedTensors don't match function args.");
-  std::vector<_NestedNode> nested_nodes;
+  std::vector<TensorNode> nested_nodes;
   for (size_t i = 0; i < nts.size(); i++) {
     nested_nodes.push_back(nts[i].get_structure());
   }
   py::gil_scoped_release release;
-  _NestedNode nested_node = apply_jit_function(nested_nodes, callee);
+  TensorNode nested_node = apply_jit_function(nested_nodes, callee);
   py::gil_scoped_acquire acquire;
   return THP_ListNestedTensor(_ListNestedTensor(nested_node));
 }

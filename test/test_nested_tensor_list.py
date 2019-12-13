@@ -103,7 +103,7 @@ class Test_ListNestedTensor(TestCase):
         # nested_dim is 1 and dim is 1 too.
         default_nested_tensor = _ListNestedTensor([])
         default_tensor = torch.tensor([])
-        self.assertEqual(default_nested_tensor.nested_dim(), 0)
+        self.assertEqual(default_nested_tensor.nested_dim(), 1)
         # TODO: Return torch.NestedSize instead of list
         self.assertEqual(default_nested_tensor.nested_size(), [])
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
@@ -133,14 +133,14 @@ class Test_ListNestedTensor(TestCase):
         a = _ListNestedTensor(
             [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
         # TODO: Return torch.NestedSize instead of lists
-        na = ([1, 2], [2, 3], [4, 5])
+        na = [[1, 2], [2, 3], [4, 5]]
         self.assertEqual(a.nested_size(), na)
 
     def test_nested_stride(self):
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
         a = _ListNestedTensor(tensors)
         # TODO: Return torch.NestedSize instead of lists
-        na = tuple(list(t.stride()) for t in tensors)
+        na = list(list(t.stride()) for t in tensors)
         self.assertEqual(a.nested_stride(), na)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")

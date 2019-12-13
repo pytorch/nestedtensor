@@ -1,168 +1,239 @@
 #pragma once
-#include <torch/extension.h>
 #include <Python.h>
+#include <pybind11/stl.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/python_strings.h>
 #include <torch/extension.h>
+#include <type_traits>
 
 namespace torch {
 namespace nested_tensor {
 
+// TODO: Don't use using for namespaces in header!
 using namespace torch::jit;
 using namespace torch::autograd::utils;
-// The implicit contract is that, if there are no children, variable_node is
-// defined.
-struct _NestedNode {
-  _NestedNode() : _payload() {}
-  _NestedNode(const std::vector<_NestedNode> children)
-      : _children(children), _payload() {}
-  _NestedNode(c10::IValue payload) : _payload(payload) {}
+template <typename T = c10::IValue>
+struct NestedNode {
+  NestedNode() : _is_leaf(true) {}
+  NestedNode(const std::vector<NestedNode<T>> children)
+      : _is_leaf(false), _children(children) {}
+  NestedNode(c10::List<T> payload) : _is_leaf(true), _payload(payload) {}
   inline bool is_leaf() const {
-    return _children.size() == 0;
+    return _is_leaf;
   }
-  inline c10::IValue payload() const {
-    return _payload;
+  inline T payload(size_t i) const {
+    return _payload[i];
   }
-  inline const std::vector<_NestedNode> children() const {
-    return _children;
-  }
-  inline _NestedNode children(size_t i) const {
+  inline NestedNode<T> children(size_t i) const {
     return _children[i];
   }
-  inline const _NestedNode* children_data(size_t i) const {
+  inline const NestedNode<T>* children_data(size_t i) const {
     return _children.data() + i;
   }
   inline size_t degree() const {
     return _children.size();
   }
+  inline size_t size() const {
+    return _payload.size();
+  }
 
  private:
-  const std::vector<_NestedNode> _children;
+  bool _is_leaf;
+  const std::vector<NestedNode<T>> _children;
   // TODO: Make this const?
   // _VariableNode _variable_node;
-  c10::IValue _payload;
+  c10::List<T> _payload;
 };
 
-inline PyObject* wrap_list(std::vector<PyObject*> list) {
-  auto r = THPObjectPtr{PyTuple_New(list.size())};
-  if (!r)
-    throw python_error();
-  for (size_t i = 0; i < list.size(); ++i) {
-    PyTuple_SET_ITEM(r.get(), i, list[i]);
-  }
-  return r.release();
-}
+using TensorNode = NestedNode<at::Tensor>;
 
-inline PyObject* wrap_nested_node(_NestedNode nested_node) {
+// This is a C++ representation of a nested list of torch.Sizes
+//
+// It can never be a list of just numbers, because torch.Size
+// is always a list and NestedTensors represent lists of torch.Tensors
+//
+// Noteworthy cases:
+//
+// This is an empty list of lists if we construct
+// nested_tensor([])
+// which is of nested_dim 1, dim 1 and tensor_dim 0
+//
+// This is a list of empty lists if we construct e.g.
+// nested_tensor([torch.tensor(0), torch.tensor(1), ...])
+// which is of nested_dim 1, dim 1 and tensor_dim 0
+//
+// This is a list of list of numbers if we construct e.g.
+// nested_tensor([torch.tensor([1]), torch.tensor([2]), ...])
+// which is of nested_dim 1, dim 2 and tensor_dim 1
+//
+// That means, if the list is not empty it is either a list of
+// lists of numbers or a list of empty lists.
+
+using SizeNode = NestedNode<c10::List<int64_t>>;
+
+template <typename A>
+inline py::object wrap_nested_node(NestedNode<A> nested_node) {
+  std::vector<py::object> result;
   if (nested_node.is_leaf()) {
-    return torch::jit::toPyObject(nested_node.payload()).release().ptr();
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      result.push_back(torch::jit::toPyObject(nested_node.payload(i)));
+    }
   } else {
-    std::vector<PyObject*> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
-    return wrap_list(result);
   }
+  py::list result1 = py::cast(result);
+  return result1;
 }
 
-static std::string _NestedNode___str__(const _NestedNode& nested_node) {
+static std::string _NestedNode___str__(const TensorNode& nested_node) {
   std::stringstream result;
+  result << "nested_tensor([";
+  result << std::endl;
   if (nested_node.is_leaf()) {
-    PyObject* objectsRepresentation =
-        PyObject_Str(THPVariable_Wrap(nested_node.payload().toTensor()));
-    result << THPUtils_unpackString(objectsRepresentation);
-    return result.str();
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      PyObject* objectsRepresentation =
+          PyObject_Str(THPVariable_Wrap(nested_node.payload(i)));
+      result << THPUtils_unpackString(objectsRepresentation);
+    }
   } else {
-    result << "nested_tensor([";
-    result << std::endl;
+    result << "  ";
     for (size_t i = 0; i < nested_node.degree(); i++) {
-      result << "  ";
       result << _NestedNode___str__(nested_node.children(i));
-      result << ",";
-      result << std::endl;
     }
-    result << "])";
-    return result.str();
+    result << ",";
+    result << std::endl;
   }
+  result << "])";
+  return result.str();
 }
 
-static inline _NestedNode _get_structure(PyObject* tensors) {
-  if (THPVariable_Check(tensors)) {
-    auto variable = THPVariable_Unpack(tensors);
-    return _NestedNode(variable);
+static IValue py_obj_to_ivalue(py::object py_obj) {
+  auto inferred_type = tryToInferType(py_obj);
+  if (!inferred_type.success()) {
+    std::cerr << inferred_type.reason() << std::endl;
+    throw python_error();
+  }
+  auto payload = toIValue(py_obj, inferred_type.type());
+  return payload;
+}
+
+static inline TensorNode _get_tensor_structure(py::list py_obj) {
+  // Empty list of Tensors
+  if (py_obj.size() == 0) {
+    return TensorNode();
+  }
+  IValue payload = py_obj_to_ivalue(py_obj);
+  if (payload.isTensorList()) {
+    // List of Tensors
+    return TensorNode(payload.toTensorList());
   } else {
-    std::vector<_NestedNode> meta_nodes;
-    Py_ssize_t i, n;
-    n = PyObject_Length(tensors);
-    PyObject* item;
-    if (n < 0 || !PySequence_Check(tensors)) {
-      throw python_error();
+    // List of lists of Tensors
+    std::vector<TensorNode> result;
+    for (size_t i = 0; i < py_obj.size(); i++) {
+      py::list py_obj_i = py::list(py_obj[i]);
+      result.push_back(_get_tensor_structure(py_obj_i));
     }
-    for (i = 0; i < n; i++) {
-      item = PySequence_GetItem(tensors, i);
-      _NestedNode node = _get_structure(item);
-      meta_nodes.push_back(node);
-    }
-    return _NestedNode(meta_nodes);
+    return TensorNode(result);
   }
 }
 
-static inline torch::autograd::Variable _get_first_tensor(PyObject* tensors) {
-  if (THPVariable_Check(tensors)) {
-    return THPVariable_Unpack(tensors);
-  } else {
-    return _get_first_tensor(PyList_GetItem(tensors, 0));
+static inline SizeNode _get_size_structure(py::list py_obj) {
+  // Empty list of lists
+  if (py_obj.size() == 0) {
+    return SizeNode();
   }
+
+  // List of empty lists
+  py::list py_obj_0 = py_obj[0];
+  if (py_obj_0.size() == 0) {
+    c10::List<c10::List<int64_t>> result;
+    for (size_t i = 0; i < py_obj.size(); i++) {
+      result.push_back(c10::List<int64_t>());
+    }
+    return SizeNode(result);
+  }
+
+  // List of lists of numbers
+  InferredType inferred_type = tryToInferType(py_obj[0]);
+  if (inferred_type.success() && py_obj_to_ivalue(py_obj[0]).isIntList()) {
+    c10::List<c10::List<int64_t>> result;
+    for (size_t i = 0; i < py_obj.size(); i++) {
+      result.push_back(py_obj_to_ivalue(py_obj[i]).toIntList());
+    }
+    return SizeNode(result);
+  }
+
+  // List of lists of lists...
+  std::vector<SizeNode> result;
+  for (size_t i = 0; i < py_obj.size(); i++) {
+    py::list py_obj_i = py_obj[i];
+    result.emplace_back(_get_size_structure(py_obj_i));
+  }
+  return SizeNode(result);
 }
 
-static inline int64_t _numel(const _NestedNode& meta_node) {
+static inline int64_t nested_node_numel(
+    const NestedNode<at::Tensor>& meta_node) {
+  int64_t result = 0;
   if (meta_node.is_leaf()) {
-    return meta_node.payload().toTensor().numel();
-  } else {
-    int64_t result = 0;
-    for (size_t i = 0; i < meta_node.degree(); i++) {
-      result += _numel(meta_node.children(i));
+    for (size_t i = 0; i < meta_node.size(); i++) {
+      result += meta_node.payload(i).numel();
     }
-    return result;
+  } else {
+    for (size_t i = 0; i < meta_node.degree(); i++) {
+      result += nested_node_numel(meta_node.children(i));
+    }
   }
+  return result;
 }
 
-static inline at::Tensor _get_first_variable(_NestedNode nested_node) {
-  const _NestedNode* start = &nested_node;
+template <typename A>
+static NestedNode<A> get_first_leaf(NestedNode<A> nested_node) {
+  const NestedNode<A>* start = &nested_node;
   while (!start->is_leaf()) {
     start = start->children_data(0);
   }
-  if (!start->payload().isNone()) {
-    return start->payload().toTensor();
+  return *start;
+}
+
+static inline at::Tensor _get_first_variable(TensorNode nested_node) {
+  TensorNode leaf = get_first_leaf(nested_node);
+  if (leaf.size()) {
+    return leaf.payload(0);
   } else {
-    return torch::ones({1});
+    return torch::ones({});
   }
 }
 
-template <typename T, class F>
-static inline T map(_NestedNode nested_node, F fn) {
+template <typename B, typename A, typename F>
+static inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
   if (nested_node.is_leaf()) {
-    // TODO: For now we assume the user doesn't want to apply her function if
-    // the payload is None.
-    T new_nested_node(fn(nested_node.payload()));
-    return new_nested_node;
-  } else {
-    std::vector<T> new_children;
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      new_children.push_back(T(map<T>(nested_node.children(i), fn)));
+    c10::List<A> result;
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      result.emplace_back(fn(nested_node.payload(i)));
     }
-    return T(new_children);
+    return NestedNode<A>(result);
+  } else {
+    std::vector<NestedNode<A>> result;
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      result.emplace_back(map<B, A, F>(nested_node.children(i), fn));
+    }
+    return NestedNode<A>(result);
   }
 }
 
-template <class F>
+template <typename A, class F>
 static inline void apply2(
-    _NestedNode nested_node1,
-    _NestedNode nested_node2,
+    NestedNode<A> nested_node1,
+    NestedNode<A> nested_node2,
     F fn) {
   if (nested_node1.is_leaf()) {
-    fn(nested_node1.payload().toTensor(), nested_node2.payload().toTensor());
+    for (size_t i = 0; i < nested_node1.size(); i++) {
+      fn(nested_node1.payload(i), nested_node2.payload(i));
+    }
   } else {
     for (size_t i = 0; i < nested_node1.degree(); i++) {
       apply2(nested_node1.children(i), nested_node2.children(i), fn);
@@ -170,22 +241,24 @@ static inline void apply2(
   }
 }
 
-static inline torch::autograd::Variable _NestedNode_to_tensor(
-    const _NestedNode& nested_node) {
+static inline at::Tensor NestedNode_to_tensor(
+    const NestedNode<at::Tensor>& nested_node) {
+  std::vector<at::Tensor> variables;
   if (nested_node.is_leaf()) {
-    return nested_node.payload().toTensor();
-  } else {
-    std::vector<at::Tensor> variables;
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      variables.push_back(_NestedNode_to_tensor(nested_node.children(i)));
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      variables.emplace_back(nested_node.payload(i));
     }
-    return stack(variables);
+  } else {
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      variables.emplace_back(NestedNode_to_tensor(nested_node.children(i)));
+    }
   }
+  return stack(variables);
 }
 
 static inline bool _verify_variables(
     const torch::autograd::Variable& first_variable,
-    const _NestedNode nested_node) {
+    const TensorNode nested_node) {
   // The attributes must match across all constiuents
   //
   // The NestedTensor's attributes then become that of its
@@ -202,17 +275,19 @@ static inline bool _verify_variables(
   //     is_pinned()
   bool valid = true;
   if (nested_node.is_leaf()) {
-    at::Tensor variable = nested_node.payload().toTensor();
-    // TODO: Add more checks?
-    valid = valid && (variable.dim() == first_variable.dim());
-    valid = valid && (variable.layout() == first_variable.layout());
-    valid = valid && (variable.device() == first_variable.device());
-    valid = valid && (variable.dtype() == first_variable.dtype());
-    valid =
-        valid && (variable.requires_grad() == first_variable.requires_grad());
-    // NOTE: This is a very costly check! For now we'll let this to be enabled
-    // manually. valid = valid && (variable_.is_pinned() ==
-    // first_variable.is_pinned());
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      at::Tensor variable = nested_node.payload(i);
+      // TODO: Add more checks?
+      valid = valid && (variable.dim() == first_variable.dim());
+      valid = valid && (variable.layout() == first_variable.layout());
+      valid = valid && (variable.device() == first_variable.device());
+      valid = valid && (variable.dtype() == first_variable.dtype());
+      valid =
+          valid && (variable.requires_grad() == first_variable.requires_grad());
+      // NOTE: This is a very costly check! For now we'll let this to be enabled
+      // manually. valid = valid && (variable_.is_pinned() ==
+      // first_variable.is_pinned());
+    }
   } else {
     for (size_t i = 0; i < nested_node.degree(); i++) {
       valid =
@@ -221,5 +296,6 @@ static inline bool _verify_variables(
   }
   return valid;
 }
+
 } // namespace nested_tensor
 } // namespace torch
