@@ -203,16 +203,19 @@ def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
                 else:
                     args = _args
                     kwargs = _kwargs
-                if 'out' in kwargs:
-                    # TODO: Need to support tuples for out flag
-                    # Need inverse of unwrap. Can use to_list
-                    return kwargs['out']
-                else:
-                    results = _func(*args, **kwargs)
-                    results = _unwrap_tensor_tuples(results)
-                    if len(results) == 1:
-                        return creation.nested_tensor(results[0])
-                    return tuple(map(creation.nested_tensor, results))
+                # if 'out' in kwargs:
+                #     # TODO: Need to support tuples for out flag
+                #     # Need inverse of unwrap. Can use to_list
+                #     print('kwargs1.keys()')
+                #     print(kwargs.keys())
+                #     import pdb; pdb.set_trace()
+                #     return kwargs['out']
+                # else:
+                results = _func(*args, **kwargs)
+                results = _unwrap_tensor_tuples(results)
+                if len(results) == 1:
+                    return creation.nested_tensor(results[0])
+                return tuple(map(creation.nested_tensor, results))
 
         return decorator
     return wrapper
@@ -249,34 +252,6 @@ def _arg_apply(fn, args, kwargs):
     for (k, v) in kwargs.items():
         new_kwargs[k] = fn(v)
     return new_args, new_kwargs
-
-
-def pointwise(unbind_args=None, dim_args=None):
-    # TODO: make internal for now
-    def wrapper(f):
-        tf = tensorwise(unbind_args=unbind_args, dim_args=dim_args)(f)
-
-        @wraps(tf)
-        def decorator(*args, **kwargs):
-            # TODO: We assume that the return value matches in shape with the dispatch_key
-            dispatch_key = find_nested_tensor_dispatch_key(*args)
-            if dispatch_key is None:
-                return tf(*args, **kwargs)
-            nt_args = _get_nestedtensor_args(args, kwargs)
-            nt0 = nt_args[0].nested_size()
-            nt0_numel = nt_args[0].numel()
-            if all((nt_arg.is_contiguous() and nt0 == nt_arg.nested_size()) for nt_arg in nt_args):
-                tt_args = _get_tensortype_args(args, kwargs)
-                if all(nt0_numel == t.numel() for t in tt_args):
-                    args, kwargs = _arg_apply(lambda x: x._impl.get_buffer()
-                                              if is_nested_tensor(x) else x, args, kwargs)
-                    buffer_ = f(*args, **kwargs)
-                    return NestedTensor(
-                        bufferimpl._BufferNestedTensor(buffer_,
-                                                       dispatch_key.nested_size()))
-            return tf(*args, **kwargs)
-        return decorator
-    return wrapper
 
 
 def reduction(support_nested_dim=True, unbind_args=None, dim_args=None):
