@@ -49,7 +49,9 @@ struct THP_BufferNestedTensor {
   bool requires_grad() {
     return _data.requires_grad();
   }
-
+  _BufferNestedTensor data() {
+    return _data;
+  }
   py::object nested_size() {
     return wrap_nested_node(_data.nested_size());
   }

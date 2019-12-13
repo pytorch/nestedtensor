@@ -108,6 +108,28 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "nested_stride",
           &torch::nested_tensor::THP_BufferNestedTensor::nested_stride)
+      .def(
+          "unbind",
+          [](torch::nested_tensor::THP_BufferNestedTensor self) {
+            std::vector<py::object> result;
+            if (self.nested_dim() == 1) {
+              for (int64_t i = 0; i < self.len(); i++) {
+                result.push_back(torch::jit::toPyObject(
+                    self.data().get_structure().payload(i)));
+              }
+            } else {
+              for (int64_t i = 0; i < self.len(); i++) {
+                result.push_back(
+                    py::cast(torch::nested_tensor::THP_BufferNestedTensor(
+                        torch::nested_tensor::_BufferNestedTensor(
+                            self.data().get_structure().children(i),
+                            self.data().nested_size().children(i),
+                            self.data().nested_stride().children(i)
+                            ))));
+              }
+            }
+            return result;
+          })
       .def("dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
       .def(
           "nested_dim",
