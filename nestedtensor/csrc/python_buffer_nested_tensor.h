@@ -58,6 +58,9 @@ struct THP_BufferNestedTensor {
   py::object nested_stride() {
     return wrap_nested_node(_data.nested_stride());
   }
+  int64_t len() {
+    return _data.__len__();
+  }
   bool is_pinned() {
     return _data.is_pinned();
   }

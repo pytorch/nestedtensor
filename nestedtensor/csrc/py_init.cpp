@@ -6,6 +6,7 @@
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
 // TODO: Abstract the common recursive patterns.
 // TODO: NestedSize C++ object
+// TODO: Align NestedTensor and Tensor C++ API
 
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because

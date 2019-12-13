@@ -50,17 +50,24 @@ TensorNode _build_structure(
     SizeNode nested_stride) {
   if (nested_stride.is_leaf()) {
     std::vector<int64_t> split_sizes;
-    for (size_t i = 0; i < nested_stride.size()) {
-      split_sizes.push_back(nested_size.payload(i), nested_stride.payload(i));
+    for (size_t i = 0; i < nested_stride.size(); i++) {
+      split_sizes.push_back(
+          num_memory(nested_size.payload(i), nested_stride.payload(i)));
     }
     std::vector<at::Tensor> buffers =
         at::split_with_sizes(buffer, split_sizes, 0);
-    std::vector<at::Tensor> result;
+    c10::List<at::Tensor> result;
     for (size_t i = 0; i < buffers.size(); i++) {
-      at::as_strided(buffers[i], nested_size.payload(i), nested_stride.payload(i));
+      auto size_i = c10::impl::toVector(nested_size.payload(i));
+      auto stride_i = c10::impl::toVector(nested_stride.payload(i));
+      result.push_back(at::as_strided(
+          buffers[i], 
+          c10::IntArrayRef(size_i),
+          c10::IntArrayRef(stride_i)));
     }
     return TensorNode(result);
   } else {
+    // XXX: Split this as well! Need to use recursive memory used
     std::vector<TensorNode> result;
     for (size_t i = 0; i < nested_size.degree(); i++) {
       result.push_back(_build_structure(nested_size.children(i)));
@@ -89,7 +96,13 @@ struct TORCH_API _BufferNestedTensor {
   int64_t element_size() {
     return _buffer.element_size();
   }
-
+  int64_t __len__() {
+    if (nested_dim() == 1) {
+      return _nested_size.size();
+    } else {
+      return _nested_size.degree();
+    }
+  }
   at::ScalarType scalar_type() {
     return _buffer.scalar_type();
   }
