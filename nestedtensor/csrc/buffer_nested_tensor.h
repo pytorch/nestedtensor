@@ -9,41 +9,46 @@
 namespace torch {
 namespace nested_tensor {
 
-_NestedNode _infer_stride(_NestedNode nested_size) {
+std::vector<int64_t> _cont_stride(c10::IntArrayRef size) {
+  std::vector<int64_t> stride;
+  int64_t p = 1;
+  for (size_t i = 0; i < size.size(); i++) {
+    stride.push_back(p);
+    p *= size[i];
+  }
+  return stride;
+}
+
+SizeNode _infer_stride(SizeNode nested_size) {
   if (nested_size.is_leaf()) {
-    c10::List<int64_t> size = nested_size.payload().toIntList();
-    std::vector<int64_t> stride_;
-    int64_t p = 1;
-    for (int64_t i = 0; i < size.size(); i++) {
-      stride_.push_back(p);
-      p *= size[i];
+    c10::List<c10::IntArrayRef> result;
+    for (size_t i = 0; i < nested_size.degree(); i++) {
+      std::vector<int64_t> stride = _cont_stride(nested_size.payload(i);
+      c10::IntArrayRef stride(stride.data<int64_t>(), stride.size());
+      result.push_back(stride);
     }
-    c10::List<int64_t> stride(stride_);
-    return _NestedNode(stride);
+    return SizeNode(result);
   } else {
-    std::vector<_NestedNode> result;
+    std::vector<SizeNode> result;
     for (size_t i = 0; i < nested_size.degree(); i++) {
       result.push_back(_infer_stride(nested_size.children(i)));
     }
-    return _NestedNode(result);
+    return SizeNode(result);
   }
 }
-
 
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
 struct TORCH_API _BufferNestedTensor {
   // TODO: Deal with default initialization
   _BufferNestedTensor() = delete;
-  _BufferNestedTensor(
-      torch::autograd::Variable buffer,
-      _NestedNode nested_size)
+  _BufferNestedTensor(torch::autograd::Variable buffer, SizeNode nested_size)
       : _buffer(buffer),
         _nested_size(nested_size),
         _nested_stride(_infer_stride(nested_size)) {}
   _BufferNestedTensor(
       torch::autograd::Variable buffer,
-      _NestedNode nested_size,
-      _NestedNode nested_stride)
+      SizeNode nested_size,
+      SizeNode nested_stride)
       : _buffer(buffer),
         _nested_size(nested_size),
         _nested_stride(nested_stride) {}
@@ -72,37 +77,35 @@ struct TORCH_API _BufferNestedTensor {
   bool is_pinned() {
     return _buffer.is_pinned();
   }
-  _NestedNode nested_size() {
+  SizeNode nested_size() {
     return _nested_size;
   }
-  _NestedNode nested_stride() {
+  SizeNode nested_stride() {
     return _nested_stride;
   }
   int64_t nested_dim() {
-    const _NestedNode* start_structure = &_nested_size;
-    int64_t depth = 0;
+    const SizeNode* start_structure = &_nested_size;
+    int64_t depth = 1;
     while (!start_structure->is_leaf()) {
       depth++;
       start_structure = start_structure->children_data(0);
     }
-    if (depth == 0) {
-      depth = 1;
-    }
     return depth;
   }
   int64_t dim() {
-    const _NestedNode* start_structure = &_nested_size;
-    while (!start_structure->is_leaf()) {
-      start_structure = start_structure->children_data(0);
+    SizeNode leaf = get_first_leaf(_nested_size);
+    if (leaf.degree()) {
+      c10::IntArrayRef first_size = leaf.payload(0);
+      return first_size.size() + nested_dim();
+    } else {
+      return nested_dim();
     }
-    int64_t tensor_dim = start_structure->payload().toIntList().size();
-    return tensor_dim + nested_dim();
   }
 
  private:
   at::Tensor _buffer;
-  _NestedNode _nested_size;
-  _NestedNode _nested_stride;
+  SizeNode _nested_size;
+  SizeNode _nested_stride;
 };
 
 } // namespace nested_tensor

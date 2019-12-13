@@ -6,9 +6,9 @@ namespace torch {
 namespace nested_tensor {
 
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
-struct TORCH_API _ListNestedTensor {
+struct _ListNestedTensor {
   _ListNestedTensor() = delete;
-  _ListNestedTensor(_NestedNode structure)
+  _ListNestedTensor(TensorNode structure)
       : _structure(structure),
         _first_variable(_get_first_variable(_structure)) {
     if (__len__() > 0) {
@@ -20,46 +20,34 @@ struct TORCH_API _ListNestedTensor {
   int64_t element_size() {
     return _first_variable.element_size();
   }
-  _NestedNode nested_size() {
+  SizeNode nested_size() {
     if (nested_dim() == 1 && _structure.degree() == 0) {
-      return _NestedNode(at::IntArrayRef());
+      return SizeNode();
     }
-    return map<_NestedNode>(
-        _structure, [&](c10::IValue tensor) -> at::IntArrayRef {
-          return tensor.toTensor().sizes();
-        });
+    return map(_structure, [](at::Tensor tensor) -> c10::IntArrayRef { return tensor.sizes(); });
   }
-  _NestedNode nested_stride() {
+  SizeNode nested_stride() {
     if (nested_dim() == 1 && _structure.degree() == 0) {
-      return _NestedNode(at::IntArrayRef());
+      return SizeNode();
     }
-    return map<_NestedNode>(
-        _structure, [&](c10::IValue tensor) -> at::IntArrayRef {
-          return tensor.toTensor().strides();
-        });
+    return map(_structure, [](at::Tensor tensor) -> c10::IntArrayRef { return tensor.strides(); });
   }
   _ListNestedTensor pin_memory() {
     return _ListNestedTensor(
-        map<_NestedNode>(_structure, [](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().pin_memory();
-        }));
+        map(_structure, [](at::Tensor tensor) -> at::Tensor { return tensor.pin_memory(); }));
   }
   _ListNestedTensor grad() {
     return _ListNestedTensor(
-        map<_NestedNode>(_structure, [](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().grad();
-        }));
+        map(_structure, [](at::Tensor tensor) -> at::Tensor { return tensor.grad(); }));
   }
   _ListNestedTensor detach() {
     return _ListNestedTensor(
-        map<_NestedNode>(_structure, [](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().detach();
-        }));
+        map(_structure, [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); }));
   }
   _ListNestedTensor requires_grad_(bool requires_grad) {
-    return _ListNestedTensor(map<_NestedNode>(
-        _structure, [requires_grad](c10::IValue tensor) -> at::Tensor {
-          return tensor.toTensor().set_requires_grad(requires_grad);
+    return _ListNestedTensor(
+        map(_structure, [requires_grad](at::Tensor tensor)  -> at::Tensor {
+          return tensor.set_requires_grad(requires_grad);
         }));
   }
   void backward(
@@ -76,18 +64,15 @@ struct TORCH_API _ListNestedTensor {
   int64_t __len__() {
     return _structure.degree();
   }
-  torch::autograd::Variable to_tensor() {
-    return _NestedNode_to_tensor(_structure);
+  at::Tensor to_tensor() {
+    return NestedNode_to_tensor(_structure);
   }
   int64_t nested_dim() {
-    const _NestedNode* start_structure = &_structure;
-    int64_t depth = 0;
+    const TensorNode* start_structure = &_structure;
+    int64_t depth = 1;
     while (!start_structure->is_leaf()) {
       depth++;
       start_structure = start_structure->children_data(0);
-    }
-    if (depth == 0) {
-      depth = 1;
     }
     return depth;
   }
@@ -110,7 +95,7 @@ struct TORCH_API _ListNestedTensor {
     return _first_variable.dim() + nested_dim();
   }
   int64_t numel() {
-    return _numel(_structure);
+    return nested_node_numel(_structure);
   }
   bool is_pinned() {
     return _first_variable.is_pinned();
@@ -118,7 +103,7 @@ struct TORCH_API _ListNestedTensor {
   bool is_contiguous() {
     return false;
   }
-  _NestedNode get_structure() {
+  TensorNode get_structure() {
     return _structure;
   }
   // TODO: Implement these and call into them isntead of implementing them
@@ -132,7 +117,7 @@ struct TORCH_API _ListNestedTensor {
   // py::tuple size(int64_t dim);
 
  private:
-  const _NestedNode _structure;
+  TensorNode _structure;
   at::Tensor _first_variable;
 };
 } // namespace nested_tensor

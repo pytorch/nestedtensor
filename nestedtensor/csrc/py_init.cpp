@@ -1,4 +1,4 @@
-#include <jit_list_apply.h>
+// #include <jit_list_apply.h>
 #include <python_buffer_nested_tensor.h>
 #include <python_list_nested_tensor.h>
 
@@ -43,7 +43,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             if (self.nested_dim() == 1) {
               for (int64_t i = 0; i < self.len(); i++) {
                 result.push_back(torch::jit::toPyObject(
-                    self.data().get_structure().children(i).payload()));
+                    self.data().get_structure().payload(i)));
               }
             } else {
               for (int64_t i = 0; i < self.len(); i++) {
@@ -119,5 +119,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           "get_buffer",
           &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
 
-  m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
+//  m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
 }

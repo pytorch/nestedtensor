@@ -19,15 +19,15 @@ struct THP_BufferNestedTensor {
   THP_BufferNestedTensor(py::object buffer, py::list nested_size)
       : _data(_BufferNestedTensor(
             py::cast<at::Tensor>(buffer),
-            _get_list_structure(nested_size))) {}
+            _get_size_structure(nested_size))) {}
   THP_BufferNestedTensor(
       py::object buffer,
       py::list nested_size,
       py::list nested_stride)
       : _data(_BufferNestedTensor(
             py::cast<at::Tensor>(buffer),
-            _get_list_structure(nested_size),
-            _get_list_structure(nested_stride))) {}
+            _get_size_structure(nested_size),
+            _get_size_structure(nested_stride))) {}
   torch::autograd::Variable get_buffer() {
     return _data.get_buffer();
   }
