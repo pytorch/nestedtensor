@@ -81,5 +81,17 @@ THP_ListNestedTensor jit_apply_function(
   return THP_ListNestedTensor(_ListNestedTensor(nested_node));
 }
 
+py::cpp_function jit_tensorwise() {
+  return py::cpp_function([](py::function f) {
+    return py::cpp_function([f](py::args args, py::kwargs kwargs) {
+        std::vector<py::object> result;
+      for (size_t i = 0; i < args.size(); i++) {
+        result.push_back(f(args[i]));
+      }
+      return THP_ListNestedTensor(py::list(result));
+    });
+  });
+}
+
 } // namespace nested_tensor
 } // namespace torch

@@ -150,4 +150,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
 
   m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
+  m.def("jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
 }

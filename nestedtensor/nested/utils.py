@@ -163,8 +163,70 @@ def match_type_signature_prefix(types, args):
 # Make nested_stride optional (cont. by default)
 # Return flattened tensor pairs, then create _BufferNestedTensor impl directly
 
+def __gen_unbound(*args, **kwargs):
+    # Unbind everything via __getitem__ that is either NestedTensor or in unbind_args
+    # All args to-be-unbound should match in length
+
+    dispatch_key = find_nested_tensor_dispatch_key(*args)
+    key_len = len(dispatch_key)
+
+    unbound_args = []
+    for i, arg in enumerate(args):
+        if is_nested_tensor(arg):
+            assert len(arg) == key_len
+            unbound_args.append(tuple(arg[i] for i in range(key_len)))
+        else:
+            unbound_args.append(tuple(arg for _ in range(key_len)))
+
+    unbound_kwargs = []
+    for k, arg in kwargs.items():
+        if is_nested_tensor(arg) or k in unb_args:
+            assert len(arg) == key_len
+            new_kwarg = tuple((k, arg[i]) for i in range(key_len))
+        else:
+            new_kwarg = tuple((k, arg) for _ in range(key_len))
+        unbound_kwargs.append(new_kwarg)
+
+    args_gen = zip(*unbound_args)
+    for new_args in args_gen:
+        yield (new_args, {})
+
+def _tensorwise():
+
+    def wrapper(f):
+        @wraps(f)
+        def decorator(*_args, **_kwargs):
+            def _func(*args, **kwargs):
+                if find_nested_tensor_dispatch_key(*args) is None:
+                    # import pdb; pdb.set_trace()
+                    result = f(*args, **kwargs)
+                    if not torch.is_tensor(result):
+                        return tuple(result)
+                    return result
+                else:
+                    results = []
+                    for local_args, local_kwargs in __gen_unbound(*args, **kwargs):
+                        results.append(_func(*local_args, **local_kwargs))
+                    return results
+            dispatch_key = find_nested_tensor_dispatch_key(*_args)
+            if dispatch_key is None:
+                return f(*_args, **_kwargs)
+            else:
+                args = _args
+                kwargs = _kwargs
+                results = _func(*args, **kwargs)
+                results = _unwrap_tensor_tuples(results)
+                if len(results) == 1:
+                    return creation.nested_tensor(results[0])
+                return tuple(map(creation.nested_tensor, results))
+
+        return decorator
+    return wrapper
 
 def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
+    if unbind_args is None and dim_args is None and wrap_dim_args is False:
+        return _tensorwise()
+
     if unbind_args is None:
         unbind_args = []
     if dim_args is None:

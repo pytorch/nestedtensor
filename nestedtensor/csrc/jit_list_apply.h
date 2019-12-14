@@ -4,11 +4,13 @@
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/python_strings.h>
 #include <torch/extension.h>
+#include <pybind11/functional.h>
 
 namespace torch {
 namespace nested_tensor {
 THP_ListNestedTensor jit_apply_function(
     std::vector<THP_ListNestedTensor> nts_,
     py::object fn);
-}
+py::cpp_function jit_tensorwise();
+} // namespace nested_tensor
 } // namespace torch
