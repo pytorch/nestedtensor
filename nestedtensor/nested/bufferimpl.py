@@ -10,6 +10,8 @@ import nestedtensor
 
 DEBUG = int(os.getenv("DEBUG", 0))
 
+# TODO: Need to rigorously test unbind!
+
 class _BufferNestedTensor(object):
     def __init__(self, buffer_, nested_size, nested_stride=None):
         # Tuple disables changes in size via append etc.
@@ -115,6 +117,7 @@ class _BufferNestedTensor(object):
         self.get_buffer().pin_memory()
 
     def __str__(self):
+        # TODO: Can use TensorNode structure and __str__ from list impl
         def _str(x, indent=0):
             if x.nested_dim() == 0:
                 return ""
