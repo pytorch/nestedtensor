@@ -16,6 +16,7 @@ using namespace torch::autograd::utils;
 
 struct THP_BufferNestedTensor {
   THP_BufferNestedTensor() = delete;
+  THP_BufferNestedTensor(_BufferNestedTensor data) : _data(data) {}
   THP_BufferNestedTensor(py::object buffer, py::list nested_size)
       : _data(_BufferNestedTensor(
             py::cast<at::Tensor>(buffer),
@@ -49,12 +50,17 @@ struct THP_BufferNestedTensor {
   bool requires_grad() {
     return _data.requires_grad();
   }
-
+  _BufferNestedTensor data() {
+    return _data;
+  }
   py::object nested_size() {
     return wrap_nested_node(_data.nested_size());
   }
   py::object nested_stride() {
     return wrap_nested_node(_data.nested_stride());
+  }
+  int64_t len() {
+    return _data.__len__();
   }
   bool is_pinned() {
     return _data.is_pinned();

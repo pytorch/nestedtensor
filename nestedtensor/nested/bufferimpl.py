@@ -115,30 +115,7 @@ class _BufferNestedTensor(object):
         return self._c_impl.element_size()
 
     def unbind(self):
-        if self._unbound_tensors is not None:
-            return self._unbound_tensors
-        nested_size=self.nested_size()
-        if self.nested_dim() == 1:
-            result=()
-            offset=0
-            for i in range(len(nested_size)):
-                size=nested_size[i]
-                tensor=self.get_buffer().narrow(
-                    0, offset, _prod(size)).reshape(size)
-                offset += tensor.numel()
-                result=result + (tensor,)
-        else:
-            nested_stride=self.nested_stride()
-            result=()
-            offset=0
-            for i in range(len(self)):
-                sub_numel=_nested_numel(nested_size[i])
-                result_i=_BufferNestedTensor(self.get_buffer().narrow(
-                    0, offset, sub_numel), nested_size[i], nested_stride[i])
-                offset += sub_numel
-                result=result + (result_i,)
-        self._unbound_tensors=result
-        return self._unbound_tensors
+        return self._c_impl.unbind()
 
     def is_contiguous(self):
         return self._is_contiguous

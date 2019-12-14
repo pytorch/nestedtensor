@@ -6,6 +6,7 @@
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
 // TODO: Abstract the common recursive patterns.
 // TODO: NestedSize C++ object
+// TODO: Align NestedTensor and Tensor C++ API
 
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because
@@ -102,12 +103,42 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def_property_readonly(
           "requires_grad",
           &torch::nested_tensor::THP_BufferNestedTensor::requires_grad)
+      .def("__len__", &torch::nested_tensor::THP_BufferNestedTensor::len)
       .def(
           "nested_size",
           &torch::nested_tensor::THP_BufferNestedTensor::nested_size)
       .def(
           "nested_stride",
           &torch::nested_tensor::THP_BufferNestedTensor::nested_stride)
+      .def(
+          "unbind",
+          [](torch::nested_tensor::THP_BufferNestedTensor self) {
+            std::vector<py::object> result;
+            if (self.nested_dim() == 1) {
+              for (int64_t i = 0; i < self.len(); i++) {
+                result.push_back(torch::jit::toPyObject(
+                    self.data().get_structure().payload(i)));
+              }
+            } else {
+              std::vector<int64_t> split_sizes;
+              for (int64_t i = 0; i < self.len(); i++) {
+                split_sizes.push_back(size_node_memory(
+                    self.data().nested_size().children(i),
+                    self.data().nested_stride().children(i)));
+              }
+              std::vector<at::Tensor> buffers = at::split_with_sizes(
+                  self.data().get_buffer(), c10::IntArrayRef(split_sizes), 0);
+              for (int64_t i = 0; i < self.len(); i++) {
+                result.push_back(
+                    py::cast(torch::nested_tensor::THP_BufferNestedTensor(
+                        torch::nested_tensor::_BufferNestedTensor(
+                            buffers[i],
+                            self.data().nested_size().children(i),
+                            self.data().nested_stride().children(i)))));
+              }
+            }
+            return result;
+          })
       .def("dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
       .def(
           "nested_dim",
