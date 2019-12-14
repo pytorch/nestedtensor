@@ -5,6 +5,7 @@
 #include <torch/csrc/utils/python_strings.h>
 #include <torch/extension.h>
 #include <pybind11/functional.h>
+#include <pybind11/stl.h>
 
 namespace torch {
 namespace nested_tensor {

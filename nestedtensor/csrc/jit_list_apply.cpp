@@ -1,4 +1,5 @@
 #include <jit_list_apply.h>
+#include <python_list_nested_tensor.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -82,13 +83,19 @@ THP_ListNestedTensor jit_apply_function(
 }
 
 py::cpp_function jit_tensorwise() {
-  return py::cpp_function([](py::function f) {
-    return py::cpp_function([f](py::args args, py::kwargs kwargs) {
-        std::vector<py::object> result;
+  return py::cpp_function([](py::object fn) {
+    return py::cpp_function([fn](py::args args, py::kwargs kwargs) {
+      auto sfn = py::cast<StrongFunctionPtr>(fn);
+      Function& f = *sfn.function_;
+      std::vector<TensorNode> nested_nodes;
       for (size_t i = 0; i < args.size(); i++) {
-        result.push_back(f(args[i]));
+        nested_nodes.push_back(
+            py::cast<THP_ListNestedTensor>(args[i]).data().get_structure());
       }
-      return THP_ListNestedTensor(py::list(result));
+      py::gil_scoped_release release;
+      TensorNode result = apply_jit_function(nested_nodes, f);
+      py::gil_scoped_acquire acquire;
+      return THP_ListNestedTensor(_ListNestedTensor(result));
     });
   });
 }
