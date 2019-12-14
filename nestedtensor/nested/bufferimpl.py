@@ -66,7 +66,7 @@ class _BufferNestedTensor(object):
                                    self.nested_size(), self.nested_stride())
 
     def requires_grad_(self, requires_grad=True):
-        self.get_buffer().requires_grad_(requires_grad)
+        self._c_impl.requires_grad_(requires_grad)
         return self
 
     def detach(self):
