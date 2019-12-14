@@ -10,34 +10,6 @@ import nestedtensor
 
 DEBUG = int(os.getenv("DEBUG", 0))
 
-
-def _prod(tup):
-    p = 1
-    for t in tup:
-        p *= t
-    return p
-
-
-def _nested_numel(nested_size):
-    if len(nested_size) == 0 or not isinstance(nested_size[0], list):
-        return _prod(nested_size)
-    else:
-        return sum(_nested_numel(t) for t in nested_size)
-
-
-def _nested_tensor_to_buffer(nested_tensor):
-    """
-    Given a nested tensor, return a new contiguous buffer covering all Tensor constiuents data.
-    Returns a view if possible.
-    """
-    if nested_tensor.is_contiguous():
-        return nested_tensor._buffer
-    if nested_tensor.nested_dim() == 1:
-        return torch.cat([t.flatten() for t in nested_tensor.unbind()], dim=0)
-    else:
-        return torch.cat([_nested_tensor_to_buffer(t) for t in nested_tensor], dim=0)
-
-
 class _BufferNestedTensor(object):
     def __init__(self, buffer_, nested_size, nested_stride=None):
         # Tuple disables changes in size via append etc.
@@ -107,11 +79,9 @@ class _BufferNestedTensor(object):
         return self._c_impl.nested_dim()
 
     def __len__(self):
-        return len(self.nested_size())
+        return len(self)
 
     def element_size(self):
-        if DEBUG:
-            utils._verify_tensors(self)
         return self._c_impl.element_size()
 
     def unbind(self):
@@ -132,28 +102,9 @@ class _BufferNestedTensor(object):
         """
         return self.get_buffer().reshape(self.size(None))
 
-    def size(self, dim):
-        # TODO: Unused until _ListNestedTensor has its own implementation
-        if dim is not None:
-            return self.size(None)[dim]
-
-        def _size(nested_size):
-            len_sizes=len(nested_size)
-            if isinstance(nested_size[0], torch.Size):
-                sizes=nested_size
-            else:
-                sizes=iter(_size(x) for x in nested_size)
-
-            result=tuple(k[0] if k[1:] == k[:-1]
-                           else None for k in zip(*sizes))
-            return (len_sizes,) + result
-
-        return _size(self.nested_size())
-
     def to(self, *args, **kwargs):
         return _BufferNestedTensor(self.get_buffer().to(*args, **kwargs),
                                                       self.nested_size(), self.nested_stride())
-
     def numel(self):
         return self.get_buffer().numel()
 
