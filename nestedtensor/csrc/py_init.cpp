@@ -103,6 +103,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def_property_readonly(
           "requires_grad",
           &torch::nested_tensor::THP_BufferNestedTensor::requires_grad)
+      .def("__len__", &torch::nested_tensor::THP_BufferNestedTensor::len)
       .def(
           "nested_size",
           &torch::nested_tensor::THP_BufferNestedTensor::nested_size)
@@ -125,8 +126,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     self.data().nested_size().children(i),
                     self.data().nested_stride().children(i)));
               }
-              std::vector<at::Tensor> buffers =
-                  at::split_with_sizes(self.data().get_buffer(), c10::IntArrayRef(split_sizes), 0);
+              std::vector<at::Tensor> buffers = at::split_with_sizes(
+                  self.data().get_buffer(), c10::IntArrayRef(split_sizes), 0);
               for (int64_t i = 0; i < self.len(); i++) {
                 result.push_back(
                     py::cast(torch::nested_tensor::THP_BufferNestedTensor(

@@ -67,7 +67,7 @@ std::pair<int64_t, TensorNode> _build_structure(
           buffers[index],
           c10::IntArrayRef(size_i),
           c10::IntArrayRef(stride_i)));
-      index += 1;
+      index++;
     }
     return std::pair<int64_t, TensorNode>(index, TensorNode(result));
   } else {
@@ -76,7 +76,7 @@ std::pair<int64_t, TensorNode> _build_structure(
       std::pair<int64_t, TensorNode> result_i = _build_structure(
           index, buffers, nested_size.children(i), nested_stride.children(i));
       result.push_back(std::get<1>(result_i));
-      index += 1;
+      index++;
     }
     return std::pair<int64_t, TensorNode>(index, TensorNode(result));
   }
@@ -88,40 +88,30 @@ TensorNode build_structure(
     SizeNode nested_stride) {
   std::vector<int64_t> split_sizes;
   _split_sizes(nested_size, nested_stride, split_sizes);
-  std::vector<at::Tensor> buffers =
-      at::split_with_sizes(buffer, c10::IntArrayRef(split_sizes), 0);
+  std::vector<int64_t> nonzero_split_sizes;
+  for (size_t i = 0; i < split_sizes.size(); i++) {
+    if (split_sizes[i] > 0) {
+      nonzero_split_sizes.push_back(split_sizes[i]);
+    }
+  }
+  std::vector<at::Tensor> buffers_;
+  if (nonzero_split_sizes.size() > 0) {
+    buffers_ =
+        at::split_with_sizes(buffer, c10::IntArrayRef(nonzero_split_sizes), 0);
+  }
+  std::vector<at::Tensor> buffers;
+  int64_t index = 0;
+  for (size_t i = 0; i < split_sizes.size(); i++) {
+    if (split_sizes[i] > 0) {
+      buffers.push_back(buffers_[index]);
+      index++;
+    } else {
+      buffers.push_back(at::empty({}, buffer.options()));
+    }
+  }
   std::pair<int64_t, TensorNode> result =
       _build_structure(0, buffers, nested_size, nested_stride);
   return std::get<1>(result);
-  // if (nested_stride.is_leaf()) {
-  //   std::vector<int64_t> split_sizes;
-  //   for (size_t i = 0; i < nested_stride.size(); i++) {
-  //     split_sizes.push_back(
-  //         num_memory(nested_size.payload(i), nested_stride.payload(i)));
-  //   }
-  //   std::vector<at::Tensor> buffers =
-  //       at::split_with_sizes(buffer, split_sizes, 0);
-  //   c10::List<at::Tensor> result;
-  //   for (size_t i = 0; i < buffers.size(); i++) {
-  //     auto size_i = c10::impl::toVector(nested_size.payload(i));
-  //     auto stride_i = c10::impl::toVector(nested_stride.payload(i));
-  //     result.push_back(at::as_strided(
-  //         buffers[i], c10::IntArrayRef(size_i), c10::IntArrayRef(stride_i)));
-  //   }
-  //   return TensorNode(result);
-  // } else {
-  //   std::vector<int64_t> split_sizes;
-  //   for (size_t i = 0; i < nested_stride.size(); i++) {
-  //     split_sizes.push_back(
-  //         size_node_memory(nested_size.children(i),
-  //         nested_stride.children(i)));
-  //   }
-  //   std::vector<TensorNode> result;
-  //   for (size_t i = 0; i < nested_size.degree(); i++) {
-  //     result.push_back(_build_structure(nested_size.children(i)));
-  //   }
-  //   return TensorNode(result);
-  // }
 }
 
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.

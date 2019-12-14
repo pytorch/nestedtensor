@@ -190,8 +190,9 @@ static inline int64_t nested_node_numel(
   return result;
 }
 
-
-int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
+static inline int64_t num_memory(
+    c10::List<int64_t> size,
+    c10::List<int64_t> stride) {
   if (size.size() == 0) {
     return 0;
   }
@@ -208,7 +209,8 @@ static inline int64_t size_node_memory(
     }
   } else {
     for (size_t i = 0; i < nested_size.degree(); i++) {
-      result += size_node_memory(nested_size.children(i), nested_stride.children(i));
+      result +=
+          size_node_memory(nested_size.children(i), nested_stride.children(i));
     }
   }
   return result;
