@@ -190,6 +190,30 @@ static inline int64_t nested_node_numel(
   return result;
 }
 
+
+int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
+  if (size.size() == 0) {
+    return 0;
+  }
+  return size[0] * stride[0];
+}
+
+static inline int64_t size_node_memory(
+    SizeNode nested_size,
+    SizeNode nested_stride) {
+  int64_t result = 0;
+  if (nested_size.is_leaf()) {
+    for (size_t i = 0; i < nested_size.size(); i++) {
+      result += num_memory(nested_size.payload(i), nested_stride.payload(i));
+    }
+  } else {
+    for (size_t i = 0; i < nested_size.degree(); i++) {
+      result += size_node_memory(nested_size.children(i), nested_stride.children(i));
+    }
+  }
+  return result;
+}
+
 template <typename A>
 static NestedNode<A> get_first_leaf(NestedNode<A> nested_node) {
   const NestedNode<A>* start = &nested_node;

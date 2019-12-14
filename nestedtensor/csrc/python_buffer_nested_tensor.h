@@ -16,6 +16,7 @@ using namespace torch::autograd::utils;
 
 struct THP_BufferNestedTensor {
   THP_BufferNestedTensor() = delete;
+  THP_BufferNestedTensor(_BufferNestedTensor data) : _data(data) {}
   THP_BufferNestedTensor(py::object buffer, py::list nested_size)
       : _data(_BufferNestedTensor(
             py::cast<at::Tensor>(buffer),

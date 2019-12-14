@@ -119,14 +119,21 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     self.data().get_structure().payload(i)));
               }
             } else {
+              std::vector<int64_t> split_sizes;
+              for (int64_t i = 0; i < self.len(); i++) {
+                split_sizes.push_back(size_node_memory(
+                    self.data().nested_size().children(i),
+                    self.data().nested_stride().children(i)));
+              }
+              std::vector<at::Tensor> buffers =
+                  at::split_with_sizes(self.data().get_buffer(), c10::IntArrayRef(split_sizes), 0);
               for (int64_t i = 0; i < self.len(); i++) {
                 result.push_back(
                     py::cast(torch::nested_tensor::THP_BufferNestedTensor(
                         torch::nested_tensor::_BufferNestedTensor(
-                            self.data().get_structure().children(i),
+                            buffers[i],
                             self.data().nested_size().children(i),
-                            self.data().nested_stride().children(i)
-                            ))));
+                            self.data().nested_stride().children(i)))));
               }
             }
             return result;
