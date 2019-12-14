@@ -79,7 +79,7 @@ class _BufferNestedTensor(object):
         return self._c_impl.nested_dim()
 
     def __len__(self):
-        return len(self)
+        return len(self._c_impl)
 
     def element_size(self):
         return self._c_impl.element_size()
@@ -88,6 +88,8 @@ class _BufferNestedTensor(object):
         return self._c_impl.unbind()
 
     def is_contiguous(self):
+        # TODO: Have to actually look at nested_stride
+        # Can be cached
         return self._is_contiguous
 
     def nested_size(self):
@@ -97,6 +99,7 @@ class _BufferNestedTensor(object):
         return self._c_impl.nested_stride()
 
     def to_tensor(self):
+        # TODO: Requires size() in C++
         """
         Not a view.
         """
