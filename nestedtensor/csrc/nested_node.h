@@ -252,6 +252,21 @@ static inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
 }
 
 template <typename A, class F>
+static inline void apply(
+    NestedNode<A> nested_node,
+    F fn) {
+  if (nested_node.is_leaf()) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      fn(nested_node.payload(i));
+    }
+  } else {
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      apply(nested_node.children(i), fn);
+    }
+  }
+}
+
+template <typename A, class F>
 static inline void apply2(
     NestedNode<A> nested_node1,
     NestedNode<A> nested_node2,

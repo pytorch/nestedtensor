@@ -59,6 +59,9 @@ struct THP_BufferNestedTensor {
   py::object nested_stride() {
     return wrap_nested_node(_data.nested_stride());
   }
+  THP_BufferNestedTensor requires_grad_(py::bool_ requires_grad) {
+    return THP_BufferNestedTensor(_data.requires_grad_(requires_grad));
+  }
   int64_t len() {
     return _data.__len__();
   }
