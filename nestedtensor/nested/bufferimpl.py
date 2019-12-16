@@ -62,8 +62,7 @@ class _BufferNestedTensor(object):
 
     @property
     def grad(self):
-        return _BufferNestedTensor(self.get_buffer().grad,
-                                   self.nested_size(), self.nested_stride())
+        return self._c_impl.grad()
 
     def requires_grad_(self, requires_grad=True):
         self._c_impl.requires_grad_(requires_grad)

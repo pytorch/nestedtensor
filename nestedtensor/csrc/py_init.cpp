@@ -142,6 +142,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "requires_grad_",
           &torch::nested_tensor::THP_BufferNestedTensor::requires_grad_)
+      .def("grad", &torch::nested_tensor::THP_BufferNestedTensor::grad)
+      .def("detach", &torch::nested_tensor::THP_BufferNestedTensor::detach)
       .def("dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
       .def(
           "nested_dim",
