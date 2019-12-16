@@ -60,6 +60,12 @@ struct THP_BufferNestedTensor {
   THP_BufferNestedTensor detach() {
     return THP_BufferNestedTensor(_data.detach());
   }
+  THP_BufferNestedTensor pin_memory() {
+    return THP_BufferNestedTensor(_data.pin_memory());
+  }
+  std::string str() {
+    return _NestedNode___str__(_data.get_structure());
+  }
   int64_t len() {
     return _data.__len__();
   }
@@ -71,6 +77,12 @@ struct THP_BufferNestedTensor {
   }
   int64_t dim() {
     return _data.dim();
+  }
+  int64_t numel() {
+    return _data.numel();
+  }
+  at::Tensor to_tensor() {
+    return _data.to_tensor();
   }
 
  private:

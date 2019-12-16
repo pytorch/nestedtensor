@@ -14,6 +14,8 @@ from . import utils
 from . import nested
 from . import bufferimpl
 
+from nestedtensor import _C
+
 orig_squeeze = torch.squeeze
 
 
@@ -138,7 +140,7 @@ def embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
             new_nested_size = _new_nested_size(
                 input.nested_size(), weight.size(1))
             return nested.NestedTensor(
-                bufferimpl._BufferNestedTensor(
+                _C._BufferNestedTensor(
                     buffer_, new_nested_size))
 
     return utils.tensorwise()(_embedding_bag)(input, weight, offsets, max_norm, norm_type,
@@ -158,7 +160,7 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None, trainin
         input_buffer = input._impl.get_buffer().reshape(input.size())
         result = orig_batch_norm(
             input_buffer, running_mean, running_var, weight, bias, training, momentum, eps)
-        return nested.NestedTensor(bufferimpl._BufferNestedTensor(result.flatten(), input.nested_size()))
+        return nested.NestedTensor(_C._BufferNestedTensor(result.flatten(), input.nested_size()))
 
     def t_batch_norm(input: torch.Tensor, running_mean: torch.Tensor, running_var: torch.Tensor, weight, bias, training, momentum, eps):
         squeeze_after = False
@@ -268,7 +270,7 @@ def mm(*args, **kwargs):
             self.nested_size(), self.dim() - 1, result.size(-1))
         buffer_ = result.flatten()
         return nested.NestedTensor(
-            bufferimpl._BufferNestedTensor(buffer_,
+            _C._BufferNestedTensor(buffer_,
                                            result_nested_size))
 
     tf = utils.tensorwise()(getattr(torch.Tensor, 'mm'))

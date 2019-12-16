@@ -23,6 +23,11 @@ struct TORCH_API _BufferNestedTensor {
       SizeNode nested_size,
       SizeNode nested_stride,
       TensorNode structure);
+  _BufferNestedTensor(
+      torch::autograd::Variable&& buffer,
+      SizeNode nested_size,
+      SizeNode nested_stride,
+      TensorNode&& structure);
   torch::autograd::Variable get_buffer() {
     return _buffer;
   }
@@ -75,8 +80,22 @@ struct TORCH_API _BufferNestedTensor {
     return _BufferNestedTensor(
         detach_buffer, _nested_size, _nested_stride, detach_tensors);
   }
+  _BufferNestedTensor pin_memory();
+  void backward(
+      _BufferNestedTensor gradient,
+      bool retain_graph,
+      bool create_graph) {
+    // TODO: This should be enough due to split.
+    _buffer.backward(gradient.get_buffer(), retain_graph, create_graph);
+  }
   bool is_pinned() {
     return _buffer.is_pinned();
+  }
+  bool is_contiguous() {
+    // NOTE: The Tensors might not be contiguous themselves.
+    // For this to be contiguous not only do the Tensors need to
+    // come from the buffer, but they also need to 
+    return all_contiguous(_structure);
   }
   SizeNode nested_size() {
     return _nested_size;
@@ -104,6 +123,24 @@ struct TORCH_API _BufferNestedTensor {
     } else {
       return nested_dim();
     }
+  }
+  int64_t numel() {
+    return nested_node_numel(_structure);
+  }
+  at::Tensor to_tensor() {
+    if (!all_size_equal) {
+      throw std::runtime_error("to_tensor only works if all sizes equal.");
+    }
+    std::vector<int64_t> new_size; 
+  const NestedNode<A>* start = &nested_node;
+  while (!start->is_leaf()) {
+    new_size.push_back(start.get_structure().degree());
+    start = start->children_data(0);
+  }
+  for (size_t i = 0; i < start.payload(0).len(); i++) {
+    new_size.push_back(start.payload(0).size(i));
+  }
+    return _buffer.reshape(at::IntArrayRef(new_size));
   }
 
  private:

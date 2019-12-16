@@ -110,10 +110,10 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             buffer_ = _create_buffer(data)
             nested_size = _nested_size(data)
             nested_stride = _nested_stride(data)
-            impl = bufferimpl._BufferNestedTensor(
+            impl = _C._BufferNestedTensor(
                 buffer_, nested_size, nested_stride)
         else:
-            impl = bufferimpl._BufferNestedTensor(torch.empty(0), (), ())
+            impl = _C._BufferNestedTensor(torch.empty(0), (), ())
         result = nested.NestedTensor(impl)
 
         if dtype is not None or device is not None:

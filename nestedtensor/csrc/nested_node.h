@@ -89,6 +89,7 @@ inline py::object wrap_nested_node(NestedNode<A> nested_node) {
   return result1;
 }
 
+// TODO: Need to fix indentation.
 static std::string _NestedNode___str__(const TensorNode& nested_node) {
   std::stringstream result;
   result << "nested_tensor([";
@@ -121,8 +122,7 @@ static IValue py_obj_to_ivalue(py::object py_obj) {
   return payload;
 }
 
-static inline int64_t nested_node_numel(
-    const NestedNode<at::Tensor>& meta_node) {
+static inline int64_t nested_node_numel(const TensorNode& meta_node) {
   int64_t result = 0;
   if (meta_node.is_leaf()) {
     for (size_t i = 0; i < meta_node.size(); i++) {
@@ -135,6 +135,51 @@ static inline int64_t nested_node_numel(
   }
   return result;
 }
+
+static inline bool all_contiguous(const TensorNode& meta_node) {
+  bool ac = true;
+  if (meta_node.is_leaf()) {
+    for (size_t i = 0; i < meta_node.size(); i++) {
+      ac = ac && meta_node.payload(i).is_contiguous();
+      if (!ac) {
+        return false;
+      }
+    }
+  } else {
+    for (size_t i = 0; i < meta_node.degree(); i++) {
+      ac = ac && all_contiguous(meta_node.children(i));
+      if (!ac) {
+        return false;
+      }
+    }
+  }
+  return ac;
+}
+
+static inline bool all_size_equal(const SizeNode& nested_size) {
+  if (nested_size.is_leaf()) {
+    if (nested_size.size() > 0) {
+      auto size0 = nested_size.payload(0);
+      for (size_t i = 1; i < nested_size.size(); i++) {
+        if (size0 != nested_size.payload(i)) {
+          return false;
+        }
+      }
+    }
+  } else {
+    if (nested_size.degree() > 0) {
+      // A child might be a leaf and degree will encode that.
+      int64_t nested_size0 = nested_size.children(0).degree();
+      for (size_t i = 1; i < nested_size.degree(); i++) {
+        if (size0 != _nested_size.children(i).degree() ||
+            !all_size_equal(nested_size.children(i)))
+          return false;
+      }
+    }
+  }
+  return true;
+}
+} // namespace nested_tensor
 
 static inline int64_t num_memory(
     c10::List<int64_t> size,
@@ -198,9 +243,7 @@ static inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
 }
 
 template <typename A, class F>
-static inline void apply(
-    NestedNode<A> nested_node,
-    F fn) {
+static inline void apply(NestedNode<A> nested_node, F fn) {
   if (nested_node.is_leaf()) {
     for (size_t i = 0; i < nested_node.size(); i++) {
       fn(nested_node.payload(i));
@@ -284,5 +327,5 @@ static inline bool _verify_variables(
   return valid;
 }
 
-} // namespace nested_tensor
+} // namespace torch
 } // namespace torch

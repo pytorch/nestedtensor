@@ -108,6 +108,14 @@ TensorNode build_structure(
   return std::get<1>(result);
 }
 
+// TODO: Test this. Does split on pinned memory work?
+_BufferNestedTensor::_BufferNestedTensor pin_memory() {
+    at::Tensor new_buffer = _buffer.pin_memory();
+    TensorNode new_tensor_node = build_structure(new_buffer, _nested_size, _nested_stride);
+    return _BufferNestedTensor(
+        new_buffer, _nested_size, _nested_stride, new_tensor_node);
+}
+
 _BufferNestedTensor::_BufferNestedTensor(
     torch::autograd::Variable buffer,
     SizeNode nested_size)
