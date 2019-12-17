@@ -157,9 +157,6 @@ def match_type_signature_prefix(types, args):
             return False
     return True
 
-def jit_tensorwise():
-    pass
-
 # The assumption is that f can handle a list of tensors
 # This is used to write tensor-wise functions
 # The resulting function accepts a multiple NestedTensors as arguments

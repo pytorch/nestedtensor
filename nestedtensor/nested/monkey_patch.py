@@ -12,8 +12,10 @@ def monkey_patch(NestedTensor):
     from nestedtensor.nested import functions
     import torch
     from nestedtensor.nested import utils
+    from nestedtensor import _C
 
     function_dispatch = {}
+    jit_function_dispatch = {}
 
     def _check_meaningful_overwrite(cls, method_name):
         import os
@@ -33,6 +35,10 @@ def monkey_patch(NestedTensor):
     def set_wrapped_torch_function(function_name, wrapper):
         function_dispatch[getattr(torch, function_name)] = wrapper(
             getattr(torch, function_name))
+
+    def set_wrapped_jit_torch_function(function_name, wrapper):
+        jit_function_dispatch[getattr(torch, function_name)] = wrapper(
+            torch.jit.script(getattr(torch, function_name)))
 
     def set_function(key, function):
         function_dispatch[key] = function
@@ -83,6 +89,7 @@ def monkey_patch(NestedTensor):
         if function_name in ['fill']:
             continue
         set_wrapped_torch_function(function_name, utils.tensorwise())
+        set_wrapped_jit_torch_function(function_name, _C.jit_tensorwise())
         set_nt_method(function_name, utils.tensorwise())
     # <
 
@@ -222,3 +229,4 @@ def monkey_patch(NestedTensor):
     # module.NestedTensor = NestedTensor
 
     setattr(NestedTensor, '_NestedTensor__function_dispatch', function_dispatch)
+    setattr(NestedTensor, '_NestedTensor__jit_function_dispatch', jit_function_dispatch)
