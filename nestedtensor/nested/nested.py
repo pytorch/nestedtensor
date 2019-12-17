@@ -6,9 +6,10 @@ from . import monkey_patch
 import collections
 import os
 
-from . import bufferimpl
 from . import utils
 from . import creation
+
+import nestedtensor
 
 # Set this flag to true, if you want to enable additional verifications.
 DEBUG = int(os.getenv("DEBUG", 1))
@@ -158,7 +159,12 @@ class NestedTensor(object):
         return NestedTensor(self._impl.detach(gradient, retain_graph, create_graph))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        self._impl.backward(gradient, retain_graph, create_graph)
+        if gradient is None or isinstance(self._impl, gradient._impl):
+            self._impl.backward(gradient._impl, retain_graph._impl, create_graph)
+        else:
+            # TODO: Test mixed case explicitly
+            for t, g in zip(self.unbind(), gradient.unbind()):
+                t.backward(g, retain_graph, create_graph)
 
     def nested_dim(self):
         """
@@ -213,8 +219,10 @@ class NestedTensor(object):
         return (len(self),) + result_size
 
     def to(self, *args, **kwargs):
-        # to is never in-place, but it has autograd support (for float and double) via copy
-        return NestedTensor(self._impl.to(*args, **kwargs))
+        # TODO: to is currently not supported by impls due to argparsing.
+        new_tensors = [t.to(*args, **kwargs) for t in self.unbind()]
+        # TODO: Make contiguous by default? Heavy operation...
+        return NestedTensor(nestedtensor._C._ListNestedTensor(new_tensors))
 
     def numel(self):
         return self._impl.numel()
