@@ -35,24 +35,20 @@ class TestNestedTensorBuffer(TestCase):
     def test_grad(self):
         nt = nestedtensor.nested_tensor([torch.rand(1, 2)])
         nt.requires_grad_(True)
-        print('nt')
-        print(nt)
         a = nt.unbind()[0]
-        print('a')
-        print(a)
-        b = nt.sum().backward()
-        print('a.grad')
-        print(a.grad)
-        nt2 = nt.grad
-        print('nt2.unbind()[0]')
-        print(nt2.unbind()[0])
-        print('nt2')
-        print(nt2)
-        print('nt2._impl._c_impl.get_buffer()')
-        print(id(nt2._impl.get_buffer()))
-        print('nt._impl._c_impl.get_buffer().grad')
-        print(id(nt._impl._c_impl.get_buffer().grad))
-        self.assertTrue(nt2._impl.get_buffer() is nt._impl._c_impl.get_buffer().grad)
+        c = nt.sum()
+        c.backward()
+        # An unbound Tensor does not accumulate gradients because it's a
+        # partial view of the buffer.
+        self.assertIsNone(a.grad)
+        nt_grad = nt.grad
+        self.assertIs(nt._impl.get_buffer().grad, nt_grad._impl.get_buffer())
+        # Unbinding the gradient is legitimate for further processing.
+        self.assertIsNotNone(nt_grad.unbind()[0])
+
+    # TODO
+    def test_detach(self):
+        pass
 
 
 if __name__ == "__main__":

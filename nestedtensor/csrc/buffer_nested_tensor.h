@@ -63,14 +63,7 @@ struct TORCH_API _BufferNestedTensor {
   bool requires_grad() {
     return _buffer.requires_grad();
   }
-  _BufferNestedTensor grad() {
-    at::Tensor grad_buffer = _buffer.grad();
-    TensorNode grad_tensors = map<at::Tensor, at::Tensor>(
-        _structure,
-        [](at::Tensor tensor) -> at::Tensor { return tensor.grad(); });
-    return _BufferNestedTensor(
-        grad_buffer, _nested_size, _nested_stride, grad_tensors);
-  }
+  _BufferNestedTensor grad();
   // TODO: This should return a reference?
   _BufferNestedTensor detach() {
     at::Tensor detach_buffer = _buffer.detach();

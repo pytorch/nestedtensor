@@ -112,7 +112,7 @@ static std::string _NestedNode___str__(const TensorNode& nested_node) {
   return result.str();
 }
 
-static IValue py_obj_to_ivalue(py::object py_obj) {
+static inline IValue py_obj_to_ivalue(py::object py_obj) {
   auto inferred_type = tryToInferType(py_obj);
   if (!inferred_type.success()) {
     std::cerr << inferred_type.reason() << std::endl;

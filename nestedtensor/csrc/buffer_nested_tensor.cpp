@@ -110,10 +110,22 @@ TensorNode build_structure(
 
 // TODO: Test this. Does split on pinned memory work?
 _BufferNestedTensor _BufferNestedTensor::pin_memory() {
-    at::Tensor new_buffer = _buffer.pin_memory();
-    TensorNode new_tensor_node = build_structure(new_buffer, _nested_size, _nested_stride);
-    return _BufferNestedTensor(
-        new_buffer, _nested_size, _nested_stride, new_tensor_node);
+  at::Tensor new_buffer = _buffer.pin_memory();
+  TensorNode new_tensor_node =
+      build_structure(new_buffer, _nested_size, _nested_stride);
+  return _BufferNestedTensor(
+      new_buffer, _nested_size, _nested_stride, new_tensor_node);
+}
+
+_BufferNestedTensor _BufferNestedTensor::grad() {
+  at::Tensor grad_buffer = _buffer.grad();
+  // TODO: TensorNodes are based on split. Any backward performed on those will
+  // accumulate in the buffer's grad. What we're creating here are views into
+  // the grad, which could then be used further.
+  TensorNode grad_tensor_node =
+      build_structure(grad_buffer, _nested_size, _nested_stride);
+  return _BufferNestedTensor(
+      grad_buffer, _nested_size, _nested_stride, grad_tensor_node);
 }
 
 _BufferNestedTensor::_BufferNestedTensor(

@@ -76,7 +76,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           &torch::nested_tensor::THP_ListNestedTensor::nested_stride)
       .def(
           "pin_memory", &torch::nested_tensor::THP_ListNestedTensor::pin_memory)
-      .def("grad", &torch::nested_tensor::THP_ListNestedTensor::grad)
+      .def_property_readonly("grad", &torch::nested_tensor::THP_ListNestedTensor::grad)
       .def("detach", &torch::nested_tensor::THP_ListNestedTensor::detach)
       .def(
           "requires_grad_",
@@ -143,7 +143,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           "requires_grad_",
           &torch::nested_tensor::THP_BufferNestedTensor::requires_grad_)
       .def("numel", &torch::nested_tensor::THP_BufferNestedTensor::numel)
-      .def("grad", &torch::nested_tensor::THP_BufferNestedTensor::grad)
+      .def_property_readonly("grad", &torch::nested_tensor::THP_BufferNestedTensor::grad)
       .def("detach", &torch::nested_tensor::THP_BufferNestedTensor::detach)
       .def("dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
       .def(
