@@ -263,7 +263,12 @@ class NestedTensor(object):
         if dim == 0:
             if None in self.size():
                 raise ValueError("Shape not Tensor compliant")
-            return self._impl.to_tensor()
+            print('self.nested_size()')
+            print(self.nested_size())
+            result = self._impl.to_tensor()
+            print('result.size()')
+            print(result.size())
+            return result
         # If dim is bigger than nested_dim the NestedTensor is already
         # of Tensor for dimensions bigger than the given.
         if self.nested_dim() == 1:

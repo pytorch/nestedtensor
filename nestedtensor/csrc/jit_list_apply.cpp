@@ -29,7 +29,7 @@ struct ArgWrapper {
 
 // TODO: Assert that one arg must be a nestedtensor?
 static TensorNode apply_jit_function(
-    const std::vector<ArgWrapper>& args,
+    std::vector<ArgWrapper>& args,
     Function& fn) {
   bool all_leaf = true;
   for (size_t i = 0; i < args.size(); i++) {
@@ -45,14 +45,14 @@ static TensorNode apply_jit_function(
     size_t leaf_size = 0;
     for (size_t i = 0; i < args.size(); i++) {
       if (args[i].is_nested_tensor()) {
-        leaf_size = args[i].size();
+        leaf_size = args[i].nested_tensor().size();
         break;
       }
     }
     std::vector<std::vector<IValue>> stacks(leaf_size);
     for (size_t j = 0; j < leaf_size; j++) {
       for (size_t i = 0; i < args.size(); i++) {
-        if (args[i].is_nested_tensor() {
+        if (args[i].is_nested_tensor()) {
           stacks[j].push_back(args[i].nested_tensor().payload(j));
         } else {
           stacks[j].push_back(args[i].ivalue());
@@ -61,18 +61,19 @@ static TensorNode apply_jit_function(
     }
     c10::List<at::Tensor> results;
     for (size_t i = 0; i < stacks.size(); i++) {
-      result.push_back(fn(stacks[i]));
+      results.push_back(fn(stacks[i]).toTensor());
     }
-    return TensorNode(result);
+    return TensorNode(results);
   } else {
     bool broadcastable = true;
     size_t num_children = 0;
     for (size_t i = 0; i < args.size(); i++) {
-      if (args[i].is_nested_tensor() && !args[i].is_leaf()) {
+      if (args[i].is_nested_tensor() && !args[i].nested_tensor().is_leaf()) {
         if (num_children > 0) {
-          broadcastable = broadcastable && (num_children == args[i].degree());
+          broadcastable = broadcastable &&
+              (num_children == args[i].nested_tensor().degree());
         } else {
-          num_children = args[i].degree();
+          num_children = args[i].nested_tensor().degree();
         }
       }
     }
@@ -129,8 +130,15 @@ py::cpp_function jit_tensorwise() {
       Function& f = *sfn.function_;
       std::vector<ArgWrapper> nested_nodes;
       for (size_t i = 0; i < args.size(); i++) {
-        nested_nodes.push_back(ArgWrapper(
-            py::cast<THP_ListNestedTensor>(args[i]).data().get_structure()));
+        if (py::isinstance<THP_ListNestedTensor>(args[i])) {
+          nested_nodes.push_back(ArgWrapper(
+              py::cast<THP_ListNestedTensor>(args[i]).data().get_structure()));
+        } else if (py::isinstance<THP_BufferNestedTensor>(args[i])) {
+          nested_nodes.push_back(ArgWrapper(
+              py::cast<THP_BufferNestedTensor>(args[i]).data().get_structure()));
+        } else {
+          nested_nodes.push_back(ArgWrapper(toTypeInferredIValue(args[i])));
+        }
       }
       py::gil_scoped_release release;
       TensorNode result = apply_jit_function(nested_nodes, f);

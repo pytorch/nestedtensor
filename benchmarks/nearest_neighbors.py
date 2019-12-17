@@ -1,11 +1,11 @@
-from nestedtensor import torch
 import nestedtensor
+import torch
 import argparse
 import time
 import random
 import pprint
 
-EMBED_DIM = 1024
+EMBED_DIM = 128
 
 SEED = 0
 
@@ -60,8 +60,8 @@ def gen_algorithm_nested_mv(keys, sub_clusters):
     for sub_cluster in sub_clusters:
         new_sub_cluster = [torch.tensor(list(map(list, cluster))) for cluster in sub_cluster]
         new_sub_clusters.append(new_sub_cluster)
-    nested_sub_clusters = torch.nested_tensor(sub_clusters).to_tensor(2)
-    nested_keys = torch.nested_tensor(keys)
+    nested_sub_clusters = nestedtensor.nested_tensor(sub_clusters).to_tensor(2)
+    nested_keys = nestedtensor.nested_tensor(keys)
     def _nested_mv():
         return torch.mv(nested_sub_clusters, nested_keys)
     return _nested_mv
@@ -75,17 +75,15 @@ def gen_algorithm_nested_jit_mv(keys, sub_clusters):
             new_sub_cluster.append(torch.stack(cluster))
         new_sub_clusters.append(new_sub_cluster)
     nested_sub_clusters = nestedtensor._ListNestedTensor(new_sub_clusters)
-    print("HERE")
-    print(nested_sub_clusters.nested_size())
     nested_keys = nestedtensor._ListNestedTensor(keys)
-    print(nested_keys.nested_size())
 
+    @nestedtensor._C.jit_tensorwise()
     @torch.jit.script
     def my_fun(x, y):
         return torch.mv(x, y)
 
     def _nested_jit_mv():
-        return nestedtensor._C.jit_apply_function((nested_sub_clusters, nested_keys), my_fun)
+        return my_fun(nested_sub_clusters, nested_keys)
     return _nested_jit_mv
 
 
@@ -141,9 +139,9 @@ if __name__ == "__main__":
     gen_results_nested_mv = gen_algorithm_nested_mv(keys, sub_clusters)
     gen_results_nested_jit_mv = gen_algorithm_nested_jit_mv(keys, sub_clusters)
 
-    # print(benchmark_fn(gen_results_naive))
-    # print(benchmark_fn(gen_results_mv))
-    # print(benchmark_fn(gen_results_nested_mv))
+    print(benchmark_fn(gen_results_naive))
+    print(benchmark_fn(gen_results_mv))
+    print(benchmark_fn(gen_results_nested_mv))
     print(benchmark_fn(gen_results_nested_jit_mv))
     # import cProfile, pstats, io
     # pr = cProfile.Profile()
