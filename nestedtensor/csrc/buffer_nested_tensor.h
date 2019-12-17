@@ -94,7 +94,7 @@ struct TORCH_API _BufferNestedTensor {
   bool is_contiguous() {
     // NOTE: The Tensors might not be contiguous themselves.
     // For this to be contiguous not only do the Tensors need to
-    // come from the buffer, but they also need to 
+    // come from the buffer, but they also need to
     return all_contiguous(_structure);
   }
   SizeNode nested_size() {
@@ -128,18 +128,18 @@ struct TORCH_API _BufferNestedTensor {
     return nested_node_numel(_structure);
   }
   at::Tensor to_tensor() {
-    if (!all_size_equal) {
+    if (!all_size_equal(_nested_size)) {
       throw std::runtime_error("to_tensor only works if all sizes equal.");
     }
-    std::vector<int64_t> new_size; 
-  const NestedNode<A>* start = &nested_node;
-  while (!start->is_leaf()) {
-    new_size.push_back(start.get_structure().degree());
-    start = start->children_data(0);
-  }
-  for (size_t i = 0; i < start.payload(0).len(); i++) {
-    new_size.push_back(start.payload(0).size(i));
-  }
+    std::vector<int64_t> new_size;
+    const SizeNode* start = &_nested_size;
+    while (!start->is_leaf()) {
+      new_size.push_back(start->degree());
+      start = start->children_data(0);
+    }
+    for (size_t i = 0; i < start->payload(0).size(); i++) {
+      new_size.push_back(start->payload(0)[i]);
+    }
     return _buffer.reshape(at::IntArrayRef(new_size));
   }
 

@@ -7,7 +7,6 @@ import os
 
 from .nested import NestedTensor
 from . import creation
-from . import bufferimpl
 
 from collections.abc import Iterable
 from itertools import repeat

@@ -12,7 +12,6 @@ import os
 
 from . import utils
 from . import nested
-from . import bufferimpl
 
 from nestedtensor import _C
 

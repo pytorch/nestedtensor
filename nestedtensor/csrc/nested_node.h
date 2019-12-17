@@ -161,17 +161,19 @@ static inline bool all_size_equal(const SizeNode& nested_size) {
     if (nested_size.size() > 0) {
       auto size0 = nested_size.payload(0);
       for (size_t i = 1; i < nested_size.size(); i++) {
-        if (size0 != nested_size.payload(i)) {
-          return false;
+        for (size_t j = 0; j < nested_size.payload(i).size(); j++) {
+          if (size0[j] != nested_size.payload(i)[j]) {
+            return false;
+          }
         }
       }
     }
   } else {
     if (nested_size.degree() > 0) {
       // A child might be a leaf and degree will encode that.
-      int64_t nested_size0 = nested_size.children(0).degree();
+      size_t nested_size0 = nested_size.children(0).degree();
       for (size_t i = 1; i < nested_size.degree(); i++) {
-        if (size0 != _nested_size.children(i).degree() ||
+        if (nested_size0 != nested_size.children(i).degree() ||
             !all_size_equal(nested_size.children(i)))
           return false;
       }
@@ -179,7 +181,6 @@ static inline bool all_size_equal(const SizeNode& nested_size) {
   }
   return true;
 }
-} // namespace nested_tensor
 
 static inline int64_t num_memory(
     c10::List<int64_t> size,
@@ -189,7 +190,6 @@ static inline int64_t num_memory(
   }
   return size[0] * stride[0];
 }
-
 static inline int64_t size_node_memory(
     SizeNode nested_size,
     SizeNode nested_stride) {
@@ -327,5 +327,5 @@ static inline bool _verify_variables(
   return valid;
 }
 
-} // namespace torch
+} // namespace nested_tensor
 } // namespace torch

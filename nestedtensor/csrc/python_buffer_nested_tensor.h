@@ -84,6 +84,9 @@ struct THP_BufferNestedTensor {
   at::Tensor to_tensor() {
     return _data.to_tensor();
   }
+  bool is_contiguous() {
+    return _data.is_contiguous();
+  }
 
  private:
   _BufferNestedTensor _data;

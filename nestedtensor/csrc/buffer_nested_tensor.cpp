@@ -109,7 +109,7 @@ TensorNode build_structure(
 }
 
 // TODO: Test this. Does split on pinned memory work?
-_BufferNestedTensor::_BufferNestedTensor pin_memory() {
+_BufferNestedTensor _BufferNestedTensor::pin_memory() {
     at::Tensor new_buffer = _buffer.pin_memory();
     TensorNode new_tensor_node = build_structure(new_buffer, _nested_size, _nested_stride);
     return _BufferNestedTensor(

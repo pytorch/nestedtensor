@@ -6,7 +6,6 @@ from . import monkey_patch
 import collections
 import os
 
-from . import bufferimpl
 from . import utils
 from . import creation
 

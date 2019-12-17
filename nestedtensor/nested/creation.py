@@ -2,7 +2,6 @@ import torch
 import numbers
 
 from . import nested
-from . import bufferimpl
 from . import utils
 from nestedtensor import _C
 

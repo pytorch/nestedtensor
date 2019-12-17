@@ -154,6 +154,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "is_pinned", &torch::nested_tensor::THP_BufferNestedTensor::is_pinned)
       .def(
+          "is_contiguous",
+          &torch::nested_tensor::THP_BufferNestedTensor::is_contiguous)
+      .def(
           "get_buffer",
           &torch::nested_tensor::THP_BufferNestedTensor::get_buffer)
       .def("to_tensor", &torch::nested_tensor::THP_BufferNestedTensor::to_tensor)
