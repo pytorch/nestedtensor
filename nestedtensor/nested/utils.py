@@ -7,10 +7,11 @@ import os
 
 from .nested import NestedTensor
 from . import creation
-from . import bufferimpl
 
 from collections.abc import Iterable
 from itertools import repeat
+
+from nestedtensor import _C
 
 DEBUG = int(os.getenv("DEBUG", 1))
 
@@ -293,7 +294,7 @@ def reduction(support_nested_dim=True, unbind_args=None, dim_args=None):
                     buffer_ = tf(torch.stack([t.contiguous()._impl.get_buffer()
                                               for t in unbound]), 0, *args, **kwargs)
                     if is_nested_tensor(unbound[0]):
-                        return NestedTensor(bufferimpl._BufferNestedTensor(buffer_,
+                        return NestedTensor(_C._BufferNestedTensor(buffer_,
                                                                            nested_size,))
                     else:
                         return buffer_.reshape_as(unbound[0])

@@ -23,9 +23,8 @@ namespace py = pybind11;
 
 struct THP_ListNestedTensor {
   THP_ListNestedTensor() = delete;
-  THP_ListNestedTensor(py::list list)
-      : _data(_ListNestedTensor(_get_tensor_structure(list))) {}
-  THP_ListNestedTensor(_ListNestedTensor data) : _data(data) {}
+  THP_ListNestedTensor(py::list list);
+  THP_ListNestedTensor(_ListNestedTensor data);
   int64_t element_size() {
     return _data.element_size();
   }

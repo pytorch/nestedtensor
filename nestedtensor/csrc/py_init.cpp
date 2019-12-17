@@ -17,7 +17,7 @@
 // If depth is 0, it means that the current structure
 // is already a leaf, i.e. has no children.
 
-// NOTE: Implementations _ListNestedTensor and _BufferNestedTEnsor
+// NOTE: Implementations _ListNestedTensor and _BufferNestedTensor
 // return lists of lists of integers for nested_size and nested_stride
 // for now. It's up to the consumer to correct this if required.
 
@@ -76,7 +76,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           &torch::nested_tensor::THP_ListNestedTensor::nested_stride)
       .def(
           "pin_memory", &torch::nested_tensor::THP_ListNestedTensor::pin_memory)
-      .def("grad", &torch::nested_tensor::THP_ListNestedTensor::grad)
+      .def_property_readonly("grad", &torch::nested_tensor::THP_ListNestedTensor::grad)
       .def("detach", &torch::nested_tensor::THP_ListNestedTensor::detach)
       .def(
           "requires_grad_",
@@ -139,15 +139,29 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             }
             return result;
           })
+      .def(
+          "requires_grad_",
+          &torch::nested_tensor::THP_BufferNestedTensor::requires_grad_)
+      .def("numel", &torch::nested_tensor::THP_BufferNestedTensor::numel)
+      .def_property_readonly("grad", &torch::nested_tensor::THP_BufferNestedTensor::grad)
+      .def("detach", &torch::nested_tensor::THP_BufferNestedTensor::detach)
       .def("dim", &torch::nested_tensor::THP_BufferNestedTensor::dim)
+      .def(
+          "pin_memory", &torch::nested_tensor::THP_BufferNestedTensor::pin_memory)
       .def(
           "nested_dim",
           &torch::nested_tensor::THP_BufferNestedTensor::nested_dim)
       .def(
           "is_pinned", &torch::nested_tensor::THP_BufferNestedTensor::is_pinned)
       .def(
+          "is_contiguous",
+          &torch::nested_tensor::THP_BufferNestedTensor::is_contiguous)
+      .def(
           "get_buffer",
-          &torch::nested_tensor::THP_BufferNestedTensor::get_buffer);
+          &torch::nested_tensor::THP_BufferNestedTensor::get_buffer)
+      .def("to_tensor", &torch::nested_tensor::THP_BufferNestedTensor::to_tensor)
+      .def("__str__", &torch::nested_tensor::THP_BufferNestedTensor::str)
+      .def("__repr__", &torch::nested_tensor::THP_BufferNestedTensor::str);
 
   m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
 }
