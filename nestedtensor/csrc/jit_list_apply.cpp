@@ -1,5 +1,9 @@
 #include <jit_list_apply.h>
 #include <python_list_nested_tensor.h>
+#include <python_buffer_nested_tensor.h>
+#include <torch/csrc/jit/script/builtin_functions.h>
+#include <ATen/core/interned_strings.h>
+#include <torch/csrc/jit/script/sugared_value.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -123,6 +127,10 @@ THP_ListNestedTensor jit_apply_function(
   return THP_ListNestedTensor(_ListNestedTensor(nested_node));
 }
 
+// TODO: This should support 3 types of functions
+// fn might be scripted (i.e. StrongFunctionPtr)
+// fn might be a builtin (need to resolve!)
+// fn might be neither, so we just dispatch to some regular python for-loops (not fast!)
 py::cpp_function jit_tensorwise() {
   return py::cpp_function([](py::object fn) {
     return py::cpp_function([fn](py::args args, py::kwargs kwargs) {
@@ -146,6 +154,26 @@ py::cpp_function jit_tensorwise() {
       return THP_ListNestedTensor(_ListNestedTensor(result));
     });
   });
+}
+
+void resolve_builtin(py::object obj) {
+  py::object builtin_name =
+      py::module::import("torch.jit").attr("_find_builtin")(obj);
+  auto asdf = std::make_shared<BuiltinFunction>(
+        Symbol::fromQualString(py::str(builtin_name)), c10::nullopt);
+  // torch::jit::script::BuiltinFunction asdf = py::cast<torch::jit::script::BuiltinFunction>(builtin);
+  std::cout << "asdf: " << asdf << std::endl;
+  // Symbol ss = c10::InternedStrings::symbol("add");
+  // const std::vector<Function*>& s = torch::jit::script::getAllBuiltinFunctionsFor(ss);
+  // for (size_t i = 0; i < s.size(); i++) {
+  //   std::cout << s[i] << std::endl;
+  // }
+  // std::cout << "HEEE" << std::endl;
+  // std::vector<std::shared_ptr<Operator>> ops = torch::jit::getAllOperators();
+  // for (size_t i = 0; i < ops.size(); i++) {
+  //   std::cout << "000" << std::endl;
+  //   std::cout << ops[i]->schema() << std::endl;
+  // }
 }
 
 } // namespace nested_tensor
