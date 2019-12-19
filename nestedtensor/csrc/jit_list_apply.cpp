@@ -165,42 +165,45 @@ py::cpp_function jit_tensorwise() {
 //   std::cout << w[i]->getSchema() << std::endl;
 // }
 
-void resolve_builtin(py::object obj, py::args args) {
-  std::vector<TypePtr> arg_types;
-  for (size_t i = 0; i < args.size(); i++) {
-    arg_types.push_back(toTypeInferredIValue(args[i]).type());
-  }
-  for (size_t i = 0; i < arg_types.size(); i++) {
-    std::cout << "\targ_types[" << i << "]: " << arg_types[i]->str();
-  }
-  std::cout << std::endl;
+void resolve_builtin(py::object obj, py::args py_args) {
+  // std::vector<Argument> args;
+  // for (size_t i = 0; i < args.size(); i++) {
+  //   Argument
+  //   TypePtr type_ptr = toTypeInferredIValue(args[i]).type();
+  //   Argument(
+  // }
+  // for (size_t i = 0; i < arg_types.size(); i++) {
+  //   std::cout << "\targ_types[" << i << "]: " << arg_types[i]->str();
+  // }
+  // std::cout << std::endl;
   py::object builtin_name =
       py::module::import("torch.jit").attr("_find_builtin")(obj);
   auto builtin = std::make_shared<torch::jit::script::BuiltinFunction>(
       c10::Symbol::fromQualString(py::str(builtin_name)), c10::nullopt);
-  const std::vector<std::shared_ptr<Operator>>& ops =
-      torch::jit::getAllOperatorsFor(builtin->symbol);
-  std::vector<std::vector<TypePtr>> candidate_arg_types;
+  auto ops = torch::jit::getAllOperatorsFor(builtin->symbol);
+
   for (size_t i = 0; i < ops.size(); i++) {
     const std::vector<Argument>& op_args = ops[i]->schema().arguments();
     for (size_t j = 0; j < op_args.size(); j++) {
-      std::cout << "args[" << j << "]: " << op_args[j].type()->str();
+      std::cout << "\top_args[" << j << "]: " << op_args[j].type()->str();
+      std::cout << "\top_args[" << j << "] name: " << op_args[j].name();
     }
     std::cout << std::endl;
 
-    if (op_args.size() != arg_types.size()) {
-      continue;
-    }
-    bool match = true;
-    for (size_t j = 0; j < op_args.size(); j++) {
-      match = match && (op_args[j].type()->kind() == arg_types[j]->kind());
-    }
-    if (match) {
-      for (size_t j = 0; j < op_args.size(); j++) {
-        std::cout << "\targs[" << j << "]: " << op_args[j].type()->str();
-      }
-      std::cout << std::endl;
-    }
+    // if (op_args.size() != arg_types.size()) {
+    //   continue;
+    // }
+    // bool match = true;
+    // for (size_t j = 0; j < op_args.size(); j++) {
+    //   match = match && (op_args[j].type()->kind() == arg_types[j]->kind());
+    // }
+    // if (match) {
+    //   std::cout << "MATCHED: ";
+    //   for (size_t j = 0; j < op_args.size(); j++) {
+    //     std::cout << "\top_args[" << j << "]: " << op_args[j].type()->str();
+    //   }
+    //   std::cout << std::endl;
+    // }
   }
 }
 
