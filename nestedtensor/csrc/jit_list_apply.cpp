@@ -3,10 +3,14 @@
 #include <python_buffer_nested_tensor.h>
 #include <python_list_nested_tensor.h>
 #include <torch/csrc/jit/script/builtin_functions.h>
+#include <torch/csrc/jit/script/schema_matching.h>
 #include <torch/csrc/jit/script/sugared_value.h>
 
 namespace torch {
 namespace nested_tensor {
+
+using namespace torch::jit;
+using namespace torch::jit::script;
 
 struct ArgWrapper {
   ArgWrapper(TensorNode nested_tensor)
@@ -166,72 +170,114 @@ py::cpp_function jit_tensorwise() {
 // }
 
 // TODO: Write comparison operation based on a subset of Argument comparison
-at::Tensor resolve_builtin(py::object obj, py::args py_args) {
-  std::vector<Argument> args;
-  for (size_t i = 0; i < py_args.size(); i++) {
-    TypePtr type_ptr = tryToInferType(py_args[i]).type();
-    args.push_back(Argument("", type_ptr));
-  }
+at::Tensor resolve_builtin(
+    py::object obj,
+    py::args py_args,
+    py::kwargs py_kwargs) {
   // for (size_t i = 0; i < arg_types.size(); i++) {
   //   std::cout << "\targ_types[" << i << "]: " << arg_types[i]->str();
   // }
   // std::cout << std::endl;
   py::object builtin_name =
       py::module::import("torch.jit").attr("_find_builtin")(obj);
-  auto builtin = std::make_shared<torch::jit::script::BuiltinFunction>(
-      c10::Symbol::fromQualString(py::str(builtin_name)), c10::nullopt);
-  const std::vector<std::shared_ptr<Operator>>& ops =
-      torch::jit::getAllOperatorsFor(builtin->symbol);
+  auto name = c10::Symbol::fromQualString(py::str(builtin_name));
 
-  for (size_t i = 0; i < ops.size(); i++) {
-    const std::vector<Argument>& op_args = ops[i]->schema().arguments();
-    size_t num_args = 0; // TODO: Kwarg support
-    for (size_t j = 0; j < op_args.size(); j++) {
-      if (!op_args[j].kwarg_only()) {
-        num_args++;
+  std::cout << "builtin_name: " << builtin_name << std::endl;
+  std::cout << "name: " << name << std::endl;
+
+  const auto& variants = getAllOperatorsFor(name);
+  const auto& builtin_functions = getAllBuiltinFunctionsFor(name);
+
+  std::stringstream failure_messages;
+  std::vector<const FunctionSchema*> schemas;
+  for (const std::shared_ptr<Operator>& op : variants) {
+    schemas.push_back(&op->schema());
+  }
+  for (const auto method : builtin_functions) {
+    method->ensure_defined();
+    schemas.push_back(&method->getSchema());
+  }
+
+  // Go through each Schema candidate based on the overloads
+  // The order here matters and is given by the way we construct schemas.
+  // This is a subset of matchSchemas within jit/script/schema_matching.cpp
+  // and only implements the argument matching based on features such as types.
+  // It could eventually live in the JIT as a subcomponent that can implement
+  // overload resolution generically and outside a graph context.
+  //
+  // In essence we spend most of our time resolving types (e.g. turn
+  // single floats into lists of floats, resolving concrete types) or dealing
+  // with the unordered nature of kwargs.
+  for (size_t i = 0; i < schemas.size(); i++) {
+    const FunctionSchema* schema = schemas[i];
+    std::cout << "schema[" << i << "]:\t" << *schemas[i];
+    std::cout << " - overload_name: " << schemas[i]->overload_name()
+              << std::endl;
+    size_t processed_py_args = 0;
+    const std::vector<Argument>& schema_args = schema.arguments();
+    // For each argument in the Schema, see if it can be matched up with the
+    // given python arguments to determine whether it's the right overload.
+    for (size_t j = 0; j < schema_args.size(); j++) {
+      // TODO: Support for self as in tryMatchArgument?
+      Argument schema_arg = schema_args[i];
+      if (!schema_arg.only() && processed_py_args < py_args.size() {
+        // TODO: Add support to allow conversions.
+        TypePtr type_ptr = tryToInferType(py_args[i]).type();
       }
-    }
-    if (args.size() != num_args) {
-      continue;
-    }
-    bool match = true;
-    // NOTE: Assuming args come before kwargs
-    for (size_t j = 0; j < args.size(); j++) {
-      Argument op_arg = op_args[j];
-      // TODO: Check why_not using isSubtypeOfExt
-      std::cout << "\top_arg.type(): " << op_arg.type()->str();
-      std::cout << "\top_args[" << j << "].type(): " << args[j].type()->str();
-      // TODO: Separate this out into two runs, first for exact match, then
-      // subtype match (maybe)
-      // TODO: This doesn't seem to work with float < Scalar?
-      match =
-          match && (args[j].type()->isSubtypeOfExt(op_arg.type(), &std::cout));
-      // NOTE: Ignoring name!
-      // TODO: Ignoring N.value() (argument order)
-      // TODO: The first number of arguments must not be kwarg because of our
-      // size check. This also rests on the assuming that args come before
-      // kwargs.
-      TORCH_CHECK(!op_args[j].kwarg_only());
-      // TODO: Ignoring alias_info().value()
-    }
-    std::cout << std::endl;
-    if (true) {
-      std::cout << "MATCHED: ";
-      for (size_t j = 0; j < op_args.size(); j++) {
-        std::cout << "\top_args[" << j << "]: " << op_args[j].type()->str();
-      }
-      std::cout << std::endl;
-      std::shared_ptr<Operator> op_i = ops[i];
-      Operation operation = op_i->getOperation();
-      std::vector<c10::IValue> operation_args;
-      for (size_t i = 0; i < py_args.size(); i++) {
-        operation_args.push_back(toTypeInferredIValue(py_args[i]));
-      }
-      // TODO: Needs to take default value into account.
-      std::cout << "RESULT: " << operation(operation_args) << std::endl;
-      std::cout << "RAN IT" << std::endl;
     }
   }
+
+  // for (size_t i = 0; i < ops.size(); i++) {
+  //   const std::vector<Argument>& op_args = ops[i]->schema().arguments();
+  //   size_t num_args = 0; // TODO: Kwarg support
+  //   for (size_t j = 0; j < op_args.size(); j++) {
+  //     if (!op_args[j].kwarg_only()) {
+  //       num_args++;
+  //     }
+  //   }
+  //   if (args.size() != num_args) {
+  //     continue;
+  //   }
+  //   bool match = true;
+  //   // NOTE: Assuming args come before kwargs
+  //   for (size_t j = 0; j < args.size(); j++) {
+  //     Argument op_arg = op_args[j];
+  //     // TODO: Check why_not using isSubtypeOfExt
+  //     std::cout << "\top_arg.type(): " << op_arg.type()->str();
+  //     std::cout << "\top_args[" << j << "].type(): " <<
+  //     args[j].type()->str();
+  //     // TODO: Separate this out into two runs, first for exact match, then
+  //     // subtype match (maybe)
+  //     // TODO: This doesn't seem to work with float < Scalar?
+  //     match =
+  //         match && (args[j].type()->isSubtypeOfExt(op_arg.type(),
+  //         &std::cout));
+  //     // NOTE: Ignoring name!
+  //     // TODO: Ignoring N.value() (argument order)
+  //     // TODO: The first number of arguments must not be kwarg because of our
+  //     // size check. This also rests on the assuming that args come before
+  //     // kwargs.
+  //     TORCH_CHECK(!op_args[j].kwarg_only());
+  //     // TODO: Ignoring alias_info().value()
+  //   }
+  //   std::cout << std::endl;
+  //   if (true) {
+  //     std::cout << "MATCHED: ";
+  //     for (size_t j = 0; j < op_args.size(); j++) {
+  //       std::cout << "\top_args[" << j << "]: " << op_args[j].type()->str();
+  //     }
+  //     std::cout << std::endl;
+  //     std::shared_ptr<Operator> op_i = ops[i];
+  //     Operation operation = op_i->getOperation();
+  //     std::vector<c10::IValue> operation_args;
+  //     for (size_t i = 0; i < py_args.size(); i++) {
+  //       operation_args.push_back(toTypeInferredIValue(py_args[i]));
+  //     }
+  //     // TODO: Needs to take default value into account.
+  //     std::cout << "RESULT: " << operation(operation_args) << std::endl;
+  //     std::cout << "RAN IT" << std::endl;
+  //   }
+  // }
   return torch::ones({});
 }
 
