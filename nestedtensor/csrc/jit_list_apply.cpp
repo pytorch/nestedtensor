@@ -208,8 +208,7 @@ at::Tensor resolve_builtin(
   for (size_t i = 0; i < schemas.size(); i++) {
     const FunctionSchema* schema = schemas[i];
     std::cout << "schema[" << i << "]:\t" << *schemas[i];
-    std::cout << " - overload_name: " << schemas[i]->overload_name()
-              << std::endl;
+    std::cout << " - overload_name: " << schemas[i]->overload_name();
     // In the end it's only a match when this counter fully depleted the args.
     size_t py_args_i = 0;
     size_t used_kwargs = 0;
@@ -225,13 +224,14 @@ at::Tensor resolve_builtin(
     // and conversions. It's possible to match a Python call
     // signature to an overload with different types such as
     // Scalar and Tensor etc. simply by requiring conversion.
+    bool fail = false;
     for (size_t j = 0; j < schema_args.size(); j++) {
       // TODO: Support for self as in tryMatchArgument?
-      Argument schema_arg = schema_args[i];
+      Argument schema_arg = schema_args[j];
       if (!schema_arg.kwarg_only() && py_args_i < py_args.size()) {
         // TODO: Add support to allow conversions.
-        IValue type_ptr = toTypeInferredIValue(py_args[py_args_i]);
-        parse_py_args.emplace_back(ArgWrapper(type_ptr));
+        IValue ivalue = toTypeInferredIValue(py_args[py_args_i]);
+        parse_py_args.emplace_back(ArgWrapper(ivalue));
         py_args_i++;
       } else if (py_kwargs.contains(schema_arg.name().c_str())) {
         // TODO: Check for no presence of duplicates in given schemas[i]
@@ -242,13 +242,34 @@ at::Tensor resolve_builtin(
       } else if (schema_arg.default_value()) {
         parse_py_args.emplace_back(ArgWrapper(*schema_arg.default_value()));
       } else {
-        std::cout << "FAIL" << std::endl;
+        // The given schema cannot find either a positional or keyword argument to match against
+        // for this given schema argument. There also is no default value specified for this 
+        // schema argument. Therefore this schema cannot be the correct overload.
+        fail = true;
+        break;
       }
     }
-    if (py_args_i == py_args.size() - 1 && used_kwargs == py_kwargs.size()) {
-      std::cout << "WIN - ";
-      std::cout << "schema: " << schema;
+    if (!fail && 
+        // Check whether all positional arguments were matched by given Schema
+        (py_args.size() == py_args_i) &&
+        // Check if all kwargs were matched by given Schema
+        (used_kwargs == py_kwargs.size())
+        ) {
+      bool types_match = true;
+      TypeEnv type_env;
+      for (size_t j = 0; j < parse_py_args.size(); j++) {
+        std::cout << "parse_py_args[" << j << "]: " << parse_py_args[j].ivalue().type()->str()
+                  << std::endl;
+        MatchTypeReturn match = matchTypeVariables(
+            schema_args[j].type(), parse_py_args[j].ivalue().type(), type_env);
+        types_match = types_match && match.success();
+      }
+      if (types_match) {
+        std::cout << "\t=== WIN" << std::endl;
+        continue;
+      }
     }
+    std::cout << "\t=== FAIL" << std::endl;
   }
   return torch::ones({});
 }
