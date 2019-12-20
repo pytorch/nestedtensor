@@ -13,6 +13,9 @@ THP_ListNestedTensor jit_apply_function(
     std::vector<THP_ListNestedTensor> nts_,
     py::object fn);
 py::cpp_function jit_tensorwise();
-at::Tensor resolve_builtin(py::object, py::args);
+at::Tensor resolve_builtin(
+    py::object obj,
+    py::args py_args,
+    py::kwargs py_kwargs);
 } // namespace nested_tensor
 } // namespace torch
