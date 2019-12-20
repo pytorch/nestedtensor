@@ -170,37 +170,11 @@ py::cpp_function jit_tensorwise() {
   });
 }
 
-// const std::vector<Function*>& w =
-//     torch::jit::script::getAllBuiltinFunctionsFor(asdf->symbol);
-// for (size_t i = 0; i < w.size(); i++) {
-//   std::cout << w[i]->getSchema() << std::endl;
-// }
-
-// c10::optional<size_t> findName(const std::string& name, 
-//     std::vector<std::string> py_kwargs_keys) {
-//   for (size_t i = 0; i < py_kwargs_keys.size(); i++) {
-//     if (name == py_kwargs_keys[i]) {
-//       return i;
-//     }
-//   }
-//   return c10::nullopt;
-// }
-
 // TODO: Write comparison operation based on a subset of Argument comparison
 at::Tensor resolve_builtin(
     py::object obj,
     py::args py_args,
     py::kwargs py_kwargs) {
-  // std::vector<py::object> py_args = py_args_;
-  // std::unordered_map<std::string, py::object> py_kwargs = py_kwargs_;
-  // std::vector<std::string> py_kwargs_keys;
-  // for (size_t i = 0; i < py_kwargs.size(); i++) {
-  //   py_kwargs_keys.push_back(std::string(py::str(std::get<0>(py_kwargs.begin()[i]))));
-  // }
-  // for (size_t i = 0; i < arg_types.size(); i++) {
-  //   std::cout << "\targ_types[" << i << "]: " << arg_types[i]->str();
-  // }
-  // std::cout << std::endl;
   py::object builtin_name =
       py::module::import("torch.jit").attr("_find_builtin")(obj);
   auto name = c10::Symbol::fromQualString(py::str(builtin_name));
@@ -261,11 +235,9 @@ at::Tensor resolve_builtin(
         py_args_i++;
       } else if (py_kwargs.contains(schema_arg.name().c_str())) {
         // TODO: Check for no presence of duplicates in given schemas[i]
-        // auto item = py_kwargs.begin()[*kwarg_idx];
-        // std::string py_kwarg_key = std::string(py::str(std::get<0>(item)));
         py::handle py_kwarg_object = py_kwargs[schema_arg.name().c_str()];
-        parse_py_args.emplace_back(
-            ArgWrapper(schema_arg.name(), toTypeInferredIValue(py_kwarg_object)));
+        parse_py_args.emplace_back(ArgWrapper(
+            schema_arg.name(), toTypeInferredIValue(py_kwarg_object)));
         used_kwargs++;
       } else if (schema_arg.default_value()) {
         parse_py_args.emplace_back(ArgWrapper(*schema_arg.default_value()));
@@ -278,60 +250,6 @@ at::Tensor resolve_builtin(
       std::cout << "schema: " << schema;
     }
   }
-
-  // for (size_t i = 0; i < ops.size(); i++) {
-  //   const std::vector<Argument>& op_args = ops[i]->schema().arguments();
-  //   size_t num_args = 0; // TODO: Kwarg support
-  //   for (size_t j = 0; j < op_args.size(); j++) {
-  //     if (!op_args[j].kwarg_only()) {
-  //       num_args++;
-  //     }
-  //   }
-  //   if (args.size() != num_args) {
-  //     continue;
-  //   }
-  //   bool match = true;
-  //   // NOTE: Assuming args come before kwargs
-  //   for (size_t j = 0; j < args.size(); j++) {
-  //     Argument op_arg = op_args[j];
-  //     // TODO: Check why_not using isSubtypeOfExt
-  //     std::cout << "\top_arg.type(): " << op_arg.type()->str();
-  //     std::cout << "\top_args[" << j << "].type(): " <<
-  //     args[j].type()->str();
-  //     // TODO: Separate this out into two runs, first for exact match, then
-  //     // subtype match (maybe)
-  //     // TODO: This doesn't seem to work with float < Scalar?
-  //     match =
-  //         match && (args[j].type()->isSubtypeOfExt(op_arg.type(),
-  //         &std::cout));
-  //     // NOTE: Ignoring name!
-  //     // TODO: Ignoring N.value() (argument order)
-  //     // TODO: The first number of arguments must not be kwarg because of
-  //     our
-  //     // size check. This also rests on the assuming that args come before
-  //     // kwargs.
-  //     TORCH_CHECK(!op_args[j].kwarg_only());
-  //     // TODO: Ignoring alias_info().value()
-  //   }
-  //   std::cout << std::endl;
-  //   if (true) {
-  //     std::cout << "MATCHED: ";
-  //     for (size_t j = 0; j < op_args.size(); j++) {
-  //       std::cout << "\top_args[" << j << "]: " <<
-  //       op_args[j].type()->str();
-  //     }
-  //     std::cout << std::endl;
-  //     std::shared_ptr<Operator> op_i = ops[i];
-  //     Operation operation = op_i->getOperation();
-  //     std::vector<c10::IValue> operation_args;
-  //     for (size_t i = 0; i < py_args.size(); i++) {
-  //       operation_args.push_back(toTypeInferredIValue(py_args[i]));
-  //     }
-  //     // TODO: Needs to take default value into account.
-  //     std::cout << "RESULT: " << operation(operation_args) << std::endl;
-  //     std::cout << "RAN IT" << std::endl;
-  //   }
-  // }
   return torch::ones({});
 }
 
