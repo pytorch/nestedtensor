@@ -258,8 +258,8 @@ at::Tensor resolve_builtin(
       bool types_match = true;
       TypeEnv type_env;
       for (size_t j = 0; j < parse_py_args.size(); j++) {
-        std::cout << "parse_py_args[" << j << "]: " << parse_py_args[j].ivalue().type()->str()
-                  << std::endl;
+        std::cout << " ; parse_py_args[" << j << "]: " << parse_py_args[j].ivalue().type()->str();
+        // Now that we found that the overall schema matches, we need to check whether the types match.
         MatchTypeReturn match = matchTypeVariables(
             schema_args[j].type(), parse_py_args[j].ivalue().type(), type_env);
         types_match = types_match && match.success();
