@@ -43,9 +43,8 @@ struct ArgWrapper {
 };
 
 // TODO: Assert that one arg must be a nestedtensor?
-static TensorNode apply_jit_function(
-    std::vector<ArgWrapper>& args,
-    Function& fn) {
+template <class F>
+static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F fn) {
   bool all_leaf = true;
   for (size_t i = 0; i < args.size(); i++) {
     if (args[i].is_nested_tensor()) {
@@ -133,15 +132,15 @@ THP_ListNestedTensor jit_apply_function(
     nested_nodes.push_back(ArgWrapper(nts[i].get_structure()));
   }
   py::gil_scoped_release release;
-  TensorNode nested_node = apply_jit_function(nested_nodes, callee);
+  TensorNode nested_node = apply_jit_function<Function&>(nested_nodes, callee);
   py::gil_scoped_acquire acquire;
   return THP_ListNestedTensor(_ListNestedTensor(nested_node));
 }
 
 static bool try_match_schema(
     const FunctionSchema* schema,
-    py::args py_args,
-    py::kwargs py_kwargs) {
+    const std::vector<ArgWrapper>& py_args,
+    const std::unordered_map<std::string, ArgWrapper>& py_kwargs) {
   // In the end it's only a match when this counter fully depleted the args.
   size_t py_args_i = 0;
   size_t used_kwargs = 0;
@@ -157,20 +156,16 @@ static bool try_match_schema(
   // and conversions. It's possible to match a Python call
   // signature to an overload with different types such as
   // Scalar and Tensor etc. simply by requiring conversion.
-  bool fail = false;
   for (size_t j = 0; j < schema_args.size(); j++) {
     // TODO: Support for self as in tryMatchArgument?
     Argument schema_arg = schema_args[j];
     if (!schema_arg.kwarg_only() && py_args_i < py_args.size()) {
       // TODO: Add support to allow conversions.
-      IValue ivalue = toTypeInferredIValue(py_args[py_args_i]);
-      parse_py_args.emplace_back(ArgWrapper(ivalue));
+      parse_py_args.push_back(py_args[py_args_i]);
       py_args_i++;
     } else if (py_kwargs.contains(schema_arg.name().c_str())) {
       // TODO: Check for no presence of duplicates in given schema
-      py::handle py_kwarg_object = py_kwargs[schema_arg.name().c_str()];
-      parse_py_args.emplace_back(
-          ArgWrapper(schema_arg.name(), toTypeInferredIValue(py_kwarg_object)));
+      parse_py_args.push_back(py_kwargs[schema_arg.name().c_str()]);
       used_kwargs++;
     } else if (schema_arg.default_value()) {
       parse_py_args.emplace_back(ArgWrapper(*schema_arg.default_value()));
@@ -206,51 +201,55 @@ static bool try_match_schema(
 }
 
 // TODO: Write comparison operation based on a subset of Argument comparison
-c10::optional<Function*> resolve_builtin(
-    py::object obj,
-    py::args py_args,
-    py::kwargs py_kwargs) {
+// TODO: Move this into jit_tensorwise and add support for all 3 cases.
+// TODO: Template apply_jit_function to work with Operation and Function.
+c10::optional<Symbol> is_builtin(py::object fn) {
   py::object builtin_name =
-      py::module::import("torch.jit").attr("_find_builtin")(obj);
-  auto name = c10::Symbol::fromQualString(py::str(builtin_name));
+      py::module::import("torch.jit").attr("_find_builtin")(fn);
+  Symbol name = c10::Symbol::fromQualString(py::str(builtin_name));
 
-  std::cout << "builtin_name: " << builtin_name << std::endl;
-  std::cout << "name: " << name << std::endl;
-
+  // TODO: Is there a cheaper way to do this?
   const auto& variants = getAllOperatorsFor(name);
+  if (variants.size() == 0) {
+    return c10::nullopt;
+  }
   const auto& builtin_functions = getAllBuiltinFunctionsFor(name);
+  if (builtin_functions.size() == 0) {
+    return c10::nullopt;
+  }
+  return name;
+}
 
-  // TODO: Move this into jit_tensorwise and add support for all 3 cases.
-  std::stringstream failure_messages;
-  std::vector<const FunctionSchema*> schemas;
-  for (const std::shared_ptr<Operator>& op : variants) {
-    schemas.push_back(&op->schema());
-  }
-  for (Function* method : builtin_functions) {
-    method->ensure_defined();
-    if (try_match_schema(&method->getSchema())) {
-      return method;
-    }
-  }
+//  // Go through each Schema candidate based on the overloads
+//  // The order here matters and is given by the way we construct schemas.
+//  // This is a subset of matchSchemas within jit/script/schema_matching.cpp
+//  // and only implements the argument matching based on features such as
+//  types.
+//  // It could eventually live in the JIT as a subcomponent that can implement
+//  // overload resolution generically and outside a graph context.
+//  //
+//  // In essence we spend most of our time resolving types (e.g. turn
+//  // single floats into lists of floats, resolving concrete types) or dealing
+//  // with the unordered nature of kwargs.
+//  for (size_t i = 0; i < schemas.size(); i++) {
+//    if (try_match_schema(schemas[i], py_args, py_kwargs)) {
+//      std::cout << "schema[" << i << "]:\t" << *schemas[i];
+//      std::cout << " - overload_name: " << schemas[i]->overload_name();
+//      std::cout << "WIN" << std::endl;
+//    }
+//  }
+//  return torch::ones({});
+} // namespace nested_tensor
 
-  // Go through each Schema candidate based on the overloads
-  // The order here matters and is given by the way we construct schemas.
-  // This is a subset of matchSchemas within jit/script/schema_matching.cpp
-  // and only implements the argument matching based on features such as types.
-  // It could eventually live in the JIT as a subcomponent that can implement
-  // overload resolution generically and outside a graph context.
-  //
-  // In essence we spend most of our time resolving types (e.g. turn
-  // single floats into lists of floats, resolving concrete types) or dealing
-  // with the unordered nature of kwargs.
-  for (size_t i = 0; i < schemas.size(); i++) {
-    if (try_match_schema(schemas[i], py_args, py_kwargs)) {
-      std::cout << "schema[" << i << "]:\t" << *schemas[i];
-      std::cout << " - overload_name: " << schemas[i]->overload_name();
-      std::cout << "WIN" << std::endl;
-    }
+ArgWrapper wrap_arg(py::object arg) {
+  if (py::isinstance<THP_ListNestedTensor>(arg)) {
+    return ArgWrapper(
+        py::cast<THP_ListNestedTensor>(arg).data().get_structure());
+  } else if (py::isinstance<THP_BufferNestedTensor>(arg)) {
+    return ArgWrapper(
+        py::cast<THP_BufferNestedTensor>(arg).data().get_structure());
   }
-  return torch::ones({});
+  return ArgWrapper(toTypeInferredIValue(arg));
 }
 
 // TODO: This should support 3 types of functions
@@ -260,30 +259,42 @@ c10::optional<Function*> resolve_builtin(
 // (not fast!)
 py::cpp_function jit_tensorwise() {
   return py::cpp_function([](py::object fn) {
-    return py::cpp_function([fn](py::args args, py::kwargs kwargs) {
-      auto sfn = py::cast<StrongFunctionPtr>(fn);
-      Function& f = *sfn.function_;
-      std::vector<ArgWrapper> nested_nodes;
-      for (size_t i = 0; i < args.size(); i++) {
-        if (py::isinstance<THP_ListNestedTensor>(args[i])) {
-          nested_nodes.push_back(ArgWrapper(
-              py::cast<THP_ListNestedTensor>(args[i]).data().get_structure()));
-        } else if (py::isinstance<THP_BufferNestedTensor>(args[i])) {
-          nested_nodes.push_back(
-              ArgWrapper(py::cast<THP_BufferNestedTensor>(args[i])
-                             .data()
-                             .get_structure()));
-        } else {
-          nested_nodes.push_back(ArgWrapper(toTypeInferredIValue(args[i])));
+    return py::cpp_function([fn](py::args args_, py::kwargs kwargs_) {
+      std::vector<ArgWrapper> args;
+      for (size_t i = 0; i < args_.size(); i++) {
+        nested_nodes.push_back(wrap_arg(args_[i]));
+      }
+      std::unordered_map<std::string, ArgWrapper> kwargs;
+      for (const auto& pair : kwargs_) {
+        kwargs[pair.first] = wrap_arg(paid.second);
+      }
+
+      if (py::isinstance<StrongFunctionPtr>(fn)) {
+        auto sfn = py::cast<StrongFunctionPtr>(fn);
+        Function& f = *sfn.function_;
+        py::gil_scoped_release release;
+        result = apply_jit_function(args, f);
+        py::gil_scoped_acquire acquire;
+        return THP_ListNestedTensor(_ListNestedTensor(result));
+      }
+      if (auto names = is_builtin(fn)) {
+        for (const auto& op : getAllOperatorsFor(name)) {
+          if (try_match_schema(&op->schema)) {
+            return apply_jit_function(args, op->getOperation());
+          }
+        }
+        for (const auto& op : getAllBuiltinFunctionsFor(name)) {
+          if (try_match_schema(&op->schema)) {
+            return apply_jit_function(args, op);
+          }
         }
       }
-      py::gil_scoped_release release;
-      TensorNode result = apply_jit_function(nested_nodes, f);
-      py::gil_scoped_acquire acquire;
-      return THP_ListNestedTensor(_ListNestedTensor(result));
+      // TODO: Need implementation of generic python version.
+      std::cout << "FAIL!" << std::endl;
+      return torch::ones({});
     });
   });
-}
+} // namespace torch
 
-} // namespace nested_tensor
+} // namespace torch
 } // namespace torch
