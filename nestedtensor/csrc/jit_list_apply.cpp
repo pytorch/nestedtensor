@@ -163,9 +163,9 @@ static bool try_match_schema(
       // TODO: Add support to allow conversions.
       parse_py_args.push_back(py_args[py_args_i]);
       py_args_i++;
-    } else if (py_kwargs.contains(schema_arg.name().c_str())) {
+    } else if (py_kwargs.find(schema_arg.name().c_str()) != py_kwargs.end()) {
       // TODO: Check for no presence of duplicates in given schema
-      parse_py_args.push_back(py_kwargs[schema_arg.name().c_str()]);
+      parse_py_args.push_back(py_kwargs.at(schema_arg.name().c_str()));
       used_kwargs++;
     } else if (schema_arg.default_value()) {
       parse_py_args.emplace_back(ArgWrapper(*schema_arg.default_value()));
@@ -241,7 +241,7 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 //  return torch::ones({});
 } // namespace nested_tensor
 
-ArgWrapper wrap_arg(py::object arg) {
+static ArgWrapper wrap_arg(py::object arg) {
   if (py::isinstance<THP_ListNestedTensor>(arg)) {
     return ArgWrapper(
         py::cast<THP_ListNestedTensor>(arg).data().get_structure());
