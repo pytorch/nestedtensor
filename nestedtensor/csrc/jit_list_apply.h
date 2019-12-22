@@ -26,7 +26,7 @@ template <>
 inline at::Tensor run_function(std::vector<c10::IValue> stack, Operation& fn) {
   size_t i = 0;
   for (c10::IValue& ival : stack) {
-    std::cout << "ival " << i << " : " << ival << std::endl;
+    std::cout << "ival " << i << " : " << ival.tagKind() << std::endl;
     i++;
   }
   std::cout << "run_function_Operation" << std::endl;
