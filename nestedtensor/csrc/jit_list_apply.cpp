@@ -167,6 +167,7 @@ static bool try_match_schema(
     const FunctionSchema* schema,
     const std::vector<ArgWrapper>& py_args,
     const std::unordered_map<std::string, ArgWrapper>& py_kwargs) {
+  std::cout << "Checking match for schema: " << *schema << std::endl;
   // In the end it's only a match when this counter fully depleted the args.
   size_t py_args_i = 0;
   size_t used_kwargs = 0;
@@ -194,12 +195,15 @@ static bool try_match_schema(
       parse_py_args.push_back(py_kwargs.at(schema_arg.name().c_str()));
       used_kwargs++;
     } else if (schema_arg.default_value()) {
+      // TODO: How is this converted to ScalarType if it's a int (usually)?
+      // What mechanism currently does this kind of conversion.
       parse_py_args.emplace_back(ArgWrapper(*schema_arg.default_value()));
     } else {
       // The given schema cannot find either a positional or keyword argument to
       // match against for this given schema argument. There also is no default
       // value specified for this schema argument. Therefore this schema cannot
       // be the correct overload.
+      std::cout << "ARGS COUNT OFF!" << std::endl;
       return false;
     }
   }
@@ -212,18 +216,31 @@ static bool try_match_schema(
     TypeEnv type_env;
     for (size_t j = 0; j < parse_py_args.size(); j++) {
       // std::cout << " ; parse_py_args[" << j
-      //           << "]: " << parse_py_args[j].ivalue().type()->str();
+      //           << "]: " << type_j->str();
       // Now that we found that the overall schema matches, we need to check
       // whether the types match.
+      // TODO: Need Subtypes and argument type conversions (e.g. convert one
+      // float to list of floats with right number of elements).
+      // MatchTypeReturn match =
+      //     matchTypeVariables(schema_args[j].type(), type_j, type_env);
       TypePtr type_j = parse_py_args[j].ivalue().type();
-      MatchTypeReturn match =
-          matchTypeVariables(schema_args[j].type(), type_j, type_env);
-      types_match = types_match && match.success();
+      std::cout << " x parse_py_args[" << j << "]: " << type_j->str();
+      std::cout << "\t=\t"
+                << "schema_args[" << j << "]: " << schema_args[j].type()->str();
+      // TODO: We want to know whether the actual argument is a convertible
+      // subtype to the one used in the schema.
+      // XXX: CONTINUE HERE!
+      types_match = types_match && matchTypeVariables(schema_args[j].type(), type_j, type_env).success();
+      std::cout << "\t types_match: " << types_match;
+      std::cout << std::endl;
     }
+    std::cout << std::endl;
     if (types_match) {
+      std::cout << "FOUND IT!" << std::endl;
       return true;
     }
   }
+  std::cout << "ARGS SIZES MISMATCHED" << std::endl;
   return false;
 }
 
