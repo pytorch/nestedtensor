@@ -9,13 +9,27 @@
 
 namespace torch {
 namespace nested_tensor {
+
+// TODO Expand to IValues to support generic lists?
+template <class F>
+inline at::Tensor run_function(std::vector<c10::IValue> stack, F& fn);
+
+template <>
+inline at::Tensor run_function(std::vector<c10::IValue> stack, Function& fn) {
+  return fn(stack).toTensor();
+}
+
+template <>
+inline at::Tensor run_function(std::vector<c10::IValue> stack, Operation& fn) {
+  fn(stack);
+  return stack.front().toTensor();
+}
+
 THP_ListNestedTensor jit_apply_function(
     std::vector<THP_ListNestedTensor> nts_,
     py::object fn);
+
 py::cpp_function jit_tensorwise();
-at::Tensor resolve_builtin(
-    py::object obj,
-    py::args py_args,
-    py::kwargs py_kwargs = {});
+
 } // namespace nested_tensor
 } // namespace torch

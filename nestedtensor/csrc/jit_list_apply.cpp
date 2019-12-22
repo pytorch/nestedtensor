@@ -42,9 +42,10 @@ struct ArgWrapper {
   TensorNode _nested_tensor;
 };
 
+
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
-static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F fn) {
+static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F& fn) {
   bool all_leaf = true;
   for (size_t i = 0; i < args.size(); i++) {
     if (args[i].is_nested_tensor()) {
@@ -73,9 +74,10 @@ static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F fn) {
         }
       }
     }
+    // TODO: getSchema().checkAndNormalizeInputs(stack, kwargs);?
     c10::List<at::Tensor> results;
     for (size_t i = 0; i < stacks.size(); i++) {
-      results.push_back(fn(stacks[i]).toTensor());
+      results.push_back(run_function<F>(stacks[i], fn));
     }
     return TensorNode(results);
   } else {
@@ -107,11 +109,30 @@ static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F fn) {
           local_args.push_back(ArgWrapper(args[j].ivalue()));
         }
       }
-      result.push_back(apply_jit_function(local_args, fn));
+      result.push_back(apply_jit_function<F>(local_args, fn));
     }
     return TensorNode(result);
   }
 }
+
+template <class F>
+static THP_ListNestedTensor apply_jit_function_helper(
+    std::vector<ArgWrapper>& args,
+    std::unordered_map<std::string, ArgWrapper> kwargs,
+    F& op) {
+  std::vector<ArgWrapper> flat_args;
+  for (size_t i = 0; i < args.size(); i++) {
+    flat_args.push_back(args[i]);
+  }
+  for (auto kwarg : kwargs) {
+    flat_args.push_back(kwarg.second);
+  }
+  py::gil_scoped_release release;
+  TensorNode result = apply_jit_function(flat_args, op);
+  py::gil_scoped_acquire acquire;
+  return THP_ListNestedTensor(_ListNestedTensor(result));
+}
+
 THP_ListNestedTensor jit_apply_function(
     std::vector<THP_ListNestedTensor> nts_,
     py::object fn) {
@@ -132,7 +153,7 @@ THP_ListNestedTensor jit_apply_function(
     nested_nodes.push_back(ArgWrapper(nts[i].get_structure()));
   }
   py::gil_scoped_release release;
-  TensorNode nested_node = apply_jit_function<Function&>(nested_nodes, callee);
+  TensorNode nested_node = apply_jit_function<Function>(nested_nodes, callee);
   py::gil_scoped_acquire acquire;
   return THP_ListNestedTensor(_ListNestedTensor(nested_node));
 }
@@ -239,7 +260,6 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 //    }
 //  }
 //  return torch::ones({});
-} // namespace nested_tensor
 
 static ArgWrapper wrap_arg(py::object arg) {
   if (py::isinstance<THP_ListNestedTensor>(arg)) {
@@ -262,39 +282,39 @@ py::cpp_function jit_tensorwise() {
     return py::cpp_function([fn](py::args args_, py::kwargs kwargs_) {
       std::vector<ArgWrapper> args;
       for (size_t i = 0; i < args_.size(); i++) {
-        nested_nodes.push_back(wrap_arg(args_[i]));
+        args.push_back(wrap_arg(args_[i]));
       }
       std::unordered_map<std::string, ArgWrapper> kwargs;
-      for (const auto& pair : kwargs_) {
-        kwargs[pair.first] = wrap_arg(paid.second);
+      for (const std::pair<py::handle, py::handle>& pair : kwargs_) {
+        kwargs.emplace(std::make_pair(
+            std::string(py::str(pair.first)),
+            wrap_arg(py::reinterpret_borrow<py::object>(pair.second))));
       }
 
       if (py::isinstance<StrongFunctionPtr>(fn)) {
         auto sfn = py::cast<StrongFunctionPtr>(fn);
-        Function& f = *sfn.function_;
-        py::gil_scoped_release release;
-        result = apply_jit_function(args, f);
-        py::gil_scoped_acquire acquire;
-        return THP_ListNestedTensor(_ListNestedTensor(result));
+        Function& op = *sfn.function_;
+        return apply_jit_function_helper<Function>(args, kwargs, op);
       }
-      if (auto names = is_builtin(fn)) {
-        for (const auto& op : getAllOperatorsFor(name)) {
-          if (try_match_schema(&op->schema)) {
-            return apply_jit_function(args, op->getOperation());
+      if (auto name = is_builtin(fn)) {
+        for (const auto& op : getAllOperatorsFor(*name)) {
+          if (try_match_schema(&op->schema(), args, kwargs)) {
+            Operation actual = op->getOperation();
+            return apply_jit_function_helper<Operation>(args, kwargs, actual);
           }
         }
-        for (const auto& op : getAllBuiltinFunctionsFor(name)) {
-          if (try_match_schema(&op->schema)) {
-            return apply_jit_function(args, op);
+        for (const auto& op : getAllBuiltinFunctionsFor(*name)) {
+          if (try_match_schema(&op->getSchema(), args, kwargs)) {
+            return apply_jit_function_helper<Function>(args, kwargs, *op);
           }
         }
       }
       // TODO: Need implementation of generic python version.
       std::cout << "FAIL!" << std::endl;
-      return torch::ones({});
+      TensorNode result;
+      return THP_ListNestedTensor(_ListNestedTensor(result));
     });
   });
-} // namespace torch
-
-} // namespace torch
+}
+} // namespace nested_tensor
 } // namespace torch

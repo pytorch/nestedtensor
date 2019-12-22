@@ -165,5 +165,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
   m.def("jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
-  m.def("resolve_builtin", &torch::nested_tensor::resolve_builtin);
 }
