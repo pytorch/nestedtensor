@@ -16,13 +16,25 @@ inline at::Tensor run_function(std::vector<c10::IValue> stack, F& fn);
 
 template <>
 inline at::Tensor run_function(std::vector<c10::IValue> stack, Function& fn) {
-  return fn(stack).toTensor();
+  std::cout << "run_function_Function" << std::endl;
+  c10::IValue result = fn(stack);
+  std::cout << "finished result_Function" << std::endl;
+  return result.toTensor();
 }
 
 template <>
 inline at::Tensor run_function(std::vector<c10::IValue> stack, Operation& fn) {
+  size_t i = 0;
+  for (c10::IValue& ival : stack) {
+    std::cout << "ival " << i << " : " << ival << std::endl;
+    i++;
+  }
+  std::cout << "run_function_Operation" << std::endl;
   fn(stack);
-  return stack.front().toTensor();
+  std::cout << "run_function_Operation stack finished" << std::endl;
+  c10::IValue result = stack.front();
+  std::cout << "finished result_Operation" << std::endl;
+  return result.toTensor();
 }
 
 THP_ListNestedTensor jit_apply_function(

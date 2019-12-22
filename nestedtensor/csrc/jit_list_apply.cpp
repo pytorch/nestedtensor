@@ -24,6 +24,11 @@ struct ArgWrapper {
   }
 
   c10::IValue ivalue() {
+    if (_is_nested_tensor) {
+      TensorNode first_tensor_node = get_first_leaf(_nested_tensor);
+      // TODO: What if this is empty?
+      return c10::IValue(first_tensor_node.payload(0));
+    }
     return _ivalue;
   }
 
@@ -41,7 +46,6 @@ struct ArgWrapper {
   c10::IValue _ivalue;
   TensorNode _nested_tensor;
 };
-
 
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
@@ -206,12 +210,13 @@ static bool try_match_schema(
     bool types_match = true;
     TypeEnv type_env;
     for (size_t j = 0; j < parse_py_args.size(); j++) {
-      std::cout << " ; parse_py_args[" << j
-                << "]: " << parse_py_args[j].ivalue().type()->str();
+      // std::cout << " ; parse_py_args[" << j
+      //           << "]: " << parse_py_args[j].ivalue().type()->str();
       // Now that we found that the overall schema matches, we need to check
       // whether the types match.
-      MatchTypeReturn match = matchTypeVariables(
-          schema_args[j].type(), parse_py_args[j].ivalue().type(), type_env);
+      TypePtr type_j = parse_py_args[j].ivalue().type();
+      MatchTypeReturn match =
+          matchTypeVariables(schema_args[j].type(), type_j, type_env);
       types_match = types_match && match.success();
     }
     if (types_match) {
@@ -292,6 +297,7 @@ py::cpp_function jit_tensorwise() {
       }
 
       if (py::isinstance<StrongFunctionPtr>(fn)) {
+        std::cout << "is StrongFunctionPtr" << std::endl;
         auto sfn = py::cast<StrongFunctionPtr>(fn);
         Function& op = *sfn.function_;
         return apply_jit_function_helper<Function>(args, kwargs, op);
@@ -299,12 +305,16 @@ py::cpp_function jit_tensorwise() {
       if (auto name = is_builtin(fn)) {
         for (const auto& op : getAllOperatorsFor(*name)) {
           if (try_match_schema(&op->schema(), args, kwargs)) {
+            std::cout << "is builtin Operation with schema: " << op->schema()
+                      << std::endl;
             Operation actual = op->getOperation();
             return apply_jit_function_helper<Operation>(args, kwargs, actual);
           }
         }
         for (const auto& op : getAllBuiltinFunctionsFor(*name)) {
           if (try_match_schema(&op->getSchema(), args, kwargs)) {
+            std::cout << "is builtin Function with schema: " << op->getSchema()
+                      << std::endl;
             return apply_jit_function_helper<Function>(args, kwargs, *op);
           }
         }
