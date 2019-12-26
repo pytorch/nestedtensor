@@ -10,30 +10,42 @@
 namespace torch {
 namespace nested_tensor {
 
+static bool DEBUG = false;
+
 // TODO Expand to IValues to support generic lists?
 template <class F>
 inline at::Tensor run_function(std::vector<c10::IValue> stack, F& fn);
 
 template <>
 inline at::Tensor run_function(std::vector<c10::IValue> stack, Function& fn) {
-  std::cout << "run_function_Function" << std::endl;
+  if (DEBUG) {
+    std::cout << "run_function_Function" << std::endl;
+  }
   c10::IValue result = fn(stack);
-  std::cout << "finished result_Function" << std::endl;
+  if (DEBUG) {
+    std::cout << "finished result_Function" << std::endl;
+  }
   return result.toTensor();
 }
 
 template <>
 inline at::Tensor run_function(std::vector<c10::IValue> stack, Operation& fn) {
-  size_t i = 0;
-  for (c10::IValue& ival : stack) {
-    std::cout << "ival " << i << " : " << ival.tagKind() << std::endl;
-    i++;
+  if (DEBUG) {
+    size_t i = 0;
+    for (c10::IValue& ival : stack) {
+      std::cout << "ival " << i << " : " << ival.tagKind() << std::endl;
+      i++;
+    }
+    std::cout << "run_function_Operation" << std::endl;
   }
-  std::cout << "run_function_Operation" << std::endl;
   fn(stack);
-  std::cout << "run_function_Operation stack finished" << std::endl;
+  if (DEBUG) {
+    std::cout << "run_function_Operation stack finished" << std::endl;
+  }
   c10::IValue result = stack.front();
-  std::cout << "finished result_Operation" << std::endl;
+  if (DEBUG) {
+    std::cout << "finished result_Operation" << std::endl;
+  }
   return result.toTensor();
 }
 

@@ -15,18 +15,24 @@ if __name__ == "__main__":
     # 
     # print(r.nested_size())
 
-    na = nestedtensor._C.jit_tensorwise()(torch.mul)
+    ## na = nestedtensor._C.jit_tensorwise()(torch.mul)
 
-    print("111")
-    out = nestedtensor._C._ListNestedTensor([torch.randn(1, 2)])
-    print(na(
+    ## print("111")
+    ## out = nestedtensor._C._ListNestedTensor([torch.randn(1, 2)])
+    ## print(na(
+    ##     nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
+    ##     4.0,
+    ##     out = out
+    ##     ))
+    ## print("222")
+    ## print('out')
+    ## print(out)
+
+    nv = nestedtensor._C.jit_tensorwise()(torch.mv)
+    print(nv(
         nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
-        4.0,
-        out = out
+        nestedtensor._C._ListNestedTensor([torch.randn(2)]),
         ))
-    print("222")
-    print('out')
-    print(out)
 
     # print("333")
     # print(na(

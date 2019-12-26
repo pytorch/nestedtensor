@@ -196,7 +196,9 @@ static c10::optional<std::vector<ArgWrapper>> try_match_schema(
     py::kwargs py_kwargs) {
   // const std::vector<ArgWrapper>& py_args,
   // const std::unordered_map<std::string, ArgWrapper>& py_kwargs) {
-  std::cout << "Checking match for schema: " << *schema << std::endl;
+  if (DEBUG) {
+    std::cout << "Checking match for schema: " << *schema << std::endl;
+  }
   // In the end it's only a match when this counter fully depleted the args.
   size_t py_args_i = 0;
   size_t used_kwargs = 0;
@@ -233,7 +235,9 @@ static c10::optional<std::vector<ArgWrapper>> try_match_schema(
       // match against for this given schema argument. There also is no default
       // value specified for this schema argument. Therefore this schema cannot
       // be the correct overload.
-      std::cout << "ARGS COUNT OFF!" << std::endl;
+      if (DEBUG) {
+        std::cout << "ARGS COUNT OFF!" << std::endl;
+      }
       return c10::nullopt;
     }
     // TODO: NestedTensor support
@@ -241,7 +245,9 @@ static c10::optional<std::vector<ArgWrapper>> try_match_schema(
       ArgWrapper arg = wrap_arg(py_arg, schema_arg.type());
       parse_py_args.push_back(arg);
     } catch (std::exception& e) {
-      std::cout << "Wrap arg exception: " << e.what() << std::endl;
+      if (DEBUG) {
+        std::cout << "Wrap arg exception: " << e.what() << std::endl;
+      }
       return c10::nullopt;
     }
   }
@@ -283,11 +289,15 @@ static c10::optional<std::vector<ArgWrapper>> try_match_schema(
     //    }
     //    std::cout << std::endl;
     //    if (types_match) {
-    std::cout << "FOUND IT!" << std::endl;
+    if (DEBUG) {
+      std::cout << "FOUND IT!" << std::endl;
+    }
     return parse_py_args;
     //    }
   }
-  std::cout << "ARGS SIZES MISMATCHED" << std::endl;
+  if (DEBUG) {
+    std::cout << "ARGS SIZES MISMATCHED" << std::endl;
+  }
   return c10::nullopt;
 }
 
@@ -301,11 +311,8 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 
   // TODO: Is there a cheaper way to do this?
   const auto& variants = getAllOperatorsFor(name);
-  if (variants.size() == 0) {
-    return c10::nullopt;
-  }
   const auto& builtin_functions = getAllBuiltinFunctionsFor(name);
-  if (builtin_functions.size() == 0) {
+  if (variants.size() == 0 && builtin_functions.size() == 0) {
     return c10::nullopt;
   }
   return name;
@@ -350,8 +357,10 @@ py::cpp_function jit_tensorwise() {
       if (auto name = is_builtin(fn)) {
         for (const auto& op : getAllOperatorsFor(*name)) {
           if (auto flat_args = try_match_schema(&op->schema(), args, kwargs)) {
-            std::cout << "is builtin Operation with schema: " << op->schema()
-                      << std::endl;
+            if (DEBUG) {
+              std::cout << "is builtin Operation with schema: " << op->schema()
+                        << std::endl;
+            }
             Operation actual = op->getOperation();
             return apply_jit_function_helper<Operation>(*flat_args, actual);
           }
@@ -359,14 +368,18 @@ py::cpp_function jit_tensorwise() {
         for (const auto& op : getAllBuiltinFunctionsFor(*name)) {
           if (auto flat_args =
                   try_match_schema(&op->getSchema(), args, kwargs)) {
-            std::cout << "is builtin Function with schema: " << op->getSchema()
-                      << std::endl;
+            if (DEBUG) {
+              std::cout << "is builtin Function with schema: "
+                        << op->getSchema() << std::endl;
+            }
             return apply_jit_function_helper<Function>(*flat_args, *op);
           }
         }
       }
       // TODO: Need implementation of generic python version.
-      std::cout << "FAIL! Can't find something for " << fn << std::endl;
+      if (DEBUG) {
+        std::cout << "FAIL! Can't find something for " << fn << std::endl;
+      }
       TensorNode result;
       return THP_ListNestedTensor(_ListNestedTensor(result));
     });
