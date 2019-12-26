@@ -35,20 +35,26 @@ struct THPNestedTensor {
     return data_map<int64_t>(
         _data, [](auto data) { return data.element_size(); });
   }
-  // py::object getDtype() {
-  //   return py::reinterpret_steal<py::object>(
-  //       wrap(torch::getDtype(_data.scalar_type())));
-  // }
-  // py::object getLayout() {
-  //   return py::reinterpret_steal<py::object>(
-  //       wrap(torch::getLayout(_data.backend())));
-  // }
-  // py::object getDevice() {
-  //   return toPyObject(_data.device());
-  // }
-  // bool requires_grad() {
-  //   return _data.requires_grad();
-  // }
+  py::object getDtype() {
+    return data_map<py::object>(_data, [](auto data) {
+      return py::reinterpret_steal<py::object>(
+          wrap(torch::getDtype(data.scalar_type())));
+    });
+  }
+  py::object getLayout() {
+    return data_map<py::object>(_data, [](auto data) {
+      return py::reinterpret_steal<py::object>(
+          wrap(torch::getLayout(data.backend())));
+    });
+  }
+  py::object getDevice() {
+    return data_map<py::object>(
+        _data, [](auto data) { return toPyObject(data.device()); });
+  }
+  bool requires_grad() {
+    return data_map<bool>(
+        _data, [](auto data) { return data.requires_grad(); });
+  }
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }

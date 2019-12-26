@@ -8,7 +8,6 @@ import unittest
 from unittest import TestCase
 import random
 
-from nestedtensor._C import _BufferNestedTensor
 
 import utils
 
@@ -18,7 +17,7 @@ class TestNestedTensorBuffer(TestCase):
 
     def test_default_constructor(self):
         # nested_dim is 1 and dim is 1 too.
-        default_nested_tensor = _BufferNestedTensor(torch.tensor([]), [], [])
+        default_nested_tensor = nestedtensor._C._buffer_nested_tensor(torch.tensor([]), [], [])
         default_tensor = torch.tensor([])
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
         self.assertEqual(default_nested_tensor.nested_size(), [])
