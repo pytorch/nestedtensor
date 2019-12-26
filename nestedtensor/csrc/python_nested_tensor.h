@@ -1,5 +1,7 @@
+#pragma once
 #include <buffer_nested_tensor.h>
 #include <list_nested_tensor.h>
+#include <type_traits>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
@@ -15,6 +17,13 @@ namespace nested_tensor {
 using namespace torch::jit;
 using namespace torch::autograd::utils;
 
+template <class Result, class F>
+static inline Result data_map(
+    c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
+    F fn) {
+  return data.map<Result>(fn, fn);
+}
+
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
@@ -23,66 +32,80 @@ struct THPNestedTensor {
     return _data.right().get_buffer();
   }
   int64_t element_size() {
-    return _data.element_size();
+    return data_map<int64_t>(
+        _data, [](auto data) { return data.element_size(); });
   }
-  py::object getDtype() {
-    return py::reinterpret_steal<py::object>(
-        wrap(torch::getDtype(_data.scalar_type())));
-  }
-  py::object getLayout() {
-    return py::reinterpret_steal<py::object>(
-        wrap(torch::getLayout(_data.backend())));
-  }
-  py::object getDevice() {
-    return toPyObject(_data.device());
-  }
-  bool requires_grad() {
-    return _data.requires_grad();
-  }
+  // py::object getDtype() {
+  //   return py::reinterpret_steal<py::object>(
+  //       wrap(torch::getDtype(_data.scalar_type())));
+  // }
+  // py::object getLayout() {
+  //   return py::reinterpret_steal<py::object>(
+  //       wrap(torch::getLayout(_data.backend())));
+  // }
+  // py::object getDevice() {
+  //   return toPyObject(_data.device());
+  // }
+  // bool requires_grad() {
+  //   return _data.requires_grad();
+  // }
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
   py::object nested_size() {
-    return wrap_nested_node(_data.nested_size());
+    return wrap_nested_node(data_map<SizeNode>(
+        _data, [](auto data) { return data.nested_size(); }));
   }
   py::object nested_stride() {
-    return wrap_nested_node(_data.nested_stride());
+    return wrap_nested_node(data_map<SizeNode>(
+        _data, [](auto data) { return data.nested_stride(); }));
   }
   THPNestedTensor requires_grad_(py::bool_ requires_grad) {
-    return THPNestedTensor(_data.requires_grad_(requires_grad));
+    return THPNestedTensor(
+        data_map<THPNestedTensor>(_data, [&requires_grad](auto data) {
+          return data.requires_grad_(requires_grad);
+        }));
   }
   THPNestedTensor grad() {
-    return THPNestedTensor(_data.grad());
+    return data_map<THPNestedTensor>(
+        _data, [](auto data) { return THPNestedTensor(data.grad()); });
   }
   THPNestedTensor detach() {
-    return THPNestedTensor(_data.detach());
+    return data_map<THPNestedTensor>(
+        _data, [](auto data) { return THPNestedTensor(data.detach()); });
   }
   THPNestedTensor pin_memory() {
-    return THPNestedTensor(_data.pin_memory());
+    return data_map<THPNestedTensor>(
+        _data, [](auto data) { return THPNestedTensor(data.pin_memory()); });
   }
   std::string str() {
-    return _NestedNode___str__(_data.get_structure());
+    return data_map<std::string>(_data, [](auto data) {
+      return _NestedNode___str__(data.get_structure());
+    });
   }
   int64_t len() {
-    return _data.__len__();
+    return data_map<int64_t>(_data, [](auto data) { return data.__len__(); });
   }
   bool is_pinned() {
-    return _data.is_pinned();
+    return data_map<bool>(_data, [](auto data) { return data.is_pinned(); });
   }
   int64_t nested_dim() {
-    return _data.nested_dim();
+    return data_map<int64_t>(
+        _data, [](auto data) { return data.nested_dim(); });
   }
   int64_t dim() {
-    return _data.dim();
+    return data_map<int64_t>(_data, [](auto data) { return data.dim(); });
   }
   int64_t numel() {
-    return _data.numel();
+    return data_map<int64_t>(_data, [](auto data) { return data.numel(); });
   }
   at::Tensor to_tensor() {
-    return _data.to_tensor();
+    return data_map<at::Tensor>(
+        _data, [](auto data) { return data.to_tensor(); });
   }
   bool is_contiguous() {
-    return _data.is_contiguous();
+    return data_map<bool>(
+        _data, [](auto data) { return data.is_contiguous(); });
   }
 
  private:

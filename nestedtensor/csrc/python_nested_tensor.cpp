@@ -1,4 +1,4 @@
-#include <python_buffer_nested_tensor.h>
+#include <python_nested_tensor.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -57,23 +57,6 @@ static TensorNode _get_tensor_structure(py::list py_obj) {
     return TensorNode(result);
   }
 }
-
-THPNestedTensor::THPNestedTensor(_BufferNestedTensor data)
-    : _data(data) {}
-THP_BufferNestedTensor::THP_BufferNestedTensor(
-    py::object buffer,
-    py::list nested_size)
-    : _data(_BufferNestedTensor(
-          py::cast<at::Tensor>(buffer),
-          _get_size_structure(nested_size))) {}
-THP_BufferNestedTensor::THP_BufferNestedTensor(
-    py::object buffer,
-    py::list nested_size,
-    py::list nested_stride)
-    : _data(_BufferNestedTensor(
-          py::cast<at::Tensor>(buffer),
-          _get_size_structure(nested_size),
-          _get_size_structure(nested_stride))) {}
 
 } // namespace nested_tensor
 } // namespace torch

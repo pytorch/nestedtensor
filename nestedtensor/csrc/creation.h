@@ -76,7 +76,7 @@ static inline THPNestedTensor _buffer_nested_tensor(
   return THPNestedTensor(_BufferNestedTensor(
       py::cast<at::Tensor>(buffer),
       _get_size_structure(nested_size),
-      _get_size_structure(nested_stride), ));
+      _get_size_structure(nested_stride)));
 }
 
 } // namespace nested_tensor
