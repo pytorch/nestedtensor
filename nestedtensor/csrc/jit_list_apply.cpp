@@ -119,18 +119,27 @@ static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F& fn) {
   }
 }
 
-static ArgWrapper wrap_arg(py::object arg) {
+// NestedTensor taken as Tensor type
+static ArgWrapper wrap_arg(
+    py::object arg,
+    c10::optional<c10::TypePtr> type_ptr = c10::nullopt) {
   if (py::isinstance<THP_ListNestedTensor>(arg)) {
+    TORCH_CHECK((*type_ptr)->kind() == TensorType::Kind);
     return ArgWrapper(
         py::cast<THP_ListNestedTensor>(arg).data().get_structure());
   } else if (py::isinstance<THP_BufferNestedTensor>(arg)) {
+    TORCH_CHECK((*type_ptr)->kind() == TensorType::Kind);
     return ArgWrapper(
         py::cast<THP_BufferNestedTensor>(arg).data().get_structure());
   }
-  return ArgWrapper(toTypeInferredIValue(arg));
+  if (type_ptr) {
+    return ArgWrapper(toIValue(arg, *type_ptr));
+  } else {
+    return ArgWrapper(toTypeInferredIValue(arg));
+  }
 }
 
-static c10::optional<std::vector<ArgWrapper>> flatten_args(
+static std::vector<ArgWrapper> flatten_args(
     py::args args_,
     py::kwargs kwargs_) {
   std::vector<ArgWrapper> flat_args;
@@ -139,8 +148,10 @@ static c10::optional<std::vector<ArgWrapper>> flatten_args(
   }
   std::unordered_map<std::string, ArgWrapper> kwargs;
   for (const std::pair<py::handle, py::handle>& pair : kwargs_) {
-    flat_args.push_back(py::reinterpret_borrow<py::object>(pair.second));
+    flat_args.push_back(
+        wrap_arg(py::reinterpret_borrow<py::object>(pair.second)));
   }
+  return flat_args;
 }
 
 template <class F>
@@ -209,7 +220,7 @@ static c10::optional<std::vector<ArgWrapper>> try_match_schema(
       // TODO: Add support to allow conversions.
       py_arg = py_args[py_args_i];
       py_args_i++;
-    } else if (py_kwargs.find(schema_arg.name().c_str()) != py_kwargs.end()) {
+    } else if (py_kwargs.contains(schema_arg.name().c_str())) {
       // TODO: Check for no presence of duplicates in given schema
       py_arg = py_kwargs[schema_arg.name().c_str()];
       used_kwargs++;
@@ -226,8 +237,13 @@ static c10::optional<std::vector<ArgWrapper>> try_match_schema(
       return c10::nullopt;
     }
     // TODO: NestedTensor support
-    IValue ivalue = toIValue(py_arg, schema_arg.type());
-    parse_py_args.push_back(ArgWrapper(ivalue));
+    try {
+      ArgWrapper arg = wrap_arg(py_arg, schema_arg.type());
+      parse_py_args.push_back(arg);
+    } catch (std::exception& e) {
+      // std::cout << "Wrap arg exception: " << e.what() << std::endl;
+      return c10::nullopt;
+    }
   }
   if (
       // Check whether all positional arguments were matched by given Schema
@@ -330,6 +346,7 @@ py::cpp_function jit_tensorwise() {
         std::vector<ArgWrapper> flat_args = flatten_args(args, kwargs);
         return apply_jit_function_helper<Function>(flat_args, op);
       }
+      // TODO: Support for no NestedTensor arguments
       if (auto name = is_builtin(fn)) {
         for (const auto& op : getAllOperatorsFor(*name)) {
           if (auto flat_args = try_match_schema(&op->schema(), args, kwargs)) {

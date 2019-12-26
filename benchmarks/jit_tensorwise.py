@@ -16,9 +16,17 @@ if __name__ == "__main__":
     # print(r.nested_size())
 
     na = nestedtensor._C.jit_tensorwise()(torch.add)
+
     print("111")
     print(na(
-        nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
+        4.0,
         nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
         ))
     print("222")
+
+    # print("333")
+    # print(na(
+    #     torch.randn(1, 2),
+    #     torch.randn(1, 2),
+    #     ))
+    # print("444")
