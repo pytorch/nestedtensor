@@ -322,12 +322,12 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, args=(), kwargs=None):
+        print('func.__name__: {}'.format(func.__name__))
         _local_func = None
         if func in NestedTensor.__jit_function_dispatch:
-            if kwargs is None:
-                _jit_local_func = NestedTensor.__jit_function_dispatch[func]
-                impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
-                return _jit_local_func(*impl_args)
+            _jit_local_func = NestedTensor.__jit_function_dispatch[func]
+            impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+            return _jit_local_func(*impl_args)
         if func in NestedTensor.__function_dispatch:
             _local_func = NestedTensor.__function_dispatch[func]
             return _local_func(*args) if kwargs is None else _local_func(*args, **kwargs)

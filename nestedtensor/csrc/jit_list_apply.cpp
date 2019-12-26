@@ -190,6 +190,7 @@ THP_ListNestedTensor jit_apply_function(
 }
 
 // TODO: Write separate C++ test for overloads as test cases
+// TODO: Match return values!
 static c10::optional<std::vector<ArgWrapper>> try_match_schema(
     const FunctionSchema* schema,
     py::args py_args,
@@ -377,9 +378,9 @@ py::cpp_function jit_tensorwise() {
         }
       }
       // TODO: Need implementation of generic python version.
-      if (DEBUG) {
-        std::cout << "FAIL! Can't find something for " << fn << std::endl;
-      }
+      std::stringstream ss;
+      ss << "FAIL! Can't find something for " << fn;
+      TORCH_CHECK(false, ss.str());
       TensorNode result;
       return THP_ListNestedTensor(_ListNestedTensor(result));
     });

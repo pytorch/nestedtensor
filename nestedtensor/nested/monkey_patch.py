@@ -88,7 +88,6 @@ def monkey_patch(NestedTensor):
         set_nt_method(function_name + '_', utils.tensorwise())
         if function_name in ['fill']:
             continue
-        set_wrapped_torch_function(function_name, utils.tensorwise())
         set_wrapped_jit_torch_function(function_name, _C.jit_tensorwise())
         set_nt_method(function_name, utils.tensorwise())
     # <
