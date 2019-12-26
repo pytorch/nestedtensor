@@ -1,3 +1,5 @@
+#include <python_nested_tensor.h>
+
 namespace torch {
 namespace nested_tensor {
 
@@ -56,22 +58,26 @@ static TensorNode _get_tensor_structure(py::list py_obj) {
   }
 }
 
-THP_BufferNestedTensor::THP_BufferNestedTensor(_BufferNestedTensor data)
-    : _data(data) {}
-THP_BufferNestedTensor::THP_BufferNestedTensor(
+static inline THPNestedTensor as_nested_tensor(py::list list) {
+  return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
+}
+
+static inline THPNestedTensor _buffer_nested_tensor(
     py::object buffer,
-    py::list nested_size)
-    : _data(_BufferNestedTensor(
-          py::cast<at::Tensor>(buffer),
-          _get_size_structure(nested_size))) {}
-THP_BufferNestedTensor::THP_BufferNestedTensor(
+    py::list nested_size) {
+  return THPNestedTensor(_BufferNestedTensor(
+      py::cast<at::Tensor>(buffer), _get_size_structure(nested_size)));
+}
+
+static inline THPNestedTensor _buffer_nested_tensor(
     py::object buffer,
     py::list nested_size,
-    py::list nested_stride)
-    : _data(_BufferNestedTensor(
-          py::cast<at::Tensor>(buffer),
-          _get_size_structure(nested_size),
-          _get_size_structure(nested_stride))) {}
+    py::list nested_stride) {
+  return THPNestedTensor(_BufferNestedTensor(
+      py::cast<at::Tensor>(buffer),
+      _get_size_structure(nested_size),
+      _get_size_structure(nested_stride), ));
+}
 
 } // namespace nested_tensor
 } // namespace torch

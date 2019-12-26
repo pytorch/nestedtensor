@@ -58,7 +58,7 @@ static TensorNode _get_tensor_structure(py::list py_obj) {
   }
 }
 
-THP_BufferNestedTensor::THP_BufferNestedTensor(_BufferNestedTensor data)
+THPNestedTensor::THPNestedTensor(_BufferNestedTensor data)
     : _data(data) {}
 THP_BufferNestedTensor::THP_BufferNestedTensor(
     py::object buffer,

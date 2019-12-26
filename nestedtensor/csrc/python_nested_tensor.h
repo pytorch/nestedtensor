@@ -1,4 +1,5 @@
 #include <buffer_nested_tensor.h>
+#include <list_nested_tensor.h>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
@@ -11,17 +12,15 @@ namespace py = pybind11;
 namespace torch {
 namespace nested_tensor {
 
-enum impl_type {BUFFER, LIST};
-
 using namespace torch::jit;
 using namespace torch::autograd::utils;
 
 struct THPNestedTensor {
   THPNestedTensor() = delete;
-  THPNestedTensor(_BufferNestedTensor data);
-  THPNestedTensor(_ListNestedTensor data);
-  torch::autograd::Variable get_buffer() {
-    return _data.get_buffer();
+  THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
+  THPNestedTensor(_ListNestedTensor data) : _data(data) {}
+  at::Tensor get_buffer() {
+    return _data.right().get_buffer();
   }
   int64_t element_size() {
     return _data.element_size();
@@ -40,7 +39,7 @@ struct THPNestedTensor {
   bool requires_grad() {
     return _data.requires_grad();
   }
-  _BufferNestedTensor data() {
+  c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
   py::object nested_size() {
@@ -87,8 +86,7 @@ struct THPNestedTensor {
   }
 
  private:
-  _BufferNestedTensor _data;
-  _impl_type
+  c10::either<_ListNestedTensor, _BufferNestedTensor> _data;
 };
 
 } // namespace nested_tensor
