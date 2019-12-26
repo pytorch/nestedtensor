@@ -40,15 +40,6 @@ struct ArgWrapper {
     return _name;
   }
 
-  // XXX: CONTINUE!
-  void standardize() {
-    if (!is_nested_tensor()) {
-      if (_ivalue.isScalar()) {
-        _ivalue = c10::IValue(_ivalue.toScalar());
-      }
-    }
-  }
-
  private:
   std::string _name;
   bool _is_nested_tensor;
@@ -128,18 +119,34 @@ static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F& fn) {
   }
 }
 
+static ArgWrapper wrap_arg(py::object arg) {
+  if (py::isinstance<THP_ListNestedTensor>(arg)) {
+    return ArgWrapper(
+        py::cast<THP_ListNestedTensor>(arg).data().get_structure());
+  } else if (py::isinstance<THP_BufferNestedTensor>(arg)) {
+    return ArgWrapper(
+        py::cast<THP_BufferNestedTensor>(arg).data().get_structure());
+  }
+  return ArgWrapper(toTypeInferredIValue(arg));
+}
+
+static c10::optional<std::vector<ArgWrapper>> flatten_args(
+    py::args args_,
+    py::kwargs kwargs_) {
+  std::vector<ArgWrapper> flat_args;
+  for (size_t i = 0; i < args_.size(); i++) {
+    flat_args.push_back(wrap_arg(args_[i]));
+  }
+  std::unordered_map<std::string, ArgWrapper> kwargs;
+  for (const std::pair<py::handle, py::handle>& pair : kwargs_) {
+    flat_args.push_back(py::reinterpret_borrow<py::object>(pair.second));
+  }
+}
+
 template <class F>
 static THP_ListNestedTensor apply_jit_function_helper(
-    std::vector<ArgWrapper>& args,
-    std::unordered_map<std::string, ArgWrapper> kwargs,
+    std::vector<ArgWrapper>& flat_args,
     F& op) {
-  std::vector<ArgWrapper> flat_args;
-  for (size_t i = 0; i < args.size(); i++) {
-    flat_args.push_back(args[i]);
-  }
-  for (auto kwarg : kwargs) {
-    flat_args.push_back(kwarg.second);
-  }
   py::gil_scoped_release release;
   TensorNode result = apply_jit_function(flat_args, op);
   py::gil_scoped_acquire acquire;
@@ -172,17 +179,19 @@ THP_ListNestedTensor jit_apply_function(
 }
 
 // TODO: Write separate C++ test for overloads as test cases
-static bool try_match_schema(
+static c10::optional<std::vector<ArgWrapper>> try_match_schema(
     const FunctionSchema* schema,
-    const std::vector<ArgWrapper>& py_args,
-    const std::unordered_map<std::string, ArgWrapper>& py_kwargs) {
+    py::args py_args,
+    py::kwargs py_kwargs) {
+  // const std::vector<ArgWrapper>& py_args,
+  // const std::unordered_map<std::string, ArgWrapper>& py_kwargs) {
   std::cout << "Checking match for schema: " << *schema << std::endl;
   // In the end it's only a match when this counter fully depleted the args.
   size_t py_args_i = 0;
   size_t used_kwargs = 0;
-  std::vector<bool> used_kwarg(py_kwargs.size(), false);
   const std::vector<Argument>& schema_args = schema->arguments();
   std::vector<ArgWrapper> parse_py_args;
+
   // For each argument in the Schema, see if it can be matched up with the
   // given python arguments to determine whether it's the right overload.
   //
@@ -195,67 +204,75 @@ static bool try_match_schema(
   for (size_t j = 0; j < schema_args.size(); j++) {
     // TODO: Support for self as in tryMatchArgument?
     Argument schema_arg = schema_args[j];
+    py::object py_arg;
     if (!schema_arg.kwarg_only() && py_args_i < py_args.size()) {
       // TODO: Add support to allow conversions.
-      parse_py_args.push_back(py_args[py_args_i]);
+      py_arg = py_args[py_args_i];
       py_args_i++;
     } else if (py_kwargs.find(schema_arg.name().c_str()) != py_kwargs.end()) {
       // TODO: Check for no presence of duplicates in given schema
-      parse_py_args.push_back(py_kwargs.at(schema_arg.name().c_str()));
+      py_arg = py_kwargs[schema_arg.name().c_str()];
       used_kwargs++;
     } else if (schema_arg.default_value()) {
       // TODO: How is this converted to ScalarType if it's a int (usually)?
       // What mechanism currently does this kind of conversion.
-      auto default_arg_wrapper = ArgWrapper(*schema_arg.default_value());
-      default_arg_wrapper.standardize();
-      parse_py_args.emplace_back(default_arg_wrapper);
+      py_arg = toPyObject(*schema_arg.default_value());
     } else {
       // The given schema cannot find either a positional or keyword argument to
       // match against for this given schema argument. There also is no default
       // value specified for this schema argument. Therefore this schema cannot
       // be the correct overload.
       std::cout << "ARGS COUNT OFF!" << std::endl;
-      return false;
+      return c10::nullopt;
     }
+    // TODO: NestedTensor support
+    IValue ivalue = toIValue(py_arg, schema_arg.type());
+    parse_py_args.push_back(ArgWrapper(ivalue));
   }
   if (
       // Check whether all positional arguments were matched by given Schema
       (py_args.size() == py_args_i) &&
       // Check if all kwargs were matched by given Schema
       (used_kwargs == py_kwargs.size())) {
-    bool types_match = true;
-    TypeEnv type_env;
-    for (size_t j = 0; j < parse_py_args.size(); j++) {
-      // std::cout << " ; parse_py_args[" << j
-      //           << "]: " << type_j->str();
-      // Now that we found that the overall schema matches, we need to check
-      // whether the types match.
-      // TODO: Need Subtypes and argument type conversions (e.g. convert one
-      // float to list of floats with right number of elements).
-      // MatchTypeReturn match =
-      //     matchTypeVariables(schema_args[j].type(), type_j, type_env);
-      TypePtr type_j = parse_py_args[j].ivalue().type();
-      std::cout << " x parse_py_args[" << j << "]: " << type_j->str();
-      std::cout << "\t=\t"
-                << "schema_args[" << j << "]: " << schema_args[j].type()->str();
-      // TODO: We want to know whether the actual argument is a convertible
-      // subtype to the one used in the schema.
-      // TODO: Need type env?
-      // types_match = types_match && matchTypeVariables(schema_args[j].type(),
-      // type_j, type_env).success();
-      types_match =
-          types_match && (schema_args[j].type()->kind() == type_j->kind());
-      std::cout << "\t types_match: " << types_match;
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    if (types_match) {
-      std::cout << "FOUND IT!" << std::endl;
-      return true;
-    }
+    //    bool types_match = true;
+    //    TypeEnv type_env;
+    //    for (size_t j = 0; j < parse_py_args.size(); j++) {
+    //      // std::cout << " ; parse_py_args[" << j
+    //      //           << "]: " << type_j->str();
+    //      // Now that we found that the overall schema matches, we need to
+    //      check
+    //      // whether the types match.
+    //      // TODO: Need Subtypes and argument type conversions (e.g. convert
+    //      one
+    //      // float to list of floats with right number of elements).
+    //      // MatchTypeReturn match =
+    //      //     matchTypeVariables(schema_args[j].type(), type_j, type_env);
+    //      TypePtr type_j = parse_py_args[j].ivalue().type();
+    //      std::cout << " x parse_py_args[" << j << "]: " << type_j->str();
+    //      std::cout << "\t=\t"
+    //                << "schema_args[" << j << "]: " <<
+    //                schema_args[j].type()->str();
+    //      // TODO: We want to know whether the actual argument is a
+    //      convertible
+    //      // subtype to the one used in the schema.
+    //      // TODO: Need type env?
+    //      // types_match = types_match &&
+    //      matchTypeVariables(schema_args[j].type(),
+    //      // type_j, type_env).success();
+    //      types_match =
+    //          types_match && (schema_args[j].type()->kind() ==
+    //          type_j->kind());
+    //      std::cout << "\t types_match: " << types_match;
+    //      std::cout << std::endl;
+    //    }
+    //    std::cout << std::endl;
+    //    if (types_match) {
+    std::cout << "FOUND IT!" << std::endl;
+    return parse_py_args;
+    //    }
   }
   std::cout << "ARGS SIZES MISMATCHED" << std::endl;
-  return false;
+  return c10::nullopt;
 }
 
 // TODO: Write comparison operation based on a subset of Argument comparison
@@ -298,17 +315,6 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 //  }
 //  return torch::ones({});
 
-static ArgWrapper wrap_arg(py::object arg) {
-  if (py::isinstance<THP_ListNestedTensor>(arg)) {
-    return ArgWrapper(
-        py::cast<THP_ListNestedTensor>(arg).data().get_structure());
-  } else if (py::isinstance<THP_BufferNestedTensor>(arg)) {
-    return ArgWrapper(
-        py::cast<THP_BufferNestedTensor>(arg).data().get_structure());
-  }
-  return ArgWrapper(toTypeInferredIValue(arg));
-}
-
 // TODO: This should support 3 types of functions
 // fn might be scripted (i.e. StrongFunctionPtr)
 // fn might be a builtin (need to resolve!)
@@ -316,38 +322,29 @@ static ArgWrapper wrap_arg(py::object arg) {
 // (not fast!)
 py::cpp_function jit_tensorwise() {
   return py::cpp_function([](py::object fn) {
-    return py::cpp_function([fn](py::args args_, py::kwargs kwargs_) {
-      std::vector<ArgWrapper> args;
-      for (size_t i = 0; i < args_.size(); i++) {
-        args.push_back(wrap_arg(args_[i]));
-      }
-      std::unordered_map<std::string, ArgWrapper> kwargs;
-      for (const std::pair<py::handle, py::handle>& pair : kwargs_) {
-        kwargs.emplace(std::make_pair(
-            std::string(py::str(pair.first)),
-            wrap_arg(py::reinterpret_borrow<py::object>(pair.second))));
-      }
-
+    return py::cpp_function([fn](py::args args, py::kwargs kwargs) {
       if (py::isinstance<StrongFunctionPtr>(fn)) {
         std::cout << "is StrongFunctionPtr" << std::endl;
         auto sfn = py::cast<StrongFunctionPtr>(fn);
         Function& op = *sfn.function_;
-        return apply_jit_function_helper<Function>(args, kwargs, op);
+        std::vector<ArgWrapper> flat_args = flatten_args(args, kwargs);
+        return apply_jit_function_helper<Function>(flat_args, op);
       }
       if (auto name = is_builtin(fn)) {
         for (const auto& op : getAllOperatorsFor(*name)) {
-          if (try_match_schema(&op->schema(), args, kwargs)) {
+          if (auto flat_args = try_match_schema(&op->schema(), args, kwargs)) {
             std::cout << "is builtin Operation with schema: " << op->schema()
                       << std::endl;
             Operation actual = op->getOperation();
-            return apply_jit_function_helper<Operation>(args, kwargs, actual);
+            return apply_jit_function_helper<Operation>(*flat_args, actual);
           }
         }
         for (const auto& op : getAllBuiltinFunctionsFor(*name)) {
-          if (try_match_schema(&op->getSchema(), args, kwargs)) {
+          if (auto flat_args =
+                  try_match_schema(&op->getSchema(), args, kwargs)) {
             std::cout << "is builtin Function with schema: " << op->getSchema()
                       << std::endl;
-            return apply_jit_function_helper<Function>(args, kwargs, *op);
+            return apply_jit_function_helper<Function>(*flat_args, *op);
           }
         }
       }
