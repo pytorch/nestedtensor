@@ -139,10 +139,10 @@ if __name__ == "__main__":
     gen_results_nested_mv = gen_algorithm_nested_mv(keys, sub_clusters)
     gen_results_nested_jit_mv = gen_algorithm_nested_jit_mv(keys, sub_clusters)
 
+    print(benchmark_fn(gen_results_nested_mv))
     print(benchmark_fn(gen_results_naive))
     print(benchmark_fn(gen_results_mv))
-    print(benchmark_fn(gen_results_nested_mv))
-    print(benchmark_fn(gen_results_nested_jit_mv))
+    # print(benchmark_fn(gen_results_nested_jit_mv))
     # import cProfile, pstats, io
     # pr = cProfile.Profile()
     # pr.enable()

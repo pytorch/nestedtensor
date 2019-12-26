@@ -37,9 +37,8 @@ def monkey_patch(NestedTensor):
             getattr(torch, function_name))
 
     def set_wrapped_jit_torch_function(function_name, wrapper):
-        return 
-        # jit_function_dispatch[getattr(torch, function_name)] = wrapper(
-        #     torch.jit.script(getattr(torch, function_name)))
+        jit_function_dispatch[getattr(torch, function_name)] = wrapper(
+            getattr(torch, function_name))
 
     def set_function(key, function):
         function_dispatch[key] = function
@@ -229,5 +228,6 @@ def monkey_patch(NestedTensor):
 
     # module.NestedTensor = NestedTensor
 
+    jit_function_dispatch[torch.mv] = _C.jit_tensorwise()(torch.mv)
     setattr(NestedTensor, '_NestedTensor__function_dispatch', function_dispatch)
     setattr(NestedTensor, '_NestedTensor__jit_function_dispatch', jit_function_dispatch)

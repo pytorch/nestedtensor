@@ -241,7 +241,7 @@ static c10::optional<std::vector<ArgWrapper>> try_match_schema(
       ArgWrapper arg = wrap_arg(py_arg, schema_arg.type());
       parse_py_args.push_back(arg);
     } catch (std::exception& e) {
-      // std::cout << "Wrap arg exception: " << e.what() << std::endl;
+      std::cout << "Wrap arg exception: " << e.what() << std::endl;
       return c10::nullopt;
     }
   }
@@ -366,7 +366,7 @@ py::cpp_function jit_tensorwise() {
         }
       }
       // TODO: Need implementation of generic python version.
-      std::cout << "FAIL!" << std::endl;
+      std::cout << "FAIL! Can't find something for " << fn << std::endl;
       TensorNode result;
       return THP_ListNestedTensor(_ListNestedTensor(result));
     });
