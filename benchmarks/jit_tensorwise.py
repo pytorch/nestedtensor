@@ -20,6 +20,5 @@ if __name__ == "__main__":
     print(na(
         nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
         nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
-        3.0
         ))
     print("222")

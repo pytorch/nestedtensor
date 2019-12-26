@@ -40,6 +40,15 @@ struct ArgWrapper {
     return _name;
   }
 
+  // XXX: CONTINUE!
+  void standardize() {
+    if (!is_nested_tensor()) {
+      if (_ivalue.isScalar()) {
+        _ivalue = c10::IValue(_ivalue.toScalar());
+      }
+    }
+  }
+
  private:
   std::string _name;
   bool _is_nested_tensor;
@@ -197,7 +206,9 @@ static bool try_match_schema(
     } else if (schema_arg.default_value()) {
       // TODO: How is this converted to ScalarType if it's a int (usually)?
       // What mechanism currently does this kind of conversion.
-      parse_py_args.emplace_back(ArgWrapper(*schema_arg.default_value()));
+      auto default_arg_wrapper = ArgWrapper(*schema_arg.default_value());
+      default_arg_wrapper.standardize();
+      parse_py_args.emplace_back(default_arg_wrapper);
     } else {
       // The given schema cannot find either a positional or keyword argument to
       // match against for this given schema argument. There also is no default
@@ -229,8 +240,11 @@ static bool try_match_schema(
                 << "schema_args[" << j << "]: " << schema_args[j].type()->str();
       // TODO: We want to know whether the actual argument is a convertible
       // subtype to the one used in the schema.
-      // XXX: CONTINUE HERE!
-      types_match = types_match && matchTypeVariables(schema_args[j].type(), type_j, type_env).success();
+      // TODO: Need type env?
+      // types_match = types_match && matchTypeVariables(schema_args[j].type(),
+      // type_j, type_env).success();
+      types_match =
+          types_match && (schema_args[j].type()->kind() == type_j->kind());
       std::cout << "\t types_match: " << types_match;
       std::cout << std::endl;
     }
