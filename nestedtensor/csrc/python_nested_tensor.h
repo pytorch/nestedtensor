@@ -14,9 +14,6 @@ namespace py = pybind11;
 namespace torch {
 namespace nested_tensor {
 
-using namespace torch::jit;
-using namespace torch::autograd::utils;
-
 template <class Result, class F>
 static inline Result data_map(
     c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
@@ -38,18 +35,18 @@ struct THPNestedTensor {
   py::object getDtype() {
     return data_map<py::object>(_data, [](auto data) {
       return py::reinterpret_steal<py::object>(
-          wrap(torch::getDtype(data.scalar_type())));
+          torch::autograd::utils::wrap(torch::getDtype(data.scalar_type())));
     });
   }
   py::object getLayout() {
     return data_map<py::object>(_data, [](auto data) {
       return py::reinterpret_steal<py::object>(
-          wrap(torch::getLayout(data.backend())));
+          torch::autograd::utils::wrap(torch::getLayout(data.backend())));
     });
   }
   py::object getDevice() {
     return data_map<py::object>(
-        _data, [](auto data) { return toPyObject(data.device()); });
+        _data, [](auto data) { return torch::jit::toPyObject(data.device()); });
   }
   bool requires_grad() {
     return data_map<bool>(

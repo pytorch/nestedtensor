@@ -1,4 +1,4 @@
-#include <python_nested_tensor.h>
+#include <creation.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -6,7 +6,7 @@ namespace nested_tensor {
 using namespace torch::jit;
 using namespace torch::autograd::utils;
 
-static SizeNode _get_size_structure(py::list py_obj) {
+SizeNode _get_size_structure(py::list py_obj) {
   // Empty list of lists
   if (py_obj.size() == 0) {
     return SizeNode();
@@ -41,7 +41,7 @@ static SizeNode _get_size_structure(py::list py_obj) {
   return SizeNode(result);
 }
 
-static TensorNode _get_tensor_structure(py::list py_obj) {
+TensorNode _get_tensor_structure(py::list py_obj) {
   // Empty list of Tensors
   if (py_obj.size() == 0) {
     return TensorNode();
