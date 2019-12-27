@@ -21,8 +21,7 @@ if __name__ == "__main__":
     out = nestedtensor.as_nested_tensor([torch.randn(1, 2)])
     print(na(
         nestedtensor.as_nested_tensor([torch.randn(1, 2)])._impl,
-        torch.tensor(4.0),
-        out = out
+        4.0,
         ))
     print("222")
     print('out')
