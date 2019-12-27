@@ -1,15 +1,12 @@
 #pragma once
 #include <buffer_nested_tensor.h>
 #include <list_nested_tensor.h>
-#include <type_traits>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
 // error
 // TODO: enable "to" by fixing this.
 // #include <torch/csrc/autograd/utils/python_arg_parsing.h>
-
-namespace py = pybind11;
 
 namespace torch {
 namespace nested_tensor {
@@ -32,22 +29,9 @@ struct THPNestedTensor {
     return data_map<int64_t>(
         _data, [](auto data) { return data.element_size(); });
   }
-  py::object getDtype() {
-    return data_map<py::object>(_data, [](auto data) {
-      return py::reinterpret_steal<py::object>(
-          torch::autograd::utils::wrap(torch::getDtype(data.scalar_type())));
-    });
-  }
-  py::object getLayout() {
-    return data_map<py::object>(_data, [](auto data) {
-      return py::reinterpret_steal<py::object>(
-          torch::autograd::utils::wrap(torch::getLayout(data.backend())));
-    });
-  }
-  py::object getDevice() {
-    return data_map<py::object>(
-        _data, [](auto data) { return torch::jit::toPyObject(data.device()); });
-  }
+  pybind11::object getDtype();
+  pybind11::object getLayout();
+  pybind11::object getDevice();
   bool requires_grad() {
     return data_map<bool>(
         _data, [](auto data) { return data.requires_grad(); });
@@ -55,15 +39,15 @@ struct THPNestedTensor {
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
-  py::object nested_size() {
+  pybind11::object nested_size() {
     return wrap_nested_node(data_map<SizeNode>(
         _data, [](auto data) { return data.nested_size(); }));
   }
-  py::object nested_stride() {
+  pybind11::object nested_stride() {
     return wrap_nested_node(data_map<SizeNode>(
         _data, [](auto data) { return data.nested_stride(); }));
   }
-  THPNestedTensor requires_grad_(py::bool_ requires_grad) {
+  THPNestedTensor requires_grad_(pybind11::bool_ requires_grad) {
     return THPNestedTensor(
         data_map<THPNestedTensor>(_data, [&requires_grad](auto data) {
           return data.requires_grad_(requires_grad);

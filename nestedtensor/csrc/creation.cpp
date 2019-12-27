@@ -1,4 +1,6 @@
 #include <creation.h>
+#include <nested_node.h>
+#include <torch/csrc/jit/pybind_utils.h>
 
 namespace torch {
 namespace nested_tensor {
