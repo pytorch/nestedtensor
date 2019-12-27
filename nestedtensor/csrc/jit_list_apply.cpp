@@ -371,30 +371,46 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 // (not fast!)
 py::cpp_function jit_tensorwise() {
   return py::cpp_function([](py::object fn) {
-    return py::cpp_function([fn](py::args args, py::kwargs kwargs) {
+    return py::cpp_function([fn](py::args args_, py::kwargs kwargs_) {
       if (py::isinstance<StrongFunctionPtr>(fn)) {
         std::cout << "is StrongFunctionPtr" << std::endl;
         auto sfn = py::cast<StrongFunctionPtr>(fn);
         Function& op = *sfn.function_;
-        std::vector<ArgWrapper> flat_args = flatten_args(args, kwargs);
+        std::vector<ArgWrapper> flat_args = flatten_args(args_, kwargs_);
         return apply_jit_function_helper<Function>(flat_args, op);
       }
       // TODO: Support for no NestedTensor arguments
       if (auto name = is_builtin(fn)) {
+        py::list args_vector;
+        std::cout << "args.size(): " << args_.size() << std::endl;
+        for (const auto& arg: args_) {
+          if (py::isinstance<THPNestedTensor>(arg)) {
+            std::cout << "assigning first tensor" << std::endl;
+            args_vector.append(_get_first_variable(
+                py::cast<THPNestedTensor>(arg).get_structure()));
+          } else {
+            args_vector.append(arg);
+          }
+        }
+        py::args args = py::args(args_vector);
+        std::cout << "new_args: " << args << std::endl;
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
           Stack stack;
           try {
             std::cout << "trying op->schema(): " << op->schema() << std::endl;
             stack =
-                createStackForSchema(op->schema(), args, kwargs, c10::nullopt);
-          } catch (...) {
+                createStackForSchema(op->schema(), args, kwargs_, c10::nullopt);
+            break;
+          } catch (std::exception& e) {
+            std::cout << "e.what(): " << e.what() << std::endl;
             continue;
           }
           op->getOperation()(stack);
         }
         exit(1);
+        std::cout << "DONE createStackForSchema" << std::endl;
         for (const auto& op : getAllOperatorsFor(*name)) {
-          if (auto flat_args = try_match_schema(&op->schema(), args, kwargs)) {
+          if (auto flat_args = try_match_schema(&op->schema(), args, kwargs_)) {
             if (DEBUG) {
               std::cout << "is builtin Operation with schema: " << op->schema()
                         << std::endl;
@@ -405,7 +421,7 @@ py::cpp_function jit_tensorwise() {
         }
         for (const auto& op : getAllBuiltinFunctionsFor(*name)) {
           if (auto flat_args =
-                  try_match_schema(&op->getSchema(), args, kwargs)) {
+                  try_match_schema(&op->getSchema(), args, kwargs_)) {
             if (DEBUG) {
               std::cout << "is builtin Function with schema: "
                         << op->getSchema() << std::endl;
