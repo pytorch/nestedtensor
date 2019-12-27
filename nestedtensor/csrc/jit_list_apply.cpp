@@ -2,6 +2,9 @@
 
 namespace torch {
 namespace nested_tensor {
+
+using namespace torch::jit;
+
 static TensorNode apply_jit_function(
     const std::vector<TensorNode>& nested_nodes,
     Function& fn) {
@@ -56,12 +59,12 @@ static TensorNode apply_jit_function(
     return TensorNode(result);
   }
 }
-THP_ListNestedTensor jit_apply_function(
-    std::vector<THP_ListNestedTensor> nts_,
+THPNestedTensor jit_apply_function(
+    std::vector<THPNestedTensor> nts_,
     py::object fn) {
   std::vector<_ListNestedTensor> nts;
   for (size_t i = 0; i < nts_.size(); i++) {
-    nts.push_back(nts_[i].data());
+    nts.push_back(nts_[i].data().left());
   }
   auto sfn = py::cast<StrongFunctionPtr>(fn);
   auto tracing_state = tracer::getTracingState();
@@ -78,7 +81,7 @@ THP_ListNestedTensor jit_apply_function(
   py::gil_scoped_release release;
   TensorNode nested_node = apply_jit_function(nested_nodes, callee);
   py::gil_scoped_acquire acquire;
-  return THP_ListNestedTensor(_ListNestedTensor(nested_node));
+  return THPNestedTensor(_ListNestedTensor(nested_node));
 }
 
 } // namespace nested_tensor

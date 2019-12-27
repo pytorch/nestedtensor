@@ -1,6 +1,5 @@
 #pragma once
 #include <nested_node.h>
-#include <torch/extension.h>
 
 namespace torch {
 namespace nested_tensor {

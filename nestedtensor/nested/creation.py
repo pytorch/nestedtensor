@@ -9,7 +9,8 @@ def as_nested_tensor(data, dtype=None, device=None):
     # Simple wrapper around a nested list of Tensors.
     # Shares memory with original objects.
     # # TODO: Needs tests to check failure cases
-    ret = nested.NestedTensor(_C._ListNestedTensor(data))
+    ret_impl = _C.as_nested_tensor(data)
+    ret = nested.NestedTensor(ret_impl)
     if dtype is not None:
         ret = ret.to(dtype)
     if device is not None:
@@ -109,10 +110,10 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             buffer_ = _create_buffer(data)
             nested_size = _nested_size(data)
             nested_stride = _nested_stride(data)
-            impl = _C._BufferNestedTensor(
+            impl = _C._buffer_nested_tensor(
                 buffer_, nested_size, nested_stride)
         else:
-            impl = _C._BufferNestedTensor(torch.empty(0), (), ())
+            impl = _C._buffer_nested_tensor(torch.empty(0), [], [])
         result = nested.NestedTensor(impl)
 
         if dtype is not None or device is not None:

@@ -1,7 +1,7 @@
 import torch
 import unittest
 from unittest import TestCase
-from nestedtensor import _ListNestedTensor
+import nestedtensor
 
 
 def random_int_tensor(seed, size, low=0, high=2 ** 32, a=22695477, c=1, m=2 ** 32):
@@ -52,7 +52,7 @@ def nested_map(fn, data):
 
 
 def gen_nested_tensor(seed, nested_dim, tensor_dim, size_low=1, size_high=10):
-    return _ListNestedTensor(gen_nested_list(seed, nested_dim, tensor_dim, size_low=size_low, size_high=size_high))
+    return nestedtensor.as_nested_tensor(gen_nested_list(seed, nested_dim, tensor_dim, size_low=size_low, size_high=size_high))
 
 
 def _test_property(self, fn):
@@ -60,7 +60,7 @@ def _test_property(self, fn):
     nested_tensor_lists = [gen_nested_list(i, i, 3)
                            for i in range(1, num_nested_tensor)]
     first_tensors = [get_first_tensor(ntl) for ntl in nested_tensor_lists]
-    nested_tensors = [_ListNestedTensor(ntl) for ntl in nested_tensor_lists]
+    nested_tensors = [nestedtensor.as_nested_tensor(ntl) for ntl in nested_tensor_lists]
     for nested_tensor, first_tensor in zip(nested_tensors, first_tensors):
         self.assertEqual(fn(nested_tensor), fn(first_tensor))
 
@@ -84,14 +84,14 @@ class Test_ListNestedTensor(TestCase):
 
     def test_constructor(self):
         """
-        This tests whether _ListNestedTensor stores Variables that share storage with
+        This tests whether nestedtensor.as_nested_tensor stores Variables that share storage with
         the input Variables used for construction.
         """
         tensors = []
         num_tensors = 16
         for i in range(num_tensors):
             tensors.append(gen_float_tensor(i, (i + 1, 128, 128)))
-        nested_tensor = _ListNestedTensor(tensors)
+        nested_tensor = nestedtensor.as_nested_tensor(tensors)
         for i in range(num_tensors):
             tensors[i].mul_(i + 2)
         for i in range(num_tensors):
@@ -101,11 +101,11 @@ class Test_ListNestedTensor(TestCase):
     def test_default_constructor(self):
         # self.assertRaises(TypeError, lambda: torch.nested_tensor())
         # nested_dim is 1 and dim is 1 too.
-        default_nested_tensor = _ListNestedTensor([])
+        default_nested_tensor = nestedtensor.as_nested_tensor([])
         default_tensor = torch.tensor([])
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
         # TODO: Return torch.NestedSize instead of list
-        self.assertEqual(default_nested_tensor.nested_size(), [])
+        self.assertEqual(default_nested_tensor.nested_size(), nestedtensor.NestedSize([]))
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
         self.assertEqual(default_nested_tensor.layout, default_tensor.layout)
         self.assertEqual(default_nested_tensor.device, default_tensor.device)
@@ -116,32 +116,32 @@ class Test_ListNestedTensor(TestCase):
                          default_tensor.is_pinned())
 
     def test_element_size(self):
-        nt1 = _ListNestedTensor([])
+        nt1 = nestedtensor.as_nested_tensor([])
         self.assertEqual(nt1.element_size(), torch.randn(1).element_size())
         a = torch.randn(4).int()
-        nt2 = _ListNestedTensor([a])
+        nt2 = nestedtensor.as_nested_tensor([a])
         self.assertEqual(a.element_size(), nt2.element_size())
 
     def test_nested_dim(self):
-        nt = _ListNestedTensor([torch.tensor(3)])
+        nt = nestedtensor.as_nested_tensor([torch.tensor(3)])
         self.assertTrue(nt.nested_dim() == 1)
         for i in range(2, 5):
             nt = gen_nested_tensor(i, i, 3)
             self.assertTrue(nt.nested_dim() == i)
 
     def test_nested_size(self):
-        a = _ListNestedTensor(
+        a = nestedtensor.as_nested_tensor(
             [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
         # TODO: Return torch.NestedSize instead of lists
         na = [[1, 2], [2, 3], [4, 5]]
-        self.assertEqual(a.nested_size(), na)
+        self.assertEqual(a.nested_size(), nestedtensor.NestedSize(na))
 
     def test_nested_stride(self):
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
-        a = _ListNestedTensor(tensors)
+        a = nestedtensor.as_nested_tensor(tensors)
         # TODO: Return torch.NestedSize instead of lists
         na = list(list(t.stride()) for t in tensors)
-        self.assertEqual(a.nested_stride(), na)
+        self.assertEqual(a.nested_stride(), nestedtensor.NestedSize(na))
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_pin_memory(self):
@@ -154,7 +154,7 @@ class Test_ListNestedTensor(TestCase):
         self.assertTrue(nt1.is_pinned())
         a1 = torch.randn(1, 2)
         a2 = torch.randn(2, 3)
-        nt2 = _ListNestedTensor([a1, a2])
+        nt2 = nestedtensor.as_nested_tensor([a1, a2])
         self.assertFalse(a1.is_pinned())
         self.assertFalse(a2.is_pinned())
 
@@ -175,15 +175,15 @@ class Test_ListNestedTensor(TestCase):
         self.assertFalse(a6.is_pinned())
 
     def test_len(self):
-        a = _ListNestedTensor([torch.tensor([1, 2]),
+        a = nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
                                                   torch.tensor([3, 4]),
                                                   torch.tensor([5, 6]),
                                                   torch.tensor([7, 8])])
         self.assertEqual(len(a), 4)
-        a = _ListNestedTensor([torch.tensor([1, 2]),
+        a = nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
                                                   torch.tensor([7, 8])])
         self.assertEqual(len(a), 2)
-        a = _ListNestedTensor([torch.tensor([1, 2])])
+        a = nestedtensor.as_nested_tensor([torch.tensor([1, 2])])
         self.assertEqual(len(a), 1)
 
     def test_dtype(self):
@@ -203,7 +203,7 @@ class Test_ListNestedTensor(TestCase):
         # that the Tensors we use for construction can be retrieved
         # and used independently while still being kept track of.
 
-        # In fact _ListNestedTensor behave just like a list. Any
+        # In fact nestedtensor.as_nested_tensor behave just like a list. Any
         # list of torch.Tensors you initialize it with will be
         # unbound to have the same id. That is, they are indeed
         # the same Variable, since each torch::autograd::Variable has
@@ -213,7 +213,7 @@ class Test_ListNestedTensor(TestCase):
 
         a = torch.tensor([1, 2])
         b = torch.tensor([7, 8])
-        nt = _ListNestedTensor([a, b])
+        nt = nestedtensor.as_nested_tensor([a, b])
         a1, b1 = nt.unbind()
         self.assertTrue(a is a1)
         self.assertTrue(b is b1)
@@ -222,7 +222,7 @@ class Test_ListNestedTensor(TestCase):
         d = torch.tensor([5, 6])
         e = torch.tensor([6, 7])
 
-        nt1 = _ListNestedTensor([[c, d], [e]])
+        nt1 = nestedtensor.as_nested_tensor([[c, d], [e]])
         nt11, nt12 = nt1.unbind()
         c1, d1 = nt11.unbind()
         e1 = nt12.unbind()[0]
@@ -232,7 +232,7 @@ class Test_ListNestedTensor(TestCase):
         self.assertTrue(e is e1)
 
     def test_contiguous(self):
-        a = _ListNestedTensor([torch.tensor([1, 2]),
+        a = nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
                                                   torch.tensor([3, 4]),
                                                   torch.tensor([5, 6]),
                                                   torch.tensor([7, 8])])
