@@ -228,7 +228,7 @@ class NestedTensor(object):
         return self._impl.numel()
 
     def pin_memory(self):
-        self._impl.pin_memory()
+        return self._impl.pin_memory()
 
     def __str__(self):
         return self._impl.__str__()
