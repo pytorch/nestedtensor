@@ -1,7 +1,5 @@
 #include <ATen/core/interned_strings.h>
 #include <jit_list_apply.h>
-#include <python_buffer_nested_tensor.h>
-#include <python_list_nested_tensor.h>
 #include <torch/csrc/jit/script/builtin_functions.h>
 #include <torch/csrc/jit/script/schema_matching.h>
 #include <torch/csrc/jit/script/sugared_value.h>
@@ -9,8 +7,47 @@
 namespace torch {
 namespace nested_tensor {
 
+namespace py = pybind11;
+
 using namespace torch::jit;
 using namespace torch::jit::script;
+
+// TODO Expand to IValues to support generic lists?
+template <class F>
+at::Tensor run_function(std::vector<c10::IValue> stack, F& fn);
+
+template <>
+at::Tensor run_function(std::vector<c10::IValue> stack, Function& fn) {
+  if (DEBUG) {
+    std::cout << "run_function_Function" << std::endl;
+  }
+  c10::IValue result = fn(stack);
+  if (DEBUG) {
+    std::cout << "finished result_Function" << std::endl;
+  }
+  return result.toTensor();
+}
+
+template <>
+at::Tensor run_function(std::vector<c10::IValue> stack, Operation& fn) {
+  if (DEBUG) {
+    size_t i = 0;
+    for (c10::IValue& ival : stack) {
+      std::cout << "ival " << i << " : " << ival.tagKind() << std::endl;
+      i++;
+    }
+    std::cout << "run_function_Operation" << std::endl;
+  }
+  fn(stack);
+  if (DEBUG) {
+    std::cout << "run_function_Operation stack finished" << std::endl;
+  }
+  c10::IValue result = stack.front();
+  if (DEBUG) {
+    std::cout << "finished result_Operation" << std::endl;
+  }
+  return result.toTensor();
+}
 
 struct ArgWrapper {
   ArgWrapper(TensorNode nested_tensor)
@@ -123,14 +160,10 @@ static TensorNode apply_jit_function(std::vector<ArgWrapper>& args, F& fn) {
 static ArgWrapper wrap_arg(
     py::object arg,
     c10::optional<c10::TypePtr> type_ptr = c10::nullopt) {
-  if (py::isinstance<THP_ListNestedTensor>(arg)) {
+  if (py::isinstance<THPNestedTensor>(arg)) {
     TORCH_CHECK((*type_ptr)->kind() == TensorType::Kind);
     return ArgWrapper(
-        py::cast<THP_ListNestedTensor>(arg).data().get_structure());
-  } else if (py::isinstance<THP_BufferNestedTensor>(arg)) {
-    TORCH_CHECK((*type_ptr)->kind() == TensorType::Kind);
-    return ArgWrapper(
-        py::cast<THP_BufferNestedTensor>(arg).data().get_structure());
+        py::cast<THPNestedTensor>(arg).get_structure());
   }
   if (type_ptr) {
     return ArgWrapper(toIValue(arg, *type_ptr));
@@ -155,22 +188,18 @@ static std::vector<ArgWrapper> flatten_args(
 }
 
 template <class F>
-static THP_ListNestedTensor apply_jit_function_helper(
+static THPNestedTensor apply_jit_function_helper(
     std::vector<ArgWrapper>& flat_args,
     F& op) {
   py::gil_scoped_release release;
   TensorNode result = apply_jit_function(flat_args, op);
   py::gil_scoped_acquire acquire;
-  return THP_ListNestedTensor(_ListNestedTensor(result));
+  return THPNestedTensor(_ListNestedTensor(result));
 }
 
-THP_ListNestedTensor jit_apply_function(
-    std::vector<THP_ListNestedTensor> nts_,
+THPNestedTensor jit_apply_function(
+    std::vector<THPNestedTensor> nts,
     py::object fn) {
-  std::vector<_ListNestedTensor> nts;
-  for (size_t i = 0; i < nts_.size(); i++) {
-    nts.push_back(nts_[i].data());
-  }
   auto sfn = py::cast<StrongFunctionPtr>(fn);
   auto tracing_state = tracer::getTracingState();
   TORCH_CHECK(!tracing_state, "doesnt support tracing");
@@ -186,7 +215,7 @@ THP_ListNestedTensor jit_apply_function(
   py::gil_scoped_release release;
   TensorNode nested_node = apply_jit_function<Function>(nested_nodes, callee);
   py::gil_scoped_acquire acquire;
-  return THP_ListNestedTensor(_ListNestedTensor(nested_node));
+  return THPNestedTensor(_ListNestedTensor(nested_node));
 }
 
 // TODO: Write separate C++ test for overloads as test cases
@@ -382,7 +411,7 @@ py::cpp_function jit_tensorwise() {
       ss << "FAIL! Can't find something for " << fn;
       TORCH_CHECK(false, ss.str());
       TensorNode result;
-      return THP_ListNestedTensor(_ListNestedTensor(result));
+      return THPNestedTensor(_ListNestedTensor(result));
     });
   });
 }

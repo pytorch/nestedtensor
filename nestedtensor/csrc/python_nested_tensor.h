@@ -94,6 +94,10 @@ struct THPNestedTensor {
     return data_map<bool>(
         _data, [](auto data) { return data.is_contiguous(); });
   }
+  TensorNode get_structure() {
+    return data_map<TensorNode>(
+        _data, [](auto data) { return data.get_structure(); });
+  }
 
  private:
   c10::either<_ListNestedTensor, _BufferNestedTensor> _data;
