@@ -1,3 +1,4 @@
+#pragma once
 #include <python_nested_tensor.h>
 
 namespace torch {

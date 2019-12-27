@@ -4,30 +4,20 @@
 namespace torch {
 namespace nested_tensor {
 
-SizeNode _get_size_structure(py::list py_obj);
+SizeNode _get_size_structure(pybind11::list py_obj);
 
-TensorNode _get_tensor_structure(py::list py_obj);
+TensorNode _get_tensor_structure(pybind11::list py_obj);
 
-static inline THPNestedTensor as_nested_tensor(py::list list) {
-  return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
-}
+THPNestedTensor as_nested_tensor(pybind11::list list);
 
-static inline THPNestedTensor _buffer_nested_tensor(
-    py::object buffer,
-    py::list nested_size) {
-  return THPNestedTensor(_BufferNestedTensor(
-      py::cast<at::Tensor>(buffer), _get_size_structure(nested_size)));
-}
+THPNestedTensor _buffer_nested_tensor(
+    pybind11::object buffer,
+    pybind11::list nested_size);
 
-static inline THPNestedTensor _buffer_nested_tensor(
-    py::object buffer,
-    py::list nested_size,
-    py::list nested_stride) {
-  return THPNestedTensor(_BufferNestedTensor(
-      py::cast<at::Tensor>(buffer),
-      _get_size_structure(nested_size),
-      _get_size_structure(nested_stride)));
-}
+THPNestedTensor _buffer_nested_tensor(
+    pybind11::object buffer,
+    pybind11::list nested_size,
+    pybind11::list nested_stride);
 
 } // namespace nested_tensor
 } // namespace torch

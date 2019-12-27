@@ -2,11 +2,10 @@
 #include <nested_node.h>
 #include <torch/csrc/jit/pybind_utils.h>
 
+namespace py = pybind11;
+
 namespace torch {
 namespace nested_tensor {
-
-using namespace torch::jit;
-using namespace torch::autograd::utils;
 
 SizeNode _get_size_structure(py::list py_obj) {
   // Empty list of lists
@@ -25,7 +24,7 @@ SizeNode _get_size_structure(py::list py_obj) {
   }
 
   // List of lists of numbers
-  InferredType inferred_type = tryToInferType(py_obj[0]);
+  torch::jit::InferredType inferred_type = torch::jit::tryToInferType(py_obj[0]);
   if (inferred_type.success() && py_obj_to_ivalue(py_obj[0]).isIntList()) {
     c10::List<c10::List<int64_t>> result;
     for (size_t i = 0; i < py_obj.size(); i++) {
@@ -48,7 +47,7 @@ TensorNode _get_tensor_structure(py::list py_obj) {
   if (py_obj.size() == 0) {
     return TensorNode();
   }
-  IValue payload = py_obj_to_ivalue(py_obj);
+  c10::IValue payload = py_obj_to_ivalue(py_obj);
   if (payload.isTensorList()) {
     // List of Tensors
     return TensorNode(payload.toTensorList());
@@ -61,6 +60,27 @@ TensorNode _get_tensor_structure(py::list py_obj) {
     }
     return TensorNode(result);
   }
+}
+
+THPNestedTensor as_nested_tensor(py::list list) {
+  return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
+}
+
+THPNestedTensor _buffer_nested_tensor(
+    py::object buffer,
+    py::list nested_size) {
+  return THPNestedTensor(_BufferNestedTensor(
+      py::cast<at::Tensor>(buffer), _get_size_structure(nested_size)));
+}
+
+THPNestedTensor _buffer_nested_tensor(
+    py::object buffer,
+    py::list nested_size,
+    py::list nested_stride) {
+  return THPNestedTensor(_BufferNestedTensor(
+      py::cast<at::Tensor>(buffer),
+      _get_size_structure(nested_size),
+      _get_size_structure(nested_stride)));
 }
 
 } // namespace nested_tensor

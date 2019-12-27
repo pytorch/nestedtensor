@@ -4,7 +4,6 @@ namespace torch {
 namespace nested_tensor {
 
 using namespace torch::jit;
-using namespace torch::autograd::utils;
 
 static TensorNode apply_jit_function(
     const std::vector<TensorNode>& nested_nodes,
