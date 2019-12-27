@@ -75,7 +75,7 @@ def gen_random_int(seed, low=0, high=2 ** 32):
 
 
 # TODO: Something occasionally causes a NaN here...
-def gen_nested_list(seed, nested_dim, tensor_dim, size_low=1, size_high=10):
+def gen_nested_list(seed, nested_dim, tensor_dim, size_low=1, size_high=2):
     tensors = []
     num_tensors = gen_random_int(
         (seed * nested_dim + seed) * 1024, low=size_low, high=size_high)

@@ -10,7 +10,7 @@
 namespace torch {
 namespace nested_tensor {
 
-static bool DEBUG = false;
+static bool DEBUG = true;
 
 THPNestedTensor jit_apply_function(
     std::vector<THPNestedTensor> nts_,
