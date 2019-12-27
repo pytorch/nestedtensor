@@ -263,11 +263,7 @@ class NestedTensor(object):
         if dim == 0:
             if None in self.size():
                 raise ValueError("Shape not Tensor compliant")
-            print('self.nested_size()')
-            print(self.nested_size())
             result = self._impl.to_tensor()
-            print('result.size()')
-            print(result.size())
             return result
         # If dim is bigger than nested_dim the NestedTensor is already
         # of Tensor for dimensions bigger than the given.
@@ -322,7 +318,6 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, args=(), kwargs=None):
-        print('func.__name__: {}'.format(func.__name__))
         _local_func = None
         if func in NestedTensor.__jit_function_dispatch:
             _jit_local_func = NestedTensor.__jit_function_dispatch[func]
