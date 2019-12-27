@@ -11,33 +11,13 @@ using namespace torch::jit::script;
 
 // TODO Expand to IValues to support generic lists?
 at::Tensor run_function(Stack& stack, Function& fn) {
-  if (DEBUG) {
-    std::cout << "run_function_Function" << std::endl;
-  }
   c10::IValue result = fn(stack);
-  if (DEBUG) {
-    std::cout << "finished result_Function" << std::endl;
-  }
   return result.toTensor();
 }
 
 at::Tensor run_function(Stack& stack, Operation& fn) {
-  if (DEBUG) {
-    size_t i = 0;
-    for (c10::IValue& ival : stack) {
-      std::cout << "ival " << i << " : " << ival.tagKind() << std::endl;
-      i++;
-    }
-    std::cout << "run_function_Operation" << std::endl;
-  }
   fn(stack);
-  if (DEBUG) {
-    std::cout << "run_function_Operation stack finished" << std::endl;
-  }
   c10::IValue result = stack.front();
-  if (DEBUG) {
-    std::cout << "finished result_Operation" << std::endl;
-  }
   return result.toTensor();
 }
 
@@ -137,11 +117,9 @@ py::cpp_function jit_tensorwise() {
       if (auto name = is_builtin(fn)) {
         py::list args_vector;
         std::set<size_t> nested_arg_i;
-        // std::cout << "args.size(): " << args_.size() << std::endl;
         for (size_t i = 0; i < args_.size(); i++) {
           py::object arg = args_[i];
           if (py::isinstance<THPNestedTensor>(arg)) {
-            // std::cout << "assigning first tensor" << std::endl;
             args_vector.append(_get_first_variable(
                 py::cast<THPNestedTensor>(arg).get_structure()));
             nested_arg_i.insert(i);
@@ -150,15 +128,12 @@ py::cpp_function jit_tensorwise() {
           }
         }
         py::args args = py::args(args_vector);
-        // std::cout << "new_args: " << args << std::endl;
         Stack stack;
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
           try {
-            // std::cout << "trying op->schema(): " << op->schema() << std::endl;
             stack =
                 createStackForSchema(op->schema(), args, kwargs_, c10::nullopt);
           } catch (std::exception& e) {
-            // std::cout << "e.what(): " << e.what() << std::endl;
             continue;
           }
           std::vector<TensorNode> nested_nodes;
@@ -170,41 +145,7 @@ py::cpp_function jit_tensorwise() {
           }
           auto operation = op->getOperation();
           return THPNestedTensor(_ListNestedTensor(apply_jit_function(nested_nodes, nested_arg_i, stack, operation)));
-          // Stack stack2(stack);
-          // op->getOperation()(stack2);
-          // std::cout << "return value1: "
-          //           << torch::jit::createPyObjectForStack(std::move(stack2))
-          //           << std::endl;
-          // Stack stack3(stack);
-          // op->getOperation()(stack3);
-          // std::cout << "return value2: "
-          //           << torch::jit::createPyObjectForStack(std::move(stack3))
-          //           << std::endl;
         }
-        // exit(1);
-        // std::cout << "DONE createStackForSchema" << std::endl;
-        // for (const auto& op : getAllOperatorsFor(*name)) {
-        //   if (auto flat_args = try_match_schema(&op->schema(), args,
-        //   kwargs_)) {
-        //     if (DEBUG) {
-        //       std::cout << "is builtin Operation with schema: " <<
-        //       op->schema()
-        //                 << std::endl;
-        //     }
-        //     Operation actual = op->getOperation();
-        //     return apply_jit_function_helper<Operation>(*flat_args, actual);
-        //   }
-        // }
-        // for (const auto& op : getAllBuiltinFunctionsFor(*name)) {
-        //   if (auto flat_args =
-        //           try_match_schema(&op->getSchema(), args, kwargs_)) {
-        //     if (DEBUG) {
-        //       std::cout << "is builtin Function with schema: "
-        //                 << op->getSchema() << std::endl;
-        //     }
-        //     return apply_jit_function_helper<Function>(*flat_args, *op);
-        //   }
-        // }
       }
       // TODO: Need implementation of generic python version.
       std::stringstream ss;
