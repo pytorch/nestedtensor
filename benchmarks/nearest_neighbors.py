@@ -74,8 +74,8 @@ def gen_algorithm_nested_jit_mv(keys, sub_clusters):
         for cluster in sub_cluster:
             new_sub_cluster.append(torch.stack(cluster))
         new_sub_clusters.append(new_sub_cluster)
-    nested_sub_clusters = nestedtensor._ListNestedTensor(new_sub_clusters)
-    nested_keys = nestedtensor._ListNestedTensor(keys)
+    nested_sub_clusters = nestedtensor.as_nested_tensor(new_sub_clusters)
+    nested_keys = nestedtensor.as_nested_tensor(keys)
 
     @nestedtensor._C.jit_tensorwise()
     @torch.jit.script
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     gen_results_naive = gen_algorithm_naive(keys, sub_clusters)
     gen_results_mv = gen_algorithm_mv(keys, sub_clusters)
     gen_results_nested_mv = gen_algorithm_nested_mv(keys, sub_clusters)
-    gen_results_nested_jit_mv = gen_algorithm_nested_jit_mv(keys, sub_clusters)
+    # gen_results_nested_jit_mv = gen_algorithm_nested_jit_mv(keys, sub_clusters)
 
     print(benchmark_fn(gen_results_nested_mv))
     print(benchmark_fn(gen_results_naive))

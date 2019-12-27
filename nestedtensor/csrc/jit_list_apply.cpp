@@ -125,7 +125,7 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 py::cpp_function jit_tensorwise() {
   return py::cpp_function([](py::object fn) {
     return py::cpp_function([fn](py::args args_, py::kwargs kwargs_) {
-      std::cout << "given args_: " << args_ << std::endl;
+      // std::cout << "given args_: " << args_ << std::endl;
       // if (py::isinstance<StrongFunctionPtr>(fn)) {
       //   std::cout << "is StrongFunctionPtr" << std::endl;
       //   auto sfn = py::cast<StrongFunctionPtr>(fn);
@@ -137,11 +137,11 @@ py::cpp_function jit_tensorwise() {
       if (auto name = is_builtin(fn)) {
         py::list args_vector;
         std::set<size_t> nested_arg_i;
-        std::cout << "args.size(): " << args_.size() << std::endl;
+        // std::cout << "args.size(): " << args_.size() << std::endl;
         for (size_t i = 0; i < args_.size(); i++) {
           py::object arg = args_[i];
           if (py::isinstance<THPNestedTensor>(arg)) {
-            std::cout << "assigning first tensor" << std::endl;
+            // std::cout << "assigning first tensor" << std::endl;
             args_vector.append(_get_first_variable(
                 py::cast<THPNestedTensor>(arg).get_structure()));
             nested_arg_i.insert(i);
@@ -150,15 +150,15 @@ py::cpp_function jit_tensorwise() {
           }
         }
         py::args args = py::args(args_vector);
-        std::cout << "new_args: " << args << std::endl;
+        // std::cout << "new_args: " << args << std::endl;
         Stack stack;
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
           try {
-            std::cout << "trying op->schema(): " << op->schema() << std::endl;
+            // std::cout << "trying op->schema(): " << op->schema() << std::endl;
             stack =
                 createStackForSchema(op->schema(), args, kwargs_, c10::nullopt);
           } catch (std::exception& e) {
-            std::cout << "e.what(): " << e.what() << std::endl;
+            // std::cout << "e.what(): " << e.what() << std::endl;
             continue;
           }
           std::vector<TensorNode> nested_nodes;
@@ -181,7 +181,7 @@ py::cpp_function jit_tensorwise() {
           //           << torch::jit::createPyObjectForStack(std::move(stack3))
           //           << std::endl;
         }
-        exit(1);
+        // exit(1);
         // std::cout << "DONE createStackForSchema" << std::endl;
         // for (const auto& op : getAllOperatorsFor(*name)) {
         //   if (auto flat_args = try_match_schema(&op->schema(), args,

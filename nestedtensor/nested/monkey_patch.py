@@ -88,7 +88,10 @@ def monkey_patch(NestedTensor):
         set_nt_method(function_name + '_', utils.tensorwise())
         if function_name in ['fill']:
             continue
-        set_wrapped_jit_torch_function(function_name, _C.jit_tensorwise())
+        if function_name in ['mvlgamma', 'clamp', 'clamp_min', 'clamp_max']:
+            set_wrapped_torch_function(function_name, utils.tensorwise())
+        else:
+            set_wrapped_jit_torch_function(function_name, _C.jit_tensorwise())
         set_nt_method(function_name, utils.tensorwise())
     # <
 
@@ -227,6 +230,5 @@ def monkey_patch(NestedTensor):
 
     # module.NestedTensor = NestedTensor
 
-    jit_function_dispatch[torch.mv] = _C.jit_tensorwise()(torch.mv)
     setattr(NestedTensor, '_NestedTensor__function_dispatch', function_dispatch)
     setattr(NestedTensor, '_NestedTensor__jit_function_dispatch', jit_function_dispatch)
