@@ -10,12 +10,12 @@ using namespace torch::jit;
 using namespace torch::jit::script;
 
 // TODO Expand to IValues to support generic lists?
-at::Tensor run_function(Stack& stack, Function& fn) {
+at::Tensor run_function(Stack&& stack, Function& fn) {
   c10::IValue result = fn(stack);
   return result.toTensor();
 }
 
-at::Tensor run_function(Stack& stack, Operation& fn) {
+at::Tensor run_function(Stack&& stack, Operation& fn) {
   fn(stack);
   c10::IValue result = stack.front();
   return result.toTensor();
@@ -47,7 +47,7 @@ static TensorNode apply_jit_function(
           stack[i] = nested_nodes[ni].payload(j);
         }
       }
-      results.push_back(run_function(stack, fn));
+      results.emplace_back(run_function(std::move(stack), fn));
     }
     return TensorNode(results);
   } else {
@@ -105,29 +105,39 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 py::cpp_function jit_tensorwise() {
   return py::cpp_function([](py::object fn) {
     return py::cpp_function([fn](py::args args_, py::kwargs kwargs_) {
-      // std::cout << "given args_: " << args_ << std::endl;
-      // if (py::isinstance<StrongFunctionPtr>(fn)) {
-      //   std::cout << "is StrongFunctionPtr" << std::endl;
-      //   auto sfn = py::cast<StrongFunctionPtr>(fn);
-      //   Function& op = *sfn.function_;
-      //   std::vector<ArgWrapper> flat_args = flatten_args(args_, kwargs_);
-      //   return apply_jit_function_helper<Function>(flat_args, op);
-      // }
       // TODO: Support for no NestedTensor arguments
-      if (auto name = is_builtin(fn)) {
-        py::list args_vector;
-        std::set<size_t> nested_arg_i;
-        for (size_t i = 0; i < args_.size(); i++) {
-          py::object arg = args_[i];
-          if (py::isinstance<THPNestedTensor>(arg)) {
-            args_vector.append(_get_first_variable(
-                py::cast<THPNestedTensor>(arg).get_structure()));
-            nested_arg_i.insert(i);
-          } else {
-            args_vector.append(arg);
-          }
+      py::list args_vector;
+      std::set<size_t> nested_arg_i;
+      for (size_t i = 0; i < args_.size(); i++) {
+        py::object arg = args_[i];
+        if (py::isinstance<THPNestedTensor>(arg)) {
+          args_vector.append(_get_first_variable(
+              py::cast<THPNestedTensor>(arg).get_structure()));
+          nested_arg_i.insert(i);
+        } else {
+          args_vector.append(arg);
         }
-        py::args args = py::args(args_vector);
+      }
+      py::args args = py::args(args_vector);
+
+      std::vector<TensorNode> nested_nodes;
+      for (const auto& arg : args_) {
+        if (py::isinstance<THPNestedTensor>(arg)) {
+          nested_nodes.push_back(
+              py::cast<THPNestedTensor>(arg).get_structure());
+        }
+      }
+
+      if (py::isinstance<StrongFunctionPtr>(fn)) {
+        auto sfn = py::cast<StrongFunctionPtr>(fn);
+        Function& operation = *sfn.function_;
+        Stack stack = createStackForSchema(
+            operation.getSchema(), args, kwargs_, c10::nullopt);
+        py::gil_scoped_release release;
+        return THPNestedTensor(_ListNestedTensor(
+            apply_jit_function(nested_nodes, nested_arg_i, stack, operation)));
+      }
+      if (auto name = is_builtin(fn)) {
         Stack stack;
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
           try {
@@ -136,15 +146,10 @@ py::cpp_function jit_tensorwise() {
           } catch (std::exception& e) {
             continue;
           }
-          std::vector<TensorNode> nested_nodes;
-          for (const auto& arg : args_) {
-            if (py::isinstance<THPNestedTensor>(arg)) {
-              nested_nodes.push_back(
-                  py::cast<THPNestedTensor>(arg).get_structure());
-            }
-          }
           auto operation = op->getOperation();
-          return THPNestedTensor(_ListNestedTensor(apply_jit_function(nested_nodes, nested_arg_i, stack, operation)));
+          py::gil_scoped_release release;
+          return THPNestedTensor(_ListNestedTensor(apply_jit_function(
+              nested_nodes, nested_arg_i, stack, operation)));
         }
       }
       // TODO: Need implementation of generic python version.
