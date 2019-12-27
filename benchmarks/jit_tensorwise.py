@@ -28,15 +28,15 @@ if __name__ == "__main__":
     ## print('out')
     ## print(out)
 
-    nv = nestedtensor._C.jit_tensorwise()(torch.mv)
-    print(nv(
-        nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
-        nestedtensor._C._ListNestedTensor([torch.randn(2)]),
-        ))
-
-    # print("333")
-    # print(na(
-    #     torch.randn(1, 2),
-    #     torch.randn(1, 2),
+    # nv = nestedtensor._C.jit_tensorwise()(torch.mv)
+    # print(nv(
+    #     nestedtensor._C._ListNestedTensor([torch.randn(1, 2)]),
+    #     nestedtensor._C._ListNestedTensor([torch.randn(2)]),
     #     ))
-    # print("444")
+
+    print("333")
+    print(na(
+        torch.randn(1, 2),
+        torch.randn(1, 2),
+        ))
+    print("444")

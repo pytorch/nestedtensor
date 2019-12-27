@@ -1,8 +1,5 @@
-#include <ATen/core/interned_strings.h>
 #include <jit_list_apply.h>
 #include <torch/csrc/jit/script/builtin_functions.h>
-#include <torch/csrc/jit/script/schema_matching.h>
-#include <torch/csrc/jit/script/sugared_value.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -162,8 +159,7 @@ static ArgWrapper wrap_arg(
     c10::optional<c10::TypePtr> type_ptr = c10::nullopt) {
   if (py::isinstance<THPNestedTensor>(arg)) {
     TORCH_CHECK((*type_ptr)->kind() == TensorType::Kind);
-    return ArgWrapper(
-        py::cast<THPNestedTensor>(arg).get_structure());
+    return ArgWrapper(py::cast<THPNestedTensor>(arg).get_structure());
   }
   if (type_ptr) {
     return ArgWrapper(toIValue(arg, *type_ptr));
@@ -385,6 +381,18 @@ py::cpp_function jit_tensorwise() {
       }
       // TODO: Support for no NestedTensor arguments
       if (auto name = is_builtin(fn)) {
+        for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
+          Stack stack;
+          try {
+            std::cout << "trying op->schema(): " << op->schema() << std::endl;
+            stack =
+                createStackForSchema(op->schema(), args, kwargs, c10::nullopt);
+          } catch (...) {
+            continue;
+          }
+          op->getOperation()(stack);
+        }
+        exit(1);
         for (const auto& op : getAllOperatorsFor(*name)) {
           if (auto flat_args = try_match_schema(&op->schema(), args, kwargs)) {
             if (DEBUG) {
