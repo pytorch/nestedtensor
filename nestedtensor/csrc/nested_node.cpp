@@ -18,6 +18,8 @@ std::string _NestedNode___str__(const TensorNode& nested_node) {
       PyObject* objectsRepresentation =
           PyObject_Str(THPVariable_Wrap(nested_node.payload(i)));
       result << THPUtils_unpackString(objectsRepresentation);
+      result << ",";
+      result << std::endl;
     }
   } else {
     result << "  ";

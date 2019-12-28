@@ -125,6 +125,15 @@ class TestNestedTensor(TestCase):
         self.assertTrue(a2.size() == (2, 1, None))
         self.assertTrue(a3.size() == (2, None, 4))
 
+    def test_to(self):
+        tensors = [torch.randn(1, 8),
+                   torch.randn(3, 8),
+                   torch.randn(7, 8)]
+        a1 = nestedtensor.nested_tensor(tensors)
+        print(a1)
+        a2 = a1.to(torch.int64)
+        print(a2)
+
 class TestContiguous(TestCase):
     def test_contiguous(self):
         for i in range(1, 10):
