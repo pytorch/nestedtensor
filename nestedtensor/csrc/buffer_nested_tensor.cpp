@@ -4,11 +4,13 @@ namespace torch {
 namespace nested_tensor {
 
 std::vector<int64_t> _cont_stride(c10::List<int64_t> size) {
-  std::vector<int64_t> stride;
+  std::vector<int64_t> stride(size.size());
   int64_t p = 1;
+  size_t p_i = size.size();
   for (size_t i = 0; i < size.size(); i++) {
-    stride.push_back(p);
-    p *= size[i];
+    p_i--;
+    stride[p_i] = p;
+    p *= size[p_i];
   }
   return stride;
 }
@@ -16,7 +18,7 @@ std::vector<int64_t> _cont_stride(c10::List<int64_t> size) {
 SizeNode _infer_stride(SizeNode nested_size) {
   if (nested_size.is_leaf()) {
     c10::List<c10::List<int64_t>> result;
-    for (size_t i = 0; i < nested_size.degree(); i++) {
+    for (size_t i = 0; i < nested_size.size(); i++) {
       // std::vector<int64_t> stride = _cont_stride(nested_size.payload(i);
       // c10::IntArrayRef stride(stride.data<int64_t>(), stride.size());
       result.emplace_back(_cont_stride(nested_size.payload(i)));

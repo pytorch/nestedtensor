@@ -112,12 +112,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   m.def("jit_apply_function", &torch::nested_tensor::jit_apply_function);
   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
-  m.def(
-      "_buffer_nested_tensor",
-      py::overload_cast<py::object, py::list>(
-          &torch::nested_tensor::_buffer_nested_tensor));
-  m.def(
-      "_buffer_nested_tensor",
-      py::overload_cast<py::object, py::list, py::list>(
-          &torch::nested_tensor::_buffer_nested_tensor));
+  m.def("nested_tensor", &torch::nested_tensor::nested_tensor);
 }

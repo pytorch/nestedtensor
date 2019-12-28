@@ -61,16 +61,14 @@ bool all_contiguous(const TensorNode& meta_node) {
   bool ac = true;
   if (meta_node.is_leaf()) {
     for (size_t i = 0; i < meta_node.size(); i++) {
-      ac = ac && meta_node.payload(i).is_contiguous();
-      if (!ac) {
-        return false;
+      if (ac) {
+        ac = ac && meta_node.payload(i).is_contiguous();
       }
     }
   } else {
     for (size_t i = 0; i < meta_node.degree(); i++) {
-      ac = ac && all_contiguous(meta_node.children(i));
-      if (!ac) {
-        return false;
+      if (ac) {
+        ac = ac && all_contiguous(meta_node.children(i));
       }
     }
   }
