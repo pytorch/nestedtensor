@@ -130,9 +130,9 @@ class TestNestedTensor(TestCase):
                    torch.randn(3, 8),
                    torch.randn(7, 8)]
         a1 = nestedtensor.nested_tensor(tensors)
-        print(a1)
         a2 = a1.to(torch.int64)
-        print(a2)
+        for a, b in zip(tensors, a2.unbind()):
+            self.assertTrue((a.to(torch.int64) == b).all())
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
