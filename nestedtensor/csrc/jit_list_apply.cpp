@@ -1,5 +1,6 @@
 #include <jit_list_apply.h>
 #include <torch/csrc/jit/script/builtin_functions.h>
+#include <torch/extension.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -11,14 +12,12 @@ using namespace torch::jit::script;
 
 // TODO Expand to IValues to support generic lists?
 at::Tensor run_function(Stack&& stack, Function& fn) {
-  c10::IValue result = fn(stack);
-  return result.toTensor();
+  return std::move(fn(stack).toTensor());
 }
 
 at::Tensor run_function(Stack&& stack, Operation& fn) {
   fn(stack);
-  c10::IValue result = stack.front();
-  return result.toTensor();
+  return std::move(stack.front().toTensor());
 }
 
 // TODO: Assert that one arg must be a nestedtensor?
@@ -39,17 +38,19 @@ static TensorNode apply_jit_function(
     // a NestedTensor function.
     size_t leaf_size = nested_nodes[0].size();
     c10::List<at::Tensor> results;
+    results.reserve(leaf_size);
     for (size_t j = 0; j < leaf_size; j++) {
       Stack stack(stack_template);
       size_t ni = 0;
       for (size_t i = 0; i < stack.size(); i++) {
         if (nested_arg_i.count(i)) {
           stack[i] = nested_nodes[ni].payload(j);
+          ni++;
         }
       }
-      results.emplace_back(run_function(std::move(stack), fn));
+      results.push_back(run_function(std::move(stack), fn));
     }
-    return TensorNode(results);
+    return TensorNode(std::move(results));
   } else {
     bool broadcastable = true;
     size_t num_children = 0;
@@ -81,9 +82,6 @@ static TensorNode apply_jit_function(
   }
 }
 
-// TODO: Write comparison operation based on a subset of Argument comparison
-// TODO: Move this into jit_tensorwise and add support for all 3 cases.
-// TODO: Template apply_jit_function to work with Operation and Function.
 c10::optional<Symbol> is_builtin(py::object fn) {
   py::object builtin_name =
       py::module::import("torch.jit").attr("_find_builtin")(fn);
@@ -108,34 +106,29 @@ py::cpp_function jit_tensorwise() {
       // TODO: Support for no NestedTensor arguments
       py::list args_vector;
       std::set<size_t> nested_arg_i;
+      std::vector<TensorNode> nested_nodes;
       for (size_t i = 0; i < args_.size(); i++) {
         py::object arg = args_[i];
         if (py::isinstance<THPNestedTensor>(arg)) {
-          args_vector.append(_get_first_variable(
-              py::cast<THPNestedTensor>(arg).get_structure()));
+          TensorNode nested_node =
+              py::cast<THPNestedTensor>(arg).get_structure();
+          args_vector.append(_get_first_variable(nested_node));
+          nested_nodes.emplace_back(std::move(nested_node));
           nested_arg_i.insert(i);
         } else {
           args_vector.append(arg);
         }
       }
       py::args args = py::args(args_vector);
-
-      std::vector<TensorNode> nested_nodes;
-      for (const auto& arg : args_) {
-        if (py::isinstance<THPNestedTensor>(arg)) {
-          nested_nodes.push_back(
-              py::cast<THPNestedTensor>(arg).get_structure());
-        }
-      }
-
       if (py::isinstance<StrongFunctionPtr>(fn)) {
         auto sfn = py::cast<StrongFunctionPtr>(fn);
         Function& operation = *sfn.function_;
         Stack stack = createStackForSchema(
             operation.getSchema(), args, kwargs_, c10::nullopt);
         py::gil_scoped_release release;
-        return THPNestedTensor(_ListNestedTensor(
+        THPNestedTensor result = THPNestedTensor(_ListNestedTensor(
             apply_jit_function(nested_nodes, nested_arg_i, stack, operation)));
+        return result;
       }
       if (auto name = is_builtin(fn)) {
         Stack stack;
@@ -148,8 +141,10 @@ py::cpp_function jit_tensorwise() {
           }
           auto operation = op->getOperation();
           py::gil_scoped_release release;
-          return THPNestedTensor(_ListNestedTensor(apply_jit_function(
-              nested_nodes, nested_arg_i, stack, operation)));
+          THPNestedTensor result =
+              THPNestedTensor(_ListNestedTensor(apply_jit_function(
+                  nested_nodes, nested_arg_i, stack, operation)));
+          return result;
         }
       }
       // TODO: Need implementation of generic python version.

@@ -9,30 +9,35 @@ import time
 def f(i, w):
     return torch.conv2d(i, w)
 
+def loop_f(inp1, w):
+    for inp in inp1:
+        torch.conv2d(inp, w)
+
 
 if __name__ == "__main__":
-    w = torch.randn(128, 3, 7, 7).cuda()
-    inp1 = list(torch.randn(1024, 1, 3, 56, 56).cuda().unbind())
+    w = torch.randn(64, 3, 9, 9).cuda()
+    inp1 = list(torch.randn(128, 1, 3, 16, 16).cuda().unbind())
     inp3 = nestedtensor.as_nested_tensor(inp1)._impl
     # print(sum(inp.numel() for inp in inp1))
     # print(inp3.numel())
 
-    t0 = time.time()
-    count = 0
-    while(time.time() - t0 < 10.0):
-        for inp in inp1:
-            r1 = torch.conv2d(inp, w)
-        torch.cuda.synchronize()
-        count += 1
-    print(count)
+    fc = nestedtensor._C.jit_tensorwise()(torch.conv2d)
 
     t0 = time.time()
     count = 0
-    while(time.time() - t0 < 10.0):
-        r2 = f(inp3, w)
+    while(time.time() - t0 < 5.0):
+        r2 = fc(inp3, w)
         torch.cuda.synchronize()
         count += 1
-    print(count)
+    print("jit: " + str(count))
+
+    t0 = time.time()
+    count = 0
+    while(time.time() - t0 < 5.0):
+        loop_f(inp1, w)
+        torch.cuda.synchronize()
+        count += 1
+    print("for loop: " + str(count))
 
     
     # print(r.nested_size())
