@@ -54,9 +54,8 @@ class TestNestedTensor(TestCase):
                          default_tensor.is_pinned())
 
     def test_scalar_constructor(self):
-        dim_one_nested_tensor = nestedtensor.nested_tensor([1.0])
-        self.assertEqual(dim_one_nested_tensor.dim(), 1)
-        self.assertEqual(dim_one_nested_tensor.nested_dim(), 1)
+        # Not a valid NestedTensor. This is not a list of Tensors or constructables for Tensors.
+        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor([1.0]))
 
     def test_nested_size(self):
         a = nestedtensor.nested_tensor(

@@ -15,22 +15,6 @@ import utils
 
 class TestNestedTensorBuffer(TestCase):
 
-    def test_default_constructor(self):
-        # nested_dim is 1 and dim is 1 too.
-        default_nested_tensor = nestedtensor._C._buffer_nested_tensor(torch.tensor([]), [], [])
-        default_tensor = torch.tensor([])
-        self.assertEqual(default_nested_tensor.nested_dim(), 1)
-        self.assertEqual(default_nested_tensor.nested_size(), [])
-        self.assertEqual(default_nested_tensor.nested_stride(), [])
-        self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
-        self.assertEqual(default_nested_tensor.layout, default_tensor.layout)
-        self.assertEqual(default_nested_tensor.device, default_tensor.device)
-        self.assertEqual(default_nested_tensor.dtype, default_tensor.dtype)
-        self.assertEqual(default_nested_tensor.requires_grad,
-                         default_tensor.requires_grad)
-        self.assertEqual(default_nested_tensor.is_pinned(),
-                         default_tensor.is_pinned())
-
     def test_grad(self):
         nt = nestedtensor.nested_tensor([torch.rand(1, 2)])
         nt.requires_grad_(True)

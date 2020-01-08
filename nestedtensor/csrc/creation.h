@@ -6,7 +6,7 @@ namespace nested_tensor {
 
 THPNestedTensor as_nested_tensor(pybind11::list list);
 
-THPNestedTensor nested_tensor(pybind11::sequence list);
+THPNestedTensor nested_tensor(pybind11::list list);
 
 } // namespace nested_tensor
 } // namespace torch

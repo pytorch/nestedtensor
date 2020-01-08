@@ -15,20 +15,6 @@ from nestedtensor import _C
 
 DEBUG = int(os.getenv("DEBUG", 1))
 
-def _ntuple(n):
-    def parse(x):
-        if isinstance(x, Iterable):
-            return x
-        return tuple(repeat(x, n))
-    return parse
-
-
-_single = _ntuple(1)
-_pair = _ntuple(2)
-_triple = _ntuple(3)
-_quadruple = _ntuple(4)
-
-
 def _check_is_contiguous(self):
     if self.nested_dim() == 1:
         return all(t.is_contiguous() for t in self.unbind())
@@ -84,8 +70,8 @@ def find_nested_tensor_dispatch_key(*args):
 
 
 def _wrap_dim(self, dim):
-    if isinstance(dim, tuple):
-        return tuple(_wrap_dim(self, d) for d in dim)
+    if isinstance(dim, list):
+        return list(_wrap_dim(self, d) for d in dim)
     if dim is None:
         return None
     if dim < 0:
@@ -104,8 +90,8 @@ def _gen_unbound(unb_args, dim_args, *args, **kwargs):
     key_len = len(dispatch_key)
 
     def _subtract_one(dim):
-        if isinstance(dim, tuple):
-            return tuple(_subtract_one(d) for d in dim)
+        if isinstance(dim, list):
+            return [_subtract_one(d) for d in dim]
         else:
             result = dim - 1
             if result < 0:
@@ -117,9 +103,9 @@ def _gen_unbound(unb_args, dim_args, *args, **kwargs):
     for i, arg in enumerate(args):
         if is_nested_tensor(arg) or i in unb_args:
             assert len(arg) == key_len
-            unbound_args.append(tuple(arg[i] for i in range(key_len)))
+            unbound_args.append([arg[i] for i in range(key_len)])
         else:
-            unbound_args.append(tuple(arg for _ in range(key_len)))
+            unbound_args.append([arg for _ in range(key_len)])
         if i in dim_args:
             unbound_args[i] = _subtract_one(unbound_args[i])
 
@@ -127,9 +113,9 @@ def _gen_unbound(unb_args, dim_args, *args, **kwargs):
     for k, arg in kwargs.items():
         if is_nested_tensor(arg) or k in unb_args:
             assert len(arg) == key_len
-            new_kwarg = tuple((k, arg[i]) for i in range(key_len))
+            new_kwarg = [(k, arg[i]) for i in range(key_len)]
         else:
-            new_kwarg = tuple((k, arg) for _ in range(key_len))
+            new_kwarg = [(k, arg) for _ in range(key_len)]
         if k in dim_args:
             new_kwarg[1] = _subtract_one(new_kwarg[1])
         unbound_kwargs.append(new_kwarg)
@@ -143,12 +129,12 @@ def _gen_unbound(unb_args, dim_args, *args, **kwargs):
             yield (new_args, dict(new_kwargs))
 
 
-def _unwrap_tensor_tuples(l):
+def _unwrap_tensor_lists(l):
     if torch.is_tensor(l):
-        return (l,)
-    if len(l) > 0 and isinstance(l[0], tuple):
-        return tuple(zip(*l))
-    return tuple(zip(*[_unwrap_tensor_tuples(li) for li in l]))
+        return [l]
+    if len(l) > 0 and isinstance(l[0], list):
+        return list(map(list, zip(*l)))
+    return [list(map(list, zip(*[_unwrap_tensor_lists(li) for li in l])))]
 
 
 def match_type_signature_prefix(types, args):
@@ -179,7 +165,7 @@ def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
                     # import pdb; pdb.set_trace()
                     result = f(*args, **kwargs)
                     if not torch.is_tensor(result):
-                        return tuple(result)
+                        return list(result)
                     return result
                 else:
                     results = []
@@ -205,10 +191,10 @@ def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
                     args = _args
                     kwargs = _kwargs
                 results = _func(*args, **kwargs)
-                results = _unwrap_tensor_tuples(results)
+                results = _unwrap_tensor_lists(results)
                 if len(results) == 1:
                     return creation.nested_tensor(results[0])
-                return tuple(map(creation.nested_tensor, results))
+                return list(map(creation.nested_tensor, results))
 
         return decorator
     return wrapper
@@ -269,7 +255,7 @@ def reduction(support_nested_dim=True, unbind_args=None, dim_args=None):
                     return f(self._impl.get_buffer(), *args, **kwargs)
                 else:
                     raise ValueError("Not supported")
-            elif isinstance(dim, tuple):
+            elif isinstance(dim, list):
                 result = self
                 for d in sorted(list(dim))[::-1]:
                     result = decorator(result, d, *args, **kwargs)
