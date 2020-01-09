@@ -70,9 +70,7 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
   return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
 }
 
-// TODO: Support empty list.
 // TODO: Support THPNestedTensor entries
-// TODO: Requires lists due to isTensorList!
 THPNestedTensor nested_tensor(py::sequence list) {
   TensorNode structure = _get_tensor_structure(list);
   at::Tensor buffer;
