@@ -32,14 +32,12 @@ c10::optional<c10::List<at::Tensor>> to_tensor_sequence(
 TensorNode _get_tensor_structure(const py::sequence& py_obj) {
   // Empty list of Tensors
   if (py_obj.size() == 0) {
-    // std::cout << "size 0 " << std::endl;
     return TensorNode();
   }
   if (auto tensor_sequence = to_tensor_sequence(py_obj)) {
     // List of Tensors
     return TensorNode(std::move(*tensor_sequence));
   } else {
-    // std::cout << "in structure: not tensor list: " << payload << std::endl;
     // List of lists of Tensors
     std::vector<TensorNode> result;
     for (size_t i = 0; i < py_obj.size(); i++) {
@@ -60,7 +58,6 @@ void _make_tensors(
       tensors.push_back((*tensor_sequence).extract(i).reshape({-1}));
     }
   } else {
-    // std::cout << "not tensor list: " << payload << std::endl;
     // List of lists of Tensors
     for (size_t i = 0; i < py_obj.size(); i++) {
       py::sequence py_obj_i = py::sequence(py_obj[i]);
@@ -77,12 +74,7 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
 // TODO: Support THPNestedTensor entries
 // TODO: Requires lists due to isTensorList!
 THPNestedTensor nested_tensor(py::sequence list) {
-  // std::cout << "list: " << list << std::endl;
-  // std::cout << "1" << std::endl;
   TensorNode structure = _get_tensor_structure(list);
-  // std::cout << "structure.degree(): " << structure.degree() << std::endl;
-  // std::cout << "structure.size(): " << structure.size() << std::endl;
-  // std::cout << "made tensors" << std::endl;
   at::Tensor buffer;
   if (list.size() == 0) {
     buffer = torch::ones({});
@@ -91,16 +83,11 @@ THPNestedTensor nested_tensor(py::sequence list) {
     _make_tensors(list, tensors);
     buffer = at::cat(tensors, 0);
   }
-  // std::cout << "2" << std::endl;
   SizeNode nested_size = map<at::Tensor, c10::List<int64_t>>(
       structure, [](at::Tensor tensor) -> c10::List<int64_t> {
         return c10::List<int64_t>(tensor.sizes());
       });
-  // std::cout << "3" << std::endl;
-  // std::cout << "nested_size.degree(): " << nested_size.degree() << std::endl;
-  // std::cout << "nested_size.size(): " << nested_size.size() << std::endl;
   auto bnt = _BufferNestedTensor(buffer, nested_size);
-  // std::cout << "Created bnt" << std::endl;
   return THPNestedTensor(std::move(bnt));
 }
 
