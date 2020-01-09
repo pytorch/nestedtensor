@@ -54,9 +54,8 @@ class TestNestedTensor(TestCase):
                          default_tensor.is_pinned())
 
     def test_scalar_constructor(self):
-        dim_one_nested_tensor = nestedtensor.nested_tensor([1.0])
-        self.assertEqual(dim_one_nested_tensor.dim(), 1)
-        self.assertEqual(dim_one_nested_tensor.nested_dim(), 1)
+        # Not a valid NestedTensor. This is not a list of Tensors or constructables for Tensors.
+        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor([1.0]))
 
     def test_nested_size(self):
         a = nestedtensor.nested_tensor(
@@ -124,6 +123,15 @@ class TestNestedTensor(TestCase):
         self.assertTrue(a1.size() == (2, None, None, 8))
         self.assertTrue(a2.size() == (2, 1, None))
         self.assertTrue(a3.size() == (2, None, 4))
+
+    def test_to(self):
+        tensors = [torch.randn(1, 8),
+                   torch.randn(3, 8),
+                   torch.randn(7, 8)]
+        a1 = nestedtensor.nested_tensor(tensors)
+        a2 = a1.to(torch.int64)
+        for a, b in zip(tensors, a2.unbind()):
+            self.assertTrue((a.to(torch.int64) == b).all())
 
 class TestContiguous(TestCase):
     def test_contiguous(self):

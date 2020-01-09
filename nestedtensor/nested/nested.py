@@ -222,13 +222,15 @@ class NestedTensor(object):
         # TODO: to is currently not supported by impls due to argparsing.
         new_tensors = [t.to(*args, **kwargs) for t in self.unbind()]
         # TODO: Make contiguous by default? Heavy operation...
-        return NestedTensor(nestedtensor._C._ListNestedTensor(new_tensors))
+        # NOTE: Needs grad support, which nestedtensor.nested_tensor
+        # constructor doesn't have.
+        return NestedTensor(nestedtensor.as_nested_tensor(new_tensors))
 
     def numel(self):
         return self._impl.numel()
 
     def pin_memory(self):
-        return self._impl.pin_memory()
+        return NestedTensor(self._impl.pin_memory())
 
     def __str__(self):
         return self._impl.__str__()

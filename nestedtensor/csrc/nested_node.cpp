@@ -18,6 +18,8 @@ std::string _NestedNode___str__(const TensorNode& nested_node) {
       PyObject* objectsRepresentation =
           PyObject_Str(THPVariable_Wrap(nested_node.payload(i)));
       result << THPUtils_unpackString(objectsRepresentation);
+      result << ",";
+      result << std::endl;
     }
   } else {
     result << "  ";
@@ -59,16 +61,14 @@ bool all_contiguous(const TensorNode& meta_node) {
   bool ac = true;
   if (meta_node.is_leaf()) {
     for (size_t i = 0; i < meta_node.size(); i++) {
-      ac = ac && meta_node.payload(i).is_contiguous();
-      if (!ac) {
-        return false;
+      if (ac) {
+        ac = ac && meta_node.payload(i).is_contiguous();
       }
     }
   } else {
     for (size_t i = 0; i < meta_node.degree(); i++) {
-      ac = ac && all_contiguous(meta_node.children(i));
-      if (!ac) {
-        return false;
+      if (ac) {
+        ac = ac && all_contiguous(meta_node.children(i));
       }
     }
   }
