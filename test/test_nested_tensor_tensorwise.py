@@ -46,17 +46,7 @@ class TestTensorWise(TestCase):
         nt1 = nestedtensor.nested_tensor([a, b])
         nt2 = nestedtensor.nested_tensor([b, a])
         c = simple_fn_scalar(a, b, 2.0)
-        # print('nt1')
-        # print(nt1)
-        # print('nt2')
-        # print(nt2)
         nt3 = simple_fn_scalar(nt1, nt2, (2.0, 3.0))
-        # print('nt3')
-        # print(nt3)
-        # print('nt3[0]')
-        # print(nt3[0])
-        # print('c')
-        # print(c)
         self.assertTrue((c == nt3[0]).all())
 
     def test_tensorwise_tensor_kwarg(self):
