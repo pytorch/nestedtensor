@@ -62,6 +62,8 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
                     "If an entry is a tuple all other entries must be too.")
 
         _type_check(data)
+        # print('data')
+        # print(data)
         result = nested.NestedTensor(_C.nested_tensor(data))
 
         if dtype is not None or device is not None:
