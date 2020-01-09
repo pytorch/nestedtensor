@@ -242,7 +242,7 @@ class NestedTensor(object):
     # TODO: More tests
     def unbind(self, dim=0):
         """
-        unbind returns a list containing the entries
+        unbind returns a tuple containing the entries
         of the list ```self``` represents. 
 
         For now unbind does not accept a dim argument akin
@@ -251,10 +251,10 @@ class NestedTensor(object):
 
         dim = utils._wrap_dim(self, dim)
         if dim == 0:
-            return [t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind()]
+            return tuple(t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind())
         else:
-            unbound = [t.unbind(dim - 1) for t in self.unbind(dim - 1)]
-            return [creation.nested_tensor(t) for t in zip(*unbound)]
+            unbound = tuple(t.unbind(dim - 1) for t in self.unbind(dim - 1))
+            return tuple(creation.nested_tensor(t) for t in zip(*unbound))
 
     def to_tensor(self, dim=0):
         """
