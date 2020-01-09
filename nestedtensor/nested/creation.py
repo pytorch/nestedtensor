@@ -61,60 +61,12 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
                 raise ValueError(
                     "If an entry is a tuple all other entries must be too.")
 
-        def _to_tensor(data):
-            if isinstance(data, torch.Tensor):
-                return data
-            if isinstance(data, nested.NestedTensor):
-                return data
-            if isinstance(data, list) or isinstance(data, tuple):
-                return list(_to_tensor(data_) for data_ in data)
-            return torch.tensor(data)
-
-        def _create_buffer(data):
-            def __flatten_data(data):
-                if isinstance(data, torch.Tensor):
-                    return [data.flatten()]  # This data will be copied implicitly via cat
-                elif isinstance(data, nested.NestedTensor):
-                    return [data.contiguous()._impl.get_buffer()]
-                else:
-                    result = []
-                    for data_i in data:
-                        result += __flatten_data(data_i)
-                    return result
-            flat_data = __flatten_data(data)
-            return torch.cat(flat_data)
-
-        def _cont_stride(size):
-            stride = (1,)
-            for s in size[:0:-1]:
-                stride = (stride[0] * s,) + stride
-            return stride
-
-        def _nested_size(data):
-            if isinstance(data, torch.Tensor):
-                return list(data.size())
-            if isinstance(data, nested.NestedTensor):
-                return data._impl.nested_size()
-            return list(_nested_size(t) for t in data)
-
-        def _nested_stride(data):
-            if isinstance(data, torch.Tensor):
-                return list(data.stride())
-            if isinstance(data, nested.NestedTensor):
-                return data._impl.nested_stride()
-            return list(_nested_stride(t) for t in data)
+        def _unbind_nested_tensors(data):
+            return [d.to_list() if utils.is_nested_tensor(d) else d for d in data]
 
         _type_check(data)
-        data = _to_tensor(data)
-        if len(data) > 0:
-            buffer_ = _create_buffer(data)
-            nested_size = _nested_size(data)
-            nested_stride = _nested_stride(data)
-            impl = _C._buffer_nested_tensor(
-                buffer_, nested_size, nested_stride)
-        else:
-            impl = _C._buffer_nested_tensor(torch.empty(0), [], [])
-        result = nested.NestedTensor(impl)
+        data = _unbind_nested_tensors(data)
+        result = nested.NestedTensor(_C.nested_tensor(data))
 
         if dtype is not None or device is not None:
             result = result.to(dtype=dtype, device=device)
