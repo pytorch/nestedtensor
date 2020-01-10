@@ -324,6 +324,9 @@ class NestedTensor(object):
         if func in NestedTensor.__jit_function_dispatch:
             _jit_local_func = NestedTensor.__jit_function_dispatch[func]
             impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+            if kwargs is not None:
+                impl_kwargs = {k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()}
+                return NestedTensor(_jit_local_func(*impl_args, **impl_kwargs))
             return NestedTensor(_jit_local_func(*impl_args))
         if func in NestedTensor.__function_dispatch:
             _local_func = NestedTensor.__function_dispatch[func]

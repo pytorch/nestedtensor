@@ -88,7 +88,7 @@ def monkey_patch(NestedTensor):
         set_nt_method(function_name + '_', utils.tensorwise())
         if function_name in ['fill']:
             continue
-        if function_name in ['mvlgamma', 'clamp', 'clamp_min', 'clamp_max']:
+        if function_name in ['mvlgamma', 'clamp', 'clamp_min', 'clamp_max', 'fmod']:
             set_wrapped_torch_function(function_name, utils.tensorwise())
         else:
             set_wrapped_jit_torch_function(function_name, _C.jit_tensorwise())

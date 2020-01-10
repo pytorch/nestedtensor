@@ -93,10 +93,22 @@ def _gen_test_unary(func__, nested_dim, device):
         def _close(t1, t2):
             self.assertTrue(((t1 - t2).abs() < 1e-6).all())
 
-        # if func__ not in ['mvlgamma']:
-        #     func(a1, out=a3)
-        #     # TODO: Abstract this
-        #     _close(func(a1), a3)
+        if func__ not in ['mvlgamma']:
+            # print("func__")
+            # print(func__)
+            # print('1 a1')
+            # print(a1)
+            # print('1 a3')
+            # print(a3)
+            func(a1, out=a3)
+            # print('2 a1')
+            # print(a1)
+            # print('2 a3')
+            # print(a3)
+            # print('func(a1)')
+            # print(func(a1))
+            # TODO: Abstract this
+            _close(func(a1), a3)
         _close(func(a1), a2)
         _close(method(a1), a2)
         _close(method_inplace(a1), a2)
