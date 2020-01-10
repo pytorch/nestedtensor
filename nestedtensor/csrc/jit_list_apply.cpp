@@ -81,8 +81,7 @@ static TensorNode apply_jit_function(
           local_args.insert({entry.first, entry.second.children(i)});
         }
       }
-      result.push_back(
-          apply_jit_function<F>(local_args, stack_template, fn));
+      result.push_back(apply_jit_function<F>(local_args, stack_template, fn));
     }
     return TensorNode(result);
   }
@@ -142,6 +141,14 @@ py::cpp_function jit_tensorwise() {
               py::cast<THPNestedTensor>(arg).get_structure();
           at::Tensor first_tensor = _get_first_variable(nested_node);
           kwargs_dict[kwarg.first] = first_tensor;
+          // TODO: This is a terrible way of identifying a NestedTensor,
+          // because it doesn't work with duplicates or partial overlap.
+          // However we need the tensor args for overload resolution
+          // and to build the stack. Further we need a way of figuring
+          // out which entries of the stack correspond to what input
+          // arguments. The more rigorous approach would be to add
+          // IValue support for NestedTensor via TorchBind or similar,
+          // but that piece is not mature enough yet.
           nested_nodes_map.insert({first_tensor.data_ptr(), nested_node});
         } else {
           kwargs_dict[kwarg.first] = kwarg.second;
@@ -171,9 +178,8 @@ py::cpp_function jit_tensorwise() {
           }
           auto operation = op->getOperation();
           py::gil_scoped_release release;
-          THPNestedTensor result =
-              THPNestedTensor(_ListNestedTensor(apply_jit_function(
-                  nested_nodes_map, stack, operation)));
+          THPNestedTensor result = THPNestedTensor(_ListNestedTensor(
+              apply_jit_function(nested_nodes_map, stack, operation)));
           return result;
         }
       }
