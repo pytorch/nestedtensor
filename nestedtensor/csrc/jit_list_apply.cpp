@@ -23,35 +23,30 @@ at::Tensor run_function(Stack&& stack, Operation& fn) {
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
 static TensorNode apply_jit_function(
-    const std::map<void*, TensorNode>& nested_nodes_map,
     Stack& stack_template,
+    const std::set<size_t>& tensor_node_i,
+    const std::vector<TensorNode>& tensor_nodes,
     F& fn) {
   bool all_leaf = true;
-  for (const auto& entry : nested_nodes_map) {
-    all_leaf = all_leaf && entry.second.is_leaf();
+  for (const auto& node : tensor_nodes) {
+    all_leaf = all_leaf && node.is_leaf();
   }
   if (all_leaf) {
     // NOTE: We assume no named tensors and no sparse variables as
     // appropriate for TorchScript.
     // TODO: Assert leaf sizes match and are non-zero, otherwise this isn't
     // a NestedTensor function.
-    size_t leaf_size = nested_nodes_map.begin()->second.size();
+    size_t leaf_size = tensor_nodes[0].size();
     c10::List<at::Tensor> results;
     results.reserve(leaf_size);
     for (size_t j = 0; j < leaf_size; j++) {
       Stack stack(stack_template);
-      // size_t ni = 0;
+      size_t ni = 0;
       for (size_t i = 0; i < stack.size(); i++) {
-        if (stack[i].isTensor()) {
-          void* candidate_key = stack[i].toTensor().data_ptr();
-          if (nested_nodes_map.count(candidate_key)) {
-            stack[i] = nested_nodes_map.find(candidate_key)->second.payload(j);
-          }
+        if (tensor_node_i.count(i)) {
+          stack[i] = tensor_nodes[ni].payload(j);
+          ni++;
         }
-        // if (nested_arg_i.count(i)) {
-        //   stack[i] = nested_nodes[ni].payload(j);
-        //   ni++;
-        // }
       }
       results.push_back(run_function(std::move(stack), fn));
     }
@@ -59,29 +54,28 @@ static TensorNode apply_jit_function(
   } else {
     bool broadcastable = true;
     size_t num_children = 0;
-    for (const auto& entry : nested_nodes_map) {
-      if (!entry.second.is_leaf()) {
+    for (const auto& node : tensor_nodes) {
+      if (!node.is_leaf()) {
         if (num_children > 0) {
-          broadcastable =
-              broadcastable && (num_children == entry.second.degree());
+          broadcastable = broadcastable && (num_children == node.degree());
         } else {
-          num_children = entry.second.degree();
+          num_children = node.degree();
         }
       }
     }
     TORCH_CHECK(broadcastable, "Can't broadcast given nested tensors");
     std::vector<TensorNode> result;
     for (size_t i = 0; i < num_children; i++) {
-      std::map<void*, TensorNode> local_args;
-      for (const auto& entry : nested_nodes_map) {
-        if (entry.second.is_leaf()) {
-          local_args.insert(entry);
-          // local_args[entry.first] = entry.second;
+      std::vector<TensorNode> local_args;
+      for (const auto& node : local_args) {
+        if (node.is_leaf()) {
+          local_args.push_back(node);
         } else {
-          local_args.insert({entry.first, entry.second.children(i)});
+          local_args.push_back(node.children(i));
         }
       }
-      result.push_back(apply_jit_function<F>(local_args, stack_template, fn));
+      result.push_back(
+          apply_jit_function<F>(stack_template, tensor_node_i, local_args, fn));
     }
     return TensorNode(result);
   }
@@ -98,6 +92,108 @@ c10::optional<Symbol> is_builtin(py::object fn) {
     return c10::nullopt;
   }
   return name;
+}
+
+c10::optional<TensorNode> try_nested_node(
+    Argument argument,
+    py::object py_arg) {
+  InferredType inferred_type = tryToInferType(py_arg);
+  if (!inferred_type.success()) {
+    return c10::nullopt;
+  }
+  if (inferred_type.type()->kind() == TypeKind::TensorType &&
+      py::isinstance<THPNestedTensor>(py_arg)) {
+    return py::cast<THPNestedTensor>(py_arg).get_structure();
+  }
+  return c10::nullopt;
+}
+
+// TODO: Add support for NestedTEnsor
+// TODO: Replace throw with nullopt returns
+inline c10::optional<
+    std::tuple<Stack, std::set<size_t>, std::vector<TensorNode>>>
+my_createStackForSchema(
+    const FunctionSchema& schema,
+    const tuple_slice& args,
+    const py::kwargs& kwargs,
+    c10::optional<IValue> self) {
+  size_t all_arguments = (self ? 1 : 0) + args.size() + kwargs.size();
+  if (all_arguments > schema.arguments().size()) {
+    // throw std::runtime_error(c10::str(
+    //     schema.name(),
+    //     "() expected at most ",
+    //     schema.arguments().size(),
+    //     " argument(s) but received ",
+    //     all_arguments,
+    //     " argument(s). Declaration: ",
+    //     schema));
+    return c10::nullopt;
+  }
+  Stack stack;
+  stack.reserve(schema.arguments().size());
+
+  std::set<size_t> tensor_node_i;
+  std::vector<TensorNode> tensor_nodes;
+
+  if (self) {
+    // NOTE: self cannot be a NestedTensor because it cannot be an ivalue.
+    push(stack, std::move(*self));
+  }
+  // First push all positional args.
+  for (size_t i = 0; i < args.size(); i++) {
+    // Use the type information from the schema to convert the PyObject.
+    const auto& schema_arg = schema.arguments()[i];
+    if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
+      tensor_nodes.push_back(*tensor_node);
+      tensor_node_i.insert(i);
+      push(stack, torch::jit::IValue(torch::zeros({})));
+    } else {
+      push(stack, argumentToIValue(schema, stack.size(), args[i]));
+    }
+  }
+
+  // Now for every remaining non-positional argument in the schema, look for it
+  // in the kwargs dict and push it if found, or use its default value if it
+  // has one.
+  size_t consumed_kwargs = 0;
+  for (size_t i = stack.size(); i < schema.arguments().size(); ++i) {
+    const auto& schema_arg = schema.arguments()[i];
+    if (kwargs.contains(schema_arg.name().c_str())) {
+      auto kwarg = kwargs[schema_arg.name().c_str()];
+      if (auto tensor_node = try_nested_node(schema_arg, kwarg)) {
+        tensor_nodes.push_back(*tensor_node);
+        tensor_node_i.insert(i);
+        push(stack, torch::jit::IValue(torch::zeros({})));
+      } else {
+        // TODO: Should this throw an error?
+        if (schema_arg.type()->kind() != tryToInferType(kwarg).type()->kind()) {
+          return c10::nullopt;
+        }
+        push(stack, argumentToIValue(schema, stack.size(), args[i]));
+      }
+      consumed_kwargs += 1;
+    } else if (schema_arg.default_value()) {
+      push(stack, *schema_arg.default_value());
+    } else {
+      // throw std::runtime_error(c10::str(
+      //     schema.name(),
+      //     "() is missing value for argument '",
+      //     arg.name(),
+      //     "'. Declaration: ",
+      //     schema));
+      return c10::nullopt;
+    }
+  }
+
+  if (consumed_kwargs != kwargs.size()) {
+    std::vector<std::string> names;
+    for (const auto& kwarg : kwargs) {
+      names.emplace_back(py::cast<std::string>(kwarg.first));
+    }
+    schema.findErrorInKwargs(names);
+  }
+
+  return std::make_tuple(stack, tensor_node_i, tensor_nodes);
 }
 
 // TODO: This should support 3 types of functions
@@ -159,28 +255,32 @@ py::cpp_function jit_tensorwise() {
       if (py::isinstance<StrongFunctionPtr>(fn)) {
         auto sfn = py::cast<StrongFunctionPtr>(fn);
         Function& operation = *sfn.function_;
-        Stack stack = createStackForSchema(
-            operation.getSchema(), args, kwargs, c10::nullopt);
-        py::gil_scoped_release release;
-        THPNestedTensor result = THPNestedTensor(_ListNestedTensor(
-            apply_jit_function(nested_nodes_map, stack, operation)));
-        return result;
+        if (auto pack = my_createStackForSchema(
+                operation.getSchema(), args, kwargs, c10::nullopt)) {
+          py::gil_scoped_release release;
+          THPNestedTensor result =
+              THPNestedTensor(_ListNestedTensor(apply_jit_function(
+                  std::get<0>(*pack),
+                  std::get<1>(*pack),
+                  std::get<2>(*pack),
+                  operation)));
+          return result;
+        }
       }
       if (auto name = is_builtin(fn)) {
-        Stack stack;
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
-          try {
-            // std::cout << "op->schema(): " << op->schema() << std::endl;
-            stack =
-                createStackForSchema(op->schema(), args, kwargs, c10::nullopt);
-          } catch (std::exception& e) {
-            continue;
+          if (auto pack = my_createStackForSchema(
+                  op->schema(), args, kwargs, c10::nullopt)) {
+            auto operation = op->getOperation();
+            py::gil_scoped_release release;
+            THPNestedTensor result =
+                THPNestedTensor(_ListNestedTensor(apply_jit_function(
+                    std::get<0>(*pack),
+                    std::get<1>(*pack),
+                    std::get<2>(*pack),
+                    operation)));
+            return result;
           }
-          auto operation = op->getOperation();
-          py::gil_scoped_release release;
-          THPNestedTensor result = THPNestedTensor(_ListNestedTensor(
-              apply_jit_function(nested_nodes_map, stack, operation)));
-          return result;
         }
       }
       // TODO: Need implementation of generic python version.
