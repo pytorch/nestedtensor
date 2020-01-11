@@ -27,11 +27,6 @@ static TensorNode apply_jit_function(
     const std::set<size_t>& tensor_node_i,
     const std::vector<TensorNode>& tensor_nodes,
     F& fn) {
-  // std::cout << "t0" << std::endl;
-  // for (size_t i = 0; i < tensor_nodes.size(); i++) {
-  //   std::cout << "tensor_nodes[" << i << "]" << std::endl;
-  // }
-  // std::cout << "t1" << std::endl;
   bool all_leaf = true;
   for (const auto& node : tensor_nodes) {
     all_leaf = all_leaf && node.is_leaf();
@@ -102,23 +97,16 @@ c10::optional<Symbol> is_builtin(py::object fn) {
 c10::optional<TensorNode> try_nested_node(
     Argument argument,
     py::object py_arg) {
-  // std::cout << "1" << std::endl;
   InferredType inferred_type = tryToInferType(py_arg);
-  // std::cout << "2" << std::endl;
   // Nestedtensor must not be a valid IValue
   if (inferred_type.success()) {
-    // std::cout << "3" << std::endl;
     return c10::nullopt;
   }
-  // std::cout << "4" << std::endl;
   if (argument.type()->kind() == TypeKind::TensorType &&
       py::isinstance<THPNestedTensor>(py_arg)) {
-    // std::cout << "5" << std::endl;
     TensorNode node = py::cast<THPNestedTensor>(py_arg).get_structure();
-    // std::cout << "51" << std::endl;
     return node;
   }
-  // std::cout << "6" << std::endl;
   return c10::nullopt;
 }
 
@@ -157,12 +145,7 @@ my_createStackForSchema(
   for (size_t i = 0; i < args.size(); i++) {
     // Use the type information from the schema to convert the PyObject.
     const auto& schema_arg = schema.arguments()[i];
-    // std::cout << "schema_arg 0: " << schema_arg << std::endl;
-    // std::cout << "schema_arg.type(): " << schema_arg.type() << std::endl;
-    // std::cout << "schema_arg.type()->kind(): "
-    //           << typeKindToString(schema_arg.type()->kind()) << std::endl;
     if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
-      // std::cout << "found nested tensor" << std::endl;
       tensor_nodes.push_back(*tensor_node);
       tensor_node_i.insert(i);
       push(stack, torch::jit::IValue(torch::zeros({})));
@@ -181,7 +164,6 @@ my_createStackForSchema(
   size_t consumed_kwargs = 0;
   for (size_t i = stack.size(); i < schema.arguments().size(); ++i) {
     const auto& schema_arg = schema.arguments()[i];
-    // std::cout << "schema_arg 1: " << schema_arg << std::endl;
     if (kwargs.contains(schema_arg.name().c_str())) {
       auto kwarg = kwargs[schema_arg.name().c_str()];
       if (auto tensor_node = try_nested_node(schema_arg, kwarg)) {
@@ -225,25 +207,23 @@ my_createStackForSchema(
 // fn might be a builtin (need to resolve!)
 // fn might be neither, so we just dispatch to some regular python for-loops
 // (not fast!)
+// TODO: Support for no NestedTensor arguments
+// NOTE: For now this is a private function
 py::cpp_function jit_tensorwise() {
   return py::cpp_function([](py::object fn) {
     return py::cpp_function([fn](py::args args, py::kwargs kwargs) {
-      // // TODO: Support for no NestedTensor arguments
-
       if (py::isinstance<StrongFunctionPtr>(fn)) {
         auto sfn = py::cast<StrongFunctionPtr>(fn);
         Function& operation = *sfn.function_;
         if (auto pack = my_createStackForSchema(
                 operation.getSchema(), args, kwargs, c10::nullopt)) {
-        // std::cout << "GOT ONE 0" << std::endl;
-          // py::gil_scoped_release release;
+          py::gil_scoped_release release;
           THPNestedTensor result =
               THPNestedTensor(_ListNestedTensor(apply_jit_function(
                   std::get<0>(*pack),
                   std::get<1>(*pack),
                   std::get<2>(*pack),
                   operation)));
-            // std::cout << "done 0" << std::endl;
           return result;
         }
       }
@@ -251,16 +231,14 @@ py::cpp_function jit_tensorwise() {
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
           if (auto pack = my_createStackForSchema(
                   op->schema(), args, kwargs, c10::nullopt)) {
-        // std::cout << "GOT ONE 1" << std::endl;
             auto operation = op->getOperation();
-            // py::gil_scoped_release release;
+            py::gil_scoped_release release;
             THPNestedTensor result =
                 THPNestedTensor(_ListNestedTensor(apply_jit_function(
                     std::get<0>(*pack),
                     std::get<1>(*pack),
                     std::get<2>(*pack),
                     operation)));
-            // std::cout << "done 1" << std::endl;
             return result;
           }
         }
