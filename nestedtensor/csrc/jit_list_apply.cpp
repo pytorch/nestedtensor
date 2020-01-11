@@ -110,8 +110,6 @@ c10::optional<TensorNode> try_nested_node(
   return c10::nullopt;
 }
 
-// TODO: Add support for NestedTEnsor
-// TODO: Replace throw with nullopt returns
 inline c10::optional<
     std::tuple<Stack, std::set<size_t>, std::vector<TensorNode>>>
 my_createStackForSchema(

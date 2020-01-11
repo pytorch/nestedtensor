@@ -131,7 +131,6 @@ struct TORCH_API _BufferNestedTensor {
         new_size.push_back(start->payload(0)[i]);
       }
     }
-    std::cout << "new_size: " << new_size << std::endl;
     return _buffer.reshape(at::IntArrayRef(new_size));
   }
 
