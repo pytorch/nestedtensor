@@ -265,8 +265,7 @@ class NestedTensor(object):
         if dim == 0:
             if None in self.size():
                 raise ValueError("Shape not Tensor compliant")
-            result = self._impl.to_tensor()
-            return result
+            return self._impl.to_tensor()
         # If dim is bigger than nested_dim the NestedTensor is already
         # of Tensor for dimensions bigger than the given.
         if self.nested_dim() == 1:
@@ -321,16 +320,16 @@ class NestedTensor(object):
 
     def __torch_function__(self, func, args=(), kwargs=None):
         _local_func = None
+        if kwargs is None:
+            kwargs = {}
         if func in NestedTensor.__jit_function_dispatch:
             _jit_local_func = NestedTensor.__jit_function_dispatch[func]
             impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
-            if kwargs is not None:
-                impl_kwargs = {k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()}
-                return NestedTensor(_jit_local_func(*impl_args, **impl_kwargs))
-            return NestedTensor(_jit_local_func(*impl_args))
+            impl_kwargs = {k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()}
+            return NestedTensor(_jit_local_func(*impl_args, **impl_kwargs))
         if func in NestedTensor.__function_dispatch:
             _local_func = NestedTensor.__function_dispatch[func]
-            return _local_func(*args) if kwargs is None else _local_func(*args, **kwargs)
+            return _local_func(*args, **kwargs)
         raise NotImplementedError("NestedTensor doesn't support function {}".format(func))
 
     def __bool__(self):

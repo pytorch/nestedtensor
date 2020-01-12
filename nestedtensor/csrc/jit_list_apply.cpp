@@ -119,18 +119,7 @@ my_createStackForSchema(
     const py::kwargs& kwargs,
     c10::optional<IValue> self) {
   size_t all_arguments = (self ? 1 : 0) + args.size() + kwargs.size();
-  // std::cout << "all_arguments: " << all_arguments << std::endl;
-  // std::cout << "schema.arguments().size(): " << schema.arguments().size()
-  //           << std::endl;
   if (all_arguments > schema.arguments().size()) {
-    // throw std::runtime_error(c10::str(
-    //     schema.name(),
-    //     "() expected at most ",
-    //     schema.arguments().size(),
-    //     " argument(s) but received ",
-    //     all_arguments,
-    //     " argument(s). Declaration: ",
-    //     schema));
     return c10::nullopt;
   }
   Stack stack;
@@ -148,35 +137,20 @@ my_createStackForSchema(
     // Use the type information from the schema to convert the PyObject.
     const auto& schema_arg = schema.arguments()[i];
     if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
-      // std::cout << i << " is a nested tensor" << std::endl;
       tensor_nodes.push_back(*tensor_node);
       tensor_node_i.insert(stack.size());
       push(stack, torch::jit::IValue(torch::zeros({})));
     } else {
-      // auto inferred_type = tryToInferType(args[i]);
-      // if (inferred_type.success()) {
-      //   std::cout << "i: " << i << " - "
-      //             << typeKindToString(inferred_type.type()->kind())
-      //             << std::endl;
-      // } else {
-      //   std::cout << "No success of getting type for " << i << std::endl;
-      // }
       // TODO: This is expensive because argumentToIValue constructs an error
       // message.
       try {
         IValue ivalue_arg = argumentToIValue(schema, i, args[i]);
-        // std::cout << "i: " << i << " - "
-        //           << typeKindToString(ivalue_arg.type()->kind()) << std::endl;
         push(stack, ivalue_arg);
-        // std::cout << "001" << std::endl;
       } catch (const std::runtime_error& e) {
-        // std::cout << "002 = " << e.what() << std::endl;
         return c10::nullopt;
       }
     }
-    // std::cout << "11: " << i << std::endl;
   }
-  // std::cout << "Looking at kwargs" << std::endl;
 
   // Now for every remaining non-positional argument in the schema, look for it
   // in the kwargs dict and push it if found, or use its default value if it
@@ -191,44 +165,20 @@ my_createStackForSchema(
         tensor_node_i.insert(stack.size());
         push(stack, torch::jit::IValue(torch::zeros({})));
       } else {
-        // TODO: Should this throw an error?
-        // auto inferred_type = tryToInferType(kwarg);
-        // if (inferred_type.success()) {
-        //   std::cout << "i: " << i << " - "
-        //             << typeKindToString(inferred_type.type()->kind())
-        //             << std::endl;
-        // } else {
-        //   std::cout << "No success of getting type for " << i << std::endl;
-        // }
         // TODO: This is expensive because argumentToIValue constructs an error
         // message.
         IValue ivalue_arg;
         try {
           ivalue_arg = argumentToIValue(schema, i, kwarg);
-          // std::cout << "i: " << i << " - "
-          //           << typeKindToString(ivalue_arg.type()->kind()) << std::endl;
           push(stack, ivalue_arg);
-          // std::cout << "001" << std::endl;
         } catch (const std::runtime_error& e) {
-          // std::cout << "002 = " << e.what() << std::endl;
           return c10::nullopt;
         }
-        // return c10::nullopt;
       }
       consumed_kwargs += 1;
     } else if (schema_arg.default_value()) {
-      // std::cout << "Getting defautl value" << *schema_arg.default_value()
-      //           << std::endl;
       push(stack, *schema_arg.default_value());
     } else {
-      // std::cout << "Missing value for argument " << schema_arg.name()
-      //           << std::endl;
-      // throw std::runtime_error(c10::str(
-      //     schema.name(),
-      //     "() is missing value for argument '",
-      //     arg.name(),
-      //     "'. Declaration: ",
-      //     schema));
       return c10::nullopt;
     }
   }
@@ -241,7 +191,6 @@ my_createStackForSchema(
     try {
       schema.findErrorInKwargs(names);
     } catch (const std::runtime_error& e) {
-      // std::cout << "022 = " << e.what() << std::endl;
       return c10::nullopt;
     }
   }
@@ -300,7 +249,6 @@ py::cpp_function jit_tensorwise() {
           kwargs = py::kwargs(new_kwargs);
         }
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
-          // std::cout << "op->schema(): " << op->schema() << std::endl;
           if (auto pack = my_createStackForSchema(
                   op->schema(), args, kwargs, c10::nullopt)) {
             auto operation = op->getOperation();
