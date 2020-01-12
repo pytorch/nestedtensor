@@ -144,8 +144,7 @@ my_createStackForSchema(
       // TODO: This is expensive because argumentToIValue constructs an error
       // message.
       try {
-        IValue ivalue_arg = argumentToIValue(schema, i, args[i]);
-        push(stack, ivalue_arg);
+        push(stack, argumentToIValue(schema, i, args[i]));
       } catch (const std::runtime_error& e) {
         return c10::nullopt;
       }
@@ -167,10 +166,8 @@ my_createStackForSchema(
       } else {
         // TODO: This is expensive because argumentToIValue constructs an error
         // message.
-        IValue ivalue_arg;
         try {
-          ivalue_arg = argumentToIValue(schema, i, kwarg);
-          push(stack, ivalue_arg);
+          push(stack, argumentToIValue(schema, i, kwarg));
         } catch (const std::runtime_error& e) {
           return c10::nullopt;
         }
