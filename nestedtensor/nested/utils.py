@@ -175,7 +175,6 @@ def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
         def decorator(*_args, **_kwargs):
             def _func(*args, **kwargs):
                 if find_nested_tensor_dispatch_key(*args) is None:
-                    # import pdb; pdb.set_trace()
                     result = f(*args, **kwargs)
                     if not torch.is_tensor(result):
                         return tuple(result)

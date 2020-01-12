@@ -12,7 +12,8 @@ using namespace torch::jit::script;
 
 // TODO Expand to IValues to support generic lists?
 at::Tensor run_function(Stack&& stack, Function& fn) {
-  return std::move(fn(stack).toTensor());
+  fn(stack);
+  return std::move(stack.front().toTensor());
 }
 
 at::Tensor run_function(Stack&& stack, Operation& fn) {
@@ -50,7 +51,7 @@ static TensorNode apply_jit_function(
       }
       results.push_back(run_function(std::move(stack), fn));
     }
-    return TensorNode(std::move(results));
+    return TensorNode(results);
   } else {
     bool broadcastable = true;
     size_t num_children = 0;
@@ -118,6 +119,9 @@ my_createStackForSchema(
     const py::kwargs& kwargs,
     c10::optional<IValue> self) {
   size_t all_arguments = (self ? 1 : 0) + args.size() + kwargs.size();
+  // std::cout << "all_arguments: " << all_arguments << std::endl;
+  // std::cout << "schema.arguments().size(): " << schema.arguments().size()
+  //           << std::endl;
   if (all_arguments > schema.arguments().size()) {
     // throw std::runtime_error(c10::str(
     //     schema.name(),
@@ -144,17 +148,35 @@ my_createStackForSchema(
     // Use the type information from the schema to convert the PyObject.
     const auto& schema_arg = schema.arguments()[i];
     if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
+      // std::cout << i << " is a nested tensor" << std::endl;
       tensor_nodes.push_back(*tensor_node);
-      tensor_node_i.insert(i);
+      tensor_node_i.insert(stack.size());
       push(stack, torch::jit::IValue(torch::zeros({})));
     } else {
-      // TODO: Should this throw an error?
-      if (schema_arg.type()->kind() != tryToInferType(args[i]).type()->kind()) {
+      // auto inferred_type = tryToInferType(args[i]);
+      // if (inferred_type.success()) {
+      //   std::cout << "i: " << i << " - "
+      //             << typeKindToString(inferred_type.type()->kind())
+      //             << std::endl;
+      // } else {
+      //   std::cout << "No success of getting type for " << i << std::endl;
+      // }
+      // TODO: This is expensive because argumentToIValue constructs an error
+      // message.
+      try {
+        IValue ivalue_arg = argumentToIValue(schema, i, args[i]);
+        // std::cout << "i: " << i << " - "
+        //           << typeKindToString(ivalue_arg.type()->kind()) << std::endl;
+        push(stack, ivalue_arg);
+        // std::cout << "001" << std::endl;
+      } catch (const std::runtime_error& e) {
+        // std::cout << "002 = " << e.what() << std::endl;
         return c10::nullopt;
       }
-      push(stack, argumentToIValue(schema, stack.size(), args[i]));
     }
+    // std::cout << "11: " << i << std::endl;
   }
+  // std::cout << "Looking at kwargs" << std::endl;
 
   // Now for every remaining non-positional argument in the schema, look for it
   // in the kwargs dict and push it if found, or use its default value if it
@@ -166,19 +188,41 @@ my_createStackForSchema(
       auto kwarg = kwargs[schema_arg.name().c_str()];
       if (auto tensor_node = try_nested_node(schema_arg, kwarg)) {
         tensor_nodes.push_back(*tensor_node);
-        tensor_node_i.insert(i);
+        tensor_node_i.insert(stack.size());
         push(stack, torch::jit::IValue(torch::zeros({})));
       } else {
         // TODO: Should this throw an error?
-        if (schema_arg.type()->kind() != tryToInferType(kwarg).type()->kind()) {
+        // auto inferred_type = tryToInferType(kwarg);
+        // if (inferred_type.success()) {
+        //   std::cout << "i: " << i << " - "
+        //             << typeKindToString(inferred_type.type()->kind())
+        //             << std::endl;
+        // } else {
+        //   std::cout << "No success of getting type for " << i << std::endl;
+        // }
+        // TODO: This is expensive because argumentToIValue constructs an error
+        // message.
+        IValue ivalue_arg;
+        try {
+          ivalue_arg = argumentToIValue(schema, i, kwarg);
+          // std::cout << "i: " << i << " - "
+          //           << typeKindToString(ivalue_arg.type()->kind()) << std::endl;
+          push(stack, ivalue_arg);
+          // std::cout << "001" << std::endl;
+        } catch (const std::runtime_error& e) {
+          // std::cout << "002 = " << e.what() << std::endl;
           return c10::nullopt;
         }
-        push(stack, argumentToIValue(schema, stack.size(), args[i]));
+        // return c10::nullopt;
       }
       consumed_kwargs += 1;
     } else if (schema_arg.default_value()) {
+      // std::cout << "Getting defautl value" << *schema_arg.default_value()
+      //           << std::endl;
       push(stack, *schema_arg.default_value());
     } else {
+      // std::cout << "Missing value for argument " << schema_arg.name()
+      //           << std::endl;
       // throw std::runtime_error(c10::str(
       //     schema.name(),
       //     "() is missing value for argument '",
@@ -194,7 +238,12 @@ my_createStackForSchema(
     for (const auto& kwarg : kwargs) {
       names.emplace_back(py::cast<std::string>(kwarg.first));
     }
-    schema.findErrorInKwargs(names);
+    try {
+      schema.findErrorInKwargs(names);
+    } catch (const std::runtime_error& e) {
+      // std::cout << "022 = " << e.what() << std::endl;
+      return c10::nullopt;
+    }
   }
 
   return std::make_tuple(stack, tensor_node_i, tensor_nodes);
@@ -226,7 +275,32 @@ py::cpp_function jit_tensorwise() {
         }
       }
       if (auto name = is_builtin(fn)) {
+        // TODO: Why doesn't argumentToIValue deal with NoneType for a kwarg?
+        // See also
+        // https://github.com/pytorch/pytorch/blob/7d630278daee00ea2db6bc01e8a2a5f160bd8e81/torch/csrc/jit/pybind_utils.h#L778
+        // If out is NoneType for a builtin we'll simply remove it.
+        bool out_is_none = false;
+        for (const auto& kwarg : kwargs) {
+          if (py::cast<std::string>(kwarg.first) == "out") {
+            auto inferred_type = tryToInferType(kwarg.second);
+            if (inferred_type.success() &&
+                inferred_type.type()->kind() == TypeKind::NoneType) {
+              out_is_none = true;
+            }
+          }
+        }
+        if (out_is_none) {
+          py::dict new_kwargs;
+          for (const auto& kwarg : kwargs) {
+            if (py::cast<std::string>(kwarg.first) == "out") {
+              continue;
+            }
+            new_kwargs[kwarg.first] = kwarg.second;
+          }
+          kwargs = py::kwargs(new_kwargs);
+        }
         for (std::shared_ptr<Operator> op : getAllOperatorsFor(*name)) {
+          // std::cout << "op->schema(): " << op->schema() << std::endl;
           if (auto pack = my_createStackForSchema(
                   op->schema(), args, kwargs, c10::nullopt)) {
             auto operation = op->getOperation();

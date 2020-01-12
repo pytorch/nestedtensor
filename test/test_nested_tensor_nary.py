@@ -75,6 +75,15 @@ def _gen_test_unary(func__, nested_dim, device):
         elif func__ in ['fmod']:
 
             def func(x, out=None):
+                # print('x')
+                # print(x)
+                # print('out')
+                # print(out)
+                # print('func_')
+                # print(func_)
+                # # if out is None:
+                # #     return func_(x, 0.3)
+                # print("HEEEEEEEEEEEEEEEEEE")
                 return func_(x, 0.3, out=out)
 
             def method(x): return method_(x, 0.3)

@@ -88,10 +88,12 @@ def monkey_patch(NestedTensor):
         set_nt_method(function_name + '_', utils.tensorwise())
         if function_name in ['fill']:
             continue
-        if function_name in ['mvlgamma', 'clamp', 'clamp_min', 'clamp_max', 'fmod']:
-            set_wrapped_torch_function(function_name, utils.tensorwise())
-        else:
-            set_wrapped_jit_torch_function(function_name, _C._jit_tensorwise())
+        # NOTE: jit_tensorwise doesn't support clamp_max, clamp_min, clamp, fmod, mvlgamma, 
+        # if function_name in ['mvlgamma', 'clamp', 'clamp_min', 'clamp_max']:
+        #     set_wrapped_torch_function(function_name, utils.tensorwise())
+        # else:
+        #     set_wrapped_jit_torch_function(function_name, _C._jit_tensorwise())
+        set_wrapped_jit_torch_function(function_name, _C._jit_tensorwise())
         set_nt_method(function_name, utils.tensorwise())
     # <
 
