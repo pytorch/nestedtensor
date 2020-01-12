@@ -125,8 +125,11 @@ struct TORCH_API _BufferNestedTensor {
       new_size.push_back(start->degree());
       start = start->children_data(0);
     }
-    for (size_t i = 0; i < start->payload(0).size(); i++) {
-      new_size.push_back(start->payload(0)[i]);
+    new_size.push_back(start->size());
+    if (start->size() > 0) {
+      for (size_t i = 0; i < start->payload(0).size(); i++) {
+        new_size.push_back(start->payload(0)[i]);
+      }
     }
     return _buffer.reshape(at::IntArrayRef(new_size));
   }

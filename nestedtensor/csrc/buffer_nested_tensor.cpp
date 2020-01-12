@@ -71,8 +71,8 @@ std::pair<int64_t, TensorNode> _build_structure(
     for (size_t i = 0; i < nested_size.degree(); i++) {
       std::pair<int64_t, TensorNode> result_i = _build_structure(
           index, buffers, nested_size.children(i), nested_stride.children(i));
+      index = std::get<0>(result_i);
       result.push_back(std::get<1>(result_i));
-      index++;
     }
     return std::pair<int64_t, TensorNode>(index, TensorNode(result));
   }

@@ -320,9 +320,16 @@ class NestedTensor(object):
 
     def __torch_function__(self, func, args=(), kwargs=None):
         _local_func = None
+        if kwargs is None:
+            kwargs = {}
+        if func in NestedTensor.__jit_function_dispatch:
+            _jit_local_func = NestedTensor.__jit_function_dispatch[func]
+            impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+            impl_kwargs = {k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()}
+            return NestedTensor(_jit_local_func(*impl_args, **impl_kwargs))
         if func in NestedTensor.__function_dispatch:
             _local_func = NestedTensor.__function_dispatch[func]
-            return _local_func(*args) if kwargs is None else _local_func(*args, **kwargs)
+            return _local_func(*args, **kwargs)
         raise NotImplementedError("NestedTensor doesn't support function {}".format(func))
 
     def __bool__(self):

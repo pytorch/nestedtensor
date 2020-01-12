@@ -163,9 +163,8 @@ def match_type_signature_prefix(types, args):
 # and calls f tensor-wise
 # Make nested_stride optional (cont. by default)
 # Return flattened tensor pairs, then create _BufferNestedTensor impl directly
-
-
 def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
+
     if unbind_args is None:
         unbind_args = []
     if dim_args is None:
@@ -176,7 +175,6 @@ def tensorwise(unbind_args=None, dim_args=None, wrap_dim_args=True):
         def decorator(*_args, **_kwargs):
             def _func(*args, **kwargs):
                 if find_nested_tensor_dispatch_key(*args) is None:
-                    # import pdb; pdb.set_trace()
                     result = f(*args, **kwargs)
                     if not torch.is_tensor(result):
                         return tuple(result)
