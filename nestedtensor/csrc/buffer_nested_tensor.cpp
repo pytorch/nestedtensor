@@ -57,8 +57,8 @@ std::pair<int64_t, TensorNode> _build_structure(
   if (nested_size.is_leaf()) {
     c10::List<at::Tensor> result;
     for (size_t i = 0; i < nested_size.size(); i++) {
-      auto size_i = c10::impl::toVector(nested_size.payload(i));
-      auto stride_i = c10::impl::toVector(nested_stride.payload(i));
+      auto size_i = nested_size.payload(i).vec();
+      auto stride_i = nested_stride.payload(i).vec();
       result.push_back(at::as_strided(
           buffers[index],
           c10::IntArrayRef(size_i),
