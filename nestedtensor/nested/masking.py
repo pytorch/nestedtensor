@@ -99,9 +99,9 @@ def tensor_list(lst):
 
 
 def make_tensor_mask(tensor_lst, mask_dim):
-    tensormask = tensor_list(tensor_lst)
-    tensormask = merge_tensor_mask(tensormask, mask_dim)
-    return tensormask.tensor, tensormask.mask
+    tensor_mask = tensor_list(tensor_lst)
+    tensor_mask = merge_tensor_mask(tensor_mask, mask_dim)
+    return tensor_mask.tensor, tensor_mask.mask
 
 
 def pad_tensor_to_shape(t, goal_shape):
