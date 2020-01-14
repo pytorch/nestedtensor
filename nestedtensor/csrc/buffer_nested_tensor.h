@@ -95,7 +95,7 @@ struct TORCH_API _BufferNestedTensor {
     return _structure;
   }
   int64_t nested_dim() {
-    const SizeNode* start_structure = &_nested_size;
+    const TensorNode* start_structure = &_structure;
     int64_t depth = 1;
     while (!start_structure->is_leaf()) {
       depth++;
@@ -104,13 +104,8 @@ struct TORCH_API _BufferNestedTensor {
     return depth;
   }
   int64_t dim() {
-    SizeNode leaf = get_first_leaf(_nested_size);
-    if (leaf.degree()) {
-      c10::List<int64_t> first_size = leaf.payload(0);
-      return first_size.size() + nested_dim();
-    } else {
-      return nested_dim();
-    }
+    at::Tensor first_variable = _get_first_variable(_structure);
+    return first_variable.dim() + nested_dim();
   }
   int64_t numel() {
     return nested_node_numel(_structure);

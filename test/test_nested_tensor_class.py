@@ -10,6 +10,12 @@ import random
 
 import utils
 
+# Given arguments to a constructor iterator over results for
+# as_nested_tensor and nested_tensor constructors.
+def _iter_constructors(*args, **kwargs):
+    yield nestedtensor.as_nested_tensor(*args, **kwargs)
+    yield nestedtensor.nested_tensor(*args, **kwargs)
+
 class TestNestedTensor(TestCase):
 
     # def test_nested_constructor(self):
@@ -93,6 +99,19 @@ class TestNestedTensor(TestCase):
         self.assertTrue((a1 != a3).all())
         self.assertTrue(not (a1 != a2).any())
         self.assertTrue(not (a1 == a3).any())
+
+    def test_dim(self):
+        for a1 in _iter_constructors([]):
+            self.assertEqual(a1.dim(), 1)
+        for a1 in _iter_constructors([torch.tensor(3.)]):
+            self.assertEqual(a1.dim(), 1)
+        for a1 in _iter_constructors([torch.tensor([1, 2, 3, 4])]):
+            self.assertEqual(a1.dim(), 2)
+        for a1 in _iter_constructors([
+            [torch.tensor([1, 2, 3, 4])],
+            [torch.tensor([5, 6, 7, 8]), torch.tensor([9, 0, 0, 0])]
+            ]):
+            self.assertEqual(a1.dim(), 3)
 
     def test_nested_dim(self):
         nt = nestedtensor.nested_tensor([torch.tensor(3)])
