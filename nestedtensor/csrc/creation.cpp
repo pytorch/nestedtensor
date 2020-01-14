@@ -14,8 +14,12 @@ c10::optional<c10::List<at::Tensor>> to_tensor_sequence(
     const py::sequence& py_obj) {
   bool result = true;
   for (size_t i = 0; i < py_obj.size(); i++) {
-    c10::IValue payload = py_obj_to_ivalue(py_obj[i]);
-    result = result && payload.isTensor();
+    auto payload = py_obj_to_ivalue(py_obj[i]);
+    if (!payload) {
+      result = false;
+      break;
+    }
+    result = result && (*payload).isTensor();
   }
   if (!result) {
     return c10::nullopt;
@@ -23,7 +27,7 @@ c10::optional<c10::List<at::Tensor>> to_tensor_sequence(
   c10::List<at::Tensor> tensors;
   tensors.resize(py_obj.size());
   for (size_t i = 0; i < py_obj.size(); i++) {
-    c10::IValue payload = py_obj_to_ivalue(py_obj[i]);
+    c10::IValue payload = *py_obj_to_ivalue(py_obj[i]);
     tensors[i] = payload.toTensor();
   }
   return tensors;
@@ -51,7 +55,6 @@ TensorNode _get_tensor_structure(const py::sequence& py_obj) {
 void _make_tensors(
     const py::sequence& py_obj,
     std::vector<at::Tensor>& tensors) {
-  // Empty list of Tensors
   if (auto tensor_sequence = to_tensor_sequence(py_obj)) {
     // List of Tensors
     for (size_t i = 0; i < py_obj.size(); i++) {
@@ -74,11 +77,11 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
 THPNestedTensor nested_tensor(py::sequence list) {
   TensorNode structure = _get_tensor_structure(list);
   at::Tensor buffer;
-  if (list.size() == 0) {
+  std::vector<at::Tensor> tensors;
+  _make_tensors(list, tensors);
+  if (tensors.size() == 0) {
     buffer = torch::ones({});
   } else {
-    std::vector<at::Tensor> tensors;
-    _make_tensors(list, tensors);
     buffer = at::cat(tensors, 0);
   }
   SizeNode nested_size = map<at::Tensor, c10::List<int64_t>>(
