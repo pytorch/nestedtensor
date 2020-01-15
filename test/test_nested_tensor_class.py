@@ -34,7 +34,7 @@ class TestNestedTensor(TestCase):
         for i in range(num_tensors):
             tensors[i].mul_(i + 2)
         for i in range(num_tensors):
-            self.assertTrue((tensors[i] != nested_tensor.unbind()[i]).all())
+            self.assertNotEqual(tensors[i], nested_tensor.unbind()[i])
         self.assertRaises(
             ValueError, lambda: nestedtensor.nested_tensor(torch.tensor([3.0])))
         self.assertRaises(ValueError, lambda: nestedtensor.nested_tensor(
@@ -124,12 +124,12 @@ class TestNestedTensor(TestCase):
         b = torch.tensor([7, 8])
         nt = nestedtensor.nested_tensor([a, b])
         a1, b1 = nt.unbind()
-        self.assertTrue((a == a1).all())
-        self.assertTrue((b == b1).all())
+        self.assertEqual(a, a1)
+        self.assertEqual(b, b1)
 
         a = utils.gen_float_tensor(1, (2, 3)).add_(1)
         nt = nestedtensor.nested_tensor([a])
-        self.assertTrue((a == nt.unbind()[0]).all())
+        self.assertEqual(a, nt.unbind()[0])
 
     def test_size(self):
         a1 = nestedtensor.nested_tensor([[torch.rand(1, 8),
@@ -150,7 +150,7 @@ class TestNestedTensor(TestCase):
         a1 = nestedtensor.nested_tensor(tensors)
         a2 = a1.to(torch.int64)
         for a, b in zip(tensors, a2.unbind()):
-            self.assertTrue((a.to(torch.int64) == b).all())
+            self.assertEqual(a.to(torch.int64), b)
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
@@ -160,7 +160,7 @@ class TestContiguous(TestCase):
             nt = nestedtensor.nested_tensor(data)
             self.assertTrue(nt.is_contiguous())
             # buf = nt.flatten()
-            self.assertTrue((nt == nt).all())
+            self.assertEqual(nt, nt)
             a = nt + nt
         nt.cos_()
         nt.cos()

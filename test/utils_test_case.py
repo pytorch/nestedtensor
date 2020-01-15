@@ -1,4 +1,5 @@
 import unittest
+import numpy
 import torch
 from numbers import Number
 from math import inf
@@ -12,12 +13,11 @@ def is_iterable(obj):
     except TypeError:
         return False
 
+# NOTE: Methods copy pasted from https://github.com/pytorch/pytorch/blob/4314620ba05bc1867f6a63455c4ac77fdfb1018d/test/common_utils.py#L773
 class TestCase(unittest.TestCase):
     longMessage = True
     precision = 1e-5
 
-
-    # NOTE: Copy pasted from https://github.com/pytorch/pytorch/blob/4314620ba05bc1867f6a63455c4ac77fdfb1018d/test/common_utils.py#L773
     def assertEqual(self, x, y, prec=None, message='', allow_inf=False):
         if isinstance(prec, str) and message == '':
             message = prec
@@ -138,3 +138,44 @@ class TestCase(unittest.TestCase):
             super(TestCase, self).assertLessEqual(abs(x - y), prec, message)
         else:
             super(TestCase, self).assertEqual(x, y, message)
+
+    def assertAlmostEqual(self, x, y, places=None, msg=None, delta=None, allow_inf=None):
+        prec = delta
+        if places:
+            prec = 10**(-places)
+        self.assertEqual(x, y, prec, msg, allow_inf)
+
+    def assertNotEqual(self, x, y, prec=None, message=''):
+        if isinstance(prec, str) and message == '':
+            message = prec
+            prec = None
+        if prec is None:
+            prec = self.precision
+
+        if isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
+            if x.size() != y.size():
+                super(TestCase, self).assertNotEqual(x.size(), y.size())
+            self.assertGreater(x.numel(), 0)
+            y = y.type_as(x)
+            y = y.cuda(device=x.get_device()) if x.is_cuda else y.cpu()
+            nan_mask = x != x
+            if torch.equal(nan_mask, y != y):
+                diff = x - y
+                if diff.is_signed():
+                    diff = diff.abs()
+                diff[nan_mask] = 0
+                # Use `item()` to work around:
+                # https://github.com/pytorch/pytorch/issues/22301
+                max_err = diff.max().item()
+                self.assertGreaterEqual(max_err, prec, message)
+        elif type(x) == str and type(y) == str:
+            super(TestCase, self).assertNotEqual(x, y)
+        elif is_iterable(x) and is_iterable(y):
+            super(TestCase, self).assertNotEqual(x, y)
+        else:
+            try:
+                self.assertGreaterEqual(abs(x - y), prec, message)
+                return
+            except (TypeError, AssertionError):
+                pass
+            super(TestCase, self).assertNotEqual(x, y, message)

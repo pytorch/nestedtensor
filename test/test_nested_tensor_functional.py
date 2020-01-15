@@ -35,7 +35,7 @@ class TestFunctional(TestCase):
         result = tf(nt, weight)
         result2 = torch.nn.functional.conv2d(nt, weight)
         for r, r2 in zip(result, result2):
-            self.assertTrue((r == r2).all())
+            self.assertEqual(r, r2)
 
 if __name__ == "__main__":
     unittest.main()
