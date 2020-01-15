@@ -5,10 +5,10 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from unittest import TestCase
 import random
 
 import utils
+from utils import TestCase
 
 class TestNestedTensorAutograd(TestCase):
 

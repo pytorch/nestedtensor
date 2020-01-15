@@ -5,8 +5,11 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from unittest import TestCase
 import random
+
+from utils_test_case import TestCase
+
+
 
 def debug_on(*exceptions):
     if not exceptions:

@@ -1,6 +1,6 @@
 import torch
 import unittest
-from unittest import TestCase
+from utils import TestCase
 import nestedtensor
 
 
