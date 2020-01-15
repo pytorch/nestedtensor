@@ -33,11 +33,10 @@ std::string _NestedNode___str__(const TensorNode& nested_node) {
   return result.str();
 }
 
-IValue py_obj_to_ivalue(py::object py_obj) {
+c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
   auto inferred_type = tryToInferType(py_obj);
   if (!inferred_type.success()) {
-    std::cerr << inferred_type.reason() << std::endl;
-    throw python_error();
+    return c10::nullopt;
   }
   auto payload = toIValue(py_obj, inferred_type.type());
   return payload;
