@@ -5,7 +5,7 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from unittest import TestCase
+from utils import TestCase
 import random
 
 import utils
@@ -28,10 +28,10 @@ class TestTensorMask(TestCase):
         tensor, mask = nt.to_tensor_mask()
         nt1 = nestedtensor.nested_tensor_from_tensor_mask(
             tensor, mask, nested_dim=nt.nested_dim())
-        self.assertTrue((nt == nt1).all())
+        self.assertEqual(nt, nt1)
         nt2 = nestedtensor.nested_tensor_from_tensor_mask(
             tensor, mask)
-        self.assertTrue((nt == nt2).all())
+        self.assertEqual(nt, nt2)
 
     def test_tensor_mask_lowdim(self):
         values = [torch.rand(1, 2) for i in range(10)]

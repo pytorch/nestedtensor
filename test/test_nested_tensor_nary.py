@@ -5,7 +5,7 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from unittest import TestCase
+from utils import TestCase
 import random
 import utils
 
@@ -91,7 +91,7 @@ def _gen_test_unary(func__, nested_dim, device):
         self.assertTrue(a2.nested_dim() == a3.nested_dim())
 
         def _close(t1, t2):
-            self.assertTrue(((t1 - t2).abs() < 1e-6).all())
+            self.assertAlmostEqual(t1, t2)
 
         if func__ not in ['mvlgamma']:
             func(a1, out=a3)
@@ -116,11 +116,11 @@ def _gen_test_binary(func):
         a2_l = nestedtensor.as_nested_tensor([b.clone(), c.clone()])
         a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
                                   getattr(torch, func)(b, c)])
-        self.assertTrue((a3 == getattr(torch, func)(a1_l, a2_l)).all())
-        self.assertTrue((a3 == getattr(torch, func)(a1, a2)).all())
-        self.assertTrue((a3 == getattr(a1, func)(a2)).all())
-        self.assertTrue((a3 == getattr(a1, func + "_")(a2)).all())
-        self.assertTrue((a3 == a1).all())
+        self.assertEqual(a3, getattr(torch, func)(a1_l, a2_l))
+        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        self.assertEqual(a3, getattr(a1, func)(a2))
+        self.assertEqual(a3, getattr(a1, func + "_")(a2))
+        self.assertEqual(a3, a1)
     return _test_binary
 
 

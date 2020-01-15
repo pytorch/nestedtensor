@@ -67,7 +67,7 @@ class NestedSize(object):
         return self._nested_size == other._nested_size
 
     def __iter__(self):
-        if isinstance(self._nested_size[0], list):
+        if len(self._nested_size) == 0 or isinstance(self._nested_size[0], list):
             return iter(NestedSize(t) for t in self._nested_size)
         else:
             return iter(list(self._nested_size))

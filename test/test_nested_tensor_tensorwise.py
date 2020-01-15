@@ -5,7 +5,7 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from unittest import TestCase
+from utils import TestCase
 import random
 
 import utils
@@ -47,7 +47,7 @@ class TestTensorWise(TestCase):
         nt2 = nestedtensor.nested_tensor([b, a])
         c = simple_fn_scalar(a, b, 2.0)
         nt3 = simple_fn_scalar(nt1, nt2, (2.0, 3.0))
-        self.assertTrue((c == nt3[0]).all())
+        self.assertEqual(c, nt3[0])
 
     def test_tensorwise_tensor_kwarg(self):
 
@@ -65,8 +65,8 @@ class TestTensorWise(TestCase):
         c1 = simple_fn(a, b, t3=torch.tensor((0.5, 0.7)))
         c2 = simple_fn(b, a, t3=torch.tensor((0.5, 0.7)))
         nt3 = simple_fn(nt1, nt2, t3=torch.tensor((0.5, 0.7)))
-        self.assertTrue((c2 == nt3[1]).all())
-        self.assertTrue((c1 == nt3[0]).all())
+        self.assertEqual(c2, nt3[1])
+        self.assertEqual(c1, nt3[0])
 
 if __name__ == "__main__":
     unittest.main()

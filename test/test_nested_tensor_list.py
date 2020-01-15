@@ -1,6 +1,6 @@
 import torch
 import unittest
-from unittest import TestCase
+from utils import TestCase
 import nestedtensor
 
 
@@ -95,7 +95,7 @@ class Test_ListNestedTensor(TestCase):
         for i in range(num_tensors):
             tensors[i].mul_(i + 2)
         for i in range(num_tensors):
-            self.assertTrue((tensors[i] == nested_tensor.unbind()[i]).all())
+            self.assertEqual(tensors[i], nested_tensor.unbind()[i])
             self.assertEqual(tensors[i].storage().data_ptr(), nested_tensor.unbind()[i].storage().data_ptr())
 
     def test_default_constructor(self):
