@@ -206,6 +206,8 @@ class NestedTensor(object):
         if dim is not None:
             return self.size()[dim]
         all_sizes = tuple(t.size() for t in self.unbind())
+        if len(all_sizes) == 0:
+            return ()
 
         def compare_sizes(size, other_size):
             result_size = list(size)

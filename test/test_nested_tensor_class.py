@@ -132,16 +132,21 @@ class TestNestedTensor(TestCase):
         self.assertEqual(a, nt.unbind()[0])
 
     def test_size(self):
-        a1 = nestedtensor.nested_tensor([[torch.rand(1, 8),
+        a = nestedtensor.nested_tensor([])
+        self.assertEqual(a.size(), ())
+
+        a = nestedtensor.nested_tensor([[torch.rand(1, 8),
                                    torch.rand(3, 8)],
                                   [torch.rand(7, 8)]])
-        a2 = nestedtensor.nested_tensor([torch.rand(1, 2),
+        self.assertEqual(a.size(), (2, None, None, 8))
+        
+        a = nestedtensor.nested_tensor([torch.rand(1, 2),
                                   torch.rand(1, 8)])
-        a3 = nestedtensor.nested_tensor([torch.rand(3, 4),
+        self.assertEqual(a.size(), (2, 1, None))
+        
+        a = nestedtensor.nested_tensor([torch.rand(3, 4),
                                   torch.rand(5, 4)])
-        self.assertTrue(a1.size() == (2, None, None, 8))
-        self.assertTrue(a2.size() == (2, 1, None))
-        self.assertTrue(a3.size() == (2, None, 4))
+        self.assertEqual(a.size(), (2, None, 4))
 
     def test_to(self):
         tensors = [torch.randn(1, 8),
