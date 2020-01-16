@@ -9,27 +9,38 @@ namespace nested_tensor {
 using namespace torch::jit;
 using namespace torch::autograd::utils;
 
-std::string _NestedNode___str__(const TensorNode& nested_node) {
+void pretty_print_tensor(std::stringstream& result, const std::string& python_tensor_string, const std::string& tabs) {
+  auto tensor = strdup(python_tensor_string.c_str());
+  auto tokens = strtok(tensor, "\n");
+  while (tokens != NULL) {
+    result << "\n" << tabs << tokens;
+    tokens = strtok(NULL, "\n");
+  }
+}
+
+std::string _NestedNode___str__(const TensorNode& nested_node, const std::string& tabs) {
   std::stringstream result;
+  auto tabs_ = tabs + "\t";
   result << "nested_tensor([";
-  result << std::endl;
   if (nested_node.is_leaf()) {
     for (size_t i = 0; i < nested_node.size(); i++) {
       PyObject* objectsRepresentation =
           PyObject_Str(THPVariable_Wrap(nested_node.payload(i)));
-      result << THPUtils_unpackString(objectsRepresentation);
+      pretty_print_tensor(result, THPUtils_unpackString(objectsRepresentation), tabs_);
       result << ",";
-      result << std::endl;
     }
+    // to remove the excess `,`
+    result.seekp(-1, result.cur);
   } else {
-    result << "  ";
     for (size_t i = 0; i < nested_node.degree(); i++) {
-      result << _NestedNode___str__(nested_node.children(i));
+      result << "\n" << tabs_;
+      result << _NestedNode___str__(nested_node.children(i), tabs_);
+      result << ",";
     }
-    result << ",";
-    result << std::endl;
+    result.seekp(-1, result.cur);
   }
-  result << "])";
+  result << std::endl;
+  result << tabs << "])";
   return result.str();
 }
 
