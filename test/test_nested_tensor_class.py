@@ -63,6 +63,27 @@ class TestNestedTensor(TestCase):
         # Not a valid NestedTensor. This is not a list of Tensors or constructables for Tensors.
         self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor([1.0]))
 
+    def test_repr_string(self):
+        a = nestedtensor.nested_tensor(
+            [[torch.tensor([[1, 2], [2, 3]]), torch.tensor([3, 4])],
+                [torch.tensor([4, 5])]])
+        expected = "nested_tensor(["
+        "\n\tnested_tensor(["
+        "\n\t\ttensor([[1, 2]"
+        ","
+        "\n\t\t        [2, 3]])"
+        ","
+        "\n\t\ttensor([3, 4])"
+        "\n\t])"
+        ","
+        "\n\tnested_tensor(["
+        "\n\t\ttensor([4, 5])"
+        "\n\t])"
+        "\n])"
+
+        self.assertEqual(str(a), expected)
+        self.assertEqual(repr(a), expected)
+
     def test_nested_size(self):
         a = nestedtensor.nested_tensor(
             [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
@@ -139,11 +160,11 @@ class TestNestedTensor(TestCase):
                                    torch.rand(3, 8)],
                                   [torch.rand(7, 8)]])
         self.assertEqual(a.size(), (2, None, None, 8))
-        
+
         a = nestedtensor.nested_tensor([torch.rand(1, 2),
                                   torch.rand(1, 8)])
         self.assertEqual(a.size(), (2, 1, None))
-        
+
         a = nestedtensor.nested_tensor([torch.rand(3, 4),
                                   torch.rand(5, 4)])
         self.assertEqual(a.size(), (2, None, 4))
