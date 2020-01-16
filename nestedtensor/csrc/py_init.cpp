@@ -22,6 +22,9 @@
 // for now. It's up to the consumer to correct this if required.
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+  py::class_<torch::nested_tensor::THPNestedSize>(m, "NestedSize")
+    .def("__len__", &torch::nested_tensor::THPNestedSize::len);
+
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.

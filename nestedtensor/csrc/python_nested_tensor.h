@@ -11,6 +11,21 @@
 namespace torch {
 namespace nested_tensor {
 
+struct THPNestedSize {
+  THPNestedSize(SizeNode size_node) : _size_node(size_node) {}
+  int64_t len() {
+    if (_size_node.is_leaf()) {
+      return _size_node.size();
+    } else {
+      return _size_node.degree();
+    }
+  }
+
+ private:
+  SizeNode _size_node;
+
+};
+
 template <class Result, class F>
 static inline Result data_map(
     c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
