@@ -1,6 +1,7 @@
 import unittest
 import numpy
 import torch
+import nestedtensor as NT
 from numbers import Number
 from math import inf
 
@@ -14,7 +15,7 @@ def is_iterable(obj):
         return False
 
 # NOTE: Methods copy pasted from https://github.com/pytorch/pytorch/blob/4314620ba05bc1867f6a63455c4ac77fdfb1018d/test/common_utils.py#L773
-class TestCase(unittest.TestCase):
+class TestCaseBase(unittest.TestCase):
     longMessage = True
     precision = 1e-5
 
@@ -39,7 +40,7 @@ class TestCase(unittest.TestCase):
                              allow_inf=allow_inf)
         elif isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
             def assertTensorsEqual(a, b):
-                super(TestCase, self).assertEqual(a.size(), b.size(), message)
+                super(TestCaseBase, self).assertEqual(a.size(), b.size(), message)
                 if a.numel() > 0:
                     if (a.device.type == 'cpu' and (a.dtype == torch.float16 or a.dtype == torch.bfloat16)):
                         # CPU half and bfloat16 tensors don't have the methods we need below
@@ -75,8 +76,8 @@ class TestCase(unittest.TestCase):
                             diff = diff.abs()
                         max_err = diff.max()
                         self.assertLessEqual(max_err, prec, message)
-            super(TestCase, self).assertEqual(x.is_sparse, y.is_sparse, message)
-            super(TestCase, self).assertEqual(x.is_quantized, y.is_quantized, message)
+            super(TestCaseBase, self).assertEqual(x.is_sparse, y.is_sparse, message)
+            super(TestCaseBase, self).assertEqual(x.is_quantized, y.is_quantized, message)
             if x.is_sparse:
                 x = self.safeCoalesce(x)
                 y = self.safeCoalesce(y)
@@ -106,9 +107,9 @@ class TestCase(unittest.TestCase):
             else:
                 assertTensorsEqual(x, y)
         elif isinstance(x, string_classes) and isinstance(y, string_classes):
-            super(TestCase, self).assertEqual(x, y, message)
+            super(TestCaseBase, self).assertEqual(x, y, message)
         elif type(x) == set and type(y) == set:
-            super(TestCase, self).assertEqual(x, y, message)
+            super(TestCaseBase, self).assertEqual(x, y, message)
         elif isinstance(x, dict) and isinstance(y, dict):
             if isinstance(x, OrderedDict) and isinstance(y, OrderedDict):
                 self.assertEqual(x.items(), y.items(), prec=prec,
@@ -122,22 +123,22 @@ class TestCase(unittest.TestCase):
                                  prec=prec, message=message,
                                  allow_inf=allow_inf)
         elif is_iterable(x) and is_iterable(y):
-            super(TestCase, self).assertEqual(len(x), len(y), message)
+            super(TestCaseBase, self).assertEqual(len(x), len(y), message)
             for x_, y_ in zip(x, y):
                 self.assertEqual(x_, y_, prec=prec, message=message,
                                  allow_inf=allow_inf)
         elif isinstance(x, bool) and isinstance(y, bool):
-            super(TestCase, self).assertEqual(x, y, message)
+            super(TestCaseBase, self).assertEqual(x, y, message)
         elif isinstance(x, Number) and isinstance(y, Number):
             if abs(x) == inf or abs(y) == inf:
                 if allow_inf:
-                    super(TestCase, self).assertEqual(x, y, message)
+                    super(TestCaseBase, self).assertEqual(x, y, message)
                 else:
                     self.fail("Expected finite numeric values - x={}, y={}".format(x, y))
                 return
-            super(TestCase, self).assertLessEqual(abs(x - y), prec, message)
+            super(TestCaseBase, self).assertLessEqual(abs(x - y), prec, message)
         else:
-            super(TestCase, self).assertEqual(x, y, message)
+            super(TestCaseBase, self).assertEqual(x, y, message)
 
     def assertAlmostEqual(self, x, y, places=None, msg=None, delta=None, allow_inf=None):
         prec = delta
@@ -154,7 +155,7 @@ class TestCase(unittest.TestCase):
 
         if isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
             if x.size() != y.size():
-                super(TestCase, self).assertNotEqual(x.size(), y.size())
+                super(TestCaseBase, self).assertNotEqual(x.size(), y.size())
             self.assertGreater(x.numel(), 0)
             y = y.type_as(x)
             y = y.cuda(device=x.get_device()) if x.is_cuda else y.cpu()
@@ -169,13 +170,66 @@ class TestCase(unittest.TestCase):
                 max_err = diff.max().item()
                 self.assertGreaterEqual(max_err, prec, message)
         elif type(x) == str and type(y) == str:
-            super(TestCase, self).assertNotEqual(x, y)
+            super(TestCaseBase, self).assertNotEqual(x, y)
         elif is_iterable(x) and is_iterable(y):
-            super(TestCase, self).assertNotEqual(x, y)
+            super(TestCaseBase, self).assertNotEqual(x, y)
         else:
             try:
                 self.assertGreaterEqual(abs(x - y), prec, message)
                 return
             except (TypeError, AssertionError):
                 pass
-            super(TestCase, self).assertNotEqual(x, y, message)
+            super(TestCaseBase, self).assertNotEqual(x, y, message)
+
+class TestCase(TestCaseBase):
+    def assertEqual(self, x, y, prec=None, message='', allow_inf=False):
+        if not isinstance(x, NT.NestedTensor) and not isinstance(y, NT.NestedTensor):
+            super().assertEqual(x, y, prec, message, allow_inf)
+        elif not isinstance(x, NT.NestedTensor) or not isinstance(y, NT.NestedTensor):
+            raise TypeError("Comparing a nested tensor to a non nested tensor")
+        else:
+            if x.dim() != y.dim():
+                self.fail("Nested tensors dimensionality don't match. {} != {}".format(x.dim(), y.dim()))
+
+            if x.nested_dim() != y.nested_dim():
+                self.fail("Nested tensors nested dimensionality don't match. {} != {}".format(x.nested_dim(), y.nested_dim()))
+
+            if x.tensor_dim() != y.tensor_dim():
+                self.fail("Nested tensors  dimentionality don't match. {} != {}".format(x.tensor_dim(), y.tensor_dim()))
+
+            if x.is_pinned() != y.is_pinned():
+                self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(x.is_pinned(), y.is_pinned()))
+
+            if x.layout != y.layout:
+                self.fail("Nested tensors layouts don't match. {} != {}".format(x.layout, y.layout))
+
+            if x.dtype != y.dtype:
+                self.fail("Nested tensors dtypes don't match. {} != {}".format(x.dtype, y.dtype))
+
+            if x.device != y.device:
+                self.fail("Nested tensors devices don't match. {} != {}".format(x.device, y.device))
+
+            if x.requires_grad != y.requires_grad:
+                self.fail("Nested tensors requires grad properties don't match. {} != {}".format(x.requires_grad, y.requires_grad))
+
+            # TODO: Uncomment once the tests are fixed. 
+            '''
+            if x.is_contiguous() != y.is_contiguous():
+                self.fail("Nested tensors contiguity don't match. {} != {}".format(x.is_contiguous(), y.is_contiguous()))
+
+            if x.element_size() != y.element_size():
+                self.fail("Nested tensors element sizes don't match. {} != {}".format(x.element_size(), y.element_size()))
+            '''
+
+            if x.size() != y.size():
+                self.fail("Nested tensors sizes don't match. {} != {}".format(x.size(), y.size()))
+
+            if x.nested_size() != y.nested_size():
+                self.fail("Nested tensors nested sizes don't match. {} != {}".format(x.nested_size(), y.nested_size()))
+
+            if x.nested_stride() != y.nested_stride():
+                self.fail("Nested tensors nested strides don't match. {} != {}".format(x.nested_stride(), y.nested_stride()))
+            
+            for x_, y_ in zip(x, y):
+                self.assertEqual(x_, y_, prec=prec, message=message,
+                                 allow_inf=allow_inf)
