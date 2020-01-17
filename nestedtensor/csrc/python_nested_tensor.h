@@ -20,10 +20,29 @@ struct THPNestedSize {
       return _size_node.degree();
     }
   }
+  std::string str() {
+    return SizeNode___str__(_size_node, std::string("NestedSize"));
+  }
 
  private:
   SizeNode _size_node;
+};
 
+struct THPNestedStride {
+  THPNestedStride(SizeNode size_node) : _size_node(size_node) {}
+  int64_t len() {
+    if (_size_node.is_leaf()) {
+      return _size_node.size();
+    } else {
+      return _size_node.degree();
+    }
+  }
+  std::string str() {
+    return SizeNode___str__(_size_node, std::string("NestedStride"));
+  }
+
+ private:
+  SizeNode _size_node;
 };
 
 template <class Result, class F>
@@ -54,12 +73,12 @@ struct THPNestedTensor {
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
-  pybind11::object nested_size() {
-    return wrap_nested_node(data_map<SizeNode>(
+  THPNestedSize nested_size() {
+    return THPNestedSize(data_map<SizeNode>(
         _data, [](auto data) { return data.nested_size(); }));
   }
-  pybind11::object nested_stride() {
-    return wrap_nested_node(data_map<SizeNode>(
+  THPNestedStride nested_stride() {
+    return THPNestedStride(data_map<SizeNode>(
         _data, [](auto data) { return data.nested_stride(); }));
   }
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad) {
@@ -82,7 +101,7 @@ struct THPNestedTensor {
   }
   std::string str() {
     return data_map<std::string>(_data, [](auto data) {
-      return _NestedNode___str__(data.get_structure());
+      return TensorNode___str__(data.get_structure());
     });
   }
   int64_t len() {

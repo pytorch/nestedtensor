@@ -23,7 +23,14 @@
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   py::class_<torch::nested_tensor::THPNestedSize>(m, "NestedSize")
-    .def("__len__", &torch::nested_tensor::THPNestedSize::len);
+      .def("__str__", &torch::nested_tensor::THPNestedSize::str)
+      .def("__repr__", &torch::nested_tensor::THPNestedSize::str)
+      .def("__len__", &torch::nested_tensor::THPNestedSize::len);
+
+  py::class_<torch::nested_tensor::THPNestedStride>(m, "NestedStride")
+      .def("__str__", &torch::nested_tensor::THPNestedStride::str)
+      .def("__repr__", &torch::nested_tensor::THPNestedStride::str)
+      .def("__len__", &torch::nested_tensor::THPNestedStride::len);
 
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents

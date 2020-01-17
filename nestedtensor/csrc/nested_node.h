@@ -64,8 +64,12 @@ using TensorNode = NestedNode<at::Tensor>;
 
 using SizeNode = NestedNode<c10::List<int64_t>>;
 
-// TODO: Need to fix indentation.
-std::string _NestedNode___str__(const TensorNode& nested_node, const std::string& tabs = "");
+std::string TensorNode___str__(const TensorNode& nested_node, const std::string& tabs = "");
+
+std::string SizeNode___str__(const SizeNode& nested_node, 
+    const std::string name,
+    const std::string& tabs = "");
+
 c10::optional<c10::IValue> py_obj_to_ivalue(py::object py_obj);
 
 int64_t nested_node_numel(const TensorNode& meta_node);
