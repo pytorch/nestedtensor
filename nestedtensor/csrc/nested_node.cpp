@@ -69,6 +69,7 @@ std::string SizeNode___str__(
       if (i > 0) {
         result << ",";
       }
+      // TODO: Parameterize this to allow printing torch.Size etc.
       c10::List<int64_t> size_node_payload = nested_node.payload(i);
       result << "\n" << tabs_ << "(";
       for (size_t j = 0; j < size_node_payload.size(); j++) {
