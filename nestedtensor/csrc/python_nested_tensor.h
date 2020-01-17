@@ -10,6 +10,40 @@
 
 namespace torch {
 namespace nested_tensor {
+std::vector<py::object> unbind_THPSizeNode(
+    SizeNode size_node,
+    std::string name);
+
+struct THPSizeNode {
+  THPSizeNode(SizeNode size_node, std::string name)
+      : _size_node(size_node),
+        _name(name),
+        _elements(unbind_THPSizeNode(_size_node, _name)) {}
+  int64_t len() {
+    if (_size_node.is_leaf()) {
+      return _size_node.size();
+    } else {
+      return _size_node.degree();
+    }
+  }
+  std::string str() {
+    return SizeNode___str__(_size_node, _name);
+  }
+  const SizeNode& get_size_node() {
+    return _size_node;
+  }
+  std::string get_name() {
+    return _name;
+  }
+  const std::vector<py::object>& get_elements() {
+    return _elements;
+  }
+
+ private:
+  SizeNode _size_node;
+  std::string _name;
+  std::vector<py::object> _elements;
+};
 
 template <class Result, class F>
 static inline Result data_map(
@@ -39,13 +73,16 @@ struct THPNestedTensor {
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
-  pybind11::object nested_size() {
-    return wrap_nested_node(data_map<SizeNode>(
-        _data, [](auto data) { return data.nested_size(); }));
+  THPSizeNode nested_size() {
+    return THPSizeNode(
+        data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); }),
+        "NestedSize");
   }
-  pybind11::object nested_stride() {
-    return wrap_nested_node(data_map<SizeNode>(
-        _data, [](auto data) { return data.nested_stride(); }));
+  THPSizeNode nested_stride() {
+    return THPSizeNode(
+        data_map<SizeNode>(
+            _data, [](auto data) { return data.nested_stride(); }),
+        "NestedStride");
   }
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad) {
     return THPNestedTensor(
@@ -67,7 +104,7 @@ struct THPNestedTensor {
   }
   std::string str() {
     return data_map<std::string>(_data, [](auto data) {
-      return _NestedNode___str__(data.get_structure());
+      return TensorNode___str__(data.get_structure());
     });
   }
   int64_t len() {

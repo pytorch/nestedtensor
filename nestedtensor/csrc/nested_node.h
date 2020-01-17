@@ -38,6 +38,43 @@ struct NestedNode {
   c10::List<T> _payload;
 };
 
+template <typename T>
+inline bool operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
+  if (a.is_leaf() != b.is_leaf()) {
+    return false;
+  }
+  if (a.is_leaf()) {
+    if (a.size() != b.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < a.size(); i++) {
+      if (a.payload(i).size() != b.payload(i).size()) {
+        return false;
+      }
+      for (size_t j = 0; j < a.payload(i).size(); j++) {
+        if (a.payload(i)[j] != b.payload(i)[j]) {
+          return false;
+        }
+      }
+    }
+  } else {
+    if (a.degree() != b.degree()) {
+      return false;
+    }
+    for (size_t i = 0; i < a.size(); i++) {
+      if (a.children(i) != b.children(i)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+template <typename T>
+inline bool operator!=(const NestedNode<T>& a, const NestedNode<T>& b) {
+  return !(a == b);
+}
+
 using TensorNode = NestedNode<at::Tensor>;
 
 // This is a C++ representation of a nested list of torch.Sizes
@@ -64,8 +101,15 @@ using TensorNode = NestedNode<at::Tensor>;
 
 using SizeNode = NestedNode<c10::List<int64_t>>;
 
-// TODO: Need to fix indentation.
-std::string _NestedNode___str__(const TensorNode& nested_node, const std::string& tabs = "");
+std::string TensorNode___str__(
+    const TensorNode& nested_node,
+    const std::string& tabs = "");
+
+std::string SizeNode___str__(
+    const SizeNode& nested_node,
+    const std::string name,
+    const std::string& tabs = "");
+
 c10::optional<c10::IValue> py_obj_to_ivalue(py::object py_obj);
 
 int64_t nested_node_numel(const TensorNode& meta_node);
@@ -142,7 +186,10 @@ inline void apply(NestedNode<A> nested_node, F fn) {
 }
 
 template <typename A, class F>
-inline void apply2(NestedNode<A> nested_node1, NestedNode<A> nested_node2, F fn) {
+inline void apply2(
+    NestedNode<A> nested_node1,
+    NestedNode<A> nested_node2,
+    F fn) {
   if (nested_node1.is_leaf()) {
     for (size_t i = 0; i < nested_node1.size(); i++) {
       fn(nested_node1.payload(i), nested_node2.payload(i));

@@ -9,7 +9,7 @@ namespace torch {
 namespace nested_tensor {
 
 // TODO: Support for THPNestedTensor as part of given data.
-
+// TODO: Generalize this for SizeNodes
 c10::optional<c10::List<at::Tensor>> to_tensor_sequence(
     const py::sequence& py_obj) {
   bool result = true;

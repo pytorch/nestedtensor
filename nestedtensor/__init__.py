@@ -10,7 +10,6 @@ from .nested.masking import nested_tensor_from_tensor_mask
 from .nested.masking import nested_tensor_from_padded_tensor
 
 from .nested.nested import NestedTensor
-from .nested.nested import NestedSize
 
 from .nested.monkey_patch import monkey_patch
 
