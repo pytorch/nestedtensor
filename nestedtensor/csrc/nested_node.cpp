@@ -20,6 +20,7 @@ std::vector<std::string> split_str(std::string s, std::string delimiter) {
     result.push_back(token);
     s.erase(0, pos + delimiter.length());
   }
+  result.push_back(s);
   return result;
 }
 
@@ -39,7 +40,7 @@ std::string TensorNode___str__(
               PyObject_Str(THPVariable_Wrap(nested_node.payload(i)))),
           "\n");
       for (const auto& token : tokens) {
-        result << "\n" << tabs << token;
+        result << "\n" << tabs_ << token;
       }
     }
   } else {
@@ -69,14 +70,14 @@ std::string SizeNode___str__(
         result << ",";
       }
       c10::List<int64_t> size_node_payload = nested_node.payload(i);
-      result << "\n" << tabs << "(";
+      result << "\n" << tabs_ << "torch.Size([";
       for (size_t j = 0; j < size_node_payload.size(); j++) {
         if (j > 0) {
           result << ", ";
         }
         result << size_node_payload[j];
       }
-      result << ")";
+      result << "])";
     }
   } else {
     for (size_t i = 0; i < nested_node.degree(); i++) {

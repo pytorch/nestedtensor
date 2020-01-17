@@ -10,10 +10,15 @@
 
 namespace torch {
 namespace nested_tensor {
+std::vector<py::object> unbind_THPSizeNode(
+    SizeNode size_node,
+    std::string name);
 
 struct THPSizeNode {
   THPSizeNode(SizeNode size_node, std::string name)
-      : _size_node(size_node), _name(name) {}
+      : _size_node(size_node),
+        _name(name),
+        _elements(unbind_THPSizeNode(_size_node, _name)) {}
   int64_t len() {
     if (_size_node.is_leaf()) {
       return _size_node.size();
@@ -24,25 +29,20 @@ struct THPSizeNode {
   std::string str() {
     return SizeNode___str__(_size_node, _name);
   }
-  py::iterator iterator() {
-    if (_size_node.is_leaf()) {
-      std::vector<std::vector<int64_t>> result;
-      for (size_t i = 0; i < _size_node.size(); i++) {
-        result.push_back(_size_node.payload(i).vec());
-      }
-      return py::make_iterator(result.data(), result.data() + result.size());
-    } else {
-      std::vector<THPSizeNode> result;
-      for (size_t i = 0; i < _size_node.degree(); i++) {
-        result.push_back(THPSizeNode(_size_node.children(i), _name));
-      }
-      return py::make_iterator(result.data(), result.data() + result.size());
-    }
+  const SizeNode& get_size_node() {
+    return _size_node;
+  }
+  std::string get_name() {
+    return _name;
+  }
+  const std::vector<py::object>& get_elements() {
+    return _elements;
   }
 
  private:
   SizeNode _size_node;
   std::string _name;
+  std::vector<py::object> _elements;
 };
 
 template <class Result, class F>

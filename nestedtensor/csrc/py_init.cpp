@@ -26,8 +26,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("__str__", &torch::nested_tensor::THPSizeNode::str)
       .def(
           "__iter__",
-          &torch::nested_tensor::THPSizeNode::iterator,
+          [](torch::nested_tensor::THPSizeNode& self) {
+            return py::make_iterator(
+                self.get_elements().data(),
+                self.get_elements().data() + self.get_elements().size());
+          },
           py::keep_alive<0, 1>())
+      .def(
+          "__eq__",
+          [](torch::nested_tensor::THPSizeNode& a,
+             torch::nested_tensor::THPSizeNode& b) {
+            return a.get_size_node() == b.get_size_node();
+          })
       .def("__repr__", &torch::nested_tensor::THPSizeNode::str)
       .def("__len__", &torch::nested_tensor::THPSizeNode::len);
 
