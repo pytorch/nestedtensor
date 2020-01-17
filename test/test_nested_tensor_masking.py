@@ -23,7 +23,7 @@ class TestTensorMask(TestCase):
         self.assertTrue(NT.is_nested_tensor(nt))
         self.assertEqual(nt.nested_dim(), 2)
         self.assertEqual(nt.size(), (2, 2, 2))
-        self.assertEqual(nt[0].dim(), 1)
+        self.assertEqual(nt[0].dim(), 2)
         self.assertEqual(nt[0].size(), (2, 2))
         self.assertEqual(nt[0][0].size(), torch.Size([2]))
 
@@ -31,7 +31,7 @@ class TestTensorMask(TestCase):
         self.assertTrue(NT.is_nested_tensor(nt))
         self.assertEqual(nt.nested_dim(), 2)
         self.assertEqual(nt.size(), (2, 2, 2, 2))
-        self.assertEqual(nt[0].dim(), 1)
+        self.assertEqual(nt[0].dim(), 3)
         self.assertEqual(nt[0].size(), (2, 2, 2))
         self.assertEqual(nt[0][0].size(), torch.Size([2, 2]))
         self.assertEqual(nt[0][0][0].size(), torch.Size([2]))
@@ -40,7 +40,7 @@ class TestTensorMask(TestCase):
         self.assertTrue(NT.is_nested_tensor(nt))
         self.assertEqual(nt.nested_dim(), 2)
         self.assertEqual(nt.size(), (10, 10, 10, 10))
-        self.assertEqual(nt[0].dim(), 1)
+        self.assertEqual(nt[0].dim(), 3)
         self.assertEqual(nt[0].size(), (10, 10, 10))
         self.assertEqual(nt[0][0].size(), torch.Size([10, 10]))
         self.assertEqual(nt[0][0][0].size(), torch.Size([10]))
@@ -53,6 +53,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 0)
         self.assertEqual(tensor.size(), torch.Size([2, 2]))
         self.assertEqual(tensor.dim(), 2)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         nt = NT.nested_tensor([
             NT.nested_tensor([
@@ -71,25 +72,27 @@ class TestTensorMask(TestCase):
         # mask_dim = None
         tensor, mask = nt.to_tensor_mask()
         self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True,  True]]]))
+                                             [[ True, True]]]))
         self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
         self.assertEqual(mask.dim(), 3)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 4)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 0
         tensor, mask = nt.to_tensor_mask(mask_dim=0)
         self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True,  True]]]))
+                                             [[ True, True]]]))
         self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
         self.assertEqual(mask.dim(), 3)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 4)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 1
         tensor, mask = nt.to_tensor_mask(mask_dim=1)
         self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True,  True]]]))
+                                             [[ True, True]]]))
         self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
         self.assertEqual(mask.dim(), 3)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
@@ -103,26 +106,29 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 3)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 4)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 3
         tensor, mask = nt.to_tensor_mask(mask_dim=3)
         self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True,  True]]]))
+                                             [[ True, True]]]))
         self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
         self.assertEqual(mask.dim(), 3)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 4)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 4
         tensor, mask = nt.to_tensor_mask(mask_dim=4)
-        self.assertEqual(mask, torch.tensor([[[[ True,  True],
+        self.assertEqual(mask, torch.tensor([[[[ True, True],
                                                [False, False]]],
-                                             [[[ True,  True],
-                                               [ True,  True]]]]))
+                                             [[[ True, True],
+                                               [ True, True]]]]))
         self.assertEqual(mask.size(), torch.Size([2, 1, 2, 2]))
         self.assertEqual(mask.dim(), 4)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 4)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         nt = NT.nested_tensor([
             NT.nested_tensor([
@@ -146,6 +152,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 0)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 5)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 0
         tensor, mask = nt.to_tensor_mask(mask_dim=0)
@@ -154,6 +161,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 0)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 5)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 1
         tensor, mask = nt.to_tensor_mask(mask_dim=1)
@@ -162,6 +170,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 1)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 5)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 2
         tensor, mask = nt.to_tensor_mask(mask_dim=2)
@@ -170,6 +179,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 2)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 5)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 3
         tensor, mask = nt.to_tensor_mask(mask_dim=3)
@@ -178,6 +188,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 3)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 5)
+        self.assertEqual(tensor.dim(), nt.dim())
 
         # mask_dim = 4
         tensor, mask = nt.to_tensor_mask(mask_dim=4)
@@ -186,6 +197,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask.dim(), 4)
         self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
         self.assertEqual(tensor.dim(), 5)
+        self.assertEqual(tensor.dim(), nt.dim())
 
     def test_nested_tensor_from_tensor_mask(self):
         original_nt = NT.nested_tensor([
@@ -203,35 +215,18 @@ class TestTensorMask(TestCase):
             ])
         ])
 
-        # 
-        # mask_dim = 4
-        #
+        expected_nt0 = torch.tensor([[[[[1, 2],
+                                        [3, 4]]]],
+                                     [[[[5, 6],
+                                        [7, 8]]]]])
 
-        # nested_dim = 4
-        tensor, mask = original_nt.to_tensor_mask(mask_dim=4)
-        nt4 = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=4)
-        self.assertEqual(original_nt, nt4)
-
-        # nested_dim = 3
-        nt3 = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
-        expected_nt3 = NT.nested_tensor([
-            NT.nested_tensor([
-                NT.nested_tensor([
-                    torch.tensor([[1, 2],
-                                  [3, 4]]),
-                ]),
-            ]),
-            NT.nested_tensor([
-                NT.nested_tensor([
-                    torch.tensor([[5, 6],
-                                 [7, 8]]),
-                ]),
-            ]),
+        expected_nt1 = NT.nested_tensor([
+            torch.tensor([[[[1, 2],
+                            [3, 4]]]]),
+            torch.tensor([[[[5, 6],
+                            [7, 8]]]]),
         ])
-        self.assertEqual(expected_nt3, nt3)
 
-        # nested_dim = 2
-        nt2 = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
         expected_nt2 = NT.nested_tensor([
             NT.nested_tensor([
                 torch.tensor([[[1, 2],
@@ -242,40 +237,75 @@ class TestTensorMask(TestCase):
                               [7, 8]]]),
             ]),
         ])
-        self.assertEqual(expected_nt2, nt2)
 
-        # nested_dim = 1
-        nt1 = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1)
-        expected_nt1 = NT.nested_tensor([
-            torch.tensor([[[[1, 2],
-                            [3, 4]]]]),
-            torch.tensor([[[[5, 6],
-                            [7, 8]]]]),
-        ])
-        self.assertEqual(expected_nt1, nt1)
+        #
+        # mask_dim = None
+        #
+        tensor, mask = original_nt.to_tensor_mask()
+        self.assertRaisesRegex(RuntimeError, 
+                               "Mask has to have dimention > 0", 
+                               lambda: NT.nested_tensor_from_tensor_mask(tensor, mask))
 
-        # nested_dim = 0
-        nt0 = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=0)
-        expected_nt0 = torch.tensor([
-                                        [[[[1, 2],
-                                        [3, 4]]]],
-                                        [[[[5, 6],
-                                        [7, 8]]]]
-                                    ])
-        self.assertEqual(expected_nt0, nt0)
+        #
+        # mask_dim = 1
+        #
+        tensor, mask = original_nt.to_tensor_mask(mask_dim = 1)
 
-        # nested_dim = None
-        nt = NT.nested_tensor_from_tensor_mask(tensor, mask)
-        self.assertEqual(expected_nt0, nt)
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(expected_nt0, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=0)
+        self.assertEqual(expected_nt0, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1)
+        self.assertEqual(expected_nt1, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        self.assertEqual(expected_nt1, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
+        self.assertEqual(expected_nt1, res_nt)
+
+        #
+        # mask_dim = 2
+        #
+        tensor, mask = original_nt.to_tensor_mask(mask_dim=2)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(expected_nt0, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=0)
+        self.assertEqual(expected_nt0, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1)
+        self.assertEqual(expected_nt1, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        self.assertEqual(expected_nt2, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
+        self.assertEqual(expected_nt2, res_nt)
+
+        # 
+        # mask_dim = 3
+        #
+        tensor, mask = original_nt.to_tensor_mask(mask_dim=3)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(expected_nt0, res_nt)
+        
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=0)
+        self.assertEqual(expected_nt0, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1)
+        self.assertEqual(expected_nt1, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        self.assertEqual(expected_nt2, res_nt)
+
+        res_nt = NT.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
+        self.assertEqual(original_nt, res_nt)
+
 
 if __name__ == "__main__":
     unittest.main()
-
-
-# TODO: 
-# 1. test cases for all asserts
-# 2. test cases for all errors 
-# 3. test cases for NT from tensor+mask
-# 4. ask if tensor(True) mask + tensor -> NT? its an error now.
-#
-#

@@ -22,7 +22,8 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=None):
     Unless specific, it is attempted to yield a NestedTensor of minimal nested dimension.
     """
     # TODO: Should be possible with views only.
-    assert mask.dim() > 0
+    if not mask.dim() > 0:
+        raise RuntimeError("Mask has to have dimention > 0")
 
     # TODO: Need to define empty-list and 0 numel semantics
     # TODO: Test edge-cases and kwargs
