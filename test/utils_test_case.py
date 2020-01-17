@@ -182,6 +182,7 @@ class TestCaseBase(unittest.TestCase):
             super(TestCaseBase, self).assertNotEqual(x, y, message)
 
 class TestCase(TestCaseBase):
+    # ToDo: remove ignore_contiguity flag. We should not use it. 
     def assertAlmostEqual(self, x, y, places=None, msg=None, delta=None, allow_inf=None, ignore_contiguity=False):
         prec = delta
         if places:
