@@ -11,8 +11,9 @@
 namespace torch {
 namespace nested_tensor {
 
-struct THPNestedSize {
-  THPNestedSize(SizeNode size_node) : _size_node(size_node) {}
+struct THPSizeNode {
+  THPSizeNode(SizeNode size_node, std::string name)
+      : _size_node(size_node), _name(name) {}
   int64_t len() {
     if (_size_node.is_leaf()) {
       return _size_node.size();
@@ -21,28 +22,27 @@ struct THPNestedSize {
     }
   }
   std::string str() {
-    return SizeNode___str__(_size_node, std::string("NestedSize"));
+    return SizeNode___str__(_size_node, _name);
   }
-
- private:
-  SizeNode _size_node;
-};
-
-struct THPNestedStride {
-  THPNestedStride(SizeNode size_node) : _size_node(size_node) {}
-  int64_t len() {
+  py::iterator iterator() {
     if (_size_node.is_leaf()) {
-      return _size_node.size();
+      std::vector<std::vector<int64_t>> result;
+      for (size_t i = 0; i < _size_node.size(); i++) {
+        result.push_back(_size_node.payload(i).vec());
+      }
+      return py::make_iterator(result.data(), result.data() + result.size());
     } else {
-      return _size_node.degree();
+      std::vector<THPSizeNode> result;
+      for (size_t i = 0; i < _size_node.degree(); i++) {
+        result.push_back(THPSizeNode(_size_node.children(i), _name));
+      }
+      return py::make_iterator(result.data(), result.data() + result.size());
     }
   }
-  std::string str() {
-    return SizeNode___str__(_size_node, std::string("NestedStride"));
-  }
 
  private:
   SizeNode _size_node;
+  std::string _name;
 };
 
 template <class Result, class F>
@@ -73,13 +73,16 @@ struct THPNestedTensor {
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
-  THPNestedSize nested_size() {
-    return THPNestedSize(data_map<SizeNode>(
-        _data, [](auto data) { return data.nested_size(); }));
+  THPSizeNode nested_size() {
+    return THPSizeNode(
+        data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); }),
+        "NestedSize");
   }
-  THPNestedStride nested_stride() {
-    return THPNestedStride(data_map<SizeNode>(
-        _data, [](auto data) { return data.nested_stride(); }));
+  THPSizeNode nested_stride() {
+    return THPSizeNode(
+        data_map<SizeNode>(
+            _data, [](auto data) { return data.nested_stride(); }),
+        "NestedStride");
   }
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad) {
     return THPNestedTensor(
