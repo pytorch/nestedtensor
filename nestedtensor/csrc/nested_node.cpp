@@ -70,14 +70,14 @@ std::string SizeNode___str__(
         result << ",";
       }
       c10::List<int64_t> size_node_payload = nested_node.payload(i);
-      result << "\n" << tabs_ << "torch.Size([";
+      result << "\n" << tabs_ << "(";
       for (size_t j = 0; j < size_node_payload.size(); j++) {
         if (j > 0) {
           result << ", ";
         }
         result << size_node_payload[j];
       }
-      result << "])";
+      result << ")";
     }
   } else {
     for (size_t i = 0; i < nested_node.degree(); i++) {
