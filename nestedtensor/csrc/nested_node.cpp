@@ -11,35 +11,83 @@ namespace nested_tensor {
 using namespace torch::jit;
 using namespace torch::autograd::utils;
 
-void tensor_string_repr(std::stringstream& result, const Tensor& tensor, const std::string& tabs) {
-  PyObject* objectsRepresentation =
-      PyObject_Str(THPVariable_Wrap(tensor));
-  auto tensor_string_ptr = strdup(THPUtils_unpackString(objectsRepresentation).c_str());
-  auto tokens = std::strtok(tensor_string_ptr, "\n");
-  while (tokens != NULL) {
-    result << "\n" << tabs << tokens;
-    tokens = std::strtok(NULL, "\n");
+std::vector<std::string> split_str(std::string s, std::string delimiter) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+  std::string token;
+  while ((pos = s.find(delimiter)) != std::string::npos) {
+    token = s.substr(0, pos);
+    result.push_back(token);
+    s.erase(0, pos + delimiter.length());
   }
+  result.push_back(s);
+  return result;
 }
 
-std::string _NestedNode___str__(const TensorNode& nested_node, const std::string& tabs) {
+std::string TensorNode___str__(
+    const TensorNode& nested_node,
+    const std::string& tabs) {
   std::stringstream result;
   auto tabs_ = tabs + "\t";
   result << "nested_tensor([";
   if (nested_node.is_leaf()) {
     for (size_t i = 0; i < nested_node.size(); i++) {
-      tensor_string_repr(result, nested_node.payload(i), tabs_);
-      result << ",";
+      if (i > 0) {
+        result << ",";
+      }
+      auto tokens = split_str(
+          THPUtils_unpackString(
+              PyObject_Str(THPVariable_Wrap(nested_node.payload(i)))),
+          "\n");
+      for (const auto& token : tokens) {
+        result << "\n" << tabs_ << token;
+      }
     }
-    // to remove the excess `,`
-    result.seekp(-1, result.cur);
   } else {
     for (size_t i = 0; i < nested_node.degree(); i++) {
+      if (i > 0) {
+        result << ",";
+      }
       result << "\n" << tabs_;
-      result << _NestedNode___str__(nested_node.children(i), tabs_);
-      result << ",";
+      result << TensorNode___str__(nested_node.children(i), tabs_);
     }
-    result.seekp(-1, result.cur);
+  }
+  result << std::endl;
+  result << tabs << "])";
+  return result.str();
+}
+
+std::string SizeNode___str__(
+    const SizeNode& nested_node,
+    const std::string name,
+    const std::string& tabs) {
+  std::stringstream result;
+  auto tabs_ = tabs + "\t";
+  result << name << "([";
+  if (nested_node.is_leaf()) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      if (i > 0) {
+        result << ",";
+      }
+      // TODO: Parameterize this to allow printing torch.Size etc.
+      c10::List<int64_t> size_node_payload = nested_node.payload(i);
+      result << "\n" << tabs_ << "(";
+      for (size_t j = 0; j < size_node_payload.size(); j++) {
+        if (j > 0) {
+          result << ", ";
+        }
+        result << size_node_payload[j];
+      }
+      result << ")";
+    }
+  } else {
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      if (i > 0) {
+        result << ",";
+      }
+      result << "\n" << tabs_;
+      result << SizeNode___str__(nested_node.children(i), name, tabs_);
+    }
   }
   result << std::endl;
   result << tabs << "])";
@@ -186,8 +234,8 @@ bool _verify_variables(
       valid = valid && (variable.dtype() == first_variable.dtype());
       valid =
           valid && (variable.requires_grad() == first_variable.requires_grad());
-      // NOTE: This is a very costly check! For now we'll let this to be enabled
-      // manually. valid = valid && (variable_.is_pinned() ==
+      // NOTE: This is a very costly check! For now we'll let this to be
+      // enabled manually. valid = valid && (variable_.is_pinned() ==
       // first_variable.is_pinned());
     }
   } else {

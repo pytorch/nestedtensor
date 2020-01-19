@@ -1,6 +1,7 @@
 import torch
 import unittest
 from utils import TestCase
+from utils import nested_size_to_list
 import nestedtensor
 
 
@@ -105,7 +106,7 @@ class Test_ListNestedTensor(TestCase):
         default_tensor = torch.tensor([])
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
         # TODO: Return torch.NestedSize instead of list
-        self.assertEqual(default_nested_tensor.nested_size(), nestedtensor.NestedSize([]))
+        self.assertEqual(nested_size_to_list(default_nested_tensor.nested_size()), [])
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
         self.assertEqual(default_nested_tensor.layout, default_tensor.layout)
         self.assertEqual(default_nested_tensor.device, default_tensor.device)
@@ -134,14 +135,14 @@ class Test_ListNestedTensor(TestCase):
             [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
         # TODO: Return torch.NestedSize instead of lists
         na = [[1, 2], [2, 3], [4, 5]]
-        self.assertEqual(a.nested_size(), nestedtensor.NestedSize(na))
+        self.assertEqual(nested_size_to_list(a.nested_size()), na)
 
     def test_nested_stride(self):
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
         a = nestedtensor.as_nested_tensor(tensors)
         # TODO: Return torch.NestedSize instead of lists
         na = list(list(t.stride()) for t in tensors)
-        self.assertEqual(a.nested_stride(), nestedtensor.NestedSize(na))
+        self.assertEqual(nested_size_to_list(a.nested_stride()), na)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_pin_memory(self):

@@ -6,6 +6,7 @@ import torch
 import nestedtensor
 import unittest
 from utils import TestCase
+from utils import nested_size_to_list
 import random
 
 import utils
@@ -49,7 +50,7 @@ class TestNestedTensor(TestCase):
         default_nested_tensor = nestedtensor.nested_tensor([])
         default_tensor = torch.tensor([])
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
-        self.assertEqual(default_nested_tensor.nested_size(), nestedtensor.NestedSize([]))
+        self.assertEqual(list(default_nested_tensor.nested_size()), [])
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
         self.assertEqual(default_nested_tensor.layout, default_tensor.layout)
         self.assertEqual(default_nested_tensor.device, default_tensor.device)
@@ -86,8 +87,8 @@ class TestNestedTensor(TestCase):
     def test_nested_size(self):
         a = nestedtensor.nested_tensor(
             [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-        na = nestedtensor.NestedSize([[1, 2], [2, 3], [4, 5]])
-        self.assertEqual(a.nested_size(), na)
+        na = [[1, 2], [2, 3], [4, 5]]
+        self.assertEqual(nested_size_to_list(a.nested_size()), na)
         values = [torch.rand(1, 2) for i in range(10)]
         values = [values[1:i] for i in range(2, 10)]
         nt = nestedtensor.nested_tensor(values)
