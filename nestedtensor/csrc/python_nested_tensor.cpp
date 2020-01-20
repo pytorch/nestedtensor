@@ -1,6 +1,7 @@
 #include <python_nested_tensor.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
 #include <torch/csrc/jit/pybind_utils.h>
+#include <creation.h>
 
 namespace py = pybind11;
 
@@ -40,6 +41,13 @@ py::object THPNestedTensor::getLayout() {
 py::object THPNestedTensor::getDevice() {
   return data_map<py::object>(
       _data, [](auto data) { return torch::jit::toPyObject(data.device()); });
+}
+
+THPNestedTensor THPNestedTensor::contiguous() {
+  if (this->is_contiguous()) {
+    return *this;
+  }
+  return THPNestedTensor(make_contiguous(this->get_structure()));
 }
 
 } // namespace nested_tensor

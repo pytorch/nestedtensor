@@ -53,18 +53,15 @@ TensorNode _get_tensor_structure(const py::sequence& py_obj) {
 }
 
 void _make_tensors(
-    const py::sequence& py_obj,
+    const TensorNode& tensor_node,
     std::vector<at::Tensor>& tensors) {
-  if (auto tensor_sequence = to_tensor_sequence(py_obj)) {
-    // List of Tensors
-    for (size_t i = 0; i < py_obj.size(); i++) {
-      tensors.push_back((*tensor_sequence).extract(i).reshape({-1}));
+  if (tensor_node.is_leaf()) {
+    for (size_t i = 0; i < tensor_node.size(); i++) {
+      tensors.push_back(tensor_node.payload(i).reshape({-1}));
     }
   } else {
-    // List of lists of Tensors
-    for (size_t i = 0; i < py_obj.size(); i++) {
-      py::sequence py_obj_i = py::sequence(py_obj[i]);
-      _make_tensors(py_obj_i, tensors);
+    for (size_t i = 0; i < tensor_node.degree(); i++) {
+      _make_tensors(tensor_node.children(i), tensors);
     }
   }
 }
@@ -73,12 +70,10 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
   return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
 }
 
-// TODO: Support THPNestedTensor entries
-THPNestedTensor nested_tensor(py::sequence list) {
-  TensorNode structure = _get_tensor_structure(list);
+_BufferNestedTensor make_contiguous(TensorNode structure) {
   at::Tensor buffer;
   std::vector<at::Tensor> tensors;
-  _make_tensors(list, tensors);
+  _make_tensors(structure, tensors);
   if (tensors.size() == 0) {
     buffer = torch::ones({});
   } else {
@@ -88,8 +83,12 @@ THPNestedTensor nested_tensor(py::sequence list) {
       structure, [](at::Tensor tensor) -> c10::List<int64_t> {
         return c10::List<int64_t>(tensor.sizes());
       });
-  auto bnt = _BufferNestedTensor(buffer, nested_size);
-  return THPNestedTensor(std::move(bnt));
+  return _BufferNestedTensor(buffer, nested_size);
+}
+
+// TODO: Support THPNestedTensor entries
+THPNestedTensor nested_tensor(py::sequence list) {
+  return THPNestedTensor(make_contiguous(_get_tensor_structure(list)));
 }
 
 } // namespace nested_tensor

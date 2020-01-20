@@ -33,6 +33,13 @@ SizeNode _infer_stride(SizeNode nested_size) {
   }
 }
 
+SizeNode _make_nested_size(TensorNode tensor_node) {
+  return map<at::Tensor, c10::List<int64_t>>(
+      tensor_node, [](at::Tensor tensor) -> c10::List<int64_t> {
+        return c10::List<int64_t>(tensor.sizes());
+      });
+}
+
 void _split_sizes(
     SizeNode nested_size,
     SizeNode nested_stride,
