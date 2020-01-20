@@ -86,10 +86,5 @@ _BufferNestedTensor make_contiguous(TensorNode structure) {
   return _BufferNestedTensor(buffer, nested_size);
 }
 
-// TODO: Support THPNestedTensor entries
-THPNestedTensor nested_tensor(py::sequence list) {
-  return THPNestedTensor(make_contiguous(_get_tensor_structure(list)));
-}
-
 } // namespace nested_tensor
 } // namespace torch
