@@ -175,6 +175,7 @@ struct THPNestedTensor {
     return data_map<at::Tensor>(
         _data, [](auto data) { return data.to_tensor(); });
   }
+  THPNestedTensor contiguous();
   bool is_contiguous() {
     return data_map<bool>(
         _data, [](auto data) { return data.is_contiguous(); });
