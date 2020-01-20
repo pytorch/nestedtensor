@@ -154,7 +154,7 @@ class TestNestedTensor(TestCase):
 
     def test_size(self):
         a = nestedtensor.nested_tensor([])
-        self.assertEqual(a.size(), ())
+        self.assertEqual(a.size(), (0,))
 
         a = nestedtensor.nested_tensor([[torch.rand(1, 8),
                                    torch.rand(3, 8)],

@@ -102,7 +102,8 @@ class NestedTensor(object):
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
         if gradient is None or isinstance(self._impl, gradient._impl):
-            self._impl.backward(gradient._impl, retain_graph._impl, create_graph)
+            self._impl.backward(
+                gradient._impl, retain_graph._impl, create_graph)
         else:
             # TODO: Test mixed case explicitly
             for t, g in zip(self.unbind(), gradient.unbind()):
@@ -147,20 +148,7 @@ class NestedTensor(object):
     def size(self, dim=None):
         if dim is not None:
             return self.size()[dim]
-        all_sizes = tuple(t.size() for t in self.unbind())
-        if len(all_sizes) == 0:
-            return ()
-
-        def compare_sizes(size, other_size):
-            result_size = list(size)
-            for i in range(len(size)):
-                result_size[i] = size[i] if size[i] == other_size[i] else None
-            return tuple(result_size)
-
-        result_size = list(all_sizes[0])
-        for size in all_sizes:
-            result_size = compare_sizes(result_size, size)
-        return (len(self),) + result_size
+        return tuple(self._impl.size())
 
     def to(self, *args, **kwargs):
         # TODO: to is currently not supported by impls due to argparsing.
@@ -268,13 +256,16 @@ class NestedTensor(object):
             kwargs = {}
         if func in NestedTensor.__jit_function_dispatch:
             _jit_local_func = NestedTensor.__jit_function_dispatch[func]
-            impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
-            impl_kwargs = {k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()}
+            impl_args = [a._impl if isinstance(
+                a, NestedTensor) else a for a in args]
+            impl_kwargs = {k: v._impl if isinstance(
+                v, NestedTensor) else v for (k, v) in kwargs.items()}
             return NestedTensor(_jit_local_func(*impl_args, **impl_kwargs))
         if func in NestedTensor.__function_dispatch:
             _local_func = NestedTensor.__function_dispatch[func]
             return _local_func(*args, **kwargs)
-        raise NotImplementedError("NestedTensor doesn't support function {}".format(func))
+        raise NotImplementedError(
+            "NestedTensor doesn't support function {}".format(func))
 
     def __bool__(self):
         raise NotImplementedError(

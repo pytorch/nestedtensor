@@ -52,6 +52,51 @@ static inline Result data_map(
   return data.map<Result>(fn, fn);
 }
 
+static inline std::vector<c10::optional<int64_t>> _construct_size(
+    const SizeNode& size_node) {
+  if (size_node.is_leaf()) {
+    std::vector<c10::optional<int64_t>> result;
+    result.push_back(size_node.size());
+    if (size_node.size() == 0) {
+      return result;
+    }
+
+    for (const auto& size : size_node.payload(0)) {
+      result.push_back(size);
+    }
+
+    for (size_t j = 1; j < result.size(); j++) {
+      for (size_t i = 1; i < size_node.size(); i++) {
+        if (!result[j]) {
+          break;
+        }
+        if ((*(result[j])) != size_node.payload(i)[j - 1]) {
+          result[j] = c10::nullopt;
+        }
+      }
+    }
+    return result;
+  }
+  std::vector<c10::optional<int64_t>> result;
+  result.push_back(size_node.degree());
+
+  if (size_node.degree() > 0) {
+    for (const auto& size : _construct_size(size_node.children(0))) {
+      result.push_back(size);
+    }
+    for (size_t i = 1; i < size_node.degree(); i++) {
+      auto size_node_i = _construct_size(size_node.children(i));
+      for (size_t j = 1; j < result.size(); j++) {
+        if (result[j] && ((*result[j]) != size_node_i[j - 1])) {
+          result[j] = c10::nullopt;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
@@ -72,6 +117,9 @@ struct THPNestedTensor {
   }
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
+  }
+  std::vector<c10::optional<int64_t>> size() {
+    return _construct_size(this->nested_size().get_size_node());
   }
   THPSizeNode nested_size() {
     return THPSizeNode(
