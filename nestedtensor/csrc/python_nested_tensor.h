@@ -54,12 +54,12 @@ static inline Result data_map(
 
 static inline std::vector<c10::optional<int64_t>> _reduce_size(
     const std::vector<c10::optional<int64_t>>& self,
-    const std::vector<c10::optional<int64_t>>& other) {
+    const std::vector<int64_t>& other) {
   std::vector<c10::optional<int64_t>> result;
   result.resize(self.size());
   for (size_t i = 0; i < self.size(); i++) {
-    if (self[i] && other[i] && ((*self)[i] == (*other)[i])) {
-      result[i] = (*self)[i];
+    if (self[i] && *self[i] == other[i]) {
+      result[i] = *self[i];
     } else {
       result[i] = c10::nullopt;
     }
@@ -74,15 +74,36 @@ static inline std::vector<c10::optional<int64_t>> _construct_size(
     if (size_node.size() == 0) {
       return result;
     }
-    for (size_t i = 0; size_node.payload(0).size(); i++) {
-      result = _reduce_size(result, size_node.payload(i).vec());
+    auto size_node_vec_0 = size_node.payload(0).vec();
+    result.resize(size_node_vec_0.size());
+    for (size_t j = 0; j < size_node_vec_0.size(); j++) {
+      result[j] = size_node_vec_0[j];
+    }
+    for (size_t i = 1; size_node.size(); i++) {
+      auto size_node_vec = size_node.payload(i).vec();
+      for (size_t j = 0; j < result.size(); j++) {
+        if (result[j] && (*result[j] != size_node_vec[j])) {
+          result[j] = c10::nullopt;
+        }
+      }
     }
   } else {
     if (size_node.degree() == 0) {
       return result;
     }
-    for (size_t i = 0; i < size_node.degree(); i++) {
-      result = _reduce_size(result, _construct_size(size_node.children(i)));
+    auto size_0 = _construct_size(size_node.children(0));
+    result.resize(1 + size_0.size());
+    result[0] = size_node.degree();
+    for (size_t j = 1; j < size_0.size(); j++) {
+      result[j] = size_0[j - 1];
+    }
+    for (size_t i = 1; i < size_node.degree(); i++) {
+      auto size_node_i = _construct_size(size_node.children(i));
+      for (size_t j = 1; j < result.size(); j++) {
+        if (result[j] && (*result[j] != size_node_i[j - 1])) {
+          result[j] = c10::nullopt;
+        }
+      }
     }
   }
   return result;
