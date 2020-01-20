@@ -147,7 +147,7 @@ bool _verify_variables(
     const TensorNode nested_node);
 
 template <typename A>
-inline c10::optional<NestedNode<A>> get_first_leaf(NestedNode<A> nested_node) {
+inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
   if (nested_node.is_leaf() && nested_node.size() == 0) {
     return c10::nullopt;
   }
@@ -155,7 +155,7 @@ inline c10::optional<NestedNode<A>> get_first_leaf(NestedNode<A> nested_node) {
   while (!start->is_leaf()) {
     start = start->children_data(0);
   }
-  return *start;
+  return start->payload(0);
 }
 
 template <typename B, typename A, typename F>

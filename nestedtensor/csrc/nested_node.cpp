@@ -183,20 +183,6 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
   return result;
 }
 
-at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node) {
-  std::vector<at::Tensor> variables;
-  if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      variables.emplace_back(nested_node.payload(i));
-    }
-  } else {
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      variables.emplace_back(NestedNode_to_tensor(nested_node.children(i)));
-    }
-  }
-  return stack(variables);
-}
-
 bool _verify_variables(
     const torch::autograd::Variable& first_variable,
     const TensorNode nested_node) {

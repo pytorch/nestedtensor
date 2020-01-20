@@ -9,7 +9,9 @@ struct _ListNestedTensor {
   _ListNestedTensor() = delete;
   _ListNestedTensor(TensorNode structure)
       : _structure(structure),
-        _first_variable(_get_first_variable(_structure)) {
+        _first_variable(
+            get_first_leaf(_structure) ? *get_first_leaf(_structure)
+                                       : at::ones({})) {
     if (__len__() > 0) {
       TORCH_CHECK(
           _verify_variables(_first_variable, _structure),
@@ -71,7 +73,9 @@ struct _ListNestedTensor {
     }
   }
   at::Tensor to_tensor() {
-    return NestedNode_to_tensor(_structure);
+    std::vector<at::Tensor> tensors;
+    aggregate_leafs(_structure, tensors);
+    return stack(tensors);
   }
   int64_t nested_dim() {
     const TensorNode* start_structure = &_structure;

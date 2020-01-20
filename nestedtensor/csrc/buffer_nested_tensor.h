@@ -105,7 +105,7 @@ struct TORCH_API _BufferNestedTensor {
   }
   int64_t dim() {
     if (const auto& maybe_tensor = get_first_leaf(_structure)) {
-      return *maybe_tensor.dim() + nested_dim();
+      return (*maybe_tensor).dim() + nested_dim();
     }
     return nested_dim();
   }

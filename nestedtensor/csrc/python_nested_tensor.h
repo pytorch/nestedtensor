@@ -75,7 +75,7 @@ struct THPNestedTensor {
     return _data;
   }
   std::vector<c10::optional<int64_t>> size() {
-    return _construct_size(this->nested_size().get_size_node());
+    return construct_size(this->nested_size().get_size_node());
   }
   THPSizeNode nested_size() {
     return THPSizeNode(
