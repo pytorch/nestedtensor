@@ -52,6 +52,21 @@ static inline Result data_map(
   return data.map<Result>(fn, fn);
 }
 
+static inline std::vector<c10::optional<int64_t>> _reduce_size(
+    const std::vector<c10::optional<int64_t>>& self,
+    const std::vector<c10::optional<int64_t>>& other) {
+  std::vector<c10::optional<int64_t>> result;
+  result.resize(self.size());
+  for (size_t i = 0; i < self.size(); i++) {
+    if (self[i] && other[i] && ((*self)[i] == (*other)[i])) {
+      result[i] = (*self)[i];
+    } else {
+      result[i] = c10::nullopt;
+    }
+  }
+  return result;
+}
+
 static inline std::vector<c10::optional<int64_t>> _construct_size(
     const SizeNode& size_node) {
   std::vector<c10::optional<int64_t>> result;
@@ -59,34 +74,15 @@ static inline std::vector<c10::optional<int64_t>> _construct_size(
     if (size_node.size() == 0) {
       return result;
     }
-    result = size_node.payload(0);
     for (size_t i = 0; size_node.payload(0).size(); i++) {
-      result[i] = size_node.payload(0)[i];
-    }
-    for (size_t i = 1; i < size_node.size(); i++) {
-      for (size_t j = 0; j < result.size(); j++) {
-        if (result[j]) {
-          if ((*result[j]) != size_node.payload(i)[j]) {
-            result[j] = c10::nullopt;
-          }
-        }
-      }
+      result = _reduce_size(result, size_node.payload(i).vec());
     }
   } else {
     if (size_node.degree() == 0) {
       return result;
     }
-    result = _construct_size(size_node.children(0));
-    for (size_t i = 1; i < size_node.degree(); i++) {
-      std::vector<c10::optional<int64_t>> size_node_i =
-          _construct_size(size_node.children(i));
-      for (size_t j = 0; j < size_node_i.size(); j++) {
-        if (result[j]) {
-          if ((*result[j]) != size_node_i[j]) {
-            result[j] = c10::nullopt;
-          }
-        }
-      }
+    for (size_t i = 0; i < size_node.degree(); i++) {
+      result = _reduce_size(result, _construct_size(size_node.children(i)));
     }
   }
   return result;
