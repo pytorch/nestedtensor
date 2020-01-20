@@ -83,7 +83,10 @@ struct TORCH_API _BufferNestedTensor {
     // NOTE: The Tensors might not be contiguous themselves.
     // For this to be contiguous not only do the Tensors need to
     // come from the buffer, but they also need to
-    return all_contiguous(_structure);
+    auto fn = [](at::Tensor leaf, bool input) {
+      return input && leaf.is_contiguous();
+    };
+    return reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
   SizeNode nested_size() {
     return _nested_size;
@@ -110,7 +113,10 @@ struct TORCH_API _BufferNestedTensor {
     return nested_dim();
   }
   int64_t numel() {
-    return nested_node_numel(_structure);
+    auto fn = [](at::Tensor leaf, int64_t input) {
+      return input + leaf.numel();
+    };
+    return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
   }
   at::Tensor to_tensor() {
     auto size = construct_size(_nested_size);

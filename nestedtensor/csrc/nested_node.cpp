@@ -103,18 +103,6 @@ c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
   return payload;
 }
 
-int64_t nested_node_numel(const TensorNode& meta_node) {
-  auto fn = [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); };
-  return reduce<decltype(fn), int64_t, at::Tensor>(meta_node, fn, 0);
-}
-
-bool all_contiguous(const TensorNode& meta_node) {
-  auto fn = [](at::Tensor leaf, bool input) {
-    return input && leaf.is_contiguous();
-  };
-  return reduce<decltype(fn), bool, at::Tensor>(meta_node, fn, true);
-}
-
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   if (size.size() == 0) {
     return 0;

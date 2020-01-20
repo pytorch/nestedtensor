@@ -105,7 +105,10 @@ struct _ListNestedTensor {
     return _first_variable.dim() + nested_dim();
   }
   int64_t numel() {
-    return nested_node_numel(_structure);
+    auto fn = [](at::Tensor leaf, int64_t input) {
+      return input + leaf.numel();
+    };
+    return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
   }
   bool is_pinned() {
     return _first_variable.is_pinned();
