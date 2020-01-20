@@ -182,7 +182,14 @@ class TestCaseBase(unittest.TestCase):
             super(TestCaseBase, self).assertNotEqual(x, y, message)
 
 class TestCase(TestCaseBase):
-    def assertEqual(self, x, y, prec=None, message='', allow_inf=False):
+    # ToDo: remove ignore_contiguity flag. We should not use it. 
+    def assertAlmostEqual(self, x, y, places=None, msg=None, delta=None, allow_inf=None, ignore_contiguity=False):
+        prec = delta
+        if places:
+            prec = 10**(-places)
+        self.assertEqual(x, y, prec, msg, allow_inf, ignore_contiguity)
+
+    def assertEqual(self, x, y, prec=None, message='', allow_inf=False, ignore_contiguity=False):
         if not isinstance(x, NT.NestedTensor) and not isinstance(y, NT.NestedTensor):
             super().assertEqual(x, y, prec, message, allow_inf)
         elif not isinstance(x, NT.NestedTensor) or not isinstance(y, NT.NestedTensor):
@@ -212,14 +219,11 @@ class TestCase(TestCaseBase):
             if x.requires_grad != y.requires_grad:
                 self.fail("Nested tensors requires grad properties don't match. {} != {}".format(x.requires_grad, y.requires_grad))
 
-            # TODO: Uncomment once the tests are fixed. 
-            '''
-            if x.is_contiguous() != y.is_contiguous():
+            if not ignore_contiguity and x.is_contiguous() != y.is_contiguous():
                 self.fail("Nested tensors contiguity don't match. {} != {}".format(x.is_contiguous(), y.is_contiguous()))
 
             if x.element_size() != y.element_size():
                 self.fail("Nested tensors element sizes don't match. {} != {}".format(x.element_size(), y.element_size()))
-            '''
 
             if x.size() != y.size():
                 self.fail("Nested tensors sizes don't match. {} != {}".format(x.size(), y.size()))
@@ -232,4 +236,4 @@ class TestCase(TestCaseBase):
             
             for x_, y_ in zip(x, y):
                 self.assertEqual(x_, y_, prec=prec, message=message,
-                                 allow_inf=allow_inf)
+                                 allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)

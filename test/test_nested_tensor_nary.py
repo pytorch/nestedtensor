@@ -91,7 +91,7 @@ def _gen_test_unary(func__, nested_dim, device):
         self.assertTrue(a2.nested_dim() == a3.nested_dim())
 
         def _close(t1, t2):
-            self.assertAlmostEqual(t1, t2)
+            self.assertAlmostEqual(t1, t2, ignore_contiguity=True)
 
         if func__ not in ['mvlgamma']:
             func(a1, out=a3)
@@ -116,8 +116,9 @@ def _gen_test_binary(func):
         a2_l = nestedtensor.as_nested_tensor([b.clone(), c.clone()])
         a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
                                   getattr(torch, func)(b, c)])
-        self.assertEqual(a3, getattr(torch, func)(a1_l, a2_l))
-        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        a3_l = nestedtensor.as_nested_tensor(a3)
+        self.assertEqual(a3_l, getattr(torch, func)(a1_l, a2_l))
+        self.assertEqual(a3_l, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
