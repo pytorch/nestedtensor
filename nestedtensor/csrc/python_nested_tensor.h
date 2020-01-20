@@ -67,19 +67,14 @@ static inline std::vector<c10::optional<int64_t>> _construct_size(
 
     for (size_t j = 1; j < result.size(); j++) {
       for (size_t i = 1; i < size_node.size(); i++) {
-        // std::cout << "1: (j, i): " << j << ", " << i << std::endl;
         if (!result[j]) {
           break;
         }
-        // std::cout << "2: (j, i): " << j << ", " << i << std::endl;
         if ((*(result[j])) != size_node.payload(i)[j - 1]) {
           result[j] = c10::nullopt;
         }
-        // std::cout << "3: (j, i): " << j << ", " << i << std::endl;
       }
-      // std::cout << "j: " << j << std::endl;
     }
-    // std::cout << "return" << std::endl;
     return result;
   }
   std::vector<c10::optional<int64_t>> result;
