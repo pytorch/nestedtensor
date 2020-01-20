@@ -85,7 +85,7 @@ def get_extensions():
 
     define_macros = []
 
-    extra_compile_args = {'cxx': ['-O3', '-g', '-std=c++14']}
+    extra_compile_args = {'cxx': ['-g', '-std=c++14']}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         define_macros += [('WITH_CUDA', None)]

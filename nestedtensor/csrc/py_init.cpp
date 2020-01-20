@@ -110,6 +110,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             }
             return result;
           })
+      .def("size", &torch::nested_tensor::THPNestedTensor::size)
       .def(
           "requires_grad_",
           &torch::nested_tensor::THPNestedTensor::requires_grad_)
