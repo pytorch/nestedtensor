@@ -54,10 +54,10 @@ TensorNode _get_tensor_structure(const py::sequence& py_obj) {
 
 void _make_tensors(
     const TensorNode& tensor_node,
-    std::vector<at::Tensor> tensors) {
+    std::vector<at::Tensor>& tensors) {
   if (tensor_node.is_leaf()) {
     for (size_t i = 0; i < tensor_node.size(); i++) {
-      tensors.push_back(tensor_node.payload(i));
+      tensors.push_back(tensor_node.payload(i).reshape({-1}));
     }
   } else {
     for (size_t i = 0; i < tensor_node.degree(); i++) {
