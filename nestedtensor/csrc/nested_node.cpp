@@ -104,61 +104,15 @@ c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
 }
 
 int64_t nested_node_numel(const TensorNode& meta_node) {
-  int64_t result = 0;
-  if (meta_node.is_leaf()) {
-    for (size_t i = 0; i < meta_node.size(); i++) {
-      result += meta_node.payload(i).numel();
-    }
-  } else {
-    for (size_t i = 0; i < meta_node.degree(); i++) {
-      result += nested_node_numel(meta_node.children(i));
-    }
-  }
-  return result;
+  auto fn = [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); };
+  return reduce<decltype(fn), int64_t, at::Tensor>(meta_node, fn, 0);
 }
 
 bool all_contiguous(const TensorNode& meta_node) {
-  bool ac = true;
-  if (meta_node.is_leaf()) {
-    for (size_t i = 0; i < meta_node.size(); i++) {
-      if (ac) {
-        ac = ac && meta_node.payload(i).is_contiguous();
-      }
-    }
-  } else {
-    for (size_t i = 0; i < meta_node.degree(); i++) {
-      if (ac) {
-        ac = ac && all_contiguous(meta_node.children(i));
-      }
-    }
-  }
-  return ac;
-}
-
-bool all_size_equal(const SizeNode& nested_size) {
-  if (nested_size.is_leaf()) {
-    if (nested_size.size() > 0) {
-      auto size0 = nested_size.payload(0);
-      for (size_t i = 1; i < nested_size.size(); i++) {
-        for (size_t j = 0; j < nested_size.payload(i).size(); j++) {
-          if (size0[j] != nested_size.payload(i)[j]) {
-            return false;
-          }
-        }
-      }
-    }
-  } else {
-    if (nested_size.degree() > 0) {
-      // A child might be a leaf and degree will encode that.
-      size_t nested_size0 = nested_size.children(0).degree();
-      for (size_t i = 1; i < nested_size.degree(); i++) {
-        if (nested_size0 != nested_size.children(i).degree() ||
-            !all_size_equal(nested_size.children(i)))
-          return false;
-      }
-    }
-  }
-  return true;
+  auto fn = [](at::Tensor leaf, bool input) {
+    return input && leaf.is_contiguous();
+  };
+  return reduce<decltype(fn), bool, at::Tensor>(meta_node, fn, true);
 }
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
@@ -169,18 +123,11 @@ int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
 }
 
 int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
-  int64_t result = 0;
-  if (nested_size.is_leaf()) {
-    for (size_t i = 0; i < nested_size.size(); i++) {
-      result += num_memory(nested_size.payload(i), nested_stride.payload(i));
-    }
-  } else {
-    for (size_t i = 0; i < nested_size.degree(); i++) {
-      result +=
-          size_node_memory(nested_size.children(i), nested_stride.children(i));
-    }
-  }
-  return result;
+  auto fn = [](c10::List<int64_t> size,
+               c10::List<int64_t> stride,
+               int64_t input) { return num_memory(size, stride) + input; };
+  return reduce<decltype(fn), int64_t, c10::List<int64_t>, c10::List<int64_t>>(
+      nested_size, nested_stride, fn, 0);
 }
 
 bool _verify_variables(

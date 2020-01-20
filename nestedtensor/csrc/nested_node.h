@@ -116,8 +116,6 @@ int64_t nested_node_numel(const TensorNode& meta_node);
 
 bool all_contiguous(const TensorNode& meta_node);
 
-bool all_size_equal(const SizeNode& nested_size);
-
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride);
 
 int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
@@ -173,6 +171,23 @@ inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
     }
     return NestedNode<A>(result);
   }
+}
+
+// NOTE: Assuming all NestedNodes have same shape.
+template <typename F, typename A, typename... B>
+inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
+  A result = ident;
+  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+  if (first_node.is_leaf()) {
+    for (size_t i = 0; i < first_node.size(); i++) {
+      result = fn(nested_node.payload(i)..., result);
+    }
+  } else {
+    for (size_t i = 0; i < first_node.degree(); i++) {
+      result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
+    }
+  }
+  return result;
 }
 
 template <typename A, class F>
