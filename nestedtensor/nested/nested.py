@@ -141,9 +141,10 @@ class NestedTensor(object):
 
     def contiguous(self):
         # TODO: Test autograd support
-        if not self.is_contiguous():
-            return creation.nested_tensor(self.unbind())
-        return self
+        return NestedTensor(self._impl.contiguous())
+        # if not self.is_contiguous():
+        #     return creation.nested_tensor(self.unbind())
+        # return self
 
     def size(self, dim=None):
         if dim is not None:

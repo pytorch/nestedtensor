@@ -42,5 +42,12 @@ py::object THPNestedTensor::getDevice() {
       _data, [](auto data) { return torch::jit::toPyObject(data.device()); });
 }
 
+THPNestedTensor THPNestedTensor::contiguous() {
+  if (this->is_contiguous()) {
+    return *this;
+  }
+  return THPNestedTensor(make_contiguous(this->get_structure()));
+}
+
 } // namespace nested_tensor
 } // namespace torch

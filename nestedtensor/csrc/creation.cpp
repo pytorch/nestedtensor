@@ -73,9 +73,7 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
   return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
 }
 
-// TODO: Support THPNestedTensor entries
-THPNestedTensor nested_tensor(py::sequence list) {
-  TensorNode structure = _get_tensor_structure(list);
+_BufferNestedTensor make_contiguous(TensorNode structure) {
   at::Tensor buffer;
   std::vector<at::Tensor> tensors;
   _make_tensors(list, tensors);
@@ -88,8 +86,12 @@ THPNestedTensor nested_tensor(py::sequence list) {
       structure, [](at::Tensor tensor) -> c10::List<int64_t> {
         return c10::List<int64_t>(tensor.sizes());
       });
-  auto bnt = _BufferNestedTensor(buffer, nested_size);
-  return THPNestedTensor(std::move(bnt));
+  return _BufferNestedTensor(buffer, nested_size);
+}
+
+// TODO: Support THPNestedTensor entries
+THPNestedTensor nested_tensor(py::sequence list) {
+  return THPNestedTensor(make_contiguous(_get_tensor_structure(list)));
 }
 
 } // namespace nested_tensor
