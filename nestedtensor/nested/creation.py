@@ -66,10 +66,6 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
 
         _type_check(data)
         data = _unbind_nested_tensors(data)
-        # print("data")
-        # print(data)
-        # print('len(data)')
-        # print(len(data))
         result = nested.NestedTensor(_C.nested_tensor(data))
 
         if dtype is not None or device is not None:
