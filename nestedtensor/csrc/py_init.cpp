@@ -136,5 +136,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
-  m.def("nested_tensor", &torch::nested_tensor::nested_tensor);
 }
