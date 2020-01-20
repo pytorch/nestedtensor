@@ -122,12 +122,7 @@ struct _ListNestedTensor {
   // TODO: Implement these and call into them isntead of implementing them
   // separately in Variable dispatch functions.
   // _ListNestedTensor to - it's a pain due to the 100s of to overloads
-  // py::tuple size(int64_t dim);
   // separately in Variable dispatch functions.
-  // std::vector<py::object> unbind();
-  // std::string __str__();
-  // std::string __repr__();
-  // py::tuple size(int64_t dim);
 
  private:
   TensorNode _structure;
