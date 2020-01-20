@@ -104,36 +104,31 @@ struct TORCH_API _BufferNestedTensor {
     return depth;
   }
   int64_t dim() {
-    at::Tensor first_variable = _get_first_variable(_structure);
-    return first_variable.dim() + nested_dim();
+    if (const auto& maybe_tensor = get_first_leaf(_structure)) {
+      return *maybe_tensor.dim() + nested_dim();
+    }
+    return nested_dim();
   }
   int64_t numel() {
     return nested_node_numel(_structure);
   }
   at::Tensor to_tensor() {
-    if (!all_size_equal(_nested_size)) {
-      throw std::runtime_error("to_tensor only works if all sizes equal.");
-    }
-    std::vector<int64_t> new_size;
-    const SizeNode* start = &_nested_size;
-    while (!start->is_leaf()) {
-      new_size.push_back(start->degree());
-      start = start->children_data(0);
-    }
-    new_size.push_back(start->size());
-    if (start->size() > 0) {
-      for (size_t i = 0; i < start->payload(0).size(); i++) {
-        new_size.push_back(start->payload(0)[i]);
+    auto size = construct_size(_nested_size);
+    std::vector<int64_t> new_size(size.size());
+    for (size_t i = 0; i < size.size(); i++) {
+      if (!size[i]) {
+        throw std::runtime_error("to_tensor only works if all sizes equal.");
       }
+      new_size[i] = *size[i];
     }
     return _buffer.reshape(at::IntArrayRef(new_size));
   }
 
  private:
   at::Tensor _buffer;
-  SizeNode _nested_size;
-  SizeNode _nested_stride;
-  TensorNode _structure;
+  const SizeNode _nested_size;
+  const SizeNode _nested_stride;
+  const TensorNode _structure;
 };
 
 } // namespace nested_tensor

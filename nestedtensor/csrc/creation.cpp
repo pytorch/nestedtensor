@@ -52,20 +52,6 @@ TensorNode _get_tensor_structure(const py::sequence& py_obj) {
   }
 }
 
-void _make_tensors(
-    const TensorNode& tensor_node,
-    std::vector<at::Tensor>& tensors) {
-  if (tensor_node.is_leaf()) {
-    for (size_t i = 0; i < tensor_node.size(); i++) {
-      tensors.push_back(tensor_node.payload(i).reshape({-1}));
-    }
-  } else {
-    for (size_t i = 0; i < tensor_node.degree(); i++) {
-      _make_tensors(tensor_node.children(i), tensors);
-    }
-  }
-}
-
 THPNestedTensor as_nested_tensor(py::sequence list) {
   return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
 }
@@ -73,7 +59,10 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
 _BufferNestedTensor make_contiguous(TensorNode structure) {
   at::Tensor buffer;
   std::vector<at::Tensor> tensors;
-  _make_tensors(structure, tensors);
+  aggregate_leafs(structure, tensors);
+  for (size_t i = 0; i < tensors.size(); i++) {
+    tensors[i] = tensors[i].reshape({-1});
+  }
   if (tensors.size() == 0) {
     buffer = torch::ones({});
   } else {

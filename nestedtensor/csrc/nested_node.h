@@ -122,8 +122,6 @@ int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride);
 
 int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
 
-at::Tensor _get_first_variable(TensorNode nested_node);
-
 template <typename A>
 py::object wrap_nested_node(NestedNode<A> nested_node) {
   std::vector<py::object> result;
@@ -142,12 +140,17 @@ py::object wrap_nested_node(NestedNode<A> nested_node) {
 
 at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);
 
+std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
+
 bool _verify_variables(
     const torch::autograd::Variable& first_variable,
     const TensorNode nested_node);
 
 template <typename A>
-inline NestedNode<A> get_first_leaf(NestedNode<A> nested_node) {
+inline c10::optional<NestedNode<A>> get_first_leaf(NestedNode<A> nested_node) {
+  if (nested_node.is_leaf() && nested_node.size() == 0) {
+    return c10::nullopt;
+  }
   const NestedNode<A>* start = &nested_node;
   while (!start->is_leaf()) {
     start = start->children_data(0);
@@ -197,6 +200,19 @@ inline void apply2(
   } else {
     for (size_t i = 0; i < nested_node1.degree(); i++) {
       apply2(nested_node1.children(i), nested_node2.children(i), fn);
+    }
+  }
+}
+
+template <typename T>
+inline void aggregate_leafs(NestedNode<T> input, std::vector<T>& result) {
+  if (input.is_leaf()) {
+    for (size_t i = 0; i < input.size(); i++) {
+      result.push_back(input.payload(i));
+    }
+  } else {
+    for (size_t i = 0; i < input.degree(); i++) {
+      aggregate_leafs<T>(input.children(i), result);
     }
   }
 }

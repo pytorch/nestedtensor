@@ -183,15 +183,6 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
   return result;
 }
 
-at::Tensor _get_first_variable(TensorNode nested_node) {
-  TensorNode leaf = get_first_leaf(nested_node);
-  if (leaf.size()) {
-    return leaf.payload(0);
-  } else {
-    return torch::ones({});
-  }
-}
-
 at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node) {
   std::vector<at::Tensor> variables;
   if (nested_node.is_leaf()) {
@@ -245,6 +236,50 @@ bool _verify_variables(
     }
   }
   return valid;
+}
+
+std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
+  if (size_node.is_leaf()) {
+    std::vector<c10::optional<int64_t>> result;
+    result.push_back(size_node.size());
+    if (size_node.size() == 0) {
+      return result;
+    }
+
+    for (const auto& size : size_node.payload(0)) {
+      result.push_back(size);
+    }
+
+    for (size_t j = 1; j < result.size(); j++) {
+      for (size_t i = 1; i < size_node.size(); i++) {
+        if (!result[j]) {
+          break;
+        }
+        if ((*(result[j])) != size_node.payload(i)[j - 1]) {
+          result[j] = c10::nullopt;
+        }
+      }
+    }
+    return result;
+  }
+  std::vector<c10::optional<int64_t>> result;
+  result.push_back(size_node.degree());
+
+  if (size_node.degree() > 0) {
+    for (const auto& size : construct_size(size_node.children(0))) {
+      result.push_back(size);
+    }
+    for (size_t i = 1; i < size_node.degree(); i++) {
+      auto size_node_i = construct_size(size_node.children(i));
+      for (size_t j = 1; j < result.size(); j++) {
+        if (result[j] && ((*result[j]) != size_node_i[j - 1])) {
+          result[j] = c10::nullopt;
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 } // namespace nested_tensor
