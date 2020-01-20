@@ -40,9 +40,9 @@ class TestNestedTensor(TestCase):
             ValueError, lambda: nestedtensor.nested_tensor(torch.tensor([3.0])))
         self.assertRaises(ValueError, lambda: nestedtensor.nested_tensor(
             nestedtensor.nested_tensor([torch.tensor([3.0])])))
-        self.assertRaises(ValueError, lambda: nestedtensor.nested_tensor(
+        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor(
             [torch.tensor([2.0]), nestedtensor.nested_tensor([torch.tensor([3.0])])]))
-        self.assertRaises(ValueError, lambda: nestedtensor.nested_tensor(4.0))
+        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor(4.0))
 
     def test_default_constructor(self):
         self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor())
@@ -66,19 +66,21 @@ class TestNestedTensor(TestCase):
 
     def test_repr_string(self):
         a = nestedtensor.nested_tensor(
-            [[torch.tensor([[1, 2], [2, 3]]), torch.tensor([3, 4])],
-                [torch.tensor([4, 5])]])
+            [
+                [torch.tensor([[1, 2], [2, 3]]), torch.tensor([[3, 4]])],
+                [torch.tensor([[4, 5]])]
+            ])
         expected = "nested_tensor(["\
                    "\n\tnested_tensor(["\
                    "\n\t\ttensor([[1, 2]"\
                    ","\
                    "\n\t\t        [2, 3]])"\
                    ","\
-                   "\n\t\ttensor([3, 4])"\
+                   "\n\t\ttensor([[3, 4]])"\
                    "\n\t])"\
                    ","\
                    "\n\tnested_tensor(["\
-                   "\n\t\ttensor([4, 5])"\
+                   "\n\t\ttensor([[4, 5]])"\
                    "\n\t])"\
                    "\n])"
         self.assertEqual(str(a), expected)

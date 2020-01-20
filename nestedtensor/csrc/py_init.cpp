@@ -125,6 +125,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "is_contiguous",
           &torch::nested_tensor::THPNestedTensor::is_contiguous)
+      .def(
+          "contiguous",
+          &torch::nested_tensor::THPNestedTensor::contiguous)
       .def("get_buffer", &torch::nested_tensor::THPNestedTensor::get_buffer)
       .def("to_tensor", &torch::nested_tensor::THPNestedTensor::to_tensor)
       .def("__str__", &torch::nested_tensor::THPNestedTensor::str)
