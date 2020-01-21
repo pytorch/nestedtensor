@@ -8,6 +8,7 @@ import unittest
 from utils import TestCase
 import random
 import utils
+from utils import nested_size_to_list
 
 #
 # Test data
@@ -60,7 +61,7 @@ expected_nt2 = nt.nested_tensor([
     ]),
     nt.nested_tensor([
         torch.tensor([[[5, 6],
-                      [7, 8]]]),
+                       [7, 8]]]),
     ]),
 ])
 
@@ -78,7 +79,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(nt1.nested_dim(), 2)
         self.assertEqual(nt1.size(), (2, 2, 2))
         self.assertEqual(nt1[0].dim(), 2)
-        self.assertEqual(nt1.nested_size(), nt.NestedSize([[[2],[2]], [[2],[2]]]))
+        self.assertEqual(nt1.nested_size(), nested_size_to_list([[[2],[2]], [[2],[2]]]))
 
         nt1 = utils.gen_nested_tensor(seed=1, nested_dim=2, tensor_dim=2, size_low=2, size_high=2)
         self.assertTrue(nt.is_nested_tensor(nt1))
@@ -88,7 +89,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(nt1[0].size(), (2, 2, 2))
         self.assertEqual(nt1[0][0].size(), torch.Size([2, 2]))
         self.assertEqual(nt1[0][0][0].size(), torch.Size([2]))
-        self.assertEqual(nt1.nested_size(), nt.NestedSize([[[2, 2],[2, 2]], [[2, 2],[2, 2]]]))
+        self.assertEqual(nt1.nested_size(), nested_size_to_list([[[2, 2],[2, 2]], [[2, 2],[2, 2]]]))
 
     #
     # Group of tests to test to_tensor_mask() 
@@ -98,130 +99,98 @@ class TestTensorMask(TestCase):
             torch.tensor([1, 2]),
             torch.tensor([3, 4])
         ])
-        tensor, mask = nt1.to_tensor_mask()
-        self.assertEqual(mask, torch.tensor(True))
-        self.assertEqual(mask.size(), torch.Size([]))
-        self.assertEqual(mask.dim(), 0)
-        self.assertEqual(tensor.size(), torch.Size([2, 2]))
-        self.assertEqual(tensor.dim(), 2)
-        self.assertEqual(tensor.dim(), nt1.dim())
+        exp_tensor = torch.tensor([[1, 2], [3, 4]])
+        exp_mask = torch.tensor(True)
+
+        res_tensor, res_mask = nt1.to_tensor_mask()
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
     def test_to_tensor_mask_nt_dim_4(self):
         # mask_dim = None
-        tensor, mask = original_nt2.to_tensor_mask()
-        self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True, True]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
-        self.assertEqual(mask.dim(), 3)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 4)
-        self.assertEqual(tensor.dim(), original_nt2.dim())
+        res_tensor, res_mask = original_nt2.to_tensor_mask()
+        exp_mask = torch.tensor([[[ True, False]],
+                                 [[ True, True]]])
+        exp_tensor = torch.tensor([[[[1, 2], [0, 0]]],
+                                   [[[3, 4], [5, 6]]]])
+
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 0
-        tensor, mask = original_nt2.to_tensor_mask(mask_dim=0)
-        self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True, True]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
-        self.assertEqual(mask.dim(), 3)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 4)
-        self.assertEqual(tensor.dim(), original_nt2.dim())
+        res_tensor, res_mask = original_nt2.to_tensor_mask(mask_dim=0)
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 1
-        tensor, mask = original_nt2.to_tensor_mask(mask_dim=1)
-        self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True, True]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
-        self.assertEqual(mask.dim(), 3)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 4)
+        res_tensor, res_mask = original_nt2.to_tensor_mask(mask_dim=1)
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 2
-        tensor, mask = original_nt2.to_tensor_mask(mask_dim=2)
-        self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True,  True]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
-        self.assertEqual(mask.dim(), 3)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 4)
-        self.assertEqual(tensor.dim(), original_nt2.dim())
+        res_tensor, res_mask = original_nt2.to_tensor_mask(mask_dim=2)
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 3
-        tensor, mask = original_nt2.to_tensor_mask(mask_dim=3)
-        self.assertEqual(mask, torch.tensor([[[ True, False]],
-                                             [[ True, True]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 2]))
-        self.assertEqual(mask.dim(), 3)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 4)
-        self.assertEqual(tensor.dim(), original_nt2.dim())
+        res_tensor, res_mask = original_nt2.to_tensor_mask(mask_dim=3)
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 4
-        tensor, mask = original_nt2.to_tensor_mask(mask_dim=4)
-        self.assertEqual(mask, torch.tensor([[[[ True, True],
-                                               [False, False]]],
-                                             [[[ True, True],
-                                               [ True, True]]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 2, 2]))
-        self.assertEqual(mask.dim(), 4)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 4)
-        self.assertEqual(tensor.dim(), original_nt2.dim())
+        res_tensor, res_mask = original_nt2.to_tensor_mask(mask_dim=4)
+        exp_tensor = torch.tensor([[[[1, 2], [0, 0]]],
+                                    [[[3, 4], [5, 6]]]])
+        exp_mask = torch.tensor([[[[ True,  True], [False, False]]],
+                                 [[[ True,  True], [ True,  True]]]])
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
     def test_to_tensor_mask_nt_dim_5(self):
         # mask_dim = None
-        tensor, mask = original_nt.to_tensor_mask()
-        self.assertEqual(mask, torch.tensor(True))
-        self.assertEqual(mask.size(), torch.Size([]))
-        self.assertEqual(mask.dim(), 0)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 5)
-        self.assertEqual(tensor.dim(), original_nt.dim())
+        res_tensor, res_mask = original_nt.to_tensor_mask()
+        exp_tensor = torch.tensor([[[[[1, 2], [3, 4]]]],
+                                   [[[[5, 6], [7, 8]]]]])
+        exp_mask = torch.tensor(True)
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 0
-        tensor, mask = original_nt.to_tensor_mask(mask_dim=0)
-        self.assertEqual(mask, torch.tensor(True))
-        self.assertEqual(mask.size(), torch.Size([]))
-        self.assertEqual(mask.dim(), 0)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 5)
-        self.assertEqual(tensor.dim(), original_nt.dim())
+        res_tensor, res_mask = original_nt.to_tensor_mask(mask_dim=0)
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 1
-        tensor, mask = original_nt.to_tensor_mask(mask_dim=1)
-        self.assertEqual(mask, torch.tensor([True, True]))
-        self.assertEqual(mask.size(), torch.Size([2]))
-        self.assertEqual(mask.dim(), 1)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 5)
-        self.assertEqual(tensor.dim(), original_nt.dim())
+        res_tensor, res_mask = original_nt.to_tensor_mask(mask_dim=1)
+        exp_tensor = torch.tensor([[[[[1, 2], [3, 4]]]],
+                                   [[[[5, 6], [7, 8]]]]])
+        exp_mask = torch.tensor([True, True])
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
 
         # mask_dim = 2
-        tensor, mask = original_nt.to_tensor_mask(mask_dim=2)
-        self.assertEqual(mask, torch.tensor([[True], [True]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1]))
-        self.assertEqual(mask.dim(), 2)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 5)
-        self.assertEqual(tensor.dim(), original_nt.dim())
-
+        res_tensor, res_mask = original_nt.to_tensor_mask(mask_dim=2)
+        exp_mask = torch.tensor([[True], [True]])
+        exp_tensor = torch.tensor([[[[[1, 2], [3, 4]]]],
+                                   [[[[5, 6], [7, 8]]]]])
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)
+        
         # mask_dim = 3
-        tensor, mask = original_nt.to_tensor_mask(mask_dim=3)
-        self.assertEqual(mask, torch.tensor([[[True]], [[True]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 1]))
-        self.assertEqual(mask.dim(), 3)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 5)
-        self.assertEqual(tensor.dim(), original_nt.dim())
+        res_tensor, res_mask = original_nt.to_tensor_mask(mask_dim=3)
+        exp_mask = torch.tensor([[[True]], [[True]]])
+        exp_tensor = torch.tensor([[[[[1, 2], [3, 4]]]],
+                                   [[[[5, 6], [7, 8]]]]])
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor)    
 
         # mask_dim = 4
-        tensor, mask = original_nt.to_tensor_mask(mask_dim=4)
-        self.assertEqual(mask, torch.tensor([[[[True, True]]], [[[True, True]]]]))
-        self.assertEqual(mask.size(), torch.Size([2, 1, 1, 2]))
-        self.assertEqual(mask.dim(), 4)
-        self.assertEqual(tensor.size(), torch.Size([2, 1, 1, 2, 2]))
-        self.assertEqual(tensor.dim(), 5)
-        self.assertEqual(tensor.dim(), original_nt.dim())
+        res_tensor, res_mask = original_nt.to_tensor_mask(mask_dim=4)
+        exp_mask = torch.tensor([[[[True, True]]],[[[True, True]]]])
+        exp_tensor = torch.tensor([[[[[1, 2], [3, 4]]]],
+                                   [[[[5, 6], [7, 8]]]]])
+        self.assertEqual(res_mask, exp_mask)
+        self.assertEqual(res_tensor, exp_tensor) 
 
     #
     # Group of tests to test nested_tensor_from_tensor_mask() 
