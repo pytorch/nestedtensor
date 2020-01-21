@@ -16,21 +16,8 @@ std::vector<int64_t> _cont_stride(c10::List<int64_t> size) {
 }
 
 SizeNode _infer_stride(SizeNode nested_size) {
-  if (nested_size.is_leaf()) {
-    c10::List<c10::List<int64_t>> result;
-    for (size_t i = 0; i < nested_size.size(); i++) {
-      // std::vector<int64_t> stride = _cont_stride(nested_size.payload(i);
-      // c10::IntArrayRef stride(stride.data<int64_t>(), stride.size());
-      result.emplace_back(_cont_stride(nested_size.payload(i)));
-    }
-    return SizeNode(result);
-  } else {
-    std::vector<SizeNode> result;
-    for (size_t i = 0; i < nested_size.degree(); i++) {
-      result.push_back(_infer_stride(nested_size.children(i)));
-    }
-    return SizeNode(result);
-  }
+  return map<c10::List<int64_t>, c10::List<int64_t>>(
+      nested_size, [](c10::List<int64_t> size) { return _cont_stride(size); });
 }
 
 SizeNode _make_nested_size(TensorNode tensor_node) {

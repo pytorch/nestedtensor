@@ -112,17 +112,9 @@ std::string SizeNode___str__(
 
 c10::optional<c10::IValue> py_obj_to_ivalue(py::object py_obj);
 
-int64_t nested_node_numel(const TensorNode& meta_node);
-
-bool all_contiguous(const TensorNode& meta_node);
-
-bool all_size_equal(const SizeNode& nested_size);
-
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride);
 
 int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
-
-at::Tensor _get_first_variable(TensorNode nested_node);
 
 template <typename A>
 py::object wrap_nested_node(NestedNode<A> nested_node) {
@@ -142,17 +134,22 @@ py::object wrap_nested_node(NestedNode<A> nested_node) {
 
 at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);
 
+std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
+
 bool _verify_variables(
     const torch::autograd::Variable& first_variable,
     const TensorNode nested_node);
 
 template <typename A>
-inline NestedNode<A> get_first_leaf(NestedNode<A> nested_node) {
+inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
+  if (nested_node.is_leaf() && nested_node.size() == 0) {
+    return c10::nullopt;
+  }
   const NestedNode<A>* start = &nested_node;
   while (!start->is_leaf()) {
     start = start->children_data(0);
   }
-  return *start;
+  return start->payload(0);
 }
 
 template <typename B, typename A, typename F>
@@ -170,6 +167,23 @@ inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
     }
     return NestedNode<A>(result);
   }
+}
+
+// NOTE: Assuming all NestedNodes have same shape.
+template <typename F, typename A, typename... B>
+inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
+  A result = ident;
+  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+  if (first_node.is_leaf()) {
+    for (size_t i = 0; i < first_node.size(); i++) {
+      result = fn(nested_node.payload(i)..., result);
+    }
+  } else {
+    for (size_t i = 0; i < first_node.degree(); i++) {
+      result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
+    }
+  }
+  return result;
 }
 
 template <typename A, class F>
@@ -197,6 +211,19 @@ inline void apply2(
   } else {
     for (size_t i = 0; i < nested_node1.degree(); i++) {
       apply2(nested_node1.children(i), nested_node2.children(i), fn);
+    }
+  }
+}
+
+template <typename T>
+inline void aggregate_leafs(NestedNode<T> input, std::vector<T>& result) {
+  if (input.is_leaf()) {
+    for (size_t i = 0; i < input.size(); i++) {
+      result.push_back(input.payload(i));
+    }
+  } else {
+    for (size_t i = 0; i < input.degree(); i++) {
+      aggregate_leafs<T>(input.children(i), result);
     }
   }
 }

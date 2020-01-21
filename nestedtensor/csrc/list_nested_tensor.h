@@ -9,7 +9,9 @@ struct _ListNestedTensor {
   _ListNestedTensor() = delete;
   _ListNestedTensor(TensorNode structure)
       : _structure(structure),
-        _first_variable(_get_first_variable(_structure)) {
+        _first_variable(
+            get_first_leaf(_structure) ? *get_first_leaf(_structure)
+                                       : at::ones({})) {
     if (__len__() > 0) {
       TORCH_CHECK(
           _verify_variables(_first_variable, _structure),
@@ -71,7 +73,9 @@ struct _ListNestedTensor {
     }
   }
   at::Tensor to_tensor() {
-    return NestedNode_to_tensor(_structure);
+    std::vector<at::Tensor> tensors;
+    aggregate_leafs(_structure, tensors);
+    return stack(tensors);
   }
   int64_t nested_dim() {
     const TensorNode* start_structure = &_structure;
@@ -101,7 +105,10 @@ struct _ListNestedTensor {
     return _first_variable.dim() + nested_dim();
   }
   int64_t numel() {
-    return nested_node_numel(_structure);
+    auto fn = [](at::Tensor leaf, int64_t input) {
+      return input + leaf.numel();
+    };
+    return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
   }
   bool is_pinned() {
     return _first_variable.is_pinned();
@@ -115,12 +122,7 @@ struct _ListNestedTensor {
   // TODO: Implement these and call into them isntead of implementing them
   // separately in Variable dispatch functions.
   // _ListNestedTensor to - it's a pain due to the 100s of to overloads
-  // py::tuple size(int64_t dim);
   // separately in Variable dispatch functions.
-  // std::vector<py::object> unbind();
-  // std::string __str__();
-  // std::string __repr__();
-  // py::tuple size(int64_t dim);
 
  private:
   TensorNode _structure;

@@ -103,64 +103,6 @@ c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
   return payload;
 }
 
-int64_t nested_node_numel(const TensorNode& meta_node) {
-  int64_t result = 0;
-  if (meta_node.is_leaf()) {
-    for (size_t i = 0; i < meta_node.size(); i++) {
-      result += meta_node.payload(i).numel();
-    }
-  } else {
-    for (size_t i = 0; i < meta_node.degree(); i++) {
-      result += nested_node_numel(meta_node.children(i));
-    }
-  }
-  return result;
-}
-
-bool all_contiguous(const TensorNode& meta_node) {
-  bool ac = true;
-  if (meta_node.is_leaf()) {
-    for (size_t i = 0; i < meta_node.size(); i++) {
-      if (ac) {
-        ac = ac && meta_node.payload(i).is_contiguous();
-      }
-    }
-  } else {
-    for (size_t i = 0; i < meta_node.degree(); i++) {
-      if (ac) {
-        ac = ac && all_contiguous(meta_node.children(i));
-      }
-    }
-  }
-  return ac;
-}
-
-bool all_size_equal(const SizeNode& nested_size) {
-  if (nested_size.is_leaf()) {
-    if (nested_size.size() > 0) {
-      auto size0 = nested_size.payload(0);
-      for (size_t i = 1; i < nested_size.size(); i++) {
-        for (size_t j = 0; j < nested_size.payload(i).size(); j++) {
-          if (size0[j] != nested_size.payload(i)[j]) {
-            return false;
-          }
-        }
-      }
-    }
-  } else {
-    if (nested_size.degree() > 0) {
-      // A child might be a leaf and degree will encode that.
-      size_t nested_size0 = nested_size.children(0).degree();
-      for (size_t i = 1; i < nested_size.degree(); i++) {
-        if (nested_size0 != nested_size.children(i).degree() ||
-            !all_size_equal(nested_size.children(i)))
-          return false;
-      }
-    }
-  }
-  return true;
-}
-
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   if (size.size() == 0) {
     return 0;
@@ -169,41 +111,11 @@ int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
 }
 
 int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
-  int64_t result = 0;
-  if (nested_size.is_leaf()) {
-    for (size_t i = 0; i < nested_size.size(); i++) {
-      result += num_memory(nested_size.payload(i), nested_stride.payload(i));
-    }
-  } else {
-    for (size_t i = 0; i < nested_size.degree(); i++) {
-      result +=
-          size_node_memory(nested_size.children(i), nested_stride.children(i));
-    }
-  }
-  return result;
-}
-
-at::Tensor _get_first_variable(TensorNode nested_node) {
-  TensorNode leaf = get_first_leaf(nested_node);
-  if (leaf.size()) {
-    return leaf.payload(0);
-  } else {
-    return torch::ones({});
-  }
-}
-
-at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node) {
-  std::vector<at::Tensor> variables;
-  if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      variables.emplace_back(nested_node.payload(i));
-    }
-  } else {
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      variables.emplace_back(NestedNode_to_tensor(nested_node.children(i)));
-    }
-  }
-  return stack(variables);
+  auto fn = [](c10::List<int64_t> size,
+               c10::List<int64_t> stride,
+               int64_t input) { return num_memory(size, stride) + input; };
+  return reduce<decltype(fn), int64_t, c10::List<int64_t>, c10::List<int64_t>>(
+      nested_size, nested_stride, fn, 0);
 }
 
 bool _verify_variables(
@@ -245,6 +157,50 @@ bool _verify_variables(
     }
   }
   return valid;
+}
+
+std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
+  if (size_node.is_leaf()) {
+    std::vector<c10::optional<int64_t>> result;
+    result.push_back(size_node.size());
+    if (size_node.size() == 0) {
+      return result;
+    }
+
+    for (const auto& size : size_node.payload(0)) {
+      result.push_back(size);
+    }
+
+    for (size_t j = 1; j < result.size(); j++) {
+      for (size_t i = 1; i < size_node.size(); i++) {
+        if (!result[j]) {
+          break;
+        }
+        if ((*(result[j])) != size_node.payload(i)[j - 1]) {
+          result[j] = c10::nullopt;
+        }
+      }
+    }
+    return result;
+  }
+  std::vector<c10::optional<int64_t>> result;
+  result.push_back(size_node.degree());
+
+  if (size_node.degree() > 0) {
+    for (const auto& size : construct_size(size_node.children(0))) {
+      result.push_back(size);
+    }
+    for (size_t i = 1; i < size_node.degree(); i++) {
+      auto size_node_i = construct_size(size_node.children(i));
+      for (size_t j = 1; j < result.size(); j++) {
+        if (result[j] && ((*result[j]) != size_node_i[j - 1])) {
+          result[j] = c10::nullopt;
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 } // namespace nested_tensor
