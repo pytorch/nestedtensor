@@ -50,7 +50,7 @@ class TestNestedTensor(TestCase):
         default_nested_tensor = nestedtensor.nested_tensor([])
         default_tensor = torch.tensor([])
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
-        self.assertEqual(list(default_nested_tensor.nested_size()), [])
+        self.assertEqual(default_nested_tensor.nested_size().unbind(), [])
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())
         self.assertEqual(default_nested_tensor.layout, default_tensor.layout)
         self.assertEqual(default_nested_tensor.device, default_tensor.device)
