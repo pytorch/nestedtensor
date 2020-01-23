@@ -1,5 +1,6 @@
 #pragma once
 #include <torch/csrc/jit/pybind_utils.h>
+#include <torch/csrc/utils/python_strings.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -101,9 +102,50 @@ using TensorNode = NestedNode<at::Tensor>;
 
 using SizeNode = NestedNode<c10::List<int64_t>>;
 
-std::string TensorNode___str__(
-    const TensorNode& nested_node,
-    const std::string& tabs = "");
+std::vector<std::string> split_str(std::string s, std::string delimiter) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+  std::string token;
+  while ((pos = s.find(delimiter)) != std::string::npos) {
+    token = s.substr(0, pos);
+    result.push_back(token);
+    s.erase(0, pos + delimiter.length());
+  }
+  result.push_back(s);
+  return result;
+}
+
+template <typename T, typename F>
+std::string NestedNode___str__(
+    const NestedNode<T>& nested_node,
+    const std::string name,
+    F payload_to_str,
+    const std::string& tabs = "") {
+  std::stringstream result;
+  auto tabs_ = tabs + "\t";
+  // result << "nested_tensor([";
+  result << name << "([";
+  if (nested_node.is_leaf()) {
+    for (size_t i = 0; i < nested_node.size(); i++) {
+      if (i > 0) {
+        result << ",";
+      }
+      result << payload_to_str(nested_node.payload(i), tabs_);
+    }
+  } else {
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      if (i > 0) {
+        result << ",";
+      }
+      result << "\n" << tabs_;
+      result << NestedNode___str__<T, F>(
+          nested_node.children(i), name, payload_to_str, tabs_);
+    }
+  }
+  result << std::endl;
+  result << tabs << "])";
+  return result.str();
+}
 
 std::string SizeNode___str__(
     const SizeNode& nested_node,

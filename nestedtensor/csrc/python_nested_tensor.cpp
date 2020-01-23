@@ -1,28 +1,18 @@
+#include <creation.h>
 #include <python_nested_tensor.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
 #include <torch/csrc/jit/pybind_utils.h>
-#include <creation.h>
 
 namespace py = pybind11;
 
 namespace torch {
 namespace nested_tensor {
 
-std::vector<py::object> unbind_THPSizeNode(
-    SizeNode size_node,
-    std::string name) {
-  std::vector<py::object> result;
-  if (size_node.is_leaf()) {
-    for (size_t i = 0; i < size_node.size(); i++) {
-      result.push_back(torch::jit::toPyObject(size_node.payload(i)));
-    }
-  } else {
-    for (size_t i = 0; i < size_node.degree(); i++) {
-      result.push_back(py::cast(THPSizeNode(size_node.children(i), name)));
-    }
-  }
-  return result;
-}
+template <typename T>
+THPNestedNode::THPNestedNode(SizeNode size_node, std::string name)
+    : _size_node(size_node),
+      _name(name),
+      _elements(unbind_THPNestedNode<c10::List<int64_t>>(_size_node, _name)) {}
 
 py::object THPNestedTensor::getDtype() {
   return data_map<py::object>(_data, [](auto data) {

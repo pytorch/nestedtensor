@@ -56,7 +56,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           &torch::nested_tensor::THPNestedTensor::requires_grad)
       .def("__len__", &torch::nested_tensor::THPNestedTensor::len)
       .def("element_size", &torch::nested_tensor::THPNestedTensor::element_size)
-      .def("nested_size", &torch::nested_tensor::THPNestedTensor::nested_size)
+      .def(
+          "nested_size",
+          py::overload_cast<>(
+              &torch::nested_tensor::THPNestedTensor::nested_size))
+      .def(
+          "nested_size",
+          py::overload_cast<int64_t>(
+              &torch::nested_tensor::THPNestedTensor::nested_size))
       .def(
           "nested_stride",
           &torch::nested_tensor::THPNestedTensor::nested_stride)
@@ -125,9 +132,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "is_contiguous",
           &torch::nested_tensor::THPNestedTensor::is_contiguous)
-      .def(
-          "contiguous",
-          &torch::nested_tensor::THPNestedTensor::contiguous)
+      .def("contiguous", &torch::nested_tensor::THPNestedTensor::contiguous)
       .def("get_buffer", &torch::nested_tensor::THPNestedTensor::get_buffer)
       .def("to_tensor", &torch::nested_tensor::THPNestedTensor::to_tensor)
       .def("__str__", &torch::nested_tensor::THPNestedTensor::str)
