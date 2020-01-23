@@ -10,43 +10,6 @@ namespace nested_tensor {
 using namespace torch::jit;
 using namespace torch::autograd::utils;
 
-std::string SizeNode___str__(
-    const SizeNode& nested_node,
-    const std::string name,
-    const std::string& tabs) {
-  std::stringstream result;
-  auto tabs_ = tabs + "\t";
-  result << name << "([";
-  if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      if (i > 0) {
-        result << ",";
-      }
-      // TODO: Parameterize this to allow printing torch.Size etc.
-      c10::List<int64_t> size_node_payload = nested_node.payload(i);
-      result << "\n" << tabs_ << "(";
-      for (size_t j = 0; j < size_node_payload.size(); j++) {
-        if (j > 0) {
-          result << ", ";
-        }
-        result << size_node_payload[j];
-      }
-      result << ")";
-    }
-  } else {
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      if (i > 0) {
-        result << ",";
-      }
-      result << "\n" << tabs_;
-      result << SizeNode___str__(nested_node.children(i), name, tabs_);
-    }
-  }
-  result << std::endl;
-  result << tabs << "])";
-  return result.str();
-}
-
 c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
   auto inferred_type = tryToInferType(py_obj);
   if (!inferred_type.success()) {

@@ -136,11 +136,6 @@ std::string NestedNode___str__(
   return result.str();
 }
 
-std::string SizeNode___str__(
-    const SizeNode& nested_node,
-    const std::string name,
-    const std::string& tabs = "");
-
 c10::optional<c10::IValue> py_obj_to_ivalue(py::object py_obj);
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride);
