@@ -8,12 +8,6 @@ namespace py = pybind11;
 namespace torch {
 namespace nested_tensor {
 
-template <typename T>
-THPNestedNode::THPNestedNode(SizeNode size_node, std::string name)
-    : _size_node(size_node),
-      _name(name),
-      _elements(unbind_THPNestedNode<c10::List<int64_t>>(_size_node, _name)) {}
-
 py::object THPNestedTensor::getDtype() {
   return data_map<py::object>(_data, [](auto data) {
     return py::reinterpret_steal<py::object>(
