@@ -30,7 +30,7 @@ struct THPNestedNode {
           return ss.str();
         });
   }
-  const NestedNode<T>& get_size_node() {
+  const NestedNode<T>& get_node() {
     return _size_node;
   }
   std::string get_name() {
@@ -58,6 +58,7 @@ struct THPNestedNode {
 };
 
 using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
+using THPIntegerNode = THPNestedNode<int64_t>;
 
 template <class Result, class F>
 static inline Result data_map(
@@ -88,18 +89,21 @@ struct THPNestedTensor {
     return _data;
   }
   std::vector<c10::optional<int64_t>> size() {
-    return construct_size(this->nested_size().get_size_node());
+    return construct_size(this->nested_size().get_node());
   }
   THPSizeNode nested_size() {
     return THPSizeNode(
         data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); }),
         "NestedSize");
   }
-  THPSizeNode nested_size(int64_t dim) {
+  THPIntegerNode nested_size(int64_t dim) {
     std::cout << "HEEE dim: " << dim << std::endl;
-    return THPSizeNode(
-        data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); }),
-        "NestedSize");
+    auto thp_size_node = nested_size();
+    SizeNode size_node = thp_size_node.get_node();
+    IntegerNode dim_size_node = map<c10::List<int64_t>, int64_t>(
+        size_node,
+        [dim](c10::List<int64_t> size) -> int64_t { return size.extract(dim); });
+    return THPIntegerNode(dim_size_node, "NestedSize");
   }
   THPSizeNode nested_stride() {
     return THPSizeNode(

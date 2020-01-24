@@ -49,6 +49,35 @@ inline bool operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
       return false;
     }
     for (size_t i = 0; i < a.size(); i++) {
+      if (a.payload(i) != b.payload(i)) {
+        return false;
+      }
+    }
+  } else {
+    if (!(a.degree() == b.degree())) {
+      return false;
+    }
+    for (size_t i = 0; i < a.size(); i++) {
+      if (!(a.children(i) == b.children(i))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+template<>
+inline bool operator==(
+    const NestedNode<c10::List<int64_t>>& a,
+    const NestedNode<c10::List<int64_t>>& b) {
+  if (a.is_leaf() != b.is_leaf()) {
+    return false;
+  }
+  if (a.is_leaf()) {
+    if (a.size() != b.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < a.size(); i++) {
       if (a.payload(i).size() != b.payload(i).size()) {
         return false;
       }
@@ -59,11 +88,11 @@ inline bool operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
       }
     }
   } else {
-    if (a.degree() != b.degree()) {
+    if (!(a.degree() == b.degree())) {
       return false;
     }
     for (size_t i = 0; i < a.size(); i++) {
-      if (a.children(i) != b.children(i)) {
+      if (!(a.children(i) == b.children(i))) {
         return false;
       }
     }
@@ -101,6 +130,7 @@ using TensorNode = NestedNode<at::Tensor>;
 // lists of numbers or a list of empty lists.
 
 using SizeNode = NestedNode<c10::List<int64_t>>;
+using IntegerNode = NestedNode<int64_t>;
 
 std::vector<std::string> split_str(std::string s, std::string delimiter);
 
