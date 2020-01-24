@@ -27,19 +27,6 @@ SizeNode _make_nested_size(TensorNode tensor_node) {
       });
 }
 
-std::vector<std::string> split_str(std::string s, std::string delimiter) {
-  std::vector<std::string> result;
-  size_t pos = 0;
-  std::string token;
-  while ((pos = s.find(delimiter)) != std::string::npos) {
-    token = s.substr(0, pos);
-    result.push_back(token);
-    s.erase(0, pos + delimiter.length());
-  }
-  result.push_back(s);
-  return result;
-}
-
 void _split_sizes(
     SizeNode nested_size,
     SizeNode nested_stride,
