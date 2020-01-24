@@ -39,6 +39,20 @@ struct NestedNode {
   c10::List<T> _payload;
 };
 
+inline bool operator==(
+    const c10::List<int64_t>& a,
+    const c10::List<int64_t>& b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (size_t j = 0; j < a.size(); j++) {
+    if (!(a[j] == b[j])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 template <typename T>
 inline bool operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
   if (a.is_leaf() != b.is_leaf()) {
@@ -49,42 +63,8 @@ inline bool operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
       return false;
     }
     for (size_t i = 0; i < a.size(); i++) {
-      if (a.payload(i) != b.payload(i)) {
+      if (!(a.payload(i) == b.payload(i))) {
         return false;
-      }
-    }
-  } else {
-    if (!(a.degree() == b.degree())) {
-      return false;
-    }
-    for (size_t i = 0; i < a.size(); i++) {
-      if (!(a.children(i) == b.children(i))) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-template<>
-inline bool operator==(
-    const NestedNode<c10::List<int64_t>>& a,
-    const NestedNode<c10::List<int64_t>>& b) {
-  if (a.is_leaf() != b.is_leaf()) {
-    return false;
-  }
-  if (a.is_leaf()) {
-    if (a.size() != b.size()) {
-      return false;
-    }
-    for (size_t i = 0; i < a.size(); i++) {
-      if (a.payload(i).size() != b.payload(i).size()) {
-        return false;
-      }
-      for (size_t j = 0; j < a.payload(i).size(); j++) {
-        if (a.payload(i)[j] != b.payload(i)[j]) {
-          return false;
-        }
       }
     }
   } else {
@@ -174,17 +154,19 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
 
 template <typename A, typename B = py::object>
 B wrap_nested_node(NestedNode<A> nested_node) {
-  std::vector<py::object> result;
   if (nested_node.is_leaf()) {
+    std::vector<py::object> result;
     for (size_t i = 0; i < nested_node.size(); i++) {
       result.push_back(torch::jit::toPyObject(nested_node.payload(i)));
     }
+    return B(py::cast(result));
   } else {
+    std::vector<B> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
+    return B(py::cast(result));
   }
-  return B(py::cast(result));
 }
 
 at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);
