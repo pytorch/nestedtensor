@@ -172,8 +172,8 @@ int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride);
 
 int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
 
-template <typename A>
-py::object wrap_nested_node(NestedNode<A> nested_node) {
+template <typename A, typename B = py::object>
+B wrap_nested_node(NestedNode<A> nested_node) {
   std::vector<py::object> result;
   if (nested_node.is_leaf()) {
     for (size_t i = 0; i < nested_node.size(); i++) {
@@ -184,8 +184,7 @@ py::object wrap_nested_node(NestedNode<A> nested_node) {
       result.push_back(wrap_nested_node(nested_node.children(i)));
     }
   }
-  py::list result1 = py::cast(result);
-  return result1;
+  return B(py::cast(result));
 }
 
 at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);

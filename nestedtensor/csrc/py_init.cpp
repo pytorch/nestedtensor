@@ -34,18 +34,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("__repr__", &torch::nested_tensor::THPSizeNode::str)
       .def("__len__", &torch::nested_tensor::THPSizeNode::len);
 
-  py::class_<torch::nested_tensor::THPIntegerNode>(m, "IntegerNode")
-      .def("__str__", &torch::nested_tensor::THPIntegerNode::str)
-      .def("unbind", &torch::nested_tensor::THPIntegerNode::unbind)
-      .def(
-          "__eq__",
-          [](torch::nested_tensor::THPIntegerNode& a,
-             torch::nested_tensor::THPIntegerNode& b) {
-            return a.get_node() == b.get_node();
-          })
-      .def("__repr__", &torch::nested_tensor::THPIntegerNode::str)
-      .def("__len__", &torch::nested_tensor::THPIntegerNode::len);
-
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
