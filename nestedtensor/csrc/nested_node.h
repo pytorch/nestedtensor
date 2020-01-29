@@ -15,6 +15,9 @@ struct NestedNode {
   inline bool is_leaf() const {
     return _is_leaf;
   }
+  inline c10::List<T> payload() {
+    return _payload;
+  }
   inline T payload(size_t i) const {
     return _payload[i];
   }
@@ -112,7 +115,9 @@ using TensorNode = NestedNode<at::Tensor>;
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 
-std::vector<std::string> split_str(std::string s, std::string delimiter) {
+static std::vector<std::string> split_str(
+    std::string s,
+    std::string delimiter) {
   std::vector<std::string> result;
   size_t pos = 0;
   std::string token;
@@ -212,6 +217,20 @@ inline NestedNode<A> map(NestedNode<B> nested_node, F fn) {
     std::vector<NestedNode<A>> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       result.emplace_back(map<B, A, F>(nested_node.children(i), fn));
+    }
+    return NestedNode<A>(result);
+  }
+}
+
+template <typename A>
+inline NestedNode<A> flatten(NestedNode<A> nested_node) {
+  if (nested_node.is_leaf()) {
+    return nested_node;
+  } else {
+    c10::List<A> result;
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      c10::List<A> tmp = flatten<A>(nested_node.children(i));
+      result.append(tmp);
     }
     return NestedNode<A>(result);
   }
