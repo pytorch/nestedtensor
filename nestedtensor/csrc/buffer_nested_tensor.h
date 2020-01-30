@@ -66,7 +66,7 @@ struct TORCH_API _BufferNestedTensor {
         detach_buffer,
         _nested_size,
         _nested_stride,
-        new_map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
+        map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   _BufferNestedTensor pin_memory();
   void backward(

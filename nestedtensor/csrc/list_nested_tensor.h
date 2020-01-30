@@ -22,29 +22,29 @@ struct _ListNestedTensor {
     return _first_variable.element_size();
   }
   SizeNode nested_size() {
-    return new_map(
+    return map(
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
         _structure);
   }
   SizeNode nested_stride() {
-    return new_map(
+    return map(
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
         _structure);
   }
   _ListNestedTensor pin_memory() {
-    return _ListNestedTensor(new_map(
+    return _ListNestedTensor(map(
         [](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   _ListNestedTensor grad() {
     return _ListNestedTensor(
-        new_map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
+        map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
   }
   _ListNestedTensor detach() {
     return _ListNestedTensor(
-        new_map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
+        map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   _ListNestedTensor requires_grad_(bool requires_grad) {
-    return _ListNestedTensor(new_map(
+    return _ListNestedTensor(map(
         [requires_grad](at::Tensor tensor) {
           return tensor.set_requires_grad(requires_grad);
         },

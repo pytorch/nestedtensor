@@ -70,7 +70,7 @@ _BufferNestedTensor make_contiguous(TensorNode structure) {
   }
   return _BufferNestedTensor(
       buffer,
-      new_map(
+      map(
           [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           structure));
 }

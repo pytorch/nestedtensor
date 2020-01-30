@@ -48,13 +48,11 @@ TensorNode build_structure(
     at::Tensor buffer,
     SizeNode nested_size,
     SizeNode nested_stride) {
-  IntegerNode tmp = new_map(
-      [](c10::List<int64_t> a, c10::List<int64_t> b) {
-        return num_memory(a, b);
-      },
-      nested_size,
-      nested_stride);
-  c10::List<int64_t> split_sizes = flatten(tmp);
+  c10::List<int64_t> split_sizes = flatten(
+      map([](c10::List<int64_t> a,
+             c10::List<int64_t> b) { return num_memory(a, b); },
+          nested_size,
+          nested_stride));
   std::vector<int64_t> nonzero_split_sizes;
   for (size_t i = 0; i < split_sizes.size(); i++) {
     if (split_sizes[i] > 0) {
@@ -107,8 +105,7 @@ _BufferNestedTensor::_BufferNestedTensor(
     : _BufferNestedTensor(
           buffer,
           nested_size,
-          new_map(
-              [](c10::List<int64_t> size) { return _cont_stride(size); },
+          map([](c10::List<int64_t> size) { return _cont_stride(size); },
               nested_size)) {}
 _BufferNestedTensor::_BufferNestedTensor(
     torch::autograd::Variable buffer,

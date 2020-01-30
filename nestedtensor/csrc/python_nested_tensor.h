@@ -99,7 +99,7 @@ struct THPNestedTensor {
     std::cout << "HEEE dim: " << dim << std::endl;
     auto thp_size_node = nested_size();
     SizeNode size_node = thp_size_node.get_node();
-    IntegerNode dim_size_node = new_map(
+    IntegerNode dim_size_node = map(
         [dim](c10::List<int64_t> size) { return size.extract(dim); },
         size_node);
   }

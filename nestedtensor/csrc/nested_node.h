@@ -206,10 +206,10 @@ inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
 }
 
 template <class F, class A, class TypeList>
-class _new_map;
+class _map;
 
 template <class F, class A, class... Args>
-class _new_map<F, A, c10::guts::typelist::typelist<Args...>> {
+class _map<F, A, c10::guts::typelist::typelist<Args...>> {
  public:
   // NOTE: We must move F to avoid copying objects if it is a lambda with
   // captures.
@@ -234,36 +234,18 @@ class _new_map<F, A, c10::guts::typelist::typelist<Args...>> {
   };
 };
 
+// NOTE: Assuming all NestedNodes have same shape.
+// TODO: Add check
 // TODO: Add static assert to verify lambda arguments match nested_node types
 template <class F, class... B>
 static inline NestedNode<
     typename c10::guts::infer_function_traits<F>::type::return_type>
-new_map(F&& fn, const NestedNode<B>&... nested_node) {
+map(F&& fn, const NestedNode<B>&... nested_node) {
   return _new_map<
       F,
       typename c10::guts::infer_function_traits<F>::type::return_type,
       typename c10::guts::infer_function_traits<F>::type::parameter_types>::
       function(std::move(fn), nested_node...);
-}
-
-// NOTE: Assuming all NestedNodes have same shape.
-// TODO: Add check
-template <typename F, typename A, typename... B>
-inline NestedNode<A> map(NestedNode<B>... nested_node, F fn) {
-  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
-  if (first_node.is_leaf()) {
-    c10::List<A> result;
-    for (size_t i = 0; i < first_node.size(); i++) {
-      result.emplace_back(fn(nested_node.payload(i)...));
-    }
-    return NestedNode<A>(result);
-  } else {
-    std::vector<NestedNode<A>> result;
-    for (size_t i = 0; i < first_node.degree(); i++) {
-      result.emplace_back(map<F, A, B...>(nested_node.children(i)..., fn));
-    }
-    return NestedNode<A>(result);
-  }
 }
 
 template <typename A>
