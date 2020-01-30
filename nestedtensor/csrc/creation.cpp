@@ -57,21 +57,19 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
 }
 
 _BufferNestedTensor make_contiguous(TensorNode structure) {
-  at::Tensor buffer;
-  std::vector<at::Tensor> tensors;
-  aggregate_leafs(structure, tensors);
-  for (size_t i = 0; i < tensors.size(); i++) {
-    tensors[i] = tensors[i].reshape({-1});
+  c10::List<at::Tensor> tensors;
+  for (const at::Tensor& tensor : flatten(structure)) {
+    tensors.emplace_back(tensor.reshape({-1}));
   }
+  at::Tensor buffer;
   if (tensors.size() == 0) {
     buffer = torch::ones({});
   } else {
-    buffer = at::cat(tensors, 0);
+    buffer = at::cat(tensors.vec(), 0);
   }
   return _BufferNestedTensor(
       buffer,
-      map(
-          [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+      map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           structure));
 }
 

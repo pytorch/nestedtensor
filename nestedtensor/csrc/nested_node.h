@@ -262,7 +262,7 @@ inline c10::List<A> flatten(NestedNode<A> nested_node) {
   }
 }
 
-// NOTE: Assuming all NestedNodes have same shape.
+// TODO: Assuming all NestedNodes have same shape.
 template <typename F, typename A, typename... B>
 inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
   A result = ident;
@@ -279,44 +279,17 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
   return result;
 }
 
-template <typename A, class F>
-inline void apply(NestedNode<A> nested_node, F fn) {
-  if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      fn(nested_node.payload(i));
+// TODO: Assuming all NestedNodes have same shape.
+template <class F, class... A>
+inline void apply(F&& fn, const NestedNode<A>&... nested_node) {
+  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+  if (first_node.is_leaf()) {
+    for (size_t i = 0; i < first_node.size(); i++) {
+      std::forward<F>(fn)(nested_node.payload(i)...);
     }
   } else {
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      apply(nested_node.children(i), fn);
-    }
-  }
-}
-
-template <typename A, class F>
-inline void apply2(
-    NestedNode<A> nested_node1,
-    NestedNode<A> nested_node2,
-    F fn) {
-  if (nested_node1.is_leaf()) {
-    for (size_t i = 0; i < nested_node1.size(); i++) {
-      fn(nested_node1.payload(i), nested_node2.payload(i));
-    }
-  } else {
-    for (size_t i = 0; i < nested_node1.degree(); i++) {
-      apply2(nested_node1.children(i), nested_node2.children(i), fn);
-    }
-  }
-}
-
-template <typename T>
-inline void aggregate_leafs(NestedNode<T> input, std::vector<T>& result) {
-  if (input.is_leaf()) {
-    for (size_t i = 0; i < input.size(); i++) {
-      result.push_back(input.payload(i));
-    }
-  } else {
-    for (size_t i = 0; i < input.degree(); i++) {
-      aggregate_leafs<T>(input.children(i), result);
+    for (size_t i = 0; i < first_node.degree(); i++) {
+      apply<F, A...>(std::forward<F>(fn), nested_node.children(i)...);
     }
   }
 }
