@@ -115,7 +115,7 @@ using TensorNode = NestedNode<at::Tensor>;
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 
-static std::vector<std::string> split_str(
+inline std::vector<std::string> split_str(
     std::string s,
     std::string delimiter) {
   std::vector<std::string> result;

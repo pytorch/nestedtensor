@@ -102,9 +102,10 @@ struct THPNestedTensor {
             _data, [](auto data) { return data.nested_stride(); }),
         "NestedStride");
   }
-  THPNestedTensor requires_grad_(pybind11::bool_ requires_grad) {
+  THPNestedTensor requires_grad_(pybind11::bool_ requires_grad_) {
+    bool requires_grad = requires_grad_;
     return THPNestedTensor(
-        data_map<THPNestedTensor>(_data, [&requires_grad](auto data) {
+        data_map<THPNestedTensor>(_data, [requires_grad](auto data) {
           return data.requires_grad_(requires_grad);
         }));
   }

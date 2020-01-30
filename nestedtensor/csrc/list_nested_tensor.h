@@ -86,7 +86,7 @@ struct _ListNestedTensor {
     return _first_variable.scalar_type();
   }
   at::Backend backend() {
-    return _first_variable.type().backend();
+    return options().backend();
   }
   at::Device device() {
     return _first_variable.device();
