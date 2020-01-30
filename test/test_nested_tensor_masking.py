@@ -27,15 +27,15 @@ class TestTensorMask(TestCase):
         self.assertEqual(nt1[0].dim(), 2)
         self.assertEqual(nested_size_to_list(nt1.nested_size()), [[[2],[2]], [[2],[2]]])
 
-        nt1 = utils.gen_nested_tensor(seed=1, nested_dim=2, tensor_dim=2, size_low=2, size_high=2)
+        nt1 = utils.gen_nested_tensor(seed=3, nested_dim=2, tensor_dim=2, size_low=1, size_high=5)
         self.assertTrue(nt.is_nested_tensor(nt1))
         self.assertEqual(nt1.nested_dim(), 2)
-        self.assertEqual(nt1.size(), (2, 2, 2, 2))
+        self.assertEqual(nt1.size(), (3, 2, None, None))
         self.assertEqual(nt1[0].dim(), 3)
-        self.assertEqual(nt1[0].size(), (2, 2, 2))
-        self.assertEqual(nt1[0][0].size(), torch.Size([2, 2]))
-        self.assertEqual(nt1[0][0][0].size(), torch.Size([2]))
-        self.assertEqual(nested_size_to_list(nt1.nested_size()), [[[2, 2],[2, 2]], [[2, 2],[2, 2]]])
+        self.assertEqual(nt1[0].size(), (2, None, None))
+        self.assertEqual(nt1[0][0].size(), torch.Size([2, 4]))
+        self.assertEqual(nt1[0][0][0].size(), torch.Size([4]))
+        self.assertEqual(nested_size_to_list(nt1.nested_size()), [[[2, 4], [4, 3]], [[2, 4], [4, 3]], [[2, 4], [4, 3]]])
 
     #
     # Group of tests to test to_tensor_mask() 
