@@ -40,7 +40,7 @@ struct TORCH_API _BufferNestedTensor {
     return _buffer.scalar_type();
   }
   at::Backend backend() {
-    return _buffer.type().backend();
+    return options().backend();
   }
   at::Device device() {
     return _buffer.device();
@@ -62,11 +62,11 @@ struct TORCH_API _BufferNestedTensor {
   // TODO: This should return a reference?
   _BufferNestedTensor detach() {
     at::Tensor detach_buffer = _buffer.detach();
-    TensorNode detach_tensors = map<at::Tensor, at::Tensor>(
-        _structure,
-        [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); });
     return _BufferNestedTensor(
-        detach_buffer, _nested_size, _nested_stride, detach_tensors);
+        detach_buffer,
+        _nested_size,
+        _nested_stride,
+        map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   _BufferNestedTensor pin_memory();
   void backward(

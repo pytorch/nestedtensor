@@ -10,15 +10,11 @@
 
 namespace torch {
 namespace nested_tensor {
-std::vector<py::object> unbind_THPSizeNode(
-    SizeNode size_node,
-    std::string name);
 
-struct THPSizeNode {
-  THPSizeNode(SizeNode size_node, std::string name)
-      : _size_node(size_node),
-        _name(name),
-        _elements(unbind_THPSizeNode(_size_node, _name)) {}
+template <typename T>
+struct THPNestedNode {
+  THPNestedNode(NestedNode<T> size_node, std::string name)
+      : _size_node(size_node), _name(name) {}
   int64_t len() {
     if (_size_node.is_leaf()) {
       return _size_node.size();
@@ -27,23 +23,42 @@ struct THPSizeNode {
     }
   }
   std::string str() {
-    return SizeNode___str__(_size_node, _name);
+    return NestedNode___str__(
+        _size_node, _name, [](c10::IValue payload, const std::string& tabs) {
+          std::stringstream ss;
+          ss << "\n" << tabs << payload;
+          return ss.str();
+        });
   }
-  const SizeNode& get_size_node() {
+  const NestedNode<T>& get_node() {
     return _size_node;
   }
   std::string get_name() {
     return _name;
   }
-  const std::vector<py::object>& get_elements() {
-    return _elements;
+
+  std::vector<py::object> unbind() {
+    std::vector<py::object> result;
+    if (_size_node.is_leaf()) {
+      for (size_t i = 0; i < _size_node.size(); i++) {
+        result.push_back(torch::jit::toPyObject(_size_node.payload(i)));
+      }
+    } else {
+      for (size_t i = 0; i < _size_node.degree(); i++) {
+        result.push_back(
+            py::cast(THPNestedNode<T>(_size_node.children(i), _name)));
+      }
+    }
+    return result;
   }
 
  private:
-  SizeNode _size_node;
+  NestedNode<T> _size_node;
   std::string _name;
-  std::vector<py::object> _elements;
 };
+
+using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
+using THPIntegerNode = THPNestedNode<int64_t>;
 
 template <class Result, class F>
 static inline Result data_map(
@@ -51,7 +66,6 @@ static inline Result data_map(
     F fn) {
   return data.map<Result>(fn, fn);
 }
-
 
 struct THPNestedTensor {
   THPNestedTensor() = delete;
@@ -75,7 +89,7 @@ struct THPNestedTensor {
     return _data;
   }
   std::vector<c10::optional<int64_t>> size() {
-    return construct_size(this->nested_size().get_size_node());
+    return construct_size(this->nested_size().get_node());
   }
   THPSizeNode nested_size() {
     return THPSizeNode(
@@ -88,9 +102,10 @@ struct THPNestedTensor {
             _data, [](auto data) { return data.nested_stride(); }),
         "NestedStride");
   }
-  THPNestedTensor requires_grad_(pybind11::bool_ requires_grad) {
+  THPNestedTensor requires_grad_(pybind11::bool_ requires_grad_) {
+    bool requires_grad = requires_grad_;
     return THPNestedTensor(
-        data_map<THPNestedTensor>(_data, [&requires_grad](auto data) {
+        data_map<THPNestedTensor>(_data, [requires_grad](auto data) {
           return data.requires_grad_(requires_grad);
         }));
   }
@@ -108,7 +123,20 @@ struct THPNestedTensor {
   }
   std::string str() {
     return data_map<std::string>(_data, [](auto data) {
-      return TensorNode___str__(data.get_structure());
+      return NestedNode___str__(
+          data.get_structure(),
+          "nested_tensor",
+          [](c10::IValue payload, const std::string& tabs) {
+            std::vector<std::string> tokens = split_str(
+                THPUtils_unpackString(
+                    PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
+                "\n");
+            std::string result;
+            for (const std::string& token : tokens) {
+              result = result + "\n" + tabs + token;
+            }
+            return result;
+          });
     });
   }
   int64_t len() {

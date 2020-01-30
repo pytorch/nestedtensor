@@ -68,11 +68,11 @@ _BufferNestedTensor make_contiguous(TensorNode structure) {
   } else {
     buffer = at::cat(tensors, 0);
   }
-  SizeNode nested_size = map<at::Tensor, c10::List<int64_t>>(
-      structure, [](at::Tensor tensor) -> c10::List<int64_t> {
-        return c10::List<int64_t>(tensor.sizes());
-      });
-  return _BufferNestedTensor(buffer, nested_size);
+  return _BufferNestedTensor(
+      buffer,
+      map(
+          [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+          structure));
 }
 
 } // namespace nested_tensor

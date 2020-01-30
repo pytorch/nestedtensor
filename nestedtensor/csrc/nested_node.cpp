@@ -1,6 +1,5 @@
 #include <nested_node.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
-#include <torch/csrc/utils/python_strings.h>
 #include <torch/extension.h>
 
 #include <cstring>
@@ -10,89 +9,6 @@ namespace nested_tensor {
 
 using namespace torch::jit;
 using namespace torch::autograd::utils;
-
-std::vector<std::string> split_str(std::string s, std::string delimiter) {
-  std::vector<std::string> result;
-  size_t pos = 0;
-  std::string token;
-  while ((pos = s.find(delimiter)) != std::string::npos) {
-    token = s.substr(0, pos);
-    result.push_back(token);
-    s.erase(0, pos + delimiter.length());
-  }
-  result.push_back(s);
-  return result;
-}
-
-std::string TensorNode___str__(
-    const TensorNode& nested_node,
-    const std::string& tabs) {
-  std::stringstream result;
-  auto tabs_ = tabs + "\t";
-  result << "nested_tensor([";
-  if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      if (i > 0) {
-        result << ",";
-      }
-      auto tokens = split_str(
-          THPUtils_unpackString(
-              PyObject_Str(THPVariable_Wrap(nested_node.payload(i)))),
-          "\n");
-      for (const auto& token : tokens) {
-        result << "\n" << tabs_ << token;
-      }
-    }
-  } else {
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      if (i > 0) {
-        result << ",";
-      }
-      result << "\n" << tabs_;
-      result << TensorNode___str__(nested_node.children(i), tabs_);
-    }
-  }
-  result << std::endl;
-  result << tabs << "])";
-  return result.str();
-}
-
-std::string SizeNode___str__(
-    const SizeNode& nested_node,
-    const std::string name,
-    const std::string& tabs) {
-  std::stringstream result;
-  auto tabs_ = tabs + "\t";
-  result << name << "([";
-  if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      if (i > 0) {
-        result << ",";
-      }
-      // TODO: Parameterize this to allow printing torch.Size etc.
-      c10::List<int64_t> size_node_payload = nested_node.payload(i);
-      result << "\n" << tabs_ << "(";
-      for (size_t j = 0; j < size_node_payload.size(); j++) {
-        if (j > 0) {
-          result << ", ";
-        }
-        result << size_node_payload[j];
-      }
-      result << ")";
-    }
-  } else {
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      if (i > 0) {
-        result << ",";
-      }
-      result << "\n" << tabs_;
-      result << SizeNode___str__(nested_node.children(i), name, tabs_);
-    }
-  }
-  result << std::endl;
-  result << tabs << "])";
-  return result.str();
-}
 
 c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
   auto inferred_type = tryToInferType(py_obj);

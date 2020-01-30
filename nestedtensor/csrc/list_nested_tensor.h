@@ -22,37 +22,33 @@ struct _ListNestedTensor {
     return _first_variable.element_size();
   }
   SizeNode nested_size() {
-    return map<at::Tensor, c10::List<int64_t>>(
-        _structure, [](at::Tensor tensor) -> c10::List<int64_t> {
-          return c10::List<int64_t>(tensor.sizes());
-        });
+    return map(
+        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+        _structure);
   }
   SizeNode nested_stride() {
-    return map<at::Tensor, c10::List<int64_t>>(
-        _structure, [](at::Tensor tensor) -> c10::List<int64_t> {
-          return c10::List<int64_t>(tensor.strides());
-        });
+    return map(
+        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
+        _structure);
   }
   _ListNestedTensor pin_memory() {
-    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
-        _structure,
-        [](at::Tensor tensor) -> at::Tensor { return tensor.pin_memory(); }));
+    return _ListNestedTensor(map(
+        [](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   _ListNestedTensor grad() {
-    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
-        _structure,
-        [](at::Tensor tensor) -> at::Tensor { return tensor.grad(); }));
+    return _ListNestedTensor(
+        map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
   }
   _ListNestedTensor detach() {
-    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
-        _structure,
-        [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); }));
+    return _ListNestedTensor(
+        map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   _ListNestedTensor requires_grad_(bool requires_grad) {
-    return _ListNestedTensor(map<at::Tensor, at::Tensor>(
-        _structure, [requires_grad](at::Tensor tensor) -> at::Tensor {
+    return _ListNestedTensor(map(
+        [requires_grad](at::Tensor tensor) {
           return tensor.set_requires_grad(requires_grad);
-        }));
+        },
+        _structure));
   }
   void backward(
       _ListNestedTensor gradient,
@@ -90,7 +86,7 @@ struct _ListNestedTensor {
     return _first_variable.scalar_type();
   }
   at::Backend backend() {
-    return _first_variable.type().backend();
+    return options().backend();
   }
   at::Device device() {
     return _first_variable.device();

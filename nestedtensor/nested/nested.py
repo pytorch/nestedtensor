@@ -224,7 +224,7 @@ class NestedTensor(object):
                 if dim == 0:
                     return len(self)
                 if self.nested_dim() == 1:
-                    return tuple(s[dim - 1] for s in self.nested_size())
+                    return tuple(s[dim - 1] for s in self.nested_size().unbind())
                 return tuple(t.nested_size(dim - 1) for t in self.unbind())
 
     def nested_stride(self, dim=None):
@@ -243,7 +243,7 @@ class NestedTensor(object):
                 if dim == 0:
                     return len(self)
                 if self.nested_dim() == 1:
-                    return tuple(s[dim - 1] for s in self.nested_stride())
+                    return tuple(s[dim - 1] for s in self.nested_stride().unbind())
                 return tuple(t.nested_stride(dim - 1) for t in self.unbind())
 
     # --- dependent on impl ends ---

@@ -24,19 +24,12 @@
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   py::class_<torch::nested_tensor::THPSizeNode>(m, "SizeNode")
       .def("__str__", &torch::nested_tensor::THPSizeNode::str)
-      .def(
-          "__iter__",
-          [](torch::nested_tensor::THPSizeNode& self) {
-            return py::make_iterator(
-                self.get_elements().data(),
-                self.get_elements().data() + self.get_elements().size());
-          },
-          py::keep_alive<0, 1>())
+      .def("unbind", &torch::nested_tensor::THPSizeNode::unbind)
       .def(
           "__eq__",
           [](torch::nested_tensor::THPSizeNode& a,
              torch::nested_tensor::THPSizeNode& b) {
-            return a.get_size_node() == b.get_size_node();
+            return a.get_node() == b.get_node();
           })
       .def("__repr__", &torch::nested_tensor::THPSizeNode::str)
       .def("__len__", &torch::nested_tensor::THPSizeNode::len);
@@ -125,9 +118,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "is_contiguous",
           &torch::nested_tensor::THPNestedTensor::is_contiguous)
-      .def(
-          "contiguous",
-          &torch::nested_tensor::THPNestedTensor::contiguous)
+      .def("contiguous", &torch::nested_tensor::THPNestedTensor::contiguous)
       .def("get_buffer", &torch::nested_tensor::THPNestedTensor::get_buffer)
       .def("to_tensor", &torch::nested_tensor::THPNestedTensor::to_tensor)
       .def("__str__", &torch::nested_tensor::THPNestedTensor::str)
