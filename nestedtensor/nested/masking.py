@@ -14,15 +14,16 @@ def nested_tensor_from_padded_tensor(tensor, nested_dim=None, padding=-1):
     mask = (tensor != padding)
     return nested_tensor_from_tensor_mask(tensor, mask, nested_dim)
 
+"""
+Given a tensor t of size N_1 x N_2 x ... N_n and mask m of size M_1 x M_2 x ... M_d where d <= n
+return a NestedTensor of dimensionality d where subtensor t[i_1][i_2]...[i_d] is included as a Tensor constituent if m[i_1][i_2]...[i_d].
+The resulting NestedTensor will be of dimension n.
+Unless specific, it is attempted to yield a NestedTensor of minimal nested dimension.
+"""
 def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=None):
-    """
-    Given a tensor t of size N_1 x N_2 x ... N_n and mask m of size M_1 x M_2 x ... M_d where d <= n
-    return a NestedTensor of dimensionality d where subtensor t[i_1][i_2]...[i_d] is included as a Tensor constituent if m[i_1][i_2]...[i_d].
-    The resulting NestedTensor will be of dimension n.
-    Unless specific, it is attempted to yield a NestedTensor of minimal nested dimension.
-    """
     # TODO: Should be possible with views only.
-    assert mask.dim() > 0
+    if not mask.dim() > 0:
+        raise RuntimeError("Mask has to have dimention > 0")
 
     # TODO: Need to define empty-list and 0 numel semantics
     # TODO: Test edge-cases and kwargs
@@ -43,6 +44,9 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=None):
             return torch.stack(tensors)
         else:
             return creation.nested_tensor(tensors)
+
+    if nested_dim is not None and mask.dim() < nested_dim:
+        raise ValueError("Mask dimension ({0}) is too small to construct nested tensor with nested dimension of {1}".format(mask.dim(), nested_dim))
 
     if mask.dim() == 1:
         tensors = [tensor[i] if mask[i]
@@ -99,9 +103,9 @@ def tensor_list(lst):
 
 
 def make_tensor_mask(tensor_lst, mask_dim):
-    tensormask = tensor_list(tensor_lst)
-    tensormask = merge_tensor_mask(tensormask, mask_dim)
-    return tensormask.tensor, tensormask.mask
+    tensor_mask = tensor_list(tensor_lst)
+    tensor_mask = merge_tensor_mask(tensor_mask, mask_dim)
+    return tensor_mask.tensor, tensor_mask.mask
 
 
 def pad_tensor_to_shape(t, goal_shape):
