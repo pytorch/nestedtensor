@@ -58,6 +58,7 @@ struct THPNestedNode {
 };
 
 using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
+using THPIntegerNode = THPNestedNode<int64_t>;
 
 template <class Result, class F>
 static inline Result data_map(
@@ -99,9 +100,9 @@ struct THPNestedTensor {
     std::cout << "HEEE dim: " << dim << std::endl;
     auto thp_size_node = nested_size();
     SizeNode size_node = thp_size_node.get_node();
-    IntegerNode dim_size_node = map(
-        [dim](c10::List<int64_t> size) { return size.extract(dim); },
-        size_node);
+    return wrap_nested_node<int64_t, py::tuple>(
+        map([dim](c10::List<int64_t> size) { return size.extract(dim); },
+            size_node));
   }
   THPSizeNode nested_stride() {
     return THPSizeNode(

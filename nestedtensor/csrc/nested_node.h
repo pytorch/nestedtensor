@@ -241,7 +241,7 @@ template <class F, class... B>
 static inline NestedNode<
     typename c10::guts::infer_function_traits<F>::type::return_type>
 map(F&& fn, const NestedNode<B>&... nested_node) {
-  return _new_map<
+  return _map<
       F,
       typename c10::guts::infer_function_traits<F>::type::return_type,
       typename c10::guts::infer_function_traits<F>::type::parameter_types>::
