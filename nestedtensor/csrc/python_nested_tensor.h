@@ -63,8 +63,8 @@ using THPIntegerNode = THPNestedNode<int64_t>;
 template <class Result, class F>
 static inline Result data_map(
     c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
-    F fn) {
-  return data.map<Result>(fn, fn);
+    F&& fn) {
+  return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
 }
 
 struct THPNestedTensor {

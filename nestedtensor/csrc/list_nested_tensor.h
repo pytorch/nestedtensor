@@ -32,8 +32,8 @@ struct _ListNestedTensor {
         _structure);
   }
   _ListNestedTensor pin_memory() {
-    return _ListNestedTensor(map(
-        [](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
+    return _ListNestedTensor(
+        map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   _ListNestedTensor grad() {
     return _ListNestedTensor(
@@ -54,12 +54,12 @@ struct _ListNestedTensor {
       _ListNestedTensor gradient,
       bool retain_graph,
       bool create_graph) {
-    apply2(
-        _structure,
-        gradient.get_structure(),
-        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2) {
+    apply(
+        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2) -> void {
           tensor1.backward(tensor2, retain_graph, create_graph);
-        });
+        },
+        _structure,
+        gradient.get_structure());
   }
   int64_t __len__() {
     if (nested_dim() == 1) {
@@ -69,9 +69,7 @@ struct _ListNestedTensor {
     }
   }
   at::Tensor to_tensor() {
-    std::vector<at::Tensor> tensors;
-    aggregate_leafs(_structure, tensors);
-    return stack(tensors);
+    return stack(flatten(_structure).vec());
   }
   int64_t nested_dim() {
     const TensorNode* start_structure = &_structure;
