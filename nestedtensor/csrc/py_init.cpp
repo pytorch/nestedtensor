@@ -23,7 +23,7 @@
 
 template <class T>
 static void set_thp_node(auto m, std::string name) {
-  py::class_<T>(m, "SizeNode")
+  py::class_<T>(m, name.c_str())
       .def("__str__", &T::str)
       .def("unbind",  &T::unbind)
       .def(
@@ -37,18 +37,7 @@ static void set_thp_node(auto m, std::string name) {
 }
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   set_thp_node<torch::nested_tensor::THPSizeNode>(m, "SizeNode");
-  set_thp_node<torch::nested_tensor::THPTensorNode>(m, "NestedList");
-  // py::class_<torch::nested_tensor::THPSizeNode>(m, "SizeNode")
-  //     .def("__str__", &torch::nested_tensor::THPSizeNode::str)
-  //     .def("unbind", &torch::nested_tensor::THPSizeNode::unbind)
-  //     .def(
-  //         "__eq__",
-  //         [](torch::nested_tensor::THPSizeNode& a,
-  //            torch::nested_tensor::THPSizeNode& b) {
-  //           return a.get_node() == b.get_node();
-  //         })
-  //     .def("__repr__", &torch::nested_tensor::THPSizeNode::str)
-  //     .def("__len__", &torch::nested_tensor::THPSizeNode::len);
+  set_thp_node<torch::nested_tensor::THPIValueNode>(m, "IValueList");
 
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents

@@ -19,9 +19,21 @@ c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
   return payload;
 }
 
-bool NestedNode<bool>::all() {
-  return reduce(
-      *this, lambda[](bool a, bool b) { return a && b; });
+template <>
+bool NestedNode<bool>::all() const {
+  auto fn = [](bool a, bool b) { return a == b; };
+  return reduce<decltype(fn), bool, bool>(*this, fn, true);
+}
+
+template <>
+bool NestedNode<Tensor>::all() const {
+  NestedNode<bool> tmp = map([](at::Tensor a) { return a.all().item().to<bool>(); }, *this);
+  return tmp.all();
+}
+
+template <typename T>
+NestedNode<T> NestedNode<T>::operator!() {
+  return map([](T a) { return !a; }, *this);
 }
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {

@@ -33,12 +33,14 @@ struct NestedNode {
   inline size_t size() const {
     return _payload.size();
   }
-  std::enable_if<std::is_same<T, bool>>
+
+  // TODO: Use enable_if to produce nicer messages than link errors
+  // when the type isn't bool.
   bool all() const;
-  std::enable_if<std::is_same<T, bool>>
-  NestedNode<T> operator! (NestedNode<T> a) {
-    return map([](bool a) { return !a; });
-  }
+
+  // TODO: Use enable_if to produce nicer messages than link errors
+  // when the type isn't bool.
+  NestedNode<T> operator!();
 
  private:
   bool _is_leaf;
@@ -60,16 +62,6 @@ inline bool operator==(
     }
   }
   return true;
-}
-
-template <typename T>
-inline NestedNode<bool> operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
-  return map([](T a, T b) { return a == b; });
-}
-
-template <typename T>
-inline bool operator!=(const NestedNode<T>& a, const NestedNode<T>& b) {
-  return !(a == b);
 }
 
 using TensorNode = NestedNode<at::Tensor>;
@@ -276,6 +268,19 @@ inline void apply(F&& fn, const NestedNode<A>&... nested_node) {
       apply<F, A...>(std::forward<F>(fn), nested_node.children(i)...);
     }
   }
+}
+
+inline NestedNode<at::Tensor> operator==(
+    NestedNode<at::Tensor> a,
+    NestedNode<at::Tensor> b) {
+  return map([](at::Tensor a, at::Tensor b) { return a == b; }, a, b);
+}
+
+inline NestedNode<bool> operator==(
+    NestedNode<c10::List<int64_t>> a,
+    NestedNode<c10::List<int64_t>> b) {
+  return map(
+      [](c10::List<int64_t> a, c10::List<int64_t> b) { return a == b; }, a, b);
 }
 
 } // namespace nested_tensor
