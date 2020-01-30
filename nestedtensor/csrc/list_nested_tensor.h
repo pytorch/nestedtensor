@@ -22,40 +22,33 @@ struct _ListNestedTensor {
     return _first_variable.element_size();
   }
   SizeNode nested_size() {
-    auto fn = [](at::Tensor tensor) -> c10::List<int64_t> {
-      return c10::List<int64_t>(tensor.sizes());
-    };
-    return map<decltype(fn), c10::List<int64_t>, at::Tensor>(_structure, fn);
+    return new_map(
+        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+        _structure);
   }
   SizeNode nested_stride() {
-    auto fn = [](at::Tensor tensor) -> c10::List<int64_t> {
-      return c10::List<int64_t>(tensor.strides());
-    };
-    return map<decltype(fn), c10::List<int64_t>, at::Tensor>(_structure, fn);
+    return new_map(
+        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
+        _structure);
   }
   _ListNestedTensor pin_memory() {
-    auto fn = [](at::Tensor tensor) -> at::Tensor {
-      return tensor.pin_memory();
-    };
-    return _ListNestedTensor(
-        map<decltype(fn), at::Tensor, at::Tensor>(_structure, fn));
+    return _ListNestedTensor(new_map(
+        [](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   _ListNestedTensor grad() {
-    auto fn = [](at::Tensor tensor) -> at::Tensor { return tensor.grad(); };
     return _ListNestedTensor(
-        map<decltype(fn), at::Tensor, at::Tensor>(_structure, fn));
+        new_map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
   }
   _ListNestedTensor detach() {
-    auto fn = [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); };
     return _ListNestedTensor(
-        map<decltype(fn), at::Tensor, at::Tensor>(_structure, fn));
+        new_map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   _ListNestedTensor requires_grad_(bool requires_grad) {
-    auto fn = [requires_grad](at::Tensor tensor) -> at::Tensor {
-      return tensor.set_requires_grad(requires_grad);
-    };
-    return _ListNestedTensor(
-        map<decltype(fn), at::Tensor, at::Tensor>(_structure, fn));
+    return _ListNestedTensor(new_map(
+        [requires_grad](at::Tensor tensor) {
+          return tensor.set_requires_grad(requires_grad);
+        },
+        _structure));
   }
   void backward(
       _ListNestedTensor gradient,
