@@ -49,7 +49,7 @@ struct TORCH_API _BufferNestedTensor {
     return _buffer.options();
   }
   _BufferNestedTensor requires_grad_(bool requires_grad) {
-    apply<at::Tensor>(
+    apply(
         [requires_grad](at::Tensor tensor) -> void {
           tensor.set_requires_grad(requires_grad);
         },
