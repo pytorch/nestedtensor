@@ -230,11 +230,9 @@ class TestTensorMask(TestCase):
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1)
         self.assertEqual(expected_nt1, res_nt)
 
-        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
-        self.assertEqual(expected_nt1, res_nt)
-
-        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
-        self.assertEqual(expected_nt1, res_nt)
+        # nested_dim is bigger than masks dimension 
+        self.assertRaises(ValueError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2))
+        self.assertRaises(ValueError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3))
 
     def test_nested_tensor_from_tensor_mask_dim_2(self):
         original_nt = nt.nested_tensor([
@@ -289,8 +287,8 @@ class TestTensorMask(TestCase):
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
         self.assertEqual(expected_nt2, res_nt)
 
-        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
-        self.assertEqual(expected_nt2, res_nt)
+        # nested_dim is bigger than masks dimension 
+        self.assertRaises(ValueError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3))
 
     def test_nested_tensor_from_tensor_mask_dim_3(self):
         original_nt = nt.nested_tensor([
