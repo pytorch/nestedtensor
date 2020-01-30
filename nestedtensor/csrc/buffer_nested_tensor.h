@@ -62,9 +62,9 @@ struct TORCH_API _BufferNestedTensor {
   // TODO: This should return a reference?
   _BufferNestedTensor detach() {
     at::Tensor detach_buffer = _buffer.detach();
-    TensorNode detach_tensors = map<at::Tensor, at::Tensor>(
-        _structure,
-        [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); });
+    auto fn = [](at::Tensor tensor) -> at::Tensor { return tensor.detach(); };
+    TensorNode detach_tensors =
+        map<decltype(fn), at::Tensor, at::Tensor>(_structure, fn);
     return _BufferNestedTensor(
         detach_buffer, _nested_size, _nested_stride, detach_tensors);
   }

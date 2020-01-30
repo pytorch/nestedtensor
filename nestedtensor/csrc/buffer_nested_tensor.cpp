@@ -3,7 +3,7 @@
 namespace torch {
 namespace nested_tensor {
 
-std::vector<int64_t> _cont_stride(c10::List<int64_t> size) {
+c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
   std::vector<int64_t> stride(size.size());
   int64_t p = 1;
   size_t p_i = size.size();
@@ -12,35 +12,7 @@ std::vector<int64_t> _cont_stride(c10::List<int64_t> size) {
     stride[p_i] = p;
     p *= size[p_i];
   }
-  return stride;
-}
-
-SizeNode _infer_stride(SizeNode nested_size) {
-  return map<c10::List<int64_t>, c10::List<int64_t>>(
-      nested_size, [](c10::List<int64_t> size) { return _cont_stride(size); });
-}
-
-SizeNode _make_nested_size(TensorNode tensor_node) {
-  return map<at::Tensor, c10::List<int64_t>>(
-      tensor_node, [](at::Tensor tensor) -> c10::List<int64_t> {
-        return c10::List<int64_t>(tensor.sizes());
-      });
-}
-
-void _split_sizes(
-    SizeNode nested_size,
-    SizeNode nested_stride,
-    std::vector<int64_t>& sizes) {
-  if (nested_stride.is_leaf()) {
-    for (size_t i = 0; i < nested_stride.size(); i++) {
-      sizes.push_back(
-          num_memory(nested_size.payload(i), nested_stride.payload(i)));
-    }
-  } else {
-    for (size_t i = 0; i < nested_size.degree(); i++) {
-      _split_sizes(nested_size.children(i), nested_stride.children(i), sizes);
-    }
-  }
+  return c10::List<int64_t>(stride);
 }
 
 std::pair<int64_t, TensorNode> _build_structure(
@@ -76,8 +48,13 @@ TensorNode build_structure(
     at::Tensor buffer,
     SizeNode nested_size,
     SizeNode nested_stride) {
-  std::vector<int64_t> split_sizes;
-  _split_sizes(nested_size, nested_stride, split_sizes);
+  IntegerNode tmp = new_map(
+      [](c10::List<int64_t> a, c10::List<int64_t> b) {
+        return num_memory(a, b);
+      },
+      nested_size,
+      nested_stride);
+  c10::List<int64_t> split_sizes = flatten(tmp);
   std::vector<int64_t> nonzero_split_sizes;
   for (size_t i = 0; i < split_sizes.size(); i++) {
     if (split_sizes[i] > 0) {
@@ -127,7 +104,12 @@ _BufferNestedTensor _BufferNestedTensor::grad() {
 _BufferNestedTensor::_BufferNestedTensor(
     torch::autograd::Variable buffer,
     SizeNode nested_size)
-    : _BufferNestedTensor(buffer, nested_size, _infer_stride(nested_size)) {}
+    : _BufferNestedTensor(
+          buffer,
+          nested_size,
+          new_map(
+              [](c10::List<int64_t> size) { return _cont_stride(size); },
+              nested_size)) {}
 _BufferNestedTensor::_BufferNestedTensor(
     torch::autograd::Variable buffer,
     SizeNode nested_size,
