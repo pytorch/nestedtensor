@@ -33,6 +33,12 @@ struct NestedNode {
   inline size_t size() const {
     return _payload.size();
   }
+  std::enable_if<std::is_same<T, bool>>
+  bool all() const;
+  std::enable_if<std::is_same<T, bool>>
+  NestedNode<T> operator! (NestedNode<T> a) {
+    return map([](bool a) { return !a; });
+  }
 
  private:
   bool _is_leaf;
@@ -57,30 +63,8 @@ inline bool operator==(
 }
 
 template <typename T>
-inline bool operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
-  if (a.is_leaf() != b.is_leaf()) {
-    return false;
-  }
-  if (a.is_leaf()) {
-    if (a.size() != b.size()) {
-      return false;
-    }
-    for (size_t i = 0; i < a.size(); i++) {
-      if (!(a.payload(i) == b.payload(i))) {
-        return false;
-      }
-    }
-  } else {
-    if (!(a.degree() == b.degree())) {
-      return false;
-    }
-    for (size_t i = 0; i < a.size(); i++) {
-      if (!(a.children(i) == b.children(i))) {
-        return false;
-      }
-    }
-  }
-  return true;
+inline NestedNode<bool> operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
+  return map([](T a, T b) { return a == b; });
 }
 
 template <typename T>

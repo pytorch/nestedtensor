@@ -4,6 +4,7 @@ from .nested.utils import tensorwise
 from .nested.utils import is_nested_tensor
 
 from .nested.creation import as_nested_tensor
+from .nested.creation import as_nested_list
 from .nested.creation import nested_tensor
 
 from .nested.masking import nested_tensor_from_tensor_mask

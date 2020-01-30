@@ -19,6 +19,11 @@ c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
   return payload;
 }
 
+bool NestedNode<bool>::all() {
+  return reduce(
+      *this, lambda[](bool a, bool b) { return a && b; });
+}
+
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   if (size.size() == 0) {
     return 0;

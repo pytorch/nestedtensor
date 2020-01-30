@@ -56,6 +56,10 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
   return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
 }
 
+THPTensorNode as_nested_list(py::sequence list) {
+  return THPTensorNode(_get_tensor_structure(list), "NestedList");
+}
+
 _BufferNestedTensor make_contiguous(TensorNode structure) {
   c10::List<at::Tensor> tensors;
   for (const at::Tensor& tensor : flatten(structure)) {

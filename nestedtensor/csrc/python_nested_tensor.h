@@ -59,6 +59,7 @@ struct THPNestedNode {
 
 using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
+using THPTensorNode = THPNestedNode<at::Tensor>;
 
 template <class Result, class F>
 static inline Result data_map(
