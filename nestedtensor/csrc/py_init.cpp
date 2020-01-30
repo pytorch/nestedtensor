@@ -49,14 +49,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           &torch::nested_tensor::THPNestedTensor::requires_grad)
       .def("__len__", &torch::nested_tensor::THPNestedTensor::len)
       .def("element_size", &torch::nested_tensor::THPNestedTensor::element_size)
-      .def(
-          "nested_size",
-          py::overload_cast<>(
-              &torch::nested_tensor::THPNestedTensor::nested_size))
-      .def(
-          "nested_size",
-          py::overload_cast<int64_t>(
-              &torch::nested_tensor::THPNestedTensor::nested_size))
+      .def("nested_size", &torch::nested_tensor::THPNestedTensor::nested_size)
       .def(
           "nested_stride",
           &torch::nested_tensor::THPNestedTensor::nested_stride)

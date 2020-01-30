@@ -40,7 +40,7 @@ struct TORCH_API _BufferNestedTensor {
     return _buffer.scalar_type();
   }
   at::Backend backend() {
-    return _buffer.type().backend();
+    return _buffer.backend();
   }
   at::Device device() {
     return _buffer.device();
