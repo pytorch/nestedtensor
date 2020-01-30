@@ -96,14 +96,6 @@ struct THPNestedTensor {
         data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); }),
         "NestedSize");
   }
-  py::tuple nested_size(int64_t dim) {
-    std::cout << "HEEE dim: " << dim << std::endl;
-    auto thp_size_node = nested_size();
-    SizeNode size_node = thp_size_node.get_node();
-    return wrap_nested_node<int64_t, py::tuple>(
-        map([dim](c10::List<int64_t> size) { return size.extract(dim); },
-            size_node));
-  }
   THPSizeNode nested_stride() {
     return THPSizeNode(
         data_map<SizeNode>(
