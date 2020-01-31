@@ -15,35 +15,6 @@ c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
   return c10::List<int64_t>(stride);
 }
 
-std::pair<int64_t, TensorNode> _build_structure(
-    int64_t index,
-    std::vector<at::Tensor>& buffers,
-    SizeNode nested_size,
-    SizeNode nested_stride) {
-  if (nested_size.is_leaf()) {
-    c10::List<at::Tensor> result;
-    for (size_t i = 0; i < nested_size.size(); i++) {
-      auto size_i = nested_size.payload(i).vec();
-      auto stride_i = nested_stride.payload(i).vec();
-      result.push_back(at::as_strided(
-          buffers[index],
-          c10::IntArrayRef(size_i),
-          c10::IntArrayRef(stride_i)));
-      index++;
-    }
-    return std::pair<int64_t, TensorNode>(index, TensorNode(result));
-  } else {
-    std::vector<TensorNode> result;
-    for (size_t i = 0; i < nested_size.degree(); i++) {
-      std::pair<int64_t, TensorNode> result_i = _build_structure(
-          index, buffers, nested_size.children(i), nested_stride.children(i));
-      index = std::get<0>(result_i);
-      result.push_back(std::get<1>(result_i));
-    }
-    return std::pair<int64_t, TensorNode>(index, TensorNode(result));
-  }
-}
-
 TensorNode build_structure(
     at::Tensor buffer,
     SizeNode nested_size,
@@ -74,9 +45,19 @@ TensorNode build_structure(
       buffers.push_back(at::empty({}, buffer.options()));
     }
   }
-  std::pair<int64_t, TensorNode> result =
-      _build_structure(0, buffers, nested_size, nested_stride);
-  return std::get<1>(result);
+  TensorNode tmp = unflatten(nested_size, c10::List<at::Tensor>(buffers));
+  return map(
+      [](at::Tensor buffer,
+         c10::List<int64_t> size,
+         c10::List<int64_t> stride) {
+        return at::as_strided(
+            buffer,
+            c10::IntArrayRef(size.vec()),
+            c10::IntArrayRef(stride.vec()));
+      },
+      tmp,
+      nested_size,
+      nested_stride);
 }
 
 // TODO: Test this. Does split on pinned memory work?

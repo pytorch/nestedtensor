@@ -232,6 +232,38 @@ inline c10::List<A> flatten(NestedNode<A> nested_node) {
   }
 }
 
+template <class R, class A>
+inline std::pair<int64_t, NestedNode<R>> _unflatten(
+    const NestedNode<A>& structure,
+    const c10::List<R>& content,
+    int64_t index) {
+  if (structure.is_leaf()) {
+    c10::List<R> result;
+    for (size_t i = 0; i < structure.size(); i++) {
+      result.push_back(content[index]);
+      index++;
+    }
+    return std::pair<int64_t, NestedNode<R>>(index, NestedNode<R>(result));
+  } else {
+    std::vector<NestedNode<R>> result;
+    for (size_t i = 0; i < structure.degree(); i++) {
+      auto result_i = _unflatten<R, A>(structure.children(i), content, index);
+      index = std::get<0>(result_i);
+      result.push_back(std::get<1>(result_i));
+    }
+    return std::pair<int64_t, NestedNode<R>>(index, NestedNode<R>(result));
+  }
+}
+
+// NOTE: structure is only used as a shape guidance and its content doesn't
+// matter. This function uses structure and content to create a new NestedNode
+// with the same shape as structure and content distributed in-order
+template <class R, class A>
+inline NestedNode<R> unflatten(NestedNode<A> structure, c10::List<R> content) {
+  auto _result = _unflatten<R, A>(structure, content, 0);
+  return std::get<1>(_result);
+}
+
 // TODO: Assuming all NestedNodes have same shape.
 template <typename F, typename A, typename... B>
 inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
