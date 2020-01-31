@@ -38,6 +38,15 @@ struct NestedNode {
   inline size_t size() const {
     return _payload.size();
   }
+  inline int64_t height() const {
+    const NestedNode<T>* start_structure = this;
+    int64_t height = 1;
+    while (!start_structure->is_leaf()) {
+      height++;
+      start_structure = start_structure->children_data(0);
+    }
+    return height;
+  }
 
  private:
   bool _is_leaf;
@@ -197,6 +206,7 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
 // NOTE: Assuming all NestedNodes have same shape.
 // TODO: Add check
 // TODO: Add static assert to verify lambda arguments match nested_node types
+// TODO: Do we want broadcasting?
 template <class F, class... B>
 static inline NestedNode<
     typename c10::guts::infer_function_traits<F>::type::return_type>
