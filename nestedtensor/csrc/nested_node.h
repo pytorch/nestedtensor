@@ -232,35 +232,6 @@ inline c10::List<A> flatten(NestedNode<A> nested_node) {
   }
 }
 
-// std::pair<int64_t, TensorNode> _build_structure(
-//     int64_t index,
-//     std::vector<at::Tensor>& buffers,
-//     SizeNode nested_size,
-//     SizeNode nested_stride) {
-//   if (nested_size.is_leaf()) {
-//     c10::List<at::Tensor> result;
-//     for (size_t i = 0; i < nested_size.size(); i++) {
-//       auto size_i = nested_size.payload(i).vec();
-//       auto stride_i = nested_stride.payload(i).vec();
-//       result.push_back(at::as_strided(
-//           buffers[index],
-//           c10::IntArrayRef(size_i),
-//           c10::IntArrayRef(stride_i)));
-//       index++;
-//     }
-//     return std::pair<int64_t, TensorNode>(index, TensorNode(result));
-//   } else {
-//     std::vector<TensorNode> result;
-//     for (size_t i = 0; i < nested_size.degree(); i++) {
-//       std::pair<int64_t, TensorNode> result_i = _build_structure(
-//           index, buffers, nested_size.children(i), nested_stride.children(i));
-//       index = std::get<0>(result_i);
-//       result.push_back(std::get<1>(result_i));
-//     }
-//     return std::pair<int64_t, TensorNode>(index, TensorNode(result));
-//   }
-// }
-
 template <class R, class A>
 inline std::pair<int64_t, NestedNode<R>> _unflatten(
     const NestedNode<A>& structure,
