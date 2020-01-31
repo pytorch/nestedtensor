@@ -5,7 +5,12 @@
 namespace torch {
 namespace nested_tensor {
 
-template <typename T = c10::IValue>
+// NOTE: For comparisons please use the map and reduce
+// functions to define what you mean by equal, etc. on your own
+// There can be ambiguity in the depth of comparison and
+// even in the value (should it construct a new tree or
+// return a single value).
+template <typename T>
 struct NestedNode {
   NestedNode() : _is_leaf(true) {}
   NestedNode(const std::vector<NestedNode<T>> children)
@@ -34,14 +39,6 @@ struct NestedNode {
     return _payload.size();
   }
 
-  // TODO: Use enable_if to produce nicer messages than link errors
-  // when the type isn't bool.
-  bool all() const;
-
-  // TODO: Use enable_if to produce nicer messages than link errors
-  // when the type isn't bool.
-  NestedNode<T> operator!();
-
  private:
   bool _is_leaf;
   const std::vector<NestedNode<T>> _children;
@@ -50,21 +47,8 @@ struct NestedNode {
   c10::List<T> _payload;
 };
 
-inline bool operator==(
-    const c10::List<int64_t>& a,
-    const c10::List<int64_t>& b) {
-  if (a.size() != b.size()) {
-    return false;
-  }
-  for (size_t j = 0; j < a.size(); j++) {
-    if (!(a[j] == b[j])) {
-      return false;
-    }
-  }
-  return true;
-}
-
 using TensorNode = NestedNode<at::Tensor>;
+using IValueNode = NestedNode<c10::IValue>;
 
 // This is a C++ representation of a nested list of torch.Sizes
 //
@@ -268,19 +252,6 @@ inline void apply(F&& fn, const NestedNode<A>&... nested_node) {
       apply<F, A...>(std::forward<F>(fn), nested_node.children(i)...);
     }
   }
-}
-
-inline NestedNode<at::Tensor> operator==(
-    NestedNode<at::Tensor> a,
-    NestedNode<at::Tensor> b) {
-  return map([](at::Tensor a, at::Tensor b) { return a == b; }, a, b);
-}
-
-inline NestedNode<bool> operator==(
-    NestedNode<c10::List<int64_t>> a,
-    NestedNode<c10::List<int64_t>> b) {
-  return map(
-      [](c10::List<int64_t> a, c10::List<int64_t> b) { return a == b; }, a, b);
 }
 
 } // namespace nested_tensor

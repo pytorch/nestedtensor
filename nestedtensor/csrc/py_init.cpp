@@ -26,12 +26,6 @@ static void set_thp_node(auto m, std::string name) {
   py::class_<T>(m, name.c_str())
       .def("__str__", &T::str)
       .def("unbind",  &T::unbind)
-      .def(
-          "__eq__",
-          [](T a,
-             T b) {
-            return (a.get_node() == b.get_node()).all();
-          })
       .def("__repr__", &T::str)
       .def("__len__",  &T::len);
 }
@@ -132,5 +126,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
-  m.def("as_nested_list", &torch::nested_tensor::as_nested_list);
 }
