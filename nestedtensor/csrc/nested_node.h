@@ -5,7 +5,12 @@
 namespace torch {
 namespace nested_tensor {
 
-template <typename T = c10::IValue>
+// NOTE: For comparisons please use the map and reduce
+// functions to define what you mean by equal, etc. on your own
+// There can be ambiguity in the depth of comparison and
+// even in the value (should it construct a new tree or
+// return a single value).
+template <typename T>
 struct NestedNode {
   NestedNode() : _is_leaf(true) {}
   NestedNode(const std::vector<NestedNode<T>> children)
@@ -33,6 +38,15 @@ struct NestedNode {
   inline size_t size() const {
     return _payload.size();
   }
+  inline int64_t height() const {
+    const NestedNode<T>* start_structure = this;
+    int64_t height = 1;
+    while (!start_structure->is_leaf()) {
+      height++;
+      start_structure = start_structure->children_data(0);
+    }
+    return height;
+  }
 
  private:
   bool _is_leaf;
@@ -42,53 +56,8 @@ struct NestedNode {
   c10::List<T> _payload;
 };
 
-inline bool operator==(
-    const c10::List<int64_t>& a,
-    const c10::List<int64_t>& b) {
-  if (a.size() != b.size()) {
-    return false;
-  }
-  for (size_t j = 0; j < a.size(); j++) {
-    if (!(a[j] == b[j])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-template <typename T>
-inline bool operator==(const NestedNode<T>& a, const NestedNode<T>& b) {
-  if (a.is_leaf() != b.is_leaf()) {
-    return false;
-  }
-  if (a.is_leaf()) {
-    if (a.size() != b.size()) {
-      return false;
-    }
-    for (size_t i = 0; i < a.size(); i++) {
-      if (!(a.payload(i) == b.payload(i))) {
-        return false;
-      }
-    }
-  } else {
-    if (!(a.degree() == b.degree())) {
-      return false;
-    }
-    for (size_t i = 0; i < a.size(); i++) {
-      if (!(a.children(i) == b.children(i))) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-template <typename T>
-inline bool operator!=(const NestedNode<T>& a, const NestedNode<T>& b) {
-  return !(a == b);
-}
-
 using TensorNode = NestedNode<at::Tensor>;
+using IValueNode = NestedNode<c10::IValue>;
 
 // This is a C++ representation of a nested list of torch.Sizes
 //
@@ -237,6 +206,7 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
 // NOTE: Assuming all NestedNodes have same shape.
 // TODO: Add check
 // TODO: Add static assert to verify lambda arguments match nested_node types
+// TODO: Do we want broadcasting?
 template <class F, class... B>
 static inline NestedNode<
     typename c10::guts::infer_function_traits<F>::type::return_type>
