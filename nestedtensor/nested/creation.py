@@ -17,11 +17,6 @@ def as_nested_tensor(data, dtype=None, device=None):
         ret = ret.to(device)
     return ret
 
-def as_nested_list(data):
-    # Simple wrapper around a nested list of Tensors.
-    # Shares memory with original objects.
-    return _C.as_nested_list(data)
-
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     """
     Arguments match torch.tensor
