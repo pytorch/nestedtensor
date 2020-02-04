@@ -28,58 +28,20 @@ static TensorNode apply_jit_function(
     const std::set<size_t>& tensor_node_i,
     const std::vector<TensorNode>& tensor_nodes,
     F& fn) {
-  bool all_leaf = true;
-  for (const auto& node : tensor_nodes) {
-    all_leaf = all_leaf && node.is_leaf();
-  }
-  if (all_leaf) {
-    // NOTE: We assume no named tensors and no sparse variables as
-    // appropriate for TorchScript.
-    // TODO: Assert leaf sizes match and are non-zero, otherwise this isn't
-    // a NestedTensor function.
-    size_t leaf_size = tensor_nodes[0].size();
-    c10::List<at::Tensor> results;
-    results.reserve(leaf_size);
-    for (size_t j = 0; j < leaf_size; j++) {
-      Stack stack(stack_template);
-      size_t ni = 0;
-      for (size_t i = 0; i < stack.size(); i++) {
-        if (tensor_node_i.count(i)) {
-          stack[i] = tensor_nodes[ni].payload(j);
-          ni++;
+  NestedNode<std::vector<at::Tensor>> zipped = zip(tensor_nodes);
+  return map(
+      [&fn, &tensor_node_i, &stack_template](std::vector<at::Tensor> tensors) {
+        Stack stack(stack_template);
+        size_t ni = 0;
+        for (size_t i = 0; i < stack.size(); i++) {
+          if (tensor_node_i.count(i)) {
+            stack[i] = tensors[ni];
+            ni++;
+          }
         }
-      }
-      results.push_back(run_function(std::move(stack), fn));
-    }
-    return TensorNode(results);
-  } else {
-    bool broadcastable = true;
-    size_t num_children = 0;
-    for (const auto& node : tensor_nodes) {
-      if (!node.is_leaf()) {
-        if (num_children > 0) {
-          broadcastable = broadcastable && (num_children == node.degree());
-        } else {
-          num_children = node.degree();
-        }
-      }
-    }
-    TORCH_CHECK(broadcastable, "Can't broadcast given nested tensors");
-    std::vector<TensorNode> result;
-    for (size_t i = 0; i < num_children; i++) {
-      std::vector<TensorNode> local_args;
-      for (const auto& node : tensor_nodes) {
-        if (node.is_leaf()) {
-          local_args.push_back(node);
-        } else {
-          local_args.push_back(node.children(i));
-        }
-      }
-      result.push_back(
-          apply_jit_function<F>(stack_template, tensor_node_i, local_args, fn));
-    }
-    return TensorNode(result);
-  }
+        return run_function(std::move(stack), fn);
+      },
+      zipped);
 }
 
 c10::optional<Symbol> is_builtin(py::object fn) {

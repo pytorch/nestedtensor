@@ -12,11 +12,18 @@ namespace nested_tensor {
 // return a single value).
 template <typename T>
 struct NestedNode {
-  NestedNode() : _is_leaf(true) {}
+  NestedNode() : _is_leaf(true), _height(1) {}
   NestedNode(const std::vector<NestedNode<T>> children)
-      : _is_leaf(false), _children(children) {}
+      : _is_leaf(false), _children(children), _height(0) {
+    for (const auto& child : children) {
+      if (child.height() + 1 > _height) {
+        _height = child.height() + 1;
+      }
+    }
+  }
   // NestedNode(const NestedNode&) = delete;
-  NestedNode(c10::List<T> payload) : _is_leaf(true), _payload(payload) {}
+  NestedNode(c10::List<T> payload)
+      : _is_leaf(true), _payload(payload), _height(1) {}
   inline bool is_leaf() const {
     return _is_leaf;
   }
@@ -39,13 +46,7 @@ struct NestedNode {
     return _payload.size();
   }
   inline int64_t height() const {
-    const NestedNode<T>* start_structure = this;
-    int64_t height = 1;
-    while (!start_structure->is_leaf()) {
-      height++;
-      start_structure = start_structure->children_data(0);
-    }
-    return height;
+    return _height;
   }
 
  private:
@@ -54,6 +55,7 @@ struct NestedNode {
   // TODO: Make this const?
   // _VariableNode _variable_node;
   c10::List<T> _payload;
+  int64_t _height;
 };
 
 using TensorNode = NestedNode<at::Tensor>;
@@ -262,6 +264,54 @@ template <class R, class A>
 inline NestedNode<R> unflatten(NestedNode<A> structure, c10::List<R> content) {
   auto _result = _unflatten<R, A>(structure, content, 0);
   return std::get<1>(_result);
+}
+
+template <class A>
+inline NestedNode<std::vector<A>> zip(
+    const std::vector<NestedNode<A>>& structures) {
+  bool all_leaf = true;
+  for (const auto& node : structures) {
+    all_leaf = all_leaf && node.is_leaf();
+  }
+  if (all_leaf) {
+    size_t leaf_size = structures[0].size();
+    c10::List<std::vector<A>> results;
+    results.reserve(leaf_size);
+    for (size_t j = 0; j < leaf_size; j++) {
+      std::vector<A> tmp;
+      for (size_t i = 0; i < structures.size(); i++) {
+        tmp.push_back(structures[i].payload(j));
+      }
+      results.push_back(tmp);
+    }
+    return NestedNode<std::vector<A>>(results);
+  } else {
+    bool broadcastable = true;
+    size_t num_children = 0;
+    for (const auto& node : structures) {
+      if (!node.is_leaf()) {
+        if (num_children > 0) {
+          broadcastable = broadcastable && (num_children == node.degree());
+        } else {
+          num_children = node.degree();
+        }
+      }
+    }
+    TORCH_CHECK(broadcastable, "Can't broadcast given nested tensors");
+    std::vector<NestedNode<std::vector<A>>> result;
+    for (size_t i = 0; i < num_children; i++) {
+      std::vector<NestedNode<A>> tmp;
+      for (const auto& node : structures) {
+        if (node.is_leaf()) {
+          tmp.push_back(node);
+        } else {
+          tmp.push_back(node.children(i));
+        }
+      }
+      result.push_back(zip(tmp));
+    }
+    return NestedNode<std::vector<A>>(result);
+  }
 }
 
 // TODO: Assuming all NestedNodes have same shape.
