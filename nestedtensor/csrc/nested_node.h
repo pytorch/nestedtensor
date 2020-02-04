@@ -12,7 +12,7 @@ namespace nested_tensor {
 // return a single value).
 template <typename T>
 struct NestedNode {
-  NestedNode() : _is_leaf(true) {}
+  NestedNode() : _is_leaf(true), _height(1) {}
   NestedNode(const std::vector<NestedNode<T>> children)
       : _is_leaf(false), _children(children), _height(0) {
     for (const auto& child : children) {
