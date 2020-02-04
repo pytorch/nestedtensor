@@ -27,6 +27,79 @@ struct NestedNode {
   inline bool is_leaf() const {
     return _is_leaf;
   }
+  inline size_t degree() const {
+    return _children.size();
+  }
+  inline size_t size() const {
+    return _payload.size();
+  }
+  inline int64_t height() const {
+    return _height;
+  }
+  inline std::vector<NestedNode<T>> unbind() const {
+    return _children;
+  }
+
+  template <typename A, typename F>
+  friend std::string NestedNode___str__(
+      const NestedNode<A>& nested_node,
+      const std::string name,
+      F payload_to_str,
+      const std::string&);
+
+  friend int64_t size_node_memory(
+      NestedNode<c10::List<int64_t>> nested_size,
+      NestedNode<c10::List<int64_t>> nested_stride);
+
+  template <typename A, typename B>
+  friend B wrap_nested_node(NestedNode<A> nested_node);
+
+  friend at::Tensor NestedNode_to_tensor(
+      const NestedNode<at::Tensor>& nested_node);
+
+  friend std::vector<c10::optional<int64_t>> construct_size(
+      const NestedNode<c10::List<int64_t>>& size_node);
+
+  friend bool _verify_variables(
+      const torch::autograd::Variable& first_variable,
+      const NestedNode<at::Tensor> nested_node);
+
+  template <typename A>
+  friend inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node);
+
+  template <class F, class A, class TypeList>
+  friend class _map;
+
+  template <class F, class... B>
+  friend inline NestedNode<
+      typename c10::guts::infer_function_traits<F>::type::return_type>
+  map(F&& fn, const NestedNode<B>&... nested_node);
+
+  template <typename A>
+  friend inline c10::List<A> flatten(NestedNode<A> nested_node);
+
+  template <class R, class A>
+  friend inline std::pair<int64_t, NestedNode<R>> _unflatten(
+      const NestedNode<A>& structure,
+      const c10::List<R>& content,
+      int64_t index);
+
+  template <class R, class A>
+  friend inline NestedNode<R> unflatten(
+      NestedNode<A> structure,
+      c10::List<R> content);
+
+  template <class A>
+  friend inline NestedNode<std::vector<A>> zip(
+      const std::vector<NestedNode<A>>& structures);
+
+  template <typename F, typename A, typename... B>
+  friend inline A reduce(NestedNode<B>... nested_node, F fn, A ident);
+
+  template <class F, class... A>
+  friend inline void apply(F&& fn, const NestedNode<A>&... nested_node);
+
+ private:
   inline c10::List<T> payload() {
     return _payload;
   }
@@ -39,17 +112,6 @@ struct NestedNode {
   inline const NestedNode<T>* children_data(size_t i) const {
     return _children.data() + i;
   }
-  inline size_t degree() const {
-    return _children.size();
-  }
-  inline size_t size() const {
-    return _payload.size();
-  }
-  inline int64_t height() const {
-    return _height;
-  }
-
- private:
   bool _is_leaf;
   const std::vector<NestedNode<T>> _children;
   // TODO: Make this const?

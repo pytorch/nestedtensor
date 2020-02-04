@@ -86,6 +86,9 @@ def get_extensions():
     define_macros = []
 
     extra_compile_args = {'cxx': ['-O3', '-g', '-std=c++14']}
+    if int(os.environ.get('DEBUG', 0)):
+        extra_compile_args = {
+            'cxx': ['-O0', '-fno-inline', '-g', '-std=c++14']}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         define_macros += [('WITH_CUDA', None)]
@@ -146,7 +149,8 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     zip_safe=True,
-    cmdclass={'clean': clean, 'build_ext': BuildExtension},
+    cmdclass={'clean': clean,
+              'build_ext': BuildExtension},
     install_requires=requirements,
     ext_modules=get_extensions()
 )
