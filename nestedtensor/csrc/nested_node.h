@@ -13,7 +13,7 @@ namespace nested_tensor {
 template <typename T>
 struct NestedNode {
   NestedNode() : _is_leaf(true), _height(1) {}
-  NestedNode(const std::vector<NestedNode<T>> children)
+  NestedNode(std::vector<NestedNode<T>>&& children)
       : _is_leaf(false), _children(children), _height(0) {
     for (const auto& child : children) {
       if (child.height() + 1 > _height) {
@@ -21,8 +21,8 @@ struct NestedNode {
       }
     }
   }
-  // NestedNode(const NestedNode&) = delete;
-  NestedNode(c10::List<T> payload)
+  NestedNode& operator=(NestedNode) = delete;
+  NestedNode(c10::List<T>&& payload)
       : _is_leaf(true), _payload(payload), _height(1) {}
   inline bool is_leaf() const {
     return _is_leaf;
@@ -307,15 +307,17 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
       result.push_back(content[index]);
       index++;
     }
-    return std::pair<int64_t, NestedNode<R>>(index, NestedNode<R>(result));
+    return std::pair<int64_t, NestedNode<R>>(
+        index, NestedNode<R>(std::move(result)));
   } else {
     std::vector<NestedNode<R>> result;
     for (size_t i = 0; i < structure.degree(); i++) {
       auto result_i = _unflatten<R, A>(structure.children(i), content, index);
       index = std::get<0>(result_i);
-      result.push_back(std::get<1>(result_i));
+      result.emplace_back(std::get<1>(result_i));
     }
-    return std::pair<int64_t, NestedNode<R>>(index, NestedNode<R>(result));
+    return std::pair<int64_t, NestedNode<R>>(
+        index, NestedNode<R>(std::move(result)));
   }
 }
 
@@ -346,7 +348,7 @@ inline NestedNode<std::vector<A>> zip(
       }
       results.push_back(tmp);
     }
-    return NestedNode<std::vector<A>>(results);
+    return NestedNode<std::vector<A>>(std::move(results));
   } else {
     bool broadcastable = true;
     size_t num_children = 0;
@@ -372,7 +374,7 @@ inline NestedNode<std::vector<A>> zip(
       }
       result.push_back(zip(tmp));
     }
-    return NestedNode<std::vector<A>>(result);
+    return NestedNode<std::vector<A>>(std::move(result));
   }
 }
 

@@ -48,7 +48,7 @@ TensorNode _get_tensor_structure(const py::sequence& py_obj) {
       py::sequence py_obj_i = py::sequence(py_obj[i]);
       result.push_back(_get_tensor_structure(py_obj_i));
     }
-    return TensorNode(result);
+    return TensorNode(std::move(result));
   }
 }
 
