@@ -69,13 +69,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           "unbind",
           [](THPNestedTensor self) {
             // FOR BUFFER
-
             if (self.data().is_right()) {
               auto nt = self.data().right();
               if (self.nested_dim() == 1) {
                 return wrap_nested_node(nt.get_structure());
               } else {
-                std::vector<py::object> result;
                 std::vector<int64_t> split_sizes;
                 auto sizes = nt.nested_size().unbind();
                 auto strides = nt.nested_size().unbind();
@@ -84,28 +82,25 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 }
                 std::vector<at::Tensor> buffers = at::split_with_sizes(
                     nt.get_buffer(), c10::IntArrayRef(split_sizes), 0);
-                auto size_children = nt.nested_size().unbind();
-                auto stride_children = nt.nested_stride().unbind();
+                std::vector<py::object> result;
                 for (int64_t i = 0; i < self.len(); i++) {
                   result.push_back(py::cast(
                       THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
-                          buffers[i], size_children[i], stride_children[i]))));
+                          buffers[i], sizes[i], strides[i]))));
                 }
                 return py::cast(result);
               }
             }
 
-            auto nt = self.data().left();
             // FOR LIST
+            auto nt = self.data().left();
             if (self.nested_dim() == 1) {
               return wrap_nested_node(nt.get_structure());
             } else {
               std::vector<py::object> result;
-              auto tensor_children = nt.get_structure().unbind();
-              for (int64_t i = 0; i < self.len(); i++) {
-                result.push_back(py::cast(
-                    THPNestedTensor(torch::nested_tensor::_ListNestedTensor(
-                        tensor_children[i]))));
+              for (const auto& child : nt.get_structure().unbind()) {
+                result.push_back(py::cast(THPNestedTensor(
+                    torch::nested_tensor::_ListNestedTensor(child))));
               }
               return py::cast(result);
             }
