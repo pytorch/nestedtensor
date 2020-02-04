@@ -12,9 +12,10 @@ namespace nested_tensor {
 // return a single value).
 template <typename T>
 struct NestedNode {
-  NestedNode() : _is_leaf(true), _height(1) {}
+  // NestedNode() : _is_leaf(false), _height(1) {}
+  NestedNode() = delete;
   NestedNode(std::vector<NestedNode<T>>&& children)
-      : _is_leaf(false), _children(children), _height(0) {
+      : _is_leaf(false), _children(children), _height(1) {
     for (const auto& child : children) {
       if (child.height() + 1 > _height) {
         _height = child.height() + 1;
@@ -191,7 +192,7 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
 template <typename A, typename B = py::object>
 B wrap_nested_node(NestedNode<A> nested_node) {
   if (nested_node.is_leaf()) {
-    return B(py::cast(torch::jit::toPyObject(nested_node.payload())));
+    return B(torch::jit::toPyObject(nested_node.payload()));
   } else {
     std::vector<B> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
@@ -211,7 +212,7 @@ bool _verify_variables(
 
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
-  if (nested_node.is_leaf() && nested_node.degree() == 0) {
+  if (nested_node.degree() == 0) {
     return c10::nullopt;
   }
   const NestedNode<A>* start = &nested_node;

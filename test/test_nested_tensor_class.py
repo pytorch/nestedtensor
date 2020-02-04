@@ -49,6 +49,8 @@ class TestNestedTensor(TestCase):
         # nested_dim is 1 and dim is 1 too.
         default_nested_tensor = nestedtensor.nested_tensor([])
         default_tensor = torch.tensor([])
+        print('default_nested_tensor.nested_dim()')
+        print(default_nested_tensor.nested_dim())
         self.assertEqual(default_nested_tensor.nested_dim(), 1)
         self.assertEqual(default_nested_tensor.nested_size().unbind(), [])
         self.assertEqual(default_nested_tensor.dim(), default_tensor.dim())

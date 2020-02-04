@@ -61,11 +61,7 @@ struct _ListNestedTensor {
         gradient.get_structure());
   }
   int64_t __len__() {
-    if (nested_dim() == 1) {
-      return _structure.size();
-    } else {
-      return _structure.degree();
-    }
+    return _structure.degree();
   }
   at::Tensor to_tensor() {
     return stack(flatten(_structure).vec());
