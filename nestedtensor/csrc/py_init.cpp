@@ -100,9 +100,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               return wrap_nested_node(nt.get_structure());
             } else {
               std::vector<py::object> result;
-              for (const auto& child : nt.get_structure().unbind()) {
-                result.push_back(py::cast(THPNestedTensor(
-                    torch::nested_tensor::_ListNestedTensor(child))));
+              for (const auto& _child : nt.get_structure().unbind()) {
+                auto child = _child;
+                result.push_back(py::cast(
+                    THPNestedTensor(torch::nested_tensor::_ListNestedTensor(
+                        std::move(child)))));
               }
               return py::cast(result);
             }
