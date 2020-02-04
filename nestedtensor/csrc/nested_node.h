@@ -21,6 +21,8 @@ struct NestedNode {
       }
     }
   }
+  // NestedNode(NestedNode&) = delete;
+  // NestedNode(const NestedNode&) = delete;
   NestedNode& operator=(NestedNode) = delete;
   NestedNode(c10::List<T>&& payload)
       : _is_leaf(true), _payload(payload), _height(1) {}
@@ -42,30 +44,29 @@ struct NestedNode {
 
   template <typename A, typename F>
   friend std::string NestedNode___str__(
-      const NestedNode<A>& nested_node,
-      const std::string name,
-      F payload_to_str,
+      const NestedNode<A>&,
+      const std::string,
+      F,
       const std::string&);
 
   friend int64_t size_node_memory(
-      NestedNode<c10::List<int64_t>> nested_size,
-      NestedNode<c10::List<int64_t>> nested_stride);
+      NestedNode<c10::List<int64_t>>,
+      NestedNode<c10::List<int64_t>>);
 
   template <typename A, typename B>
-  friend B wrap_nested_node(NestedNode<A> nested_node);
+  friend B wrap_nested_node(NestedNode<A>);
 
-  friend at::Tensor NestedNode_to_tensor(
-      const NestedNode<at::Tensor>& nested_node);
+  friend at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>&);
 
   friend std::vector<c10::optional<int64_t>> construct_size(
-      const NestedNode<c10::List<int64_t>>& size_node);
+      const NestedNode<c10::List<int64_t>>&);
 
   friend bool _verify_variables(
-      const torch::autograd::Variable& first_variable,
-      const NestedNode<at::Tensor> nested_node);
+      const torch::autograd::Variable&,
+      const NestedNode<at::Tensor>);
 
   template <typename A>
-  friend inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node);
+  friend inline c10::optional<A> get_first_leaf(NestedNode<A>);
 
   template <class F, class A, class TypeList>
   friend class _map;
@@ -73,31 +74,29 @@ struct NestedNode {
   template <class F, class... B>
   friend inline NestedNode<
       typename c10::guts::infer_function_traits<F>::type::return_type>
-  map(F&& fn, const NestedNode<B>&... nested_node);
+  map(F&&, const NestedNode<B>&...);
 
   template <typename A>
-  friend inline c10::List<A> flatten(NestedNode<A> nested_node);
+  friend inline c10::List<A> flatten(NestedNode<A>);
 
   template <class R, class A>
   friend inline std::pair<int64_t, NestedNode<R>> _unflatten(
-      const NestedNode<A>& structure,
-      const c10::List<R>& content,
-      int64_t index);
+      const NestedNode<A>&,
+      const c10::List<R>&,
+      int64_t);
 
   template <class R, class A>
-  friend inline NestedNode<R> unflatten(
-      NestedNode<A> structure,
-      c10::List<R> content);
+  friend inline NestedNode<R> unflatten(NestedNode<A>, c10::List<R>);
 
   template <class A>
   friend inline NestedNode<std::vector<A>> zip(
       const std::vector<NestedNode<A>>& structures);
 
   template <typename F, typename A, typename... B>
-  friend inline A reduce(NestedNode<B>... nested_node, F fn, A ident);
+  friend inline A reduce(NestedNode<B>..., F, A);
 
   template <class F, class... A>
-  friend inline void apply(F&& fn, const NestedNode<A>&... nested_node);
+  friend inline void apply(F&&, const NestedNode<A>&...);
 
  private:
   inline c10::List<T> payload() {

@@ -86,7 +86,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 for (int64_t i = 0; i < self.len(); i++) {
                   result.push_back(py::cast(
                       THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
-                          buffers[i], sizes[i], strides[i]))));
+                          std::move(buffers[i]),
+                          std::move(sizes[i]),
+                          std::move(strides[i])))));
                 }
                 return py::cast(result);
               }
