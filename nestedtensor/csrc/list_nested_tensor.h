@@ -7,7 +7,7 @@ namespace nested_tensor {
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
 struct _ListNestedTensor {
   _ListNestedTensor() = delete;
-  _ListNestedTensor(TensorNode structure)
+  _ListNestedTensor(TensorNode&& structure)
       : _structure(structure),
         _first_variable(
             get_first_leaf(_structure) ? *get_first_leaf(_structure)

@@ -150,7 +150,7 @@ setuptools.setup(
     ],
     zip_safe=True,
     cmdclass={'clean': clean,
-              'build_ext': BuildExtension},
+              'build_ext': BuildExtension.with_options(use_ninja=True)},
     install_requires=requirements,
     ext_modules=get_extensions()
 )

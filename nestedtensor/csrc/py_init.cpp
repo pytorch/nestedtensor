@@ -86,7 +86,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 for (int64_t i = 0; i < self.len(); i++) {
                   result.push_back(py::cast(
                       THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
-                          buffers[i], sizes[i], strides[i]))));
+                          std::move(buffers[i]),
+                          std::move(sizes[i]),
+                          std::move(strides[i])))));
                 }
                 return py::cast(result);
               }
@@ -98,9 +100,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               return wrap_nested_node(nt.get_structure());
             } else {
               std::vector<py::object> result;
-              for (const auto& child : nt.get_structure().unbind()) {
-                result.push_back(py::cast(THPNestedTensor(
-                    torch::nested_tensor::_ListNestedTensor(child))));
+              for (const auto& _child : nt.get_structure().unbind()) {
+                auto child = _child;
+                result.push_back(py::cast(
+                    THPNestedTensor(torch::nested_tensor::_ListNestedTensor(
+                        std::move(child)))));
               }
               return py::cast(result);
             }

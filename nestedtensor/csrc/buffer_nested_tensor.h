@@ -8,20 +8,17 @@ namespace nested_tensor {
 struct TORCH_API _BufferNestedTensor {
   // TODO: Deal with default initialization
   _BufferNestedTensor() = delete;
-  _BufferNestedTensor(torch::autograd::Variable buffer, SizeNode nested_size);
-  _BufferNestedTensor(
-      torch::autograd::Variable buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride);
-  _BufferNestedTensor(
-      torch::autograd::Variable buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride,
-      TensorNode structure);
   _BufferNestedTensor(
       torch::autograd::Variable&& buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride,
+      SizeNode&& nested_size);
+  _BufferNestedTensor(
+      torch::autograd::Variable&& buffer,
+      SizeNode&& nested_size,
+      SizeNode&& nested_stride);
+  _BufferNestedTensor(
+      torch::autograd::Variable&& buffer,
+      SizeNode&& nested_size,
+      SizeNode&& nested_stride,
       TensorNode&& structure);
   torch::autograd::Variable get_buffer() {
     return _buffer;
@@ -48,7 +45,7 @@ struct TORCH_API _BufferNestedTensor {
   at::TensorOptions options() {
     return _buffer.options();
   }
-  _BufferNestedTensor requires_grad_(bool requires_grad) {
+  _BufferNestedTensor& requires_grad_(bool requires_grad) {
     apply(
         [requires_grad](at::Tensor tensor) -> void {
           tensor.set_requires_grad(requires_grad);
@@ -64,10 +61,12 @@ struct TORCH_API _BufferNestedTensor {
   // TODO: This should return a reference?
   _BufferNestedTensor detach() {
     at::Tensor detach_buffer = _buffer.detach();
+    SizeNode nested_size = _nested_size;
+    SizeNode nested_stride = _nested_stride;
     return _BufferNestedTensor(
-        detach_buffer,
-        _nested_size,
-        _nested_stride,
+        std::move(detach_buffer),
+        std::move(nested_size),
+        std::move(nested_stride),
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   _BufferNestedTensor pin_memory();
