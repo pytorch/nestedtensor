@@ -53,19 +53,17 @@ bool _verify_variables(
   //     is_pinned()
   bool valid = true;
   if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      at::Tensor variable = nested_node.payload(i);
-      // TODO: Add more checks?
-      valid = valid && (variable.dim() == first_variable.dim());
-      valid = valid && (variable.layout() == first_variable.layout());
-      valid = valid && (variable.device() == first_variable.device());
-      valid = valid && (variable.dtype() == first_variable.dtype());
-      valid =
-          valid && (variable.requires_grad() == first_variable.requires_grad());
-      // NOTE: This is a very costly check! For now we'll let this to be
-      // enabled manually. valid = valid && (variable_.is_pinned() ==
-      // first_variable.is_pinned());
-    }
+    at::Tensor variable = nested_node.payload();
+    // TODO: Add more checks?
+    valid = valid && (variable.dim() == first_variable.dim());
+    valid = valid && (variable.layout() == first_variable.layout());
+    valid = valid && (variable.device() == first_variable.device());
+    valid = valid && (variable.dtype() == first_variable.dtype());
+    valid =
+        valid && (variable.requires_grad() == first_variable.requires_grad());
+    // NOTE: This is a very costly check! For now we'll let this to be
+    // enabled manually. valid = valid && (variable_.is_pinned() ==
+    // first_variable.is_pinned());
   } else {
     for (size_t i = 0; i < nested_node.degree(); i++) {
       valid =
@@ -78,24 +76,8 @@ bool _verify_variables(
 std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   if (size_node.is_leaf()) {
     std::vector<c10::optional<int64_t>> result;
-    result.push_back(size_node.size());
-    if (size_node.size() == 0) {
-      return result;
-    }
-
-    for (const auto& size : size_node.payload(0)) {
+    for (const auto& size : size_node.payload()) {
       result.push_back(size);
-    }
-
-    for (size_t j = 1; j < result.size(); j++) {
-      for (size_t i = 1; i < size_node.size(); i++) {
-        if (!result[j]) {
-          break;
-        }
-        if ((*(result[j])) != size_node.payload(i)[j - 1]) {
-          result[j] = c10::nullopt;
-        }
-      }
     }
     return result;
   }

@@ -16,11 +16,7 @@ struct THPNestedNode {
   THPNestedNode(NestedNode<T> size_node, std::string name)
       : _size_node(size_node), _name(name) {}
   int64_t len() {
-    if (_size_node.is_leaf()) {
-      return _size_node.size();
-    } else {
       return _size_node.degree();
-    }
   }
   std::string str() {
     return NestedNode___str__(
