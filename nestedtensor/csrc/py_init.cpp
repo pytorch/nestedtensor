@@ -68,50 +68,47 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "unbind",
           [](THPNestedTensor self) {
-            std::vector<py::object> result;
             // FOR BUFFER
+
             if (self.data().is_right()) {
+              auto nt = self.data().right();
               if (self.nested_dim() == 1) {
-                for (int64_t i = 0; i < self.len(); i++) {
-                  result.push_back(torch::jit::toPyObject(
-                      self.data().right().get_structure().payload(i)));
-                }
+                return wrap_nested_node(nt.get_structure());
               } else {
+                std::vector<py::object> result;
                 std::vector<int64_t> split_sizes;
+                auto sizes = nt.nested_size().unbind();
+                auto strides = nt.nested_size().unbind();
                 for (int64_t i = 0; i < self.len(); i++) {
-                  split_sizes.push_back(size_node_memory(
-                      self.data().right().nested_size().children(i),
-                      self.data().right().nested_stride().children(i)));
+                  split_sizes.push_back(size_node_memory(sizes[i], strides[i]));
                 }
                 std::vector<at::Tensor> buffers = at::split_with_sizes(
-                    self.data().right().get_buffer(),
-                    c10::IntArrayRef(split_sizes),
-                    0);
+                    nt.get_buffer(), c10::IntArrayRef(split_sizes), 0);
+                auto size_children = nt.nested_size().unbind();
+                auto stride_children = nt.nested_stride().unbind();
                 for (int64_t i = 0; i < self.len(); i++) {
                   result.push_back(py::cast(
                       THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
-                          buffers[i],
-                          self.data().right().nested_size().children(i),
-                          self.data().right().nested_stride().children(i)))));
+                          buffers[i], size_children[i], stride_children[i]))));
                 }
+                return py::cast(result);
               }
-              return result;
             }
 
             // FOR LIST
             if (self.nested_dim() == 1) {
-              for (int64_t i = 0; i < self.len(); i++) {
-                result.push_back(torch::jit::toPyObject(
-                    self.data().left().get_structure().payload(i)));
-              }
+              auto nt = self.data().left();
+              return wrap_nested_node(nt.get_structure());
             } else {
+              std::vector<py::object> result;
+              auto tensor_children = nt.get_structure().unbind();
               for (int64_t i = 0; i < self.len(); i++) {
                 result.push_back(py::cast(
                     THPNestedTensor(torch::nested_tensor::_ListNestedTensor(
-                        self.data().left().get_structure().children(i)))));
+                        tensor_children[i]))));
               }
+              return py::cast(result);
             }
-            return result;
           })
       .def("size", &THPNestedTensor::size)
       .def("requires_grad_", &THPNestedTensor::requires_grad_)

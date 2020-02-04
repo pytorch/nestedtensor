@@ -37,19 +37,16 @@ struct THPNestedNode {
     return _name;
   }
 
-  std::vector<py::object> unbind() {
-    std::vector<py::object> result;
+  py::object unbind() {
     if (_size_node.is_leaf()) {
-      for (size_t i = 0; i < _size_node.size(); i++) {
-        result.push_back(torch::jit::toPyObject(_size_node.payload(i)));
-      }
+      return wrap_nested_node(_size_node);
     } else {
-      for (size_t i = 0; i < _size_node.degree(); i++) {
-        result.push_back(
-            py::cast(THPNestedNode<T>(_size_node.children(i), _name)));
+      std::vector<py::object> result;
+      for (const auto& child : _size_node.unbind()) {
+        result.push_back(py::cast(THPNestedNode<T>(child, _name)));
       }
+      return py::cast(result);
     }
-    return result;
   }
 
  private:
