@@ -76,7 +76,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               } else {
                 std::vector<int64_t> split_sizes;
                 auto sizes = nt.nested_size().unbind();
-                auto strides = nt.nested_size().unbind();
+                auto strides = nt.nested_stride().unbind();
                 for (int64_t i = 0; i < self.len(); i++) {
                   split_sizes.push_back(size_node_memory(sizes[i], strides[i]));
                 }
