@@ -95,9 +95,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               }
             }
 
+            auto nt = self.data().left();
             // FOR LIST
             if (self.nested_dim() == 1) {
-              auto nt = self.data().left();
               return wrap_nested_node(nt.get_structure());
             } else {
               std::vector<py::object> result;
