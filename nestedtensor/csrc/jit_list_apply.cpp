@@ -14,13 +14,17 @@ using namespace torch::jit::script;
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
 static TensorNode apply_jit_function(
-    Stack& stack_template,
-    const std::set<size_t>& tensor_node_i,
+    // Stack& stack_template,
+    // const std::set<size_t>& tensor_node_i,
     const std::vector<IValueNode>& tensor_nodes,
     F& fn) {
   NestedNode<std::vector<c10::IValue>> zipped = zip(tensor_nodes);
   return map(
-      [&fn, &tensor_node_i, &stack_template](std::vector<c10::IValue> tensors) {
+      [&fn
+       // ,
+       // &tensor_node_i,
+       // &stack_template
+  ](std::vector<c10::IValue> tensors) {
         Stack stack(tensors);
         // Stack stack(stack_template);
         // size_t ni = 0;
@@ -67,8 +71,9 @@ c10::optional<IValueNode> try_nested_node(
   return c10::nullopt;
 }
 
-inline c10::optional<
-    std::tuple<Stack, std::set<size_t>, std::vector<IValueNode>>>
+// inline c10::optional<
+//     std::tuple<Stack, std::set<size_t>, std::vector<IValueNode>>>
+inline c10::optional<std::vector<IValueNode>>
 my_createStackForSchema(
     const FunctionSchema& schema,
     const tuple_slice& args,
@@ -78,11 +83,12 @@ my_createStackForSchema(
   if (all_arguments > schema.arguments().size()) {
     return c10::nullopt;
   }
-  Stack stack;
-  stack.reserve(schema.arguments().size());
+  // Stack stack;
+  // stack.reserve(schema.arguments().size());
 
-  std::set<size_t> tensor_node_i;
+  // std::set<size_t> tensor_node_i;
   std::vector<IValueNode> tensor_nodes;
+  tensor_nodes.reserve(schema.arguments().size());
 
   if (self) {
     // NOTE: self cannot be a NestedTensor because it cannot be an ivalue.
@@ -95,7 +101,7 @@ my_createStackForSchema(
     const auto& schema_arg = schema.arguments()[i];
     if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
       tensor_nodes.push_back(*tensor_node);
-      tensor_node_i.insert(stack.size());
+      // tensor_node_i.insert(stack.size());
       // push(stack, torch::jit::IValue(torch::zeros({})));
     } else {
       // TODO: This is expensive because argumentToIValue constructs an error
@@ -114,13 +120,13 @@ my_createStackForSchema(
   // in the kwargs dict and push it if found, or use its default value if it
   // has one.
   size_t consumed_kwargs = 0;
-  for (size_t i = stack.size(); i < schema.arguments().size(); ++i) {
+  for (size_t i = tensor_nodes.size(); i < schema.arguments().size(); ++i) {
     const auto& schema_arg = schema.arguments()[i];
     if (kwargs.contains(schema_arg.name().c_str())) {
       auto kwarg = kwargs[schema_arg.name().c_str()];
       if (auto tensor_node = try_nested_node(schema_arg, kwarg)) {
         tensor_nodes.push_back(*tensor_node);
-        tensor_node_i.insert(stack.size());
+        // tensor_node_i.insert(stack.size());
         // push(stack, torch::jit::IValue(torch::zeros({})));
       } else {
         // TODO: This is expensive because argumentToIValue constructs an error
@@ -155,7 +161,8 @@ my_createStackForSchema(
     }
   }
 
-  return std::make_tuple(stack, tensor_node_i, tensor_nodes);
+  // return std::make_tuple(stack, tensor_nodes); // tensor_node_i, tensor_nodes);
+  return tensor_nodes;
 }
 
 // TODO: This should support 3 types of functions
@@ -176,9 +183,10 @@ py::cpp_function jit_tensorwise() {
           py::gil_scoped_release release;
           THPNestedTensor result =
               THPNestedTensor(_ListNestedTensor(apply_jit_function(
-                  std::get<0>(*pack),
-                  std::get<1>(*pack),
-                  std::get<2>(*pack),
+                  *pack,
+                  // std::get<0>(*pack),
+                  // std::get<1>(*pack),
+                  // std::get<2>(*pack),
                   operation)));
           return result;
         }
@@ -215,9 +223,10 @@ py::cpp_function jit_tensorwise() {
             py::gil_scoped_release release;
             THPNestedTensor result =
                 THPNestedTensor(_ListNestedTensor(apply_jit_function(
-                    std::get<0>(*pack),
-                    std::get<1>(*pack),
-                    std::get<2>(*pack),
+                    *pack,
+                    // std::get<0>(*pack),
+                    // std::get<1>(*pack),
+                    // std::get<2>(*pack),
                     operation)));
             return result;
           }
