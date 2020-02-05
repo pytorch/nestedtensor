@@ -21,6 +21,10 @@ NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
   }
 }
 
+THPIValueNode as_nested_list(py::sequence list) {
+  return THPIValueNode(_get_structure(list), "NestedList");
+}
+
 THPNestedTensor as_nested_tensor(py::sequence _list) {
   py::object list = _list;
   NestedNode<c10::IValue> ivalue_structure = _get_structure(list);

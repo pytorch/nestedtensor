@@ -17,6 +17,9 @@ def as_nested_tensor(data, dtype=None, device=None):
         ret = ret.to(device)
     return ret
 
+def as_nested_list(data):
+    return _C.as_nested_list(data)
+
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     """
     Arguments match torch.tensor

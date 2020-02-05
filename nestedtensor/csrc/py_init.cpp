@@ -24,6 +24,12 @@
 using namespace torch::nested_tensor;
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+  py::class_<torch::nested_tensor::THPIValueNode>(m, "NestedList")
+      .def("__str__", &THPIValueNode::str)
+      .def("unbind", &THPIValueNode::unbind)
+      .def("__repr__", &THPIValueNode::str)
+      .def("__len__", &THPIValueNode::len);
+
   py::class_<torch::nested_tensor::THPSizeNode>(m, "SizeNode")
       .def("__str__", &THPSizeNode::str)
       .def("unbind", &THPSizeNode::unbind)
@@ -128,4 +134,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
+  m.def("as_nested_list", &torch::nested_tensor::as_nested_list);
 }
