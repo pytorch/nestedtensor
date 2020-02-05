@@ -11,35 +11,27 @@ using namespace torch::jit;
 using namespace torch::jit::script;
 
 // TODO Expand to IValues to support generic lists?
-at::Tensor run_function(Stack&& stack, Function& fn) {
-  fn(stack);
-  return std::move(stack.front().toTensor());
-}
-
-at::Tensor run_function(Stack&& stack, Operation& fn) {
-  fn(stack);
-  return std::move(stack.front().toTensor());
-}
-
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
-static TensorNode apply_jit_function(
+static IValueNode apply_jit_function(
     Stack& stack_template,
     const std::set<size_t>& tensor_node_i,
-    const std::vector<TensorNode>& tensor_nodes,
+    const std::vector<IValueNode>& tensor_nodes,
     F& fn) {
   NestedNode<std::vector<at::Tensor>> zipped = zip(tensor_nodes);
   return map(
-      [&fn, &tensor_node_i, &stack_template](std::vector<at::Tensor> tensors) {
-        Stack stack(stack_template);
-        size_t ni = 0;
-        for (size_t i = 0; i < stack.size(); i++) {
-          if (tensor_node_i.count(i)) {
-            stack[i] = tensors[ni];
-            ni++;
-          }
-        }
-        return run_function(std::move(stack), fn);
+      [&fn, &tensor_node_i, &stack_template](std::vector<c10::IValue> tensors) {
+        Stack stack(tensors);
+        // Stack stack(stack_template);
+        // size_t ni = 0;
+        // for (size_t i = 0; i < stack.size(); i++) {
+        //   if (tensor_node_i.count(i)) {
+        //     stack[i] = tensors[ni];
+        //     ni++;
+        //   }
+        // }
+        fn(stack);
+        return std::move(stack.front().toTensor());
       },
       zipped);
 }
@@ -57,7 +49,7 @@ c10::optional<Symbol> is_builtin(py::object fn) {
   return name;
 }
 
-c10::optional<TensorNode> try_nested_node(
+c10::optional<IValueNode> try_nested_node(
     Argument argument,
     py::object py_arg) {
   InferredType inferred_type = tryToInferType(py_arg);
@@ -67,14 +59,16 @@ c10::optional<TensorNode> try_nested_node(
   }
   if (argument.type()->kind() == TypeKind::TensorType &&
       py::isinstance<THPNestedTensor>(py_arg)) {
-    TensorNode node = py::cast<THPNestedTensor>(py_arg).get_structure();
+    IValueNode node =
+        map([](at::Tensor tensor) { return torch::jit::IValue(tensor); },
+            py::cast<THPNestedTensor>(py_arg).get_structure());
     return node;
   }
   return c10::nullopt;
 }
 
 inline c10::optional<
-    std::tuple<Stack, std::set<size_t>, std::vector<TensorNode>>>
+    std::tuple<Stack, std::set<size_t>, std::vector<IValueNode>>>
 my_createStackForSchema(
     const FunctionSchema& schema,
     const tuple_slice& args,
@@ -88,11 +82,12 @@ my_createStackForSchema(
   stack.reserve(schema.arguments().size());
 
   std::set<size_t> tensor_node_i;
-  std::vector<TensorNode> tensor_nodes;
+  std::vector<IValueNode> tensor_nodes;
 
   if (self) {
     // NOTE: self cannot be a NestedTensor because it cannot be an ivalue.
-    push(stack, std::move(*self));
+    // push(stack, std::move(*self));
+    tensor_nodes.push_back(IValueNode(std::move(*self)));
   }
   // First push all positional args.
   for (size_t i = 0; i < args.size(); i++) {
@@ -101,12 +96,14 @@ my_createStackForSchema(
     if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
       tensor_nodes.push_back(*tensor_node);
       tensor_node_i.insert(stack.size());
-      push(stack, torch::jit::IValue(torch::zeros({})));
+      // push(stack, torch::jit::IValue(torch::zeros({})));
     } else {
       // TODO: This is expensive because argumentToIValue constructs an error
       // message.
       try {
-        push(stack, argumentToIValue(schema, i, args[i]));
+        // push(stack, argumentToIValue(schema, i, args[i]));
+        tensor_nodes.push_back(
+            IValueNode(argumentToIValue(schema, i, args[i])));
       } catch (const std::runtime_error& e) {
         return c10::nullopt;
       }
@@ -124,19 +121,22 @@ my_createStackForSchema(
       if (auto tensor_node = try_nested_node(schema_arg, kwarg)) {
         tensor_nodes.push_back(*tensor_node);
         tensor_node_i.insert(stack.size());
-        push(stack, torch::jit::IValue(torch::zeros({})));
+        // push(stack, torch::jit::IValue(torch::zeros({})));
       } else {
         // TODO: This is expensive because argumentToIValue constructs an error
         // message.
         try {
-          push(stack, argumentToIValue(schema, i, kwarg));
+          // push(stack, argumentToIValue(schema, i, kwarg));
+          tensor_nodes.push_back(
+              IValueNode(argumentToIValue(schema, i, kwarg)));
         } catch (const std::runtime_error& e) {
           return c10::nullopt;
         }
       }
       consumed_kwargs += 1;
     } else if (schema_arg.default_value()) {
-      push(stack, *schema_arg.default_value());
+      // push(stack, *schema_arg.default_value());
+      tensor_nodes.push_back(IValueNode(*schema_arg.default_value()));
     } else {
       return c10::nullopt;
     }
