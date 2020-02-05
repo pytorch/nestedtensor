@@ -89,8 +89,15 @@ struct NestedNode {
   friend inline NestedNode<std::vector<A>> zip(
       const std::vector<NestedNode<A>>& structures);
 
-  template <typename F, typename A, typename... B>
-  friend inline A reduce(NestedNode<B>..., F, A);
+  template <class F, class A, class TypeList>
+  friend class _reduce;
+
+  template <class F, class... B>
+  friend inline typename c10::guts::infer_function_traits<F>::type::return_type
+  reduce(
+      F&&,
+      typename c10::guts::infer_function_traits<F>::type::return_type,
+      const NestedNode<B>&...);
 
   template <class F, class... A>
   friend inline void apply(F&&, const NestedNode<A>&...);
@@ -364,7 +371,7 @@ class _reduce<F, A, c10::guts::typelist::typelist<Args...>> {
     A result = ident;
     auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
     if (first_node.is_leaf()) {
-      std::forward<F>(fn)(result, nested_node.payload()...);
+      result = std::forward<F>(fn)(result, nested_node.payload()...);
     } else {
       for (size_t i = 0; i < first_node.degree(); i++) {
         result =
