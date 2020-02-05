@@ -14,26 +14,12 @@ using namespace torch::jit::script;
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
 static TensorNode apply_jit_function(
-    // Stack& stack_template,
-    // const std::set<size_t>& tensor_node_i,
     const std::vector<IValueNode>& tensor_nodes,
     F& fn) {
   NestedNode<std::vector<c10::IValue>> zipped = zip(tensor_nodes);
   return map(
-      [&fn
-       // ,
-       // &tensor_node_i,
-       // &stack_template
-  ](std::vector<c10::IValue> tensors) {
-        Stack stack(tensors);
-        // Stack stack(stack_template);
-        // size_t ni = 0;
-        // for (size_t i = 0; i < stack.size(); i++) {
-        //   if (tensor_node_i.count(i)) {
-        //     stack[i] = tensors[ni];
-        //     ni++;
-        //   }
-        // }
+      [&fn](std::vector<c10::IValue> stack) {
+        // Stack stack(tensors);
         fn(stack);
         return std::move(stack.front().toTensor());
       },
@@ -71,10 +57,7 @@ c10::optional<IValueNode> try_nested_node(
   return c10::nullopt;
 }
 
-// inline c10::optional<
-//     std::tuple<Stack, std::set<size_t>, std::vector<IValueNode>>>
-inline c10::optional<std::vector<IValueNode>>
-my_createStackForSchema(
+inline c10::optional<std::vector<IValueNode>> my_createStackForSchema(
     const FunctionSchema& schema,
     const tuple_slice& args,
     const py::kwargs& kwargs,
@@ -83,16 +66,11 @@ my_createStackForSchema(
   if (all_arguments > schema.arguments().size()) {
     return c10::nullopt;
   }
-  // Stack stack;
-  // stack.reserve(schema.arguments().size());
-
-  // std::set<size_t> tensor_node_i;
   std::vector<IValueNode> tensor_nodes;
   tensor_nodes.reserve(schema.arguments().size());
 
   if (self) {
     // NOTE: self cannot be a NestedTensor because it cannot be an ivalue.
-    // push(stack, std::move(*self));
     tensor_nodes.push_back(IValueNode(std::move(*self)));
   }
   // First push all positional args.
@@ -101,13 +79,10 @@ my_createStackForSchema(
     const auto& schema_arg = schema.arguments()[i];
     if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
       tensor_nodes.push_back(*tensor_node);
-      // tensor_node_i.insert(stack.size());
-      // push(stack, torch::jit::IValue(torch::zeros({})));
     } else {
       // TODO: This is expensive because argumentToIValue constructs an error
       // message.
       try {
-        // push(stack, argumentToIValue(schema, i, args[i]));
         tensor_nodes.push_back(
             IValueNode(argumentToIValue(schema, i, args[i])));
       } catch (const std::runtime_error& e) {
@@ -126,13 +101,10 @@ my_createStackForSchema(
       auto kwarg = kwargs[schema_arg.name().c_str()];
       if (auto tensor_node = try_nested_node(schema_arg, kwarg)) {
         tensor_nodes.push_back(*tensor_node);
-        // tensor_node_i.insert(stack.size());
-        // push(stack, torch::jit::IValue(torch::zeros({})));
       } else {
         // TODO: This is expensive because argumentToIValue constructs an error
         // message.
         try {
-          // push(stack, argumentToIValue(schema, i, kwarg));
           tensor_nodes.push_back(
               IValueNode(argumentToIValue(schema, i, kwarg)));
         } catch (const std::runtime_error& e) {
@@ -141,7 +113,6 @@ my_createStackForSchema(
       }
       consumed_kwargs += 1;
     } else if (schema_arg.default_value()) {
-      // push(stack, *schema_arg.default_value());
       c10::IValue def = *schema_arg.default_value();
       tensor_nodes.push_back(IValueNode(std::move(def)));
     } else {
@@ -161,7 +132,6 @@ my_createStackForSchema(
     }
   }
 
-  // return std::make_tuple(stack, tensor_nodes); // tensor_node_i, tensor_nodes);
   return tensor_nodes;
 }
 
