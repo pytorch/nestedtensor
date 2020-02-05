@@ -11,13 +11,7 @@ struct _ListNestedTensor {
       : _structure(structure),
         _first_variable(
             get_first_leaf(_structure) ? *get_first_leaf(_structure)
-                                       : at::ones({})) {
-    if (__len__() > 0) {
-      TORCH_CHECK(
-          _verify_variables(_first_variable, _structure),
-          "Tensors don't line up.");
-    }
-  }
+                                       : at::ones({})) {}
   int64_t element_size() {
     return _first_variable.element_size();
   }
@@ -61,11 +55,7 @@ struct _ListNestedTensor {
         gradient.get_structure());
   }
   int64_t __len__() {
-    if (nested_dim() == 1) {
-      return _structure.size();
-    } else {
-      return _structure.degree();
-    }
+    return _structure.degree();
   }
   at::Tensor to_tensor() {
     return stack(flatten(_structure).vec());

@@ -27,11 +27,7 @@ struct TORCH_API _BufferNestedTensor {
     return _buffer.element_size();
   }
   int64_t __len__() {
-    if (nested_dim() == 1) {
-      return _nested_size.size();
-    } else {
-      return _nested_size.degree();
-    }
+    return _nested_size.degree();
   }
   at::ScalarType scalar_type() {
     return _buffer.scalar_type();

@@ -12,9 +12,10 @@ namespace nested_tensor {
 // return a single value).
 template <typename T>
 struct NestedNode {
-  NestedNode() : _is_leaf(true), _height(1) {}
+  // NestedNode() : _is_leaf(false), _height(1) {}
+  NestedNode() = delete;
   NestedNode(std::vector<NestedNode<T>>&& children)
-      : _is_leaf(false), _children(children), _height(0) {
+      : _is_leaf(false), _children(children), _height(1) {
     for (const auto& child : children) {
       if (child.height() + 1 > _height) {
         _height = child.height() + 1;
@@ -24,16 +25,12 @@ struct NestedNode {
   // NestedNode(NestedNode&) = delete;
   // NestedNode(const NestedNode&) = delete;
   NestedNode& operator=(NestedNode) = delete;
-  NestedNode(c10::List<T>&& payload)
-      : _is_leaf(true), _payload(payload), _height(1) {}
+  NestedNode(T&& payload) : _is_leaf(true), _payload(payload), _height(0) {}
   inline bool is_leaf() const {
     return _is_leaf;
   }
   inline size_t degree() const {
     return _children.size();
-  }
-  inline size_t size() const {
-    return _payload.size();
   }
   inline int64_t height() const {
     return _height;
@@ -62,8 +59,8 @@ struct NestedNode {
       const NestedNode<c10::List<int64_t>>&);
 
   friend bool _verify_variables(
-      const torch::autograd::Variable&,
-      const NestedNode<at::Tensor>);
+      const at::Tensor& first_variable,
+      const NestedNode<at::Tensor>& nested_node);
 
   template <typename A>
   friend inline c10::optional<A> get_first_leaf(NestedNode<A>);
@@ -99,11 +96,8 @@ struct NestedNode {
   friend inline void apply(F&&, const NestedNode<A>&...);
 
  private:
-  inline c10::List<T> payload() {
+  inline const T& payload() const {
     return _payload;
-  }
-  inline T payload(size_t i) const {
-    return _payload[i];
   }
   inline NestedNode<T> children(size_t i) const {
     return _children[i];
@@ -115,7 +109,7 @@ struct NestedNode {
   const std::vector<NestedNode<T>> _children;
   // TODO: Make this const?
   // _VariableNode _variable_node;
-  c10::List<T> _payload;
+  T _payload;
   int64_t _height;
 };
 
@@ -169,28 +163,26 @@ std::string NestedNode___str__(
     F payload_to_str,
     const std::string& tabs = "") {
   std::stringstream result;
-  auto tabs_ = tabs + "\t";
-  // result << "nested_tensor([";
-  result << name << "([";
   if (nested_node.is_leaf()) {
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      if (i > 0) {
-        result << ",";
-      }
-      result << payload_to_str(nested_node.payload(i), tabs_);
-    }
+    result << payload_to_str(nested_node.payload(), tabs);
   } else {
+    auto tabs_ = tabs + "\t";
+    result << tabs;
+    result << name;
+    result << "([";
+    result << std::endl;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       if (i > 0) {
         result << ",";
+        result << std::endl;
       }
-      result << "\n" << tabs_;
       result << NestedNode___str__<T, F>(
           nested_node.children(i), name, payload_to_str, tabs_);
     }
+    result << std::endl;
+    result << tabs;
+    result << "])";
   }
-  result << std::endl;
-  result << tabs << "])";
   return result.str();
 }
 
@@ -203,11 +195,7 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
 template <typename A, typename B = py::object>
 B wrap_nested_node(NestedNode<A> nested_node) {
   if (nested_node.is_leaf()) {
-    std::vector<py::object> result;
-    for (size_t i = 0; i < nested_node.size(); i++) {
-      result.push_back(torch::jit::toPyObject(nested_node.payload(i)));
-    }
-    return B(py::cast(result));
+    return B(torch::jit::toPyObject(nested_node.payload()));
   } else {
     std::vector<B> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
@@ -222,19 +210,19 @@ at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);
 std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
 
 bool _verify_variables(
-    const torch::autograd::Variable& first_variable,
-    const TensorNode nested_node);
+    const at::Tensor& first_variable,
+    const TensorNode& nested_node);
 
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
-  if (nested_node.is_leaf() && nested_node.size() == 0) {
+  if (nested_node.degree() == 0) {
     return c10::nullopt;
   }
   const NestedNode<A>* start = &nested_node;
   while (!start->is_leaf()) {
     start = start->children_data(0);
   }
-  return start->payload(0);
+  return start->payload();
 }
 
 template <class F, class A, class TypeList>
@@ -250,11 +238,7 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
       const NestedNode<Args>&... nested_node) {
     auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
     if (first_node.is_leaf()) {
-      c10::List<A> result;
-      for (size_t i = 0; i < first_node.size(); i++) {
-        result.emplace_back(std::forward<F>(fn)(nested_node.payload(i)...));
-      }
-      return NestedNode<A>(std::move(result));
+      return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
     } else {
       std::vector<NestedNode<A>> result;
       for (size_t i = 0; i < first_node.degree(); i++) {
@@ -284,7 +268,9 @@ map(F&& fn, const NestedNode<B>&... nested_node) {
 template <typename A>
 inline c10::List<A> flatten(NestedNode<A> nested_node) {
   if (nested_node.is_leaf()) {
-    return nested_node.payload();
+    c10::List<A> result;
+    result.push_back(nested_node.payload());
+    return result;
   } else {
     c10::List<A> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
@@ -301,13 +287,8 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
     const c10::List<R>& content,
     int64_t index) {
   if (structure.is_leaf()) {
-    c10::List<R> result;
-    for (size_t i = 0; i < structure.size(); i++) {
-      result.push_back(content[index]);
-      index++;
-    }
     return std::pair<int64_t, NestedNode<R>>(
-        index, NestedNode<R>(std::move(result)));
+        index + 1, NestedNode<R>(content[index]));
   } else {
     std::vector<NestedNode<R>> result;
     for (size_t i = 0; i < structure.degree(); i++) {
@@ -337,15 +318,9 @@ inline NestedNode<std::vector<A>> zip(
     all_leaf = all_leaf && node.is_leaf();
   }
   if (all_leaf) {
-    size_t leaf_size = structures[0].size();
-    c10::List<std::vector<A>> results;
-    results.reserve(leaf_size);
-    for (size_t j = 0; j < leaf_size; j++) {
-      std::vector<A> tmp;
-      for (size_t i = 0; i < structures.size(); i++) {
-        tmp.push_back(structures[i].payload(j));
-      }
-      results.push_back(tmp);
+    std::vector<A> results;
+    for (size_t i = 0; i < structures.size(); i++) {
+      results.push_back(structures[i].payload());
     }
     return NestedNode<std::vector<A>>(std::move(results));
   } else {
@@ -383,9 +358,7 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
   A result = ident;
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.is_leaf()) {
-    for (size_t i = 0; i < first_node.size(); i++) {
-      result = fn(nested_node.payload(i)..., result);
-    }
+    result = fn(nested_node.payload()..., result);
   } else {
     for (size_t i = 0; i < first_node.degree(); i++) {
       result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
@@ -399,9 +372,7 @@ template <class F, class... A>
 inline void apply(F&& fn, const NestedNode<A>&... nested_node) {
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.is_leaf()) {
-    for (size_t i = 0; i < first_node.size(); i++) {
-      std::forward<F>(fn)(nested_node.payload(i)...);
-    }
+    std::forward<F>(fn)(nested_node.payload()...);
   } else {
     for (size_t i = 0; i < first_node.degree(); i++) {
       apply<F, A...>(std::forward<F>(fn), nested_node.children(i)...);
