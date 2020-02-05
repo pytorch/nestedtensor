@@ -11,35 +11,16 @@ using namespace torch::jit;
 using namespace torch::jit::script;
 
 // TODO Expand to IValues to support generic lists?
-at::Tensor run_function(Stack&& stack, Function& fn) {
-  fn(stack);
-  return std::move(stack.front().toTensor());
-}
-
-at::Tensor run_function(Stack&& stack, Operation& fn) {
-  fn(stack);
-  return std::move(stack.front().toTensor());
-}
-
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
 static TensorNode apply_jit_function(
-    Stack& stack_template,
-    const std::set<size_t>& tensor_node_i,
-    const std::vector<TensorNode>& tensor_nodes,
+    const std::vector<IValueNode>& tensor_nodes,
     F& fn) {
-  NestedNode<std::vector<at::Tensor>> zipped = zip(tensor_nodes);
+  NestedNode<std::vector<c10::IValue>> zipped = zip(tensor_nodes);
   return map(
-      [&fn, &tensor_node_i, &stack_template](std::vector<at::Tensor> tensors) {
-        Stack stack(stack_template);
-        size_t ni = 0;
-        for (size_t i = 0; i < stack.size(); i++) {
-          if (tensor_node_i.count(i)) {
-            stack[i] = tensors[ni];
-            ni++;
-          }
-        }
-        return run_function(std::move(stack), fn);
+      [&fn](std::vector<c10::IValue> stack) {
+        fn(stack);
+        return std::move(stack.front().toTensor());
       },
       zipped);
 }
@@ -57,7 +38,7 @@ c10::optional<Symbol> is_builtin(py::object fn) {
   return name;
 }
 
-c10::optional<TensorNode> try_nested_node(
+c10::optional<IValueNode> try_nested_node(
     Argument argument,
     py::object py_arg) {
   InferredType inferred_type = tryToInferType(py_arg);
@@ -67,15 +48,15 @@ c10::optional<TensorNode> try_nested_node(
   }
   if (argument.type()->kind() == TypeKind::TensorType &&
       py::isinstance<THPNestedTensor>(py_arg)) {
-    TensorNode node = py::cast<THPNestedTensor>(py_arg).get_structure();
+    IValueNode node =
+        map([](at::Tensor tensor) { return torch::jit::IValue(tensor); },
+            py::cast<THPNestedTensor>(py_arg).get_structure());
     return node;
   }
   return c10::nullopt;
 }
 
-inline c10::optional<
-    std::tuple<Stack, std::set<size_t>, std::vector<TensorNode>>>
-my_createStackForSchema(
+inline c10::optional<std::vector<IValueNode>> my_createStackForSchema(
     const FunctionSchema& schema,
     const tuple_slice& args,
     const py::kwargs& kwargs,
@@ -84,15 +65,12 @@ my_createStackForSchema(
   if (all_arguments > schema.arguments().size()) {
     return c10::nullopt;
   }
-  Stack stack;
-  stack.reserve(schema.arguments().size());
-
-  std::set<size_t> tensor_node_i;
-  std::vector<TensorNode> tensor_nodes;
+  std::vector<IValueNode> tensor_nodes;
+  tensor_nodes.reserve(schema.arguments().size());
 
   if (self) {
     // NOTE: self cannot be a NestedTensor because it cannot be an ivalue.
-    push(stack, std::move(*self));
+    tensor_nodes.push_back(IValueNode(std::move(*self)));
   }
   // First push all positional args.
   for (size_t i = 0; i < args.size(); i++) {
@@ -100,13 +78,12 @@ my_createStackForSchema(
     const auto& schema_arg = schema.arguments()[i];
     if (auto tensor_node = try_nested_node(schema_arg, args[i])) {
       tensor_nodes.push_back(*tensor_node);
-      tensor_node_i.insert(stack.size());
-      push(stack, torch::jit::IValue(torch::zeros({})));
     } else {
       // TODO: This is expensive because argumentToIValue constructs an error
       // message.
       try {
-        push(stack, argumentToIValue(schema, i, args[i]));
+        tensor_nodes.push_back(
+            IValueNode(argumentToIValue(schema, i, args[i])));
       } catch (const std::runtime_error& e) {
         return c10::nullopt;
       }
@@ -117,26 +94,26 @@ my_createStackForSchema(
   // in the kwargs dict and push it if found, or use its default value if it
   // has one.
   size_t consumed_kwargs = 0;
-  for (size_t i = stack.size(); i < schema.arguments().size(); ++i) {
+  for (size_t i = tensor_nodes.size(); i < schema.arguments().size(); ++i) {
     const auto& schema_arg = schema.arguments()[i];
     if (kwargs.contains(schema_arg.name().c_str())) {
       auto kwarg = kwargs[schema_arg.name().c_str()];
       if (auto tensor_node = try_nested_node(schema_arg, kwarg)) {
         tensor_nodes.push_back(*tensor_node);
-        tensor_node_i.insert(stack.size());
-        push(stack, torch::jit::IValue(torch::zeros({})));
       } else {
         // TODO: This is expensive because argumentToIValue constructs an error
         // message.
         try {
-          push(stack, argumentToIValue(schema, i, kwarg));
+          tensor_nodes.push_back(
+              IValueNode(argumentToIValue(schema, i, kwarg)));
         } catch (const std::runtime_error& e) {
           return c10::nullopt;
         }
       }
       consumed_kwargs += 1;
     } else if (schema_arg.default_value()) {
-      push(stack, *schema_arg.default_value());
+      c10::IValue def = *schema_arg.default_value();
+      tensor_nodes.push_back(IValueNode(std::move(def)));
     } else {
       return c10::nullopt;
     }
@@ -154,7 +131,7 @@ my_createStackForSchema(
     }
   }
 
-  return std::make_tuple(stack, tensor_node_i, tensor_nodes);
+  return tensor_nodes;
 }
 
 // TODO: This should support 3 types of functions
@@ -173,12 +150,8 @@ py::cpp_function jit_tensorwise() {
         if (auto pack = my_createStackForSchema(
                 operation.getSchema(), args, kwargs, c10::nullopt)) {
           py::gil_scoped_release release;
-          THPNestedTensor result =
-              THPNestedTensor(_ListNestedTensor(apply_jit_function(
-                  std::get<0>(*pack),
-                  std::get<1>(*pack),
-                  std::get<2>(*pack),
-                  operation)));
+          THPNestedTensor result = THPNestedTensor(
+              _ListNestedTensor(apply_jit_function(*pack, operation)));
           return result;
         }
       }
@@ -212,12 +185,8 @@ py::cpp_function jit_tensorwise() {
                   op->schema(), args, kwargs, c10::nullopt)) {
             auto operation = op->getOperation();
             py::gil_scoped_release release;
-            THPNestedTensor result =
-                THPNestedTensor(_ListNestedTensor(apply_jit_function(
-                    std::get<0>(*pack),
-                    std::get<1>(*pack),
-                    std::get<2>(*pack),
-                    operation)));
+            THPNestedTensor result = THPNestedTensor(
+                _ListNestedTensor(apply_jit_function(*pack, operation)));
             return result;
           }
         }
