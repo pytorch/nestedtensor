@@ -59,8 +59,8 @@ struct NestedNode {
       const NestedNode<c10::List<int64_t>>&);
 
   friend bool _verify_variables(
-      const torch::autograd::Variable&,
-      const NestedNode<at::Tensor>);
+      const at::Tensor& first_variable,
+      const NestedNode<at::Tensor>& nested_node);
 
   template <typename A>
   friend inline c10::optional<A> get_first_leaf(NestedNode<A>);
@@ -163,23 +163,26 @@ std::string NestedNode___str__(
     F payload_to_str,
     const std::string& tabs = "") {
   std::stringstream result;
-  auto tabs_ = tabs + "\t";
-  // result << "nested_tensor([";
-  result << name << "([";
   if (nested_node.is_leaf()) {
-    result << payload_to_str(nested_node.payload(), tabs_);
+    result << payload_to_str(nested_node.payload(), tabs);
   } else {
+    auto tabs_ = tabs + "\t";
+    result << tabs;
+    result << name;
+    result << "([";
+    result << std::endl;
     for (size_t i = 0; i < nested_node.degree(); i++) {
       if (i > 0) {
         result << ",";
+        result << std::endl;
       }
-      result << "\n" << tabs_;
       result << NestedNode___str__<T, F>(
           nested_node.children(i), name, payload_to_str, tabs_);
     }
+    result << std::endl;
+    result << tabs;
+    result << "])";
   }
-  result << std::endl;
-  result << tabs << "])";
   return result.str();
 }
 
@@ -207,8 +210,8 @@ at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);
 std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
 
 bool _verify_variables(
-    const torch::autograd::Variable& first_variable,
-    const TensorNode nested_node);
+    const at::Tensor& first_variable,
+    const TensorNode& nested_node);
 
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {

@@ -16,13 +16,13 @@ struct THPNestedNode {
   THPNestedNode(NestedNode<T> size_node, std::string name)
       : _size_node(size_node), _name(name) {}
   int64_t len() {
-      return _size_node.degree();
+    return _size_node.degree();
   }
   std::string str() {
     return NestedNode___str__(
         _size_node, _name, [](c10::IValue payload, const std::string& tabs) {
           std::stringstream ss;
-          ss << "\n" << tabs << payload;
+          ss << tabs << payload;
           return ss.str();
         });
   }
@@ -34,15 +34,15 @@ struct THPNestedNode {
   }
 
   py::object unbind() {
-    if (_size_node.is_leaf()) {
-      return wrap_nested_node(_size_node);
-    } else {
-      std::vector<py::object> result;
-      for (const auto& child : _size_node.unbind()) {
+    std::vector<py::object> result;
+    for (const auto& child : _size_node.unbind()) {
+      if (child.height() == 0) {
+        result.push_back(wrap_nested_node(child));
+      } else {
         result.push_back(py::cast(THPNestedNode<T>(child, _name)));
       }
-      return py::cast(result);
     }
+    return py::cast(result);
   }
 
  private:
@@ -127,8 +127,11 @@ struct THPNestedTensor {
                     PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
                 "\n");
             std::string result;
-            for (const std::string& token : tokens) {
-              result = result + "\n" + tabs + token;
+            for (size_t i = 0; i < tokens.size(); i++) {
+              result = result + tabs + tokens[i];
+              if (i < tokens.size() - 1) {
+                result = result + "\n";
+              }
             }
             return result;
           });

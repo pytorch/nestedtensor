@@ -40,7 +40,7 @@ class TestNestedTensor(TestCase):
             ValueError, lambda: nestedtensor.nested_tensor(torch.tensor([3.0])))
         self.assertRaises(ValueError, lambda: nestedtensor.nested_tensor(
             nestedtensor.nested_tensor([torch.tensor([3.0])])))
-        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor(
+        self.assertRaises(RuntimeError, lambda: nestedtensor.nested_tensor(
             [torch.tensor([2.0]), nestedtensor.nested_tensor([torch.tensor([3.0])])]))
         self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor(4.0))
 
@@ -64,7 +64,7 @@ class TestNestedTensor(TestCase):
 
     def test_scalar_constructor(self):
         # Not a valid NestedTensor. This is not a list of Tensors or constructables for Tensors.
-        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor([1.0]))
+        self.assertRaises(RuntimeError, lambda: nestedtensor.nested_tensor([1.0]))
 
     def test_repr_string(self):
         a = nestedtensor.nested_tensor(
@@ -85,6 +85,10 @@ class TestNestedTensor(TestCase):
                    "\n\t\ttensor([[4, 5]])"\
                    "\n\t])"\
                    "\n])"
+        print('expected')
+        print(expected)
+        print('str(a)')
+        print(str(a))
         self.assertEqual(str(a), expected)
         self.assertEqual(repr(a), expected)
 

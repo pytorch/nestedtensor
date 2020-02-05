@@ -35,8 +35,8 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
 }
 
 bool _verify_variables(
-    const torch::autograd::Variable& first_variable,
-    const TensorNode nested_node) {
+    const at::Tensor& first_variable,
+    const TensorNode& nested_node) {
   // The attributes must match across all constiuents
   //
   // The NestedTensor's attributes then become that of its
@@ -53,7 +53,7 @@ bool _verify_variables(
   //     is_pinned()
   bool valid = true;
   if (nested_node.is_leaf()) {
-    at::Tensor variable = nested_node.payload();
+    const at::Tensor& variable = nested_node.payload();
     // TODO: Add more checks?
     valid = valid && (variable.dim() == first_variable.dim());
     valid = valid && (variable.layout() == first_variable.layout());
@@ -68,6 +68,11 @@ bool _verify_variables(
     for (size_t i = 0; i < nested_node.degree(); i++) {
       valid =
           valid && _verify_variables(first_variable, nested_node.children(i));
+    }
+    for (size_t i = 1; i < nested_node.degree(); i++) {
+      valid = valid &&
+          (nested_node.children(i).height() ==
+           nested_node.children(i - 1).height());
     }
   }
   return valid;
