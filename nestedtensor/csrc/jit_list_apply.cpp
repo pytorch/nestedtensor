@@ -226,8 +226,6 @@ py::cpp_function jit_tensorwise() {
       std::stringstream ss;
       ss << "FAIL! Can't find something for " << fn;
       TORCH_CHECK(false, ss.str());
-      TensorNode result;
-      return THPNestedTensor(_ListNestedTensor(std::move(result)));
     });
   });
 }
