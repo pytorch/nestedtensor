@@ -352,20 +352,60 @@ inline NestedNode<std::vector<A>> zip(
   }
 }
 
-// TODO: Assuming all NestedNodes have same shape.
-template <typename F, typename A, typename... B>
-inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
-  A result = ident;
-  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
-  if (first_node.is_leaf()) {
-    result = fn(nested_node.payload()..., result);
-  } else {
-    for (size_t i = 0; i < first_node.degree(); i++) {
-      result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
+template <class F, class A, class TypeList>
+class _reduce;
+
+template <class F, class A, class... Args>
+class _reduce<F, A, c10::guts::typelist::typelist<Args...>> {
+ public:
+  // NOTE: We must move F to avoid copying objects if it is a lambda with
+  // captures.
+  static A function(F&& fn, A ident, const NestedNode<Args>&... nested_node) {
+    A result = ident;
+    auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+    if (first_node.is_leaf()) {
+      std::forward<F>(fn)(result, nested_node.payload()...);
+    } else {
+      for (size_t i = 0; i < first_node.degree(); i++) {
+        result =
+            function(std::forward<F>(fn), result, nested_node.children(i)...);
+      }
     }
-  }
-  return result;
+    return result;
+  };
+};
+
+// NOTE: Assuming all NestedNodes have same shape.
+// TODO: Add check
+// TODO: Add static assert to verify lambda arguments match nested_node types
+// TODO: Do we want broadcasting?
+template <class F, class... B>
+static inline typename c10::guts::infer_function_traits<F>::type::return_type
+reduce(
+    F&& fn,
+    typename c10::guts::infer_function_traits<F>::type::return_type ident,
+    const NestedNode<B>&... nested_node) {
+  return _reduce<
+      F,
+      typename c10::guts::infer_function_traits<F>::type::return_type,
+      typename c10::guts::infer_function_traits<F>::type::parameter_types>::
+      function(std::move(fn), ident, nested_node...);
 }
+
+// // TODO: Assuming all NestedNodes have same shape.
+// template <typename F, typename A, typename... B>
+// inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
+//   A result = ident;
+//   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+//   if (first_node.is_leaf()) {
+//     result = fn(nested_node.payload()..., result);
+//   } else {
+//     for (size_t i = 0; i < first_node.degree(); i++) {
+//       result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
+//     }
+//   }
+//   return result;
+// }
 
 // TODO: Assuming all NestedNodes have same shape.
 template <class F, class... A>

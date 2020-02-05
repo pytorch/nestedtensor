@@ -49,8 +49,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             },
             a,
             b);
-        auto fn = [](bool a, bool b) { return a && b; };
-        return reduce<decltype(fn), bool, bool>(tmp, fn, true);
+        return reduce([](bool a, bool b) { return a && b; }, true, tmp);
       });
 
   // NOTE: Never forget about pybind return value policies

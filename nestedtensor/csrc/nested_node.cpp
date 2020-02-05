@@ -27,11 +27,13 @@ int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
 }
 
 int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
-  auto fn = [](c10::List<int64_t> size,
-               c10::List<int64_t> stride,
-               int64_t input) { return num_memory(size, stride) + input; };
-  return reduce<decltype(fn), int64_t, c10::List<int64_t>, c10::List<int64_t>>(
-      nested_size, nested_stride, fn, 0);
+  return reduce(
+      [](int64_t input, c10::List<int64_t> size, c10::List<int64_t> stride) {
+        return num_memory(size, stride) + input;
+      },
+      0,
+      nested_size,
+      nested_stride);
 }
 
 bool _verify_variables(
