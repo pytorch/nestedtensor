@@ -96,7 +96,7 @@ struct NestedNode {
   friend inline void apply(F&&, const NestedNode<A>&...);
 
  private:
-  inline T payload() const {
+  inline const T& payload() const {
     return _payload;
   }
   inline NestedNode<T> children(size_t i) const {
