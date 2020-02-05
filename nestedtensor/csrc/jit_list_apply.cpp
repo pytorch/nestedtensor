@@ -151,13 +151,8 @@ py::cpp_function jit_tensorwise() {
         if (auto pack = my_createStackForSchema(
                 operation.getSchema(), args, kwargs, c10::nullopt)) {
           py::gil_scoped_release release;
-          THPNestedTensor result =
-              THPNestedTensor(_ListNestedTensor(apply_jit_function(
-                  *pack,
-                  // std::get<0>(*pack),
-                  // std::get<1>(*pack),
-                  // std::get<2>(*pack),
-                  operation)));
+          THPNestedTensor result = THPNestedTensor(
+              _ListNestedTensor(apply_jit_function(*pack, operation)));
           return result;
         }
       }
@@ -191,13 +186,8 @@ py::cpp_function jit_tensorwise() {
                   op->schema(), args, kwargs, c10::nullopt)) {
             auto operation = op->getOperation();
             py::gil_scoped_release release;
-            THPNestedTensor result =
-                THPNestedTensor(_ListNestedTensor(apply_jit_function(
-                    *pack,
-                    // std::get<0>(*pack),
-                    // std::get<1>(*pack),
-                    // std::get<2>(*pack),
-                    operation)));
+            THPNestedTensor result = THPNestedTensor(
+                _ListNestedTensor(apply_jit_function(*pack, operation)));
             return result;
           }
         }
