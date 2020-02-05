@@ -19,7 +19,6 @@ static TensorNode apply_jit_function(
   NestedNode<std::vector<c10::IValue>> zipped = zip(tensor_nodes);
   return map(
       [&fn](std::vector<c10::IValue> stack) {
-        // Stack stack(tensors);
         fn(stack);
         return std::move(stack.front().toTensor());
       },
