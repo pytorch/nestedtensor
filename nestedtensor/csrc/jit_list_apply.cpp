@@ -13,12 +13,12 @@ using namespace torch::jit::script;
 // TODO Expand to IValues to support generic lists?
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
-static IValueNode apply_jit_function(
+static TensorNode apply_jit_function(
     Stack& stack_template,
     const std::set<size_t>& tensor_node_i,
     const std::vector<IValueNode>& tensor_nodes,
     F& fn) {
-  NestedNode<std::vector<at::Tensor>> zipped = zip(tensor_nodes);
+  NestedNode<std::vector<c10::IValue>> zipped = zip(tensor_nodes);
   return map(
       [&fn, &tensor_node_i, &stack_template](std::vector<c10::IValue> tensors) {
         Stack stack(tensors);
@@ -136,7 +136,8 @@ my_createStackForSchema(
       consumed_kwargs += 1;
     } else if (schema_arg.default_value()) {
       // push(stack, *schema_arg.default_value());
-      tensor_nodes.push_back(IValueNode(*schema_arg.default_value()));
+      c10::IValue def = *schema_arg.default_value();
+      tensor_nodes.push_back(IValueNode(std::move(def)));
     } else {
       return c10::nullopt;
     }
