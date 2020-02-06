@@ -306,16 +306,10 @@ class NestedTensor(object):
                 return creation.nested_tensor(list(t.to_nested_tensor(dim - 1) for t in self.unbind()))
 
     def to_list(self):
-        if self.nested_dim() == 1:
-            return list(self.unbind())
-        else:
-            return list(map(lambda x: x.to_list(), self.unbind()))
+        return self._impl.to_list()
 
     def to_tuple(self):
-        if self.nested_dim() == 1:
-            return tuple(self.unbind())
-        else:
-            return tuple(map(lambda x: x.to_tuple(), self.unbind()))
+        return self._impl.to_tuple()
 
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)

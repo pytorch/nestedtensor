@@ -122,6 +122,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("contiguous", &THPNestedTensor::contiguous)
       .def("get_buffer", &THPNestedTensor::get_buffer)
       .def("to_tensor", &THPNestedTensor::to_tensor)
+      .def("to_list", &THPNestedTensor::to_list)
+      .def("to_tuple", &THPNestedTensor::to_tuple)
       .def("__str__", &THPNestedTensor::str)
       .def("__repr__", &THPNestedTensor::str);
 
