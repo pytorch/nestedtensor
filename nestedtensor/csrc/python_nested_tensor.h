@@ -95,13 +95,6 @@ struct THPNestedTensor {
             this->nested_size().get_node());
     return construct_size(tmp);
   }
-  THPIValueNode nested_size() {
-    return THPIValueNode(
-        map([](c10::List<int64_t> e) { return c10::IValue(e); },
-            data_map<SizeNode>(
-                _data, [](auto data) { return data.nested_size(); })),
-        "NestedSize");
-  }
   pybind11::object getitem(int64_t key) {
     py::object unbound_ = unbind();
     py::sequence unbound = py::cast<py::sequence>(unbound_);
@@ -152,6 +145,14 @@ struct THPNestedTensor {
       }
       return py::cast(result);
     }
+  }
+  }
+  THPIValueNode nested_size() {
+    return THPIValueNode(
+        map([](c10::List<int64_t> e) { return c10::IValue(e); },
+            data_map<SizeNode>(
+                _data, [](auto data) { return data.nested_size(); })),
+        "NestedSize");
   }
   THPIValueNode nested_size(c10::optional<int64_t> index) {
     if (!index) {
