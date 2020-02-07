@@ -102,11 +102,11 @@ struct THPNestedTensor {
     TORCH_CHECK(index < dim(), "dim argument out of range.");
     SizeNode size_node = data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); });
     auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
-      if (s.height() == 1) {
-        return map([dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
-      }
       if (dim == 0) {
         return IntegerNode(s.degree());
+      }
+      if (s.height() == 1) {
+        return map([dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
       }
       std::vector<IntegerNode> result;
       for (const auto& child : s.unbind()) {
