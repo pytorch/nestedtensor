@@ -1,5 +1,6 @@
 #include <creation.h>
 #include <jit_list_apply.h>
+#include <nested_node_functions.h>
 #include <torch/extension.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
@@ -45,53 +46,50 @@ void add_thp_node(auto m, std::string name, F eq_fn) {
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
-        if (!shape_matches(a_, b_)) {
-          return false;
-        }
         SizeNode a = a_.get_node();
         SizeNode b = b_.get_node();
-        return all(
-            [](c10::List<int64_t> a, c10::List<int64_t> b) {
-              for (size_t i = 0; i < a.size(); i++) {
-                if (a[i] != b[i]) {
-                  return false;
-                }
-              }
-              return true;
-            },
-            a,
-            b);
+        if (!shape_matches(a, b)) {
+          return false;
+        }
+        auto fn = [](c10::List<int64_t> a, c10::List<int64_t> b) {
+          for (size_t i = 0; i < a.size(); i++) {
+            if (a[i] != b[i]) {
+              return false;
+            }
+          }
+          return true;
+        };
+        return all<decltype(fn)>(std::move(fn), a, b);
       });
 
   add_thp_node<THPIValueNode>(
       m, "IValueNode", [](THPIValueNode& a_, THPIValueNode& b_) {
-        if (!shape_matches(a_, b_)) {
-          return false;
-        }
         auto a = a_.get_node();
         auto b = b_.get_node();
-        if (any([](auto i, auto j) { return i.type() != j.type(); }, a, b)) {
+        if (!shape_matches(a, b)) {
           return false;
         }
-        return all(
-            [](auto a, auto b) {
-              if (a.isInt()) {
-                return a.toInt() == b.toInt();
+        auto fn1 = [](auto i, auto j) { return (*i.type()) == (*j.type()); };
+        if (!all<decltype(fn1)>(std::move(fn1), a, b)) {
+          return false;
+        }
+        auto fn2 = [](auto a, auto b) {
+          if (a.isInt()) {
+            return a.toInt() == b.toInt();
+          }
+          if (a.isIntList()) {
+            auto a_ = a.toIntList();
+            auto b_ = b.toIntList();
+            for (size_t i = 0; i < a_.size(); i++) {
+              if (a_[i] != b_[i]) {
+                return false;
               }
-              if (a.isIntList()) {
-                auto a_ = a.toIntList();
-                auto b_ = b.toIntList();
-                for (size_t i = 0; i < a_.size(); i++) {
-                  if (a_[i] != b_[i]) {
-                    return false;
-                  }
-                }
-                return true;
-              }
-              TORCH_CHECK(false, "Type not supported for comparison.");
-            },
-            a,
-            b);
+            }
+            return true;
+          }
+          TORCH_CHECK(false, "Type not supported for comparison.");
+        };
+        return all<decltype(fn2)>(std::move(fn2), a, b);
       });
 
   // NOTE: Never forget about pybind return value policies
