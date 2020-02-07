@@ -86,7 +86,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           "nested_size",
           py::overload_cast<c10::optional<int64_t>>(
               &THPNestedTensor::nested_size))
-      .def("nested_stride", &THPNestedTensor::nested_stride)
+      .def(
+          "nested_stride", py::overload_cast<>(&THPNestedTensor::nested_stride))
+      .def(
+          "nested_stride",
+          py::overload_cast<c10::optional<int64_t>>(
+              &THPNestedTensor::nested_stride))
       .def(
           "unbind",
           [](THPNestedTensor self) {
