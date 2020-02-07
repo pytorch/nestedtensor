@@ -113,50 +113,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           "nested_stride",
           py::overload_cast<c10::optional<int64_t>>(
               &THPNestedTensor::nested_stride))
-      .def(
-          "unbind",
-          [](THPNestedTensor self) {
-            // FOR BUFFER
-            if (self.data().is_right()) {
-              auto nt = self.data().right();
-              if (self.nested_dim() == 1) {
-                return wrap_nested_node(nt.get_structure());
-              } else {
-                std::vector<int64_t> split_sizes;
-                auto sizes = nt.nested_size().unbind();
-                auto strides = nt.nested_stride().unbind();
-                for (int64_t i = 0; i < self.len(); i++) {
-                  split_sizes.push_back(size_node_memory(sizes[i], strides[i]));
-                }
-                std::vector<at::Tensor> buffers = at::split_with_sizes(
-                    nt.get_buffer(), c10::IntArrayRef(split_sizes), 0);
-                std::vector<py::object> result;
-                for (int64_t i = 0; i < self.len(); i++) {
-                  result.push_back(py::cast(
-                      THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
-                          std::move(buffers[i]),
-                          std::move(sizes[i]),
-                          std::move(strides[i])))));
-                }
-                return py::cast(result);
-              }
-            }
-
-            // FOR LIST
-            auto nt = self.data().left();
-            if (self.nested_dim() == 1) {
-              return wrap_nested_node(nt.get_structure());
-            } else {
-              std::vector<py::object> result;
-              for (const auto& _child : nt.get_structure().unbind()) {
-                auto child = _child;
-                result.push_back(py::cast(
-                    THPNestedTensor(torch::nested_tensor::_ListNestedTensor(
-                        std::move(child)))));
-              }
-              return py::cast(result);
-            }
-          })
+      .def("__getitem__", py::overload_cast<int64_t>(&THPNestedTensor::getitem))
+      .def("__getitem__", py::overload_cast<py::slice>(&THPNestedTensor::getitem))
+      .def("unbind", &THPNestedTensor::unbind)
       .def("size", &THPNestedTensor::size)
       .def("requires_grad_", &THPNestedTensor::requires_grad_)
       .def("numel", &THPNestedTensor::numel)
