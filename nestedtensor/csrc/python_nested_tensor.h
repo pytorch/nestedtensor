@@ -129,10 +129,38 @@ struct THPNestedTensor {
             fn(fn, size_node, *index)),
         "NestedSize");
   }
-  THPSizeNode nested_stride() {
-    return THPSizeNode(
-        data_map<SizeNode>(
-            _data, [](auto data) { return data.nested_stride(); }),
+  THPIValueNode nested_stride() {
+    return THPIValueNode(
+        map([](c10::List<int64_t> e) { return c10::IValue(e); },
+            data_map<SizeNode>(
+                _data, [](auto data) { return data.nested_stride(); })),
+        "NestedStride");
+  }
+  THPIValueNode nested_stride(c10::optional<int64_t> index) {
+    if (!index) {
+      return nested_stride();
+    }
+    // TODO: Negative dims and slices
+    TORCH_CHECK(index < dim(), "dim argument out of range.");
+    SizeNode size_node =
+        data_map<SizeNode>(_data, [](auto data) { return data.nested_stride(); });
+    auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
+      if (dim == 0) {
+        return IntegerNode(s.degree());
+      }
+      if (s.height() == 1) {
+        return map(
+            [dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
+      }
+      std::vector<IntegerNode> result;
+      for (const auto& child : s.unbind()) {
+        result.emplace_back(self(self, child, dim - 1));
+      }
+      return IntegerNode(std::move(result));
+    };
+    return THPIValueNode(
+        map([](int64_t e) { return c10::IValue(e); },
+            fn(fn, size_node, *index)),
         "NestedStride");
   }
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad_) {

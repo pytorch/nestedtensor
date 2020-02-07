@@ -209,13 +209,6 @@ class NestedTensor(object):
         return self.__str__()
 
     def nested_size(self, dim=None):
-        if isinstance(dim, tuple):
-            nested_sizes = []
-            for dimi in dim:
-                if dimi < self.nested_dim():
-                    raise ValueError("Tuples only support for Tensor dims")
-                nested_sizes.append(self.nested_size(dimi))
-            return tuple(t for t in zip(*nested_sizes))
         return self._impl.nested_size(dim)
 
     def nested_stride(self, dim=None):
