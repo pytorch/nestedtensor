@@ -23,6 +23,15 @@
 
 using namespace torch::nested_tensor;
 
+template <class C>
+void add_thp_node(auto m, std::string name) {
+  py::class_<C>(m, name.c_str())
+      .def("__str__", &C::str)
+      .def("unbind", &C::unbind)
+      .def("__repr__", &C::str)
+      .def("__len__", &C::len);
+}
+
 template <class C, class F>
 void add_thp_node(auto m, std::string name, F eq_fn) {
   py::class_<C>(m, name.c_str())
@@ -59,13 +68,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         return reduce<decltype(fn), bool, bool>(tmp, fn, true);
       });
 
-  add_thp_node<THPIntegerNode>(
-      m, "IntegerNode", [](IntegerNode& a, IntegerNode& b) {
-        auto fn = [](int64_t a, int64_t b, bool result) {
-          return result && (a == b);
-        };
-        return reduce<decltype(fn), bool, int64_t, int64_t>(a, b, fn, true);
-      });
+  add_thp_node<THPIValueNode>(m, "IValueNode");
 
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
@@ -77,10 +80,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def_property_readonly("requires_grad", &THPNestedTensor::requires_grad)
       .def("__len__", &THPNestedTensor::len)
       .def("element_size", &THPNestedTensor::element_size)
+      // .def("nested_size", &THPNestedTensor::nested_size)
       .def("nested_size", py::overload_cast<>(&THPNestedTensor::nested_size))
       .def(
           "nested_size",
-          py::overload_cast<int64_t>(&THPNestedTensor::nested_size))
+          py::overload_cast<c10::optional<int64_t>>(
+              &THPNestedTensor::nested_size))
       .def("nested_stride", &THPNestedTensor::nested_stride)
       .def(
           "unbind",

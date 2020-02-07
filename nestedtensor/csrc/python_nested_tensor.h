@@ -90,23 +90,33 @@ struct THPNestedTensor {
     return _data;
   }
   std::vector<c10::optional<int64_t>> size() {
-    return construct_size(this->nested_size().get_node());
+    SizeNode tmp =
+        map([](c10::IValue e) { return e.toIntList(); },
+            this->nested_size().get_node());
+    return construct_size(tmp);
   }
-  THPSizeNode nested_size() {
-    return THPSizeNode(
-        data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); }),
+  THPIValueNode nested_size() {
+    return THPIValueNode(
+        map([](c10::List<int64_t> e) { return c10::IValue(e); },
+            data_map<SizeNode>(
+                _data, [](auto data) { return data.nested_size(); })),
         "NestedSize");
   }
-  THPIntegerNode nested_size(int64_t index) {
+  THPIValueNode nested_size(c10::optional<int64_t> index) {
+    if (!index) {
+      return nested_size();
+    }
     // TODO: Negative dims and slices
     TORCH_CHECK(index < dim(), "dim argument out of range.");
-    SizeNode size_node = data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); });
+    SizeNode size_node =
+        data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); });
     auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
       if (dim == 0) {
         return IntegerNode(s.degree());
       }
       if (s.height() == 1) {
-        return map([dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
+        return map(
+            [dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
       }
       std::vector<IntegerNode> result;
       for (const auto& child : s.unbind()) {
@@ -114,7 +124,10 @@ struct THPNestedTensor {
       }
       return IntegerNode(std::move(result));
     };
-    return THPIntegerNode(fn(fn, size_node, index), "NestedSize");
+    return THPIValueNode(
+        map([](int64_t e) { return c10::IValue(e); },
+            fn(fn, size_node, *index)),
+        "NestedSize");
   }
   THPSizeNode nested_stride() {
     return THPSizeNode(
