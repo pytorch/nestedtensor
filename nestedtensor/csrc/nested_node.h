@@ -95,13 +95,15 @@ struct NestedNode {
   template <class F, class... A>
   friend inline void apply(F&&, const NestedNode<A>&...);
 
- private:
-  inline const T& payload() const {
-    return _payload;
-  }
   inline NestedNode<T> children(size_t i) const {
     return _children[i];
   }
+
+  inline const T& payload() const {
+    return _payload;
+  }
+
+ private:
   inline const NestedNode<T>* children_data(size_t i) const {
     return _children.data() + i;
   }
@@ -366,6 +368,7 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
   }
   return result;
 }
+
 
 // TODO: Assuming all NestedNodes have same shape.
 template <class F, class... A>

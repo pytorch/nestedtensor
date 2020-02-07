@@ -94,9 +94,9 @@ class TestNestedTensor(TestCase):
         values = [torch.rand(1, 2) for i in range(10)]
         values = [values[1:i] for i in range(2, 10)]
         nt = nestedtensor.nested_tensor(values)
-        nts = nt.nested_size(1)
-        lens = tuple(map(len, values))
-        self.assertTrue(nts == lens)
+        nts = nt.nested_size(1).unbind()
+        lens = list(map(len, values))
+        self.assertEqual(nts, lens)
 
     def test_len(self):
         a = nestedtensor.nested_tensor([torch.tensor([1, 2]),
