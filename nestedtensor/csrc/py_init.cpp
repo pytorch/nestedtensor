@@ -45,16 +45,13 @@ void add_thp_node(auto m, std::string name, F eq_fn) {
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
-        SizeNode a = a_.get_node();
-        SizeNode b = b_.get_node();
-        if (a.height() != b.height()) {
+        if (!shape_matches(a_, b_)) {
           return false;
         }
-        NestedNode<bool> tmp = torch::nested_tensor::map(
+        SizeNode a = a_.get_node();
+        SizeNode b = b_.get_node();
+        return all(
             [](c10::List<int64_t> a, c10::List<int64_t> b) {
-              if (a.size() != b.size()) {
-                return false;
-              }
               for (size_t i = 0; i < a.size(); i++) {
                 if (a[i] != b[i]) {
                   return false;
@@ -64,11 +61,38 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             },
             a,
             b);
-        auto fn = [](bool a, bool b) { return a && b; };
-        return reduce<decltype(fn), bool, bool>(tmp, fn, true);
       });
 
-  add_thp_node<THPIValueNode>(m, "IValueNode");
+  add_thp_node<THPIValueNode>(
+      m, "IValueNode", [](THPIValueNode& a_, THPIValueNode& b_) {
+        if (!shape_matches(a_, b_)) {
+          return false;
+        }
+        auto a = a_.get_node();
+        auto b = b_.get_node();
+        if (any([](auto i, auto j) { return i.type() != j.type(); }, a, b)) {
+          return false;
+        }
+        return all(
+            [](auto a, auto b) {
+              if (a.isInt()) {
+                return a.toInt() == b.toInt();
+              }
+              if (a.isIntList()) {
+                auto a_ = a.toIntList();
+                auto b_ = b.toIntList();
+                for (size_t i = 0; i < a_.size(); i++) {
+                  if (a_[i] != b_[i]) {
+                    return false;
+                  }
+                }
+                return true;
+              }
+              TORCH_CHECK(false, "Type not supported for comparison.");
+            },
+            a,
+            b);
+      });
 
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents

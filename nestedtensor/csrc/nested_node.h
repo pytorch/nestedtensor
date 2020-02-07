@@ -5,6 +5,25 @@
 namespace torch {
 namespace nested_tensor {
 
+namespace utils {
+
+template <class A>
+bool _all(A first) {
+  return true;
+}
+
+template <class A, class B>
+bool _all(A first, B other) {
+  return first == other;
+}
+
+template <class A, class B, class... C>
+bool _all(A first, B second, C... other) {
+  return (first == second) && _all(other...);
+}
+
+} // namespace utils
+
 // NOTE: For comparisons please use the map and reduce
 // functions to define what you mean by equal, etc. on your own
 // There can be ambiguity in the depth of comparison and
@@ -94,6 +113,12 @@ struct NestedNode {
 
   template <typename F, typename B>
   friend inline bool all(F&&, NestedNode<B>);
+
+  template <typename F, typename B>
+  friend inline bool any(F&&, NestedNode<B>);
+
+  template <class A, class B>
+  friend inline bool shape_matches(const NestedNode<A>&, const NestedNode<B>&);
 
   template <class F, class... A>
   friend inline void apply(F&&, const NestedNode<A>&...);
@@ -378,6 +403,39 @@ inline bool all(F&& fn, NestedNode<B> nested_node) {
   }
   for (const auto& child : nested_node.unbind()) {
     if (!all<F, B>(std::forward(fn), child)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// TODO: Assuming all NestedNodes have same shape.
+template <typename F, typename B>
+inline bool any(F&& fn, NestedNode<B> nested_node) {
+  if (nested_node.is_leaf()) {
+    return std::forward(fn)(nested_node.payload());
+  }
+  for (const auto& child : nested_node.unbind()) {
+    if (any<F, B>(std::forward(fn), child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template <class A, class B>
+inline bool shape_matches(NestedNode<A> a, NestedNode<B> b) {
+  if (a.height() != b.height()) {
+    return false;
+  }
+  if (a.degree() != b.degree()) {
+    return false;
+  }
+  if (a.is_leaf()) {
+    return true;
+  }
+  for (size_t i = 0; i < a.degree(); i++) {
+    if (!shape_matches(a._children[i], b._children[i])) {
       return false;
     }
   }
