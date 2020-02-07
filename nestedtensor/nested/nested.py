@@ -244,9 +244,9 @@ class NestedTensor(object):
         # TODO: Tensor-wise select
         # TODO: More testing
         if isinstance(key, numbers.Number):
-            return self.unbind()[key]
+            return NestedTensor(self._impl[key])
         if isinstance(key, slice):
-            return creation.as_nested_tensor(self.unbind()[key])
+            return NestedTensor(self._impl[key])
         assert isinstance(key, tuple)
         if key[0] == Ellipsis:
             raise NotImplementedError(
