@@ -102,6 +102,57 @@ struct THPNestedTensor {
                 _data, [](auto data) { return data.nested_size(); })),
         "NestedSize");
   }
+  pybind11::object getitem(int64_t key) {
+    py::object unbound_ = unbind();
+    py::sequence unbound = py::cast<py::sequence>(unbound_);
+    return unbound[key];
+  }
+  pybind11::object getitem(py::slice key) {
+    py::object unbound_ = unbind();
+    py::sequence unbound = py::cast<py::sequence>(unbound_);
+    return unbound[key];
+  }
+  pybind11::object unbind() {
+    // FOR BUFFER
+    if (data().is_right()) {
+      auto nt = data().right();
+      if (nested_dim() == 1) {
+        return wrap_nested_node(nt.get_structure());
+      } else {
+        std::vector<int64_t> split_sizes;
+        auto sizes = nt.nested_size().unbind();
+        auto strides = nt.nested_stride().unbind();
+        for (int64_t i = 0; i < len(); i++) {
+          split_sizes.push_back(size_node_memory(sizes[i], strides[i]));
+        }
+        std::vector<at::Tensor> buffers = at::split_with_sizes(
+            nt.get_buffer(), c10::IntArrayRef(split_sizes), 0);
+        std::vector<py::object> result;
+        for (int64_t i = 0; i < len(); i++) {
+          result.push_back(py::cast(
+              THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
+                  std::move(buffers[i]),
+                  std::move(sizes[i]),
+                  std::move(strides[i])))));
+        }
+        return py::cast(result);
+      }
+    }
+
+    // FOR LIST
+    auto nt = data().left();
+    if (nested_dim() == 1) {
+      return wrap_nested_node(nt.get_structure());
+    } else {
+      std::vector<py::object> result;
+      for (const auto& _child : nt.get_structure().unbind()) {
+        auto child = _child;
+        result.push_back(py::cast(THPNestedTensor(
+            torch::nested_tensor::_ListNestedTensor(std::move(child)))));
+      }
+      return py::cast(result);
+    }
+  }
   THPIValueNode nested_size(c10::optional<int64_t> index) {
     if (!index) {
       return nested_size();
@@ -142,8 +193,8 @@ struct THPNestedTensor {
     }
     // TODO: Negative dims and slices
     TORCH_CHECK(index < dim(), "dim argument out of range.");
-    SizeNode size_node =
-        data_map<SizeNode>(_data, [](auto data) { return data.nested_stride(); });
+    SizeNode size_node = data_map<SizeNode>(
+        _data, [](auto data) { return data.nested_stride(); });
     auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
       if (dim == 0) {
         return IntegerNode(s.degree());
