@@ -92,6 +92,9 @@ struct NestedNode {
   template <typename F, typename A, typename... B>
   friend inline A reduce(NestedNode<B>..., F, A);
 
+  template <typename F, typename B>
+  friend inline bool all(F&&, NestedNode<B>);
+
   template <class F, class... A>
   friend inline void apply(F&&, const NestedNode<A>&...);
 
@@ -365,6 +368,20 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
     }
   }
   return result;
+}
+
+// TODO: Assuming all NestedNodes have same shape.
+template <typename F, typename B>
+inline bool all(F&& fn, NestedNode<B> nested_node) {
+  if (nested_node.is_leaf()) {
+    return std::forward(fn)(nested_node.payload());
+  }
+  for (const auto& child : nested_node.unbind()) {
+    if (!all<F, B>(std::forward(fn), child)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // TODO: Assuming all NestedNodes have same shape.
