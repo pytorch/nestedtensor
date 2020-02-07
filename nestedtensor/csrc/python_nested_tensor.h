@@ -97,6 +97,25 @@ struct THPNestedTensor {
         data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); }),
         "NestedSize");
   }
+  THPIntegerNode nested_size(int64_t index) {
+    // TODO: Negative dims and slices
+    TORCH_CHECK(index < dim(), "dim argument out of range.");
+    SizeNode size_node = data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); });
+    auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
+      if (s.height() == 1) {
+        return map([dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
+      }
+      if (dim == 0) {
+        return IntegerNode(s.degree());
+      }
+      std::vector<IntegerNode> result;
+      for (const auto& child : s.unbind()) {
+        result.emplace_back(self(self, child, dim - 1));
+      }
+      return IntegerNode(std::move(result));
+    };
+    return THPIntegerNode(fn(fn, size_node, index), "NestedSize");
+  }
   THPSizeNode nested_stride() {
     return THPSizeNode(
         data_map<SizeNode>(

@@ -23,13 +23,19 @@
 
 using namespace torch::nested_tensor;
 
+template <class C, class F>
+void add_thp_node(auto m, std::string name, F eq_fn) {
+  py::class_<C>(m, name.c_str())
+      .def("__str__", &C::str)
+      .def("unbind", &C::unbind)
+      .def("__repr__", &C::str)
+      .def("__len__", &C::len)
+      .def("__eq__", eq_fn);
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  py::class_<torch::nested_tensor::THPSizeNode>(m, "SizeNode")
-      .def("__str__", &THPSizeNode::str)
-      .def("unbind", &THPSizeNode::unbind)
-      .def("__repr__", &THPSizeNode::str)
-      .def("__len__", &THPSizeNode::len)
-      .def("__eq__", [](THPSizeNode& a_, THPSizeNode& b_) {
+  add_thp_node<THPSizeNode>(
+      m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
         SizeNode a = a_.get_node();
         SizeNode b = b_.get_node();
         if (a.height() != b.height()) {
@@ -53,6 +59,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         return reduce<decltype(fn), bool, bool>(tmp, fn, true);
       });
 
+  add_thp_node<THPIntegerNode>(
+      m, "IntegerNode", [](IntegerNode& a, IntegerNode& b) {
+        auto fn = [](int64_t a, int64_t b, bool result) {
+          return result && (a == b);
+        };
+        return reduce<decltype(fn), bool, int64_t, int64_t>(a, b, fn, true);
+      });
+
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
@@ -63,7 +77,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def_property_readonly("requires_grad", &THPNestedTensor::requires_grad)
       .def("__len__", &THPNestedTensor::len)
       .def("element_size", &THPNestedTensor::element_size)
-      .def("nested_size", &THPNestedTensor::nested_size)
+      .def("nested_size", py::overload_cast<>(&THPNestedTensor::nested_size))
+      .def(
+          "nested_size",
+          py::overload_cast<int64_t>(&THPNestedTensor::nested_size))
       .def("nested_stride", &THPNestedTensor::nested_stride)
       .def(
           "unbind",
