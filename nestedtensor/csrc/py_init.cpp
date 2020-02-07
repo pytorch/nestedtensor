@@ -102,7 +102,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def_property_readonly("requires_grad", &THPNestedTensor::requires_grad)
       .def("__len__", &THPNestedTensor::len)
       .def("element_size", &THPNestedTensor::element_size)
-      // .def("nested_size", &THPNestedTensor::nested_size)
       .def("nested_size", py::overload_cast<>(&THPNestedTensor::nested_size))
       .def(
           "nested_size",
