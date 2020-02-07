@@ -95,6 +95,11 @@ struct THPNestedTensor {
             this->nested_size().get_node());
     return construct_size(tmp);
   }
+  // TODO: Not covered by 0.0.2 or 0.0.1!
+  // NOTE: Returns a view
+  // TODO: Advanced indexing
+  // TODO: Tensor-wise select
+  // TODO: Tuple support
   pybind11::object getitem(int64_t key) {
     py::object unbound_ = unbind();
     py::sequence unbound = py::cast<py::sequence>(unbound_);
@@ -145,7 +150,6 @@ struct THPNestedTensor {
       }
       return py::cast(result);
     }
-  }
   }
   THPIValueNode nested_size() {
     return THPIValueNode(

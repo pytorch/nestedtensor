@@ -238,24 +238,11 @@ class NestedTensor(object):
             "This has not been covered by NestedTensor 0.0.1")
 
     def __getitem__(self, key):
-        # TODO: Not covered by 0.0.2 or 0.0.1!
-        # NOTE: Returns a view
-        # TODO: Advanced indexing
-        # TODO: Tensor-wise select
-        # TODO: More testing
-        if isinstance(key, numbers.Number):
-            return NestedTensor(self._impl[key])
-        if isinstance(key, slice):
-            return NestedTensor(self._impl[key])
-        assert isinstance(key, tuple)
-        if key[0] == Ellipsis:
-            raise NotImplementedError(
-                "Ellipsis is not yet supported for nested dimensions")
-        assert len(key) > 0
-        selected_tensors = self.unbind()[key[0]]
-        if len(key) == 1:
-            return selected_tensors
-        return creation.as_nested_tensor([t[key[1:]] for t in selected_tensors])
+        result = self._impl[key]
+        if torch.is_tensor(result):
+            return result
+        else:
+            return NestedTensor(result)
 
     def __iter__(self):
         return iter(self.unbind())
