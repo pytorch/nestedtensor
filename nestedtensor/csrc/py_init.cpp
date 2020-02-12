@@ -44,6 +44,7 @@ void add_thp_node(auto m, std::string name, F eq_fn) {
       .def("__eq__", eq_fn);
 }
 
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
@@ -142,18 +143,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           .def("to_tuple", &THPNestedTensor::to_tuple)
           .def("__str__", &THPNestedTensor::str)
           .def("__repr__", &THPNestedTensor::str);
-
-  // Functions
-  m.def(
-      "cos",
-      py::overload_cast<const THPNestedTensor&>(
-          &torch::nested_tensor::cos_out));
-  m.def(
-      "cos",
-      py::overload_cast<const THPNestedTensor&, THPNestedTensor>(
-          &torch::nested_tensor::cos_out));
-  c.def("cos", &torch::nested_tensor::cos);
-  c.def("cos_", &torch::nested_tensor::cos_);
 
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
