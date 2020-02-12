@@ -93,7 +93,7 @@ struct NestedNode {
   friend inline A reduce(NestedNode<B>..., F, A);
 
   template <class F, class... A>
-  friend inline void apply(F&&, const NestedNode<A>&...);
+  friend inline void apply(F&&, NestedNode<A>&...);
 
   inline NestedNode<T> children(size_t i) const {
     return _children[i];
@@ -108,7 +108,7 @@ struct NestedNode {
     return _children.data() + i;
   }
   bool _is_leaf;
-  const std::vector<NestedNode<T>> _children;
+  std::vector<NestedNode<T>> _children;
   // TODO: Make this const?
   // _VariableNode _variable_node;
   T _payload;
@@ -372,13 +372,13 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
 
 // TODO: Assuming all NestedNodes have same shape.
 template <class F, class... A>
-inline void apply(F&& fn, const NestedNode<A>&... nested_node) {
+inline void apply(F&& fn, NestedNode<A>&... nested_node) {
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.is_leaf()) {
-    std::forward<F>(fn)(nested_node.payload()...);
+    std::forward<F>(fn)(nested_node._payload...);
   } else {
     for (size_t i = 0; i < first_node.degree(); i++) {
-      apply<F, A...>(std::forward<F>(fn), nested_node.children(i)...);
+      apply<F, A...>(std::forward<F>(fn), nested_node._children[i]...);
     }
   }
 }

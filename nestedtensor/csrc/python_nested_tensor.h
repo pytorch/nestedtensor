@@ -62,6 +62,13 @@ static inline Result data_map(
   return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
 }
 
+template <class Result, class F>
+static inline const Result data_map(
+    const c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
+    F&& fn) {
+  return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
+}
+
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
@@ -285,6 +292,10 @@ struct THPNestedTensor {
         _data, [](auto data) { return data.is_contiguous(); });
   }
   TensorNode get_structure() {
+    return data_map<TensorNode>(
+        _data, [](auto data) { return data.get_structure(); });
+  }
+  const TensorNode get_structure() const {
     return data_map<TensorNode>(
         _data, [](auto data) { return data.get_structure(); });
   }

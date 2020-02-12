@@ -91,7 +91,10 @@ struct TORCH_API _BufferNestedTensor {
   SizeNode nested_stride() {
     return _nested_stride;
   }
-  TensorNode get_structure() {
+  TensorNode& get_structure() {
+    return _structure;
+  }
+  const TensorNode& get_structure() const {
     return _structure;
   }
   int64_t nested_dim() {
@@ -125,7 +128,7 @@ struct TORCH_API _BufferNestedTensor {
   at::Tensor _buffer;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;
-  const TensorNode _structure;
+  TensorNode _structure;
 };
 
 } // namespace nested_tensor
