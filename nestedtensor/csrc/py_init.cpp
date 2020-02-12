@@ -2,6 +2,7 @@
 #include <jit_list_apply.h>
 #include <nested_node_functions.h>
 #include <torch/extension.h>
+#include <functions/unary.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
