@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import traceback
 import functools
 import pdb
@@ -96,9 +94,9 @@ class TestNestedTensor(TestCase):
         values = [torch.rand(1, 2) for i in range(10)]
         values = [values[1:i] for i in range(2, 10)]
         nt = nestedtensor.nested_tensor(values)
-        nts = nt.nested_size(1)
-        lens = tuple(map(len, values))
-        self.assertTrue(nts == lens)
+        nts = nt.nested_size(1).unbind()
+        lens = list(map(len, values))
+        self.assertEqual(nts, lens)
 
     def test_len(self):
         a = nestedtensor.nested_tensor([torch.tensor([1, 2]),
@@ -184,14 +182,14 @@ class TestNestedTensor(TestCase):
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
-        for _ in range(1, 10):
+        for i in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
             nt = nestedtensor.nested_tensor(data)
             self.assertTrue(nt.is_contiguous())
             # buf = nt.flatten()
             self.assertEqual(nt, nt)
-            nt + nt
+            a = nt + nt
         nt.cos_()
         nt.cos()
 

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 from nestedtensor import torch
 import utils
 
@@ -9,13 +7,13 @@ import random
 def gen_list_nested_tensor_construction():
     tensors = [torch.rand(random.randint(500, 1500), 25600) for _ in range(20)]
     def _algorithm():
-        torch._ListNestedTensor(tensors)
+        nt = torch._ListNestedTensor(tensors)
     return _algorithm
 
 def gen_list_nested_tensor_unbind():
     nested_tensor = torch._ListNestedTensor([torch.rand(random.randint(500, 1500), 25600) for _ in range(20)])
     def _algorithm():
-        nested_tensor.unbind()
+        ts = nested_tensor.unbind()
     return _algorithm
 
 if __name__ == "__main__":

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import torch
 import numbers
 from functools import wraps
@@ -211,47 +209,22 @@ class NestedTensor(object):
         return self.__str__()
 
     def nested_size(self, dim=None):
-        # TODO: Negative dims and slices
-        if dim is None:
-            return self._impl.nested_size()
-        else:
-            if isinstance(dim, tuple):
-                nested_sizes = []
-                for dimi in dim:
-                    if dimi < self.nested_dim():
-                        raise ValueError("Tuples only support for Tensor dims")
-                    nested_sizes.append(self.nested_size(dimi))
-                return tuple(t for t in zip(*nested_sizes))
-            else:
-                if dim == 0:
-                    return len(self)
-                if self.nested_dim() == 1:
-                    return tuple(s[dim - 1] for s in self.nested_size().unbind())
-                return tuple(t.nested_size(dim - 1) for t in self.unbind())
+        return self._impl.nested_size(dim)
 
     def nested_stride(self, dim=None):
-        # TODO: Negative dims and slices
-        if dim is None:
-            return self._impl.nested_stride()
-        else:
-            if isinstance(dim, tuple):
-                nested_strides = []
-                for dimi in dim:
-                    if dimi < self.nested_dim():
-                        raise ValueError("Tuples only support for Tensor dims")
-                    nested_strides.append(self.nested_stride(dimi))
-                return tuple(t for t in zip(*nested_strides))
-            else:
-                if dim == 0:
-                    return len(self)
-                if self.nested_dim() == 1:
-                    return tuple(s[dim - 1] for s in self.nested_stride().unbind())
-                return tuple(t.nested_stride(dim - 1) for t in self.unbind())
+        return self._impl.nested_stride(dim)
 
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, args=(), kwargs=None):
         _local_func = None
+        if func in NestedTensor.__C_functions:
+            assert len(args) == 1
+            if kwargs is None:
+                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl))
+            assert len(kwargs) == 1 and 'out' in kwargs
+            return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, kwargs['out']._impl))
+
         if kwargs is None:
             kwargs = {}
         if func in NestedTensor.__jit_function_dispatch:
@@ -272,24 +245,11 @@ class NestedTensor(object):
             "This has not been covered by NestedTensor 0.0.1")
 
     def __getitem__(self, key):
-        # TODO: Not covered by 0.0.2 or 0.0.1!
-        # NOTE: Returns a view
-        # TODO: Advanced indexing
-        # TODO: Tensor-wise select
-        # TODO: More testing
-        if isinstance(key, numbers.Number):
-            return self.unbind()[key]
-        if isinstance(key, slice):
-            return creation.as_nested_tensor(self.unbind()[key])
-        assert isinstance(key, tuple)
-        if key[0] == Ellipsis:
-            raise NotImplementedError(
-                "Ellipsis is not yet supported for nested dimensions")
-        assert len(key) > 0
-        selected_tensors = self.unbind()[key[0]]
-        if len(key) == 1:
-            return selected_tensors
-        return creation.as_nested_tensor([t[key[1:]] for t in selected_tensors])
+        result = self._impl[key]
+        if torch.is_tensor(result):
+            return result
+        else:
+            return NestedTensor(result)
 
     def __iter__(self):
         return iter(self.unbind())
@@ -308,16 +268,10 @@ class NestedTensor(object):
                 return creation.nested_tensor(list(t.to_nested_tensor(dim - 1) for t in self.unbind()))
 
     def to_list(self):
-        if self.nested_dim() == 1:
-            return list(self.unbind())
-        else:
-            return list(map(lambda x: x.to_list(), self.unbind()))
+        return self._impl.to_list()
 
     def to_tuple(self):
-        if self.nested_dim() == 1:
-            return tuple(self.unbind())
-        else:
-            return tuple(map(lambda x: x.to_tuple(), self.unbind()))
+        return self._impl.to_tuple()
 
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)

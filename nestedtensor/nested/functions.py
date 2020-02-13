@@ -3,8 +3,6 @@ This file contains functions to overwrite or extend functions, methods or functi
 torch.nn.functional.conv2d or torch.Tensor.addmm or torch.relu
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import torch
 import torch.nn.functional as F
 import numbers
@@ -16,8 +14,6 @@ from . import utils
 from . import nested
 
 from nestedtensor import _C
-
-from numbers import Number
 
 orig_squeeze = torch.squeeze
 
@@ -165,16 +161,16 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None, trainin
             input_buffer, running_mean, running_var, weight, bias, training, momentum, eps)
         return nested.NestedTensor(_C._BufferNestedTensor(result.flatten(), input.nested_size()))
 
-    def t_batch_norm(inp, running_mean, running_var, weight, bias, training, momentum, eps):
+    def t_batch_norm(input: torch.Tensor, running_mean: torch.Tensor, running_var: torch.Tensor, weight, bias, training, momentum, eps):
         squeeze_after = False
         # TODO: Need support for BatchNorm1d and BatchNorm2d as well
-        if inp.dim() == 3:
+        if input.dim() == 3:
             # Check if is single image (leading batch dimension removed)
-            if inp.size(1) != running_mean.size(0):
-                inp = inp.unsqueeze(0)
+            if input.size(1) != running_mean.size(0):
+                input = input.unsqueeze(0)
                 squeeze_after = True
         result = orig_batch_norm(
-            inp, running_mean, running_var, weight, bias, training, momentum, eps)
+            input, running_mean, running_var, weight, bias, training, momentum, eps)
         if squeeze_after:
             result = result.squeeze(0)
         return result
@@ -237,7 +233,7 @@ def interpolate(input, size=None, scale_factor=None, mode='nearest',
     if utils.find_nested_tensor_dispatch_key(input) is None:
         return orig_interpolate(input, size, scale_factor, mode, align_corners)
 
-    def _interpolate(input, size, scale_factor, mode, align_corners):
+    def _interpolate(input: torch.Tensor, size: int, scale_factor: float, mode: str, align_corners: bool) -> torch.Tensor:
         # TODO: Document this
         squeeze_after = False
         if input.dim() == 3:
@@ -276,7 +272,7 @@ def mm(*args, **kwargs):
             _C._BufferNestedTensor(buffer_,
                                            result_nested_size))
 
-    tf = utils.tensorwise()(torch.Tensor.mm)
+    tf = utils.tensorwise()(getattr(torch.Tensor, 'mm'))
     return tf(*args, **kwargs)
 
 

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 from nestedtensor import torch
 import time
 import random
@@ -20,6 +18,7 @@ def gen_tensor():
 
 def benchmark_fn(fn, run_time = 5.0, use_cprofile=False):
     times = []
+    num_runs = 0
     t = 0.0
     pr = cProfile.Profile()
     cuda_avail = torch.cuda.is_available()

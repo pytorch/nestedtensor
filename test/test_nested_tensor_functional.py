@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import traceback
 import functools
 import pdb
@@ -14,12 +12,12 @@ import utils
 class TestFunctional(TestCase):
 
     def test_nll_loss(self):
-        _ = utils.gen_float_tensor(1, (40, 5))
-        _ = utils.gen_float_tensor(1, (40,))
+        a = utils.gen_float_tensor(1, (40, 5))
+        b = utils.gen_float_tensor(1, (40,))
 
     def test_addmm(self):
-        _, _ = torch.rand(5), torch.rand(4, 5)
-        _ = nestedtensor.nested_tensor(
+        a, b = torch.rand(5), torch.rand(4, 5)
+        nt = nestedtensor.nested_tensor(
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)])
 
     def test_conv2d(self):

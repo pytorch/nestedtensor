@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import nestedtensor
 import torch
 import argparse
@@ -106,6 +104,7 @@ def print_results(results, keys, sub_clusters, print_details=False):
 
 def benchmark_fn(fn, run_time = 15.0):
     times = []
+    num_runs = 0
     fn()
     t = 0.0
     while (t < run_time):

@@ -9,18 +9,21 @@ struct TORCH_API _BufferNestedTensor {
   // TODO: Deal with default initialization
   _BufferNestedTensor() = delete;
   _BufferNestedTensor(
-      torch::autograd::Variable buffer,
-      SizeNode nested_size);
+      torch::autograd::Variable&& buffer,
+      SizeNode&& nested_size);
   _BufferNestedTensor(
-      torch::autograd::Variable buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride);
+      torch::autograd::Variable&& buffer,
+      SizeNode&& nested_size,
+      SizeNode&& nested_stride);
   _BufferNestedTensor(
-      torch::autograd::Variable buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride,
-      TensorNode structure);
-  torch::autograd::Variable get_buffer() {
+      torch::autograd::Variable&& buffer,
+      SizeNode&& nested_size,
+      SizeNode&& nested_stride,
+      TensorNode&& structure);
+  at::Tensor& get_buffer() {
+    return _buffer;
+  }
+  const at::Tensor& get_buffer() const {
     return _buffer;
   }
   int64_t element_size() {
@@ -85,13 +88,16 @@ struct TORCH_API _BufferNestedTensor {
     };
     return reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
-  SizeNode nested_size() {
+  SizeNode nested_size() const {
     return _nested_size;
   }
-  SizeNode nested_stride() {
+  SizeNode nested_stride() const {
     return _nested_stride;
   }
-  TensorNode get_structure() {
+  TensorNode& get_structure() {
+    return _structure;
+  }
+  const TensorNode& get_structure() const {
     return _structure;
   }
   int64_t nested_dim() {
@@ -125,7 +131,7 @@ struct TORCH_API _BufferNestedTensor {
   at::Tensor _buffer;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;
-  const TensorNode _structure;
+  TensorNode _structure;
 };
 
 } // namespace nested_tensor

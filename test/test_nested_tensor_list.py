@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import torch
 import unittest
 from utils import TestCase
@@ -41,7 +39,7 @@ def gen_nested_list(seed, nested_dim, tensor_dim, size_low=1, size_high=10):
 
             tensors.append(gen_float_tensor(ran, ran_size))
     else:
-        for _ in range(num_tensors):
+        for i in range(num_tensors):
             tensors.append(gen_nested_list(
                 num_tensors * seed, nested_dim - 1, tensor_dim))
     return tensors
@@ -81,8 +79,8 @@ class Test_ListNestedTensor(TestCase):
     def test_nested_constructor(self):
         num_nested_tensor = 3
         # TODO: Shouldn't be constructable
-        _ = [gen_nested_tensor(i, i, 3)
-             for i in range(1, num_nested_tensor)]
+        nested_tensors = [gen_nested_tensor(i, i, 3)
+                          for i in range(1, num_nested_tensor)]
         # nested_tensor = torch.nested_tensor(nested_tensors)
 
     def test_constructor(self):

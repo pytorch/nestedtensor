@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import torch
 import nestedtensor
 import nestedtensor
@@ -44,11 +42,11 @@ def gen_jit():
 
     def gen_my_fun(scalar, tensor):
         @torch.jit.ignore
-        def get_scalar():
+        def get_scalar() -> float:
             return scalar
 
         @torch.jit.ignore
-        def get_tensor():
+        def get_tensor() -> torch.Tensor:
             return tensor
 
         @torch.jit.script
