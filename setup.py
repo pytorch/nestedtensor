@@ -87,8 +87,10 @@ def get_extensions():
 
     extra_compile_args = {'cxx': ['-O3', '-g', '-std=c++14']}
     if int(os.environ.get('DEBUG', 0)):
-        extra_compile_args = {
-            'cxx': ['-O0', '-fno-inline', '-g', '-std=c++14']}
+        extra_compile_args['cxx'] += ['-O0', '-fno-inline', '-g', '-std=c++14']
+    if int(os.environ.get('USE_ASAN', 0)):
+        # Don't forget to link libclang_rt.asan-x86_64.so at runtime
+        extra_compile_args['cxx'] += ['-fsanitize=address', '-fno-omit-frame-pointer']
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         define_macros += [('WITH_CUDA', None)]
@@ -150,7 +152,7 @@ setuptools.setup(
     ],
     zip_safe=True,
     cmdclass={'clean': clean,
-              'build_ext': BuildExtension.with_options(use_ninja=False)},
+              'build_ext': BuildExtension.with_options(use_ninja=True)},
     install_requires=requirements,
     ext_modules=get_extensions()
 )
