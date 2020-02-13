@@ -137,7 +137,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           .def("is_pinned", &THPNestedTensor::is_pinned)
           .def("is_contiguous", &THPNestedTensor::is_contiguous)
           .def("contiguous", &THPNestedTensor::contiguous)
-          .def("get_buffer", &THPNestedTensor::get_buffer)
           .def("to_tensor", &THPNestedTensor::to_tensor)
           .def("to_list", &THPNestedTensor::to_list)
           .def("to_tuple", &THPNestedTensor::to_tuple)

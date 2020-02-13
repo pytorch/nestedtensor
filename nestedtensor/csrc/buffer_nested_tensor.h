@@ -20,7 +20,10 @@ struct TORCH_API _BufferNestedTensor {
       SizeNode&& nested_size,
       SizeNode&& nested_stride,
       TensorNode&& structure);
-  torch::autograd::Variable get_buffer() {
+  torch::autograd::Variable& get_buffer() {
+    return _buffer;
+  }
+  const torch::autograd::Variable& get_buffer() const {
     return _buffer;
   }
   int64_t element_size() {
@@ -85,10 +88,10 @@ struct TORCH_API _BufferNestedTensor {
     };
     return reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
-  SizeNode nested_size() {
+  SizeNode nested_size() const {
     return _nested_size;
   }
-  SizeNode nested_stride() {
+  SizeNode nested_stride() const {
     return _nested_stride;
   }
   TensorNode& get_structure() {
