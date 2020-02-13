@@ -43,7 +43,7 @@ template <class F>
 auto unary_(F& fn) {
   return [&fn](THPNestedTensor& self) {
     if (self.is_contiguous()) {
-      Tensor& buffer = self.get_buffer();
+      Tensor& buffer = self.data().right().get_buffer();
       fn(buffer, buffer);
     } else {
       apply(

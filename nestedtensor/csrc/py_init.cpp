@@ -44,7 +44,6 @@ void add_thp_node(auto m, std::string name, F eq_fn) {
       .def("__eq__", eq_fn);
 }
 
-
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
@@ -97,51 +96,46 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
-  auto c =
-      py::class_<THPNestedTensor>(m, "NestedTensor")
-          .def_property_readonly("dtype", &THPNestedTensor::getDtype)
-          .def_property_readonly("layout", &THPNestedTensor::getLayout)
-          .def_property_readonly("device", &THPNestedTensor::getDevice)
-          .def_property_readonly(
-              "requires_grad", &THPNestedTensor::requires_grad)
-          .def("__len__", &THPNestedTensor::len)
-          .def("element_size", &THPNestedTensor::element_size)
-          .def(
-              "nested_size", py::overload_cast<>(&THPNestedTensor::nested_size))
-          .def(
-              "nested_size",
-              py::overload_cast<c10::optional<int64_t>>(
-                  &THPNestedTensor::nested_size))
-          .def(
-              "nested_stride",
-              py::overload_cast<>(&THPNestedTensor::nested_stride))
-          .def(
-              "nested_stride",
-              py::overload_cast<c10::optional<int64_t>>(
-                  &THPNestedTensor::nested_stride))
-          .def(
-              "__getitem__",
-              py::overload_cast<int64_t>(&THPNestedTensor::getitem))
-          .def(
-              "__getitem__",
-              py::overload_cast<py::slice>(&THPNestedTensor::getitem))
-          .def("unbind", &THPNestedTensor::unbind)
-          .def("size", &THPNestedTensor::size)
-          .def("requires_grad_", &THPNestedTensor::requires_grad_)
-          .def("numel", &THPNestedTensor::numel)
-          .def_property_readonly("grad", &THPNestedTensor::grad)
-          .def("detach", &THPNestedTensor::detach)
-          .def("dim", &THPNestedTensor::dim)
-          .def("pin_memory", &THPNestedTensor::pin_memory)
-          .def("nested_dim", &THPNestedTensor::nested_dim)
-          .def("is_pinned", &THPNestedTensor::is_pinned)
-          .def("is_contiguous", &THPNestedTensor::is_contiguous)
-          .def("contiguous", &THPNestedTensor::contiguous)
-          .def("to_tensor", &THPNestedTensor::to_tensor)
-          .def("to_list", &THPNestedTensor::to_list)
-          .def("to_tuple", &THPNestedTensor::to_tuple)
-          .def("__str__", &THPNestedTensor::str)
-          .def("__repr__", &THPNestedTensor::str);
+  auto c = py::class_<THPNestedTensor>(m, "NestedTensor");
+  c.def_property_readonly("dtype", &THPNestedTensor::getDtype)
+      .def_property_readonly("layout", &THPNestedTensor::getLayout)
+      .def_property_readonly("device", &THPNestedTensor::getDevice)
+      .def_property_readonly("requires_grad", &THPNestedTensor::requires_grad)
+      .def("__len__", &THPNestedTensor::len)
+      .def("element_size", &THPNestedTensor::element_size)
+      .def("nested_size", py::overload_cast<>(&THPNestedTensor::nested_size))
+      .def(
+          "nested_size",
+          py::overload_cast<c10::optional<int64_t>>(
+              &THPNestedTensor::nested_size))
+      .def(
+          "nested_stride", py::overload_cast<>(&THPNestedTensor::nested_stride))
+      .def(
+          "nested_stride",
+          py::overload_cast<c10::optional<int64_t>>(
+              &THPNestedTensor::nested_stride))
+      .def("__getitem__", py::overload_cast<int64_t>(&THPNestedTensor::getitem))
+      .def(
+          "__getitem__",
+          py::overload_cast<py::slice>(&THPNestedTensor::getitem))
+      .def("unbind", &THPNestedTensor::unbind)
+      .def("size", &THPNestedTensor::size)
+      .def("requires_grad_", &THPNestedTensor::requires_grad_)
+      .def("numel", &THPNestedTensor::numel)
+      .def_property_readonly("grad", &THPNestedTensor::grad)
+      .def("detach", &THPNestedTensor::detach)
+      .def("dim", &THPNestedTensor::dim)
+      .def("pin_memory", &THPNestedTensor::pin_memory)
+      .def("nested_dim", &THPNestedTensor::nested_dim)
+      .def("is_pinned", &THPNestedTensor::is_pinned)
+      .def("is_contiguous", &THPNestedTensor::is_contiguous)
+      .def("contiguous", &THPNestedTensor::contiguous)
+      .def("get_buffer", &THPNestedTensor::get_buffer)
+      .def("to_tensor", &THPNestedTensor::to_tensor)
+      .def("to_list", &THPNestedTensor::to_list)
+      .def("to_tuple", &THPNestedTensor::to_tuple)
+      .def("__str__", &THPNestedTensor::str)
+      .def("__repr__", &THPNestedTensor::str);
 
   add_unary_functions(m, c);
 
