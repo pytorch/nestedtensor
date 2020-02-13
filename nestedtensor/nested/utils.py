@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import torch
 import torch.nn.functional as F
 import numbers
@@ -218,7 +220,7 @@ def _get_tensortype_args(args, kwargs):
     for a in args:
         if is_nested_tensor(a) or torch.is_tensor(a):
             tt_args.append(a)
-    for k, v in kwargs.items():
+    for _, v in kwargs.items():
         if is_nested_tensor(v) or torch.is_tensor(v):
             tt_args.append(v)
     return tt_args
@@ -229,7 +231,7 @@ def _get_nestedtensor_args(args, kwargs):
     for a in args:
         if is_nested_tensor(a):
             nt_args.append(a)
-    for k, v in kwargs.items():
+    for _, v in kwargs.items():
         if is_nested_tensor(v):
             nt_args.append(v)
     return nt_args

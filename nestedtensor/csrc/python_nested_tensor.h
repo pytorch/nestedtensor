@@ -76,12 +76,6 @@ struct THPNestedTensor {
   pybind11::object getDtype();
   pybind11::object getLayout();
   pybind11::object getDevice();
-  pybind11::object to_list() {
-    return wrap_nested_node<at::Tensor, py::list>(get_structure());
-  }
-  pybind11::object to_tuple() {
-    return wrap_nested_node<at::Tensor, py::tuple>(get_structure());
-  }
   bool requires_grad() {
     return data_map<bool>(
         _data, [](auto data) { return data.requires_grad(); });

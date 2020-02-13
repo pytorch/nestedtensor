@@ -1,3 +1,6 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+
 def monkey_patch(NestedTensor):
     """
     Functions that are being skipped are sometimes not skipped
@@ -6,7 +9,6 @@ def monkey_patch(NestedTensor):
     """
 
     import os
-    DEBUG = int(os.getenv("DEBUG", 0))
 
     from nestedtensor.nested import codegen
     from nestedtensor.nested import functions
@@ -227,5 +229,5 @@ def monkey_patch(NestedTensor):
 
     # module.NestedTensor = NestedTensor
 
-    setattr(NestedTensor, '_NestedTensor__function_dispatch', function_dispatch)
-    setattr(NestedTensor, '_NestedTensor__jit_function_dispatch', jit_function_dispatch)
+    NestedTensor._NestedTensor__function_dispatch = function_dispatch
+    NestedTensor._NestedTensor__jit_function_dispatch = jit_function_dispatch

@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import torch
 import numbers
 from functools import wraps
@@ -306,10 +308,16 @@ class NestedTensor(object):
                 return creation.nested_tensor(list(t.to_nested_tensor(dim - 1) for t in self.unbind()))
 
     def to_list(self):
-        return self._impl.to_list()
+        if self.nested_dim() == 1:
+            return list(self.unbind())
+        else:
+            return list(map(lambda x: x.to_list(), self.unbind()))
 
     def to_tuple(self):
-        return self._impl.to_tuple()
+        if self.nested_dim() == 1:
+            return tuple(self.unbind())
+        else:
+            return tuple(map(lambda x: x.to_tuple(), self.unbind()))
 
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)
