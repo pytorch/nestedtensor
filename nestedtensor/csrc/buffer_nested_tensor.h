@@ -20,7 +20,10 @@ struct TORCH_API _BufferNestedTensor {
       SizeNode&& nested_size,
       SizeNode&& nested_stride,
       TensorNode&& structure);
- torch::autograd::Variable get_buffer() {
+  at::Tensor& get_buffer() {
+    return _buffer;
+  }
+  const at::Tensor& get_buffer() const {
     return _buffer;
   }
   int64_t element_size() {

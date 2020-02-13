@@ -73,10 +73,7 @@ struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
   THPNestedTensor(_ListNestedTensor data) : _data(data) {}
-  at::Tensor& get_buffer() {
-    return _data.right().get_buffer();
-  }
-  const at::Tensor& get_buffer() const {
+  at::Tensor get_buffer() {
     return _data.right().get_buffer();
   }
   int64_t element_size() {
