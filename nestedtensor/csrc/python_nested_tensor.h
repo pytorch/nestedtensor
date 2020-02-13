@@ -291,9 +291,11 @@ struct THPNestedTensor {
     return data_map<bool>(
         _data, [](auto data) { return data.is_contiguous(); });
   }
-  TensorNode get_structure() {
-    return data_map<TensorNode>(
-        _data, [](auto data) { return data.get_structure(); });
+  TensorNode& get_structure() {
+    if (_data.is_right()) {
+      return _data.right().get_structure();
+    }
+    return _data.left().get_structure();
   }
   const TensorNode get_structure() const {
     return data_map<TensorNode>(

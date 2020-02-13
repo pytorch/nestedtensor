@@ -1,5 +1,5 @@
-
 #include <unary.h>
+
 namespace torch {
 namespace nested_tensor {
 
@@ -17,8 +17,8 @@ template <class F>
 auto unary_out(F& fn) {
   auto new_fn = [&fn](const THPNestedTensor& input, THPNestedTensor out) {
     THPNestedTensor result = unary(fn)(input);
-    TensorNode result_node = result.get_structure();
-    TensorNode out_node = out.get_structure();
+    TensorNode& result_node = result.get_structure();
+    TensorNode& out_node = out.get_structure();
     apply(
         [](Tensor& out, Tensor& result) { out.copy_(result); },
         out_node,
