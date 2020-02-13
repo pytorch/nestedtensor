@@ -5,9 +5,9 @@
 namespace torch {
 namespace nested_tensor {
 
-
-void add_unary_functions(auto m, auto c);
-
+void add_unary_functions(
+    pybind11::module,
+    pybind11::class_<torch::nested_tensor::THPNestedTensor>);
 
 } // namespace nested_tensor
 } // namespace torch

@@ -16,6 +16,7 @@ def monkey_patch(NestedTensor):
 
     function_dispatch = {}
     jit_function_dispatch = {}
+    C_functions = {}
 
     def _check_meaningful_overwrite(cls, method_name):
         import os
@@ -84,12 +85,32 @@ def monkey_patch(NestedTensor):
 
     # > PyTorch tensorwise operations
     # --- Module and Tensor tensorwise functions and methods
+    tmp = codegen.get_unary_C_functions()
     for function_name in codegen.get_pointwise_functions():
+        if function_name in tmp:
+            continue
         set_nt_method(function_name + '_', utils.tensorwise())
         if function_name in ['fill']:
             continue
         set_wrapped_jit_torch_function(function_name, _C._jit_tensorwise())
         set_nt_method(function_name, utils.tensorwise())
+    # <
+
+    # > Unary functions supported by _C
+
+    def _gen_fn(function_name):
+        def new_fn(self):
+            return NestedTensor(getattr(self._impl, function_name)())
+        return new_fn
+
+    for function_name in codegen.get_unary_C_functions():
+        setattr(NestedTensor,
+                function_name,
+                _gen_fn(function_name))
+        setattr(NestedTensor,
+                function_name + "_",
+                _gen_fn(function_name + "_"))
+        C_functions[getattr(torch, function_name)] = function_name
     # <
 
     # > PyTorch reduction operations
@@ -228,4 +249,6 @@ def monkey_patch(NestedTensor):
     # module.NestedTensor = NestedTensor
 
     setattr(NestedTensor, '_NestedTensor__function_dispatch', function_dispatch)
-    setattr(NestedTensor, '_NestedTensor__jit_function_dispatch', jit_function_dispatch)
+    setattr(NestedTensor, '_NestedTensor__jit_function_dispatch',
+            jit_function_dispatch)
+    setattr(NestedTensor, '_NestedTensor__C_functions', C_functions)

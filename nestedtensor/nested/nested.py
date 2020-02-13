@@ -218,6 +218,13 @@ class NestedTensor(object):
 
     def __torch_function__(self, func, args=(), kwargs=None):
         _local_func = None
+        if func in NestedTensor.__C_functions:
+            assert len(args) == 1
+            if kwargs is None:
+                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl))
+            assert len(kwargs) == 1 and 'out' in kwargs
+            return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, kwargs['out']._impl))
+
         if kwargs is None:
             kwargs = {}
         if func in NestedTensor.__jit_function_dispatch:
