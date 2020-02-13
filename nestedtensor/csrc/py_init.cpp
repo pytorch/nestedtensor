@@ -2,6 +2,7 @@
 #include <jit_list_apply.h>
 #include <nested_node_functions.h>
 #include <torch/extension.h>
+#include <unary.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
@@ -95,8 +96,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
-  py::class_<THPNestedTensor>(m, "NestedTensor")
-      .def_property_readonly("dtype", &THPNestedTensor::getDtype)
+  auto c = py::class_<THPNestedTensor>(m, "NestedTensor");
+  c.def_property_readonly("dtype", &THPNestedTensor::getDtype)
       .def_property_readonly("layout", &THPNestedTensor::getLayout)
       .def_property_readonly("device", &THPNestedTensor::getDevice)
       .def_property_readonly("requires_grad", &THPNestedTensor::requires_grad)
@@ -114,7 +115,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           py::overload_cast<c10::optional<int64_t>>(
               &THPNestedTensor::nested_stride))
       .def("__getitem__", py::overload_cast<int64_t>(&THPNestedTensor::getitem))
-      .def("__getitem__", py::overload_cast<py::slice>(&THPNestedTensor::getitem))
+      .def(
+          "__getitem__",
+          py::overload_cast<py::slice>(&THPNestedTensor::getitem))
       .def("unbind", &THPNestedTensor::unbind)
       .def("size", &THPNestedTensor::size)
       .def("requires_grad_", &THPNestedTensor::requires_grad_)
@@ -133,6 +136,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("to_tuple", &THPNestedTensor::to_tuple)
       .def("__str__", &THPNestedTensor::str)
       .def("__repr__", &THPNestedTensor::str);
+
+  add_unary_functions(m, c);
 
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);

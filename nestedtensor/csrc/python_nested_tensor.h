@@ -26,7 +26,7 @@ struct THPNestedNode {
           return ss.str();
         });
   }
-  const NestedNode<T>& get_node() {
+  const NestedNode<T>& get_node() const {
     return _size_node;
   }
   std::string get_name() {
@@ -62,6 +62,13 @@ static inline Result data_map(
   return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
 }
 
+template <class Result, class F>
+static inline const Result data_map(
+    const c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
+    F&& fn) {
+  return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
+}
+
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
@@ -87,6 +94,9 @@ struct THPNestedTensor {
         _data, [](auto data) { return data.requires_grad(); });
   }
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
+    return _data;
+  }
+  const c10::either<_ListNestedTensor, _BufferNestedTensor>& data() const {
     return _data;
   }
   std::vector<c10::optional<int64_t>> size() {
@@ -280,11 +290,17 @@ struct THPNestedTensor {
         _data, [](auto data) { return data.to_tensor(); });
   }
   THPNestedTensor contiguous();
-  bool is_contiguous() {
+  bool is_contiguous() const {
     return data_map<bool>(
         _data, [](auto data) { return data.is_contiguous(); });
   }
-  TensorNode get_structure() {
+  TensorNode& get_structure() {
+    if (_data.is_right()) {
+      return _data.right().get_structure();
+    }
+    return _data.left().get_structure();
+  }
+  const TensorNode get_structure() const {
     return data_map<TensorNode>(
         _data, [](auto data) { return data.get_structure(); });
   }
