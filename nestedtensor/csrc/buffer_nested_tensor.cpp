@@ -12,7 +12,7 @@ c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
     stride[p_i] = p;
     p *= size[p_i];
   }
-  return c10::List<int64_t>(stride);
+  return  c10::List<int64_t>(stride);
 }
 
 TensorNode build_structure(
@@ -24,6 +24,7 @@ TensorNode build_structure(
              c10::List<int64_t> b) { return num_memory(a, b); },
           nested_size,
           nested_stride));
+  // TODO: Deal with torch.tensor([]) and torch.tensor(1)
   std::vector<int64_t> nonzero_split_sizes;
   for (size_t i = 0; i < split_sizes.size(); i++) {
     if (split_sizes[i] > 0) {

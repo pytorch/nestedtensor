@@ -20,8 +20,11 @@ c10::optional<IValue> py_obj_to_ivalue(py::object py_obj) {
 }
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
+  // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
+  // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
+  // but carry 0 memory.
   if (size.size() == 0) {
-    return 0;
+    return 1;
   }
   return size[0] * stride[0];
 }
