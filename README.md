@@ -13,6 +13,7 @@ NestedTensors are a generalization of torch Tensor which eases working with data
 In general, there are two cases for which NestedTensors provide computational representations: list of tensors and lists of NestedTensors.
 
 ## Constraints
+
  - Each Tensor constituent of the list it represents, if any, must be of its dtype, layout and device. 
  - The dimension of a constituent Tensor must be one less than the dimension of the NestedTensor. 
  - An empty list of Tensors yields a NestedTensor of dimension zero.
@@ -32,6 +33,7 @@ conda install ipython pytorch notebook torchvision -c pytorch-nightly
 ```
 
 ## Build 
+
 Run 
 ```
 python setup.py develop
@@ -40,6 +42,7 @@ python setup.py develop
 NOTE: This repository uses a C++ extension. Please file an issue if you want into compilation errors.
 
 ## Usage
+
 Import nested tensors and torch via ```from nestedtensor import torch```
 
 ### Creation
@@ -73,6 +76,7 @@ If given a NestedTensor or Tensor it will return a detached copy, which is consi
 A side-note on naming: nestedtensor is a python packed and as such [shouldn't have underscores and is lower case](https://www.python.org/dev/peps/pep-0008/#package-and-module-names), but nested_tensor is a python function and as [such should use underscores](https://www.python.org/dev/peps/pep-0008/#function-and-variable-names) in contrast to the [CapWorded NestedTensor class](https://www.python.org/dev/peps/pep-0008/#class-names).
 
 ### Conversion/unbind()
+
 A user can retrieve the constituent Tensors via unbind. Unbind is currently used by torch to turn Tensors into tuples of Tensors. Unbind always returns a tuple of views.
 
 ```
@@ -116,10 +120,12 @@ nested_tensor([
 ```
 
 ### Other Ops
+
 We currently lack detailed documentation for all supported ops. Please see the examples and stay tuned for updates on this front.
 
 
 ## The tensorwise decorator
+
 The nestedtensor package allows the user to decorate existing functions with a tensorwise decorator. This decorator lifts the given function to check for NestedTensor arguments and recursively apply it to their constituents.
 
 ```
@@ -166,4 +172,5 @@ nested_tensor([
 ```
 
 ## Contribution
+
 The project is under active development. If you have a suggestions or found an bug, please file an issue!
