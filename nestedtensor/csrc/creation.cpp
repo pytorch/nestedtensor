@@ -48,7 +48,6 @@ _BufferNestedTensor make_contiguous(TensorNode _structure) {
     buffer = torch::ones({});
   } else {
     buffer = at::cat(tensors.vec(), 0);
-    // std::cout << "Buffer: " << buffer << std::endl;
   }
   SizeNode structure =
       map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
