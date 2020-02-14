@@ -103,6 +103,10 @@ struct NestedNode {
     return _payload;
   }
 
+  inline T payload() {
+    return _payload;
+  }
+
  private:
   inline const NestedNode<T>* children_data(size_t i) const {
     return _children.data() + i;
