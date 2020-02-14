@@ -58,13 +58,24 @@ auto unary_(F& fn) {
 // template <int64_t N, int64_t M, class F>
 template <class F>
 void add_unary(auto m, auto c, std::string name, F& at_out) {
-  m.def(name.c_str(), torch::nested_tensor::unary(at_out));
-  m.def(name.c_str(), torch::nested_tensor::unary_out(at_out));
+  m.def(
+      name.c_str(),
+      torch::nested_tensor::unary(at_out),
+      py::call_guard<py::gil_scoped_release>());
+  m.def(
+      name.c_str(),
+      torch::nested_tensor::unary_out(at_out),
+      py::call_guard<py::gil_scoped_release>());
   // py::arg("input"),
   // py::arg("out") = c10::nullopt);
-  c.def(name.c_str(), torch::nested_tensor::unary(at_out));
   c.def(
-      (name + std::string("_")).c_str(), torch::nested_tensor::unary_(at_out));
+      name.c_str(),
+      torch::nested_tensor::unary(at_out),
+      py::call_guard<py::gil_scoped_release>());
+  c.def(
+      (name + std::string("_")).c_str(),
+      torch::nested_tensor::unary_(at_out),
+      py::call_guard<py::gil_scoped_release>());
 }
 
 void add_unary_functions(

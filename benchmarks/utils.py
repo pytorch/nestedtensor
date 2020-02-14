@@ -16,25 +16,28 @@ def gen_tensor():
     # return torch.tensor([globals()['SEED']])
     return torch.rand(EMBED_DIM)
 
-def benchmark_fn(fn, run_time = 5.0, use_cprofile=False):
-    times = []
-    num_runs = 0
-    t = 0.0
-    pr = cProfile.Profile()
-    cuda_avail = torch.cuda.is_available()
-    while (t < run_time):
-        ti = time.time()
-        if use_cprofile:
-            pr.enable()
-        fn()
-        if cuda_avail:
-            torch.cuda.synchronize()
-        if use_cprofile:
-            pr.disable()
-        ti = time.time() - ti
-        t += ti
-        times.append(ti)
-    times = torch.tensor(times) * 1e6
+def benchmark_fn(fn, run_time = 10.0, use_cprofile=False, burn_in = 1.0):
+    def _run_benchmark(run_time, use_cprofile):
+        times = []
+        t = 0.0
+        pr = cProfile.Profile()
+        cuda_avail = torch.cuda.is_available()
+        while (t < run_time):
+            ti = time.time()
+            if use_cprofile:
+                pr.enable()
+            fn()
+            if cuda_avail:
+                torch.cuda.synchronize()
+            if use_cprofile:
+                pr.disable()
+            ti = time.time() - ti
+            t += ti
+            times.append(ti)
+        times = torch.tensor(times) * 1e6
+        return times
+    _run_benchmark(burn_in, False)
+    times = _run_benchmark(run_time, use_cprofile)
     if use_cprofile:
         s = io.StringIO()
         sortby = SortKey.CUMULATIVE
