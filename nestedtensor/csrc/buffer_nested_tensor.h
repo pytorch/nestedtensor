@@ -9,17 +9,17 @@ struct TORCH_API _BufferNestedTensor {
   // TODO: Deal with default initialization
   _BufferNestedTensor() = delete;
   _BufferNestedTensor(
-      torch::autograd::Variable&& buffer,
-      SizeNode&& nested_size);
+      torch::autograd::Variable buffer,
+      SizeNode nested_size);
   _BufferNestedTensor(
-      torch::autograd::Variable&& buffer,
-      SizeNode&& nested_size,
-      SizeNode&& nested_stride);
+      torch::autograd::Variable buffer,
+      SizeNode nested_size,
+      SizeNode nested_stride);
   _BufferNestedTensor(
-      torch::autograd::Variable&& buffer,
-      SizeNode&& nested_size,
-      SizeNode&& nested_stride,
-      TensorNode&& structure);
+      torch::autograd::Variable buffer,
+      SizeNode nested_size,
+      SizeNode nested_stride,
+      TensorNode structure);
   at::Tensor& get_buffer() {
     return _buffer;
   }
