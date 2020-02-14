@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import traceback
 import functools
 import pdb
@@ -20,8 +22,8 @@ class TestTensorWise(TestCase):
 
         a = torch.tensor([1, 2])
         b = torch.tensor([7, 8])
-        nt1 = nestedtensor.nested_tensor([a, b])
-        nt2 = nestedtensor.nested_tensor([b, a])
+        _ = nestedtensor.nested_tensor([a, b])
+        _ = nestedtensor.nested_tensor([b, a])
 
     def test_tensorwise_nested_dim_2(self):
 
@@ -33,7 +35,7 @@ class TestTensorWise(TestCase):
         b = torch.tensor([7, 8])
         nt1 = nestedtensor.nested_tensor([[a, b], [b]])
         nt2 = nestedtensor.nested_tensor([[b, a], [a]])
-        nt3 = simple_fn(nt1, nt2)
+        _ = simple_fn(nt1, nt2)
 
     def test_tensorwise_scalar(self):
 

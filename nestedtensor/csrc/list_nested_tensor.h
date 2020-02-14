@@ -93,10 +93,7 @@ struct _ListNestedTensor {
   bool is_contiguous() {
     return false;
   }
-  TensorNode& get_structure() {
-    return _structure;
-  }
-  const TensorNode& get_structure() const {
+  TensorNode get_structure() {
     return _structure;
   }
   // TODO: Implement these and call into them isntead of implementing them

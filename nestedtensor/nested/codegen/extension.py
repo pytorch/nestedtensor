@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import torch
 from functools import wraps
 from collections import namedtuple
@@ -7,52 +9,6 @@ from collections import namedtuple
 # such as arity. For example, someone might implement a single function
 # to efficiently implement a pointwise unary function such as cos
 # and then generalize it using the list of unary functions.
-
-
-def get_unary_C_functions():
-    return [
-        "abs",
-        "acos",
-        "angle",
-        "asin",
-        "atan",
-        "bitwise_not",
-        "ceil",
-        "conj",
-        "cos",
-        "cosh",
-        "digamma",
-        "erf",
-        "erfc",
-        "erfinv",
-        "exp",
-        "expm1",
-        "floor",
-        "frac",
-        "imag",
-        "inverse",
-        "lgamma",
-        "log",
-        "log10",
-        "log1p",
-        "log2",
-        "logical_not",
-        "neg",
-        "nonzero",
-        "real",
-        "reciprocal",
-        "round",
-        "rsqrt",
-        "sigmoid",
-        "sign",
-        "sin",
-        "sinh",
-        "sqrt",
-        "tan",
-        "tanh",
-        "trunc",
-    ]
-
 
 def get_unary_functions():
     return [

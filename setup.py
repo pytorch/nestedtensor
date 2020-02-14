@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import setuptools
 import datetime
 import torch
@@ -7,6 +9,7 @@ import os
 import glob
 import subprocess
 import sys
+import io
 
 from torch.utils.cpp_extension import CppExtension, CUDAExtension, CUDA_HOME, BuildExtension
 
@@ -17,13 +20,6 @@ def read(*names, **kwargs):
         encoding=kwargs.get("encoding", "utf8")
     ) as fp:
         return fp.read()
-
-
-def get_dist(pkgname):
-    try:
-        return get_distribution(pkgname)
-    except DistributionNotFound:
-        return None
 
 
 latest_release = "0.0.1"
@@ -150,7 +146,7 @@ setuptools.setup(
     ],
     zip_safe=True,
     cmdclass={'clean': clean,
-              'build_ext': BuildExtension.with_options(use_ninja=False)},
+              'build_ext': BuildExtension.with_options(use_ninja=True)},
     install_requires=requirements,
     ext_modules=get_extensions()
 )
