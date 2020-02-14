@@ -24,7 +24,6 @@ TensorNode build_structure(
              c10::List<int64_t> b) { return num_memory(a, b); },
           nested_size,
           nested_stride));
-  // TODO: Deal with torch.tensor([]) and torch.tensor(1)
   std::vector<int64_t> nonzero_split_sizes;
   for (size_t i = 0; i < split_sizes.size(); i++) {
     if (split_sizes[i] > 0) {
