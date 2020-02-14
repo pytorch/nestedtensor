@@ -125,7 +125,8 @@ struct THPNestedTensor {
     if (data().is_right()) {
       auto nt = data().right();
       if (nested_dim() == 1) {
-        return wrap_nested_node(nt.get_structure());
+        TensorNode st = nt.get_structure();
+        return wrap_nested_node(st);
       } else {
         std::vector<int64_t> split_sizes;
         auto sizes = nt.nested_size().unbind();

@@ -112,5 +112,13 @@ def nested_map(fn, data):
         return fn(data)
 
 
-def gen_nested_tensor(seed, nested_dim, tensor_dim, size_low=1, size_high=10):
-    return nestedtensor.nested_tensor(gen_nested_list(seed, nested_dim, tensor_dim, size_low=size_low, size_high=size_high))
+def gen_nested_tensor(seed, nested_dim, tensor_dim, size_low=1, size_high=10, constructor=None):
+    if constructor is None:
+        constructor = nestedtensor.as_nested_tensor
+    return constructor(gen_nested_list(seed, nested_dim, tensor_dim, size_low=size_low, size_high=size_high))
+
+def get_first_tensor(nested_list):
+    if isinstance(nested_list, list):
+        return get_first_tensor(nested_list[0])
+    else:
+        return nested_list
