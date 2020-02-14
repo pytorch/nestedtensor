@@ -271,6 +271,9 @@ class NestedTensor(object):
     def to_tuple(self):
         return self._impl.to_tuple()
 
+    def to_tensor_mask2(self, mask_dim=None):
+        return masking.to_tensor_mask2(self, mask_dim)
+
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)
         of dim equal to self.dim(). Tensor will contain all data of NestedTensor,
@@ -283,8 +286,8 @@ class NestedTensor(object):
         element. These two tensors can be used to contruct a NestedTensor, however,
         nested_dim will be lost in this process."""
 
-        return masking.make_tensor_mask(self.to_list(), mask_dim)
+        return masking.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = masking.make_tensor_mask(self.to_list(), mask_dim)
+        tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)
