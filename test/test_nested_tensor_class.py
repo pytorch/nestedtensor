@@ -276,6 +276,7 @@ class TestNestedTensor(TestCase):
         # assigned to it a unique PyObject* by construction.
 
         # TODO: Check that unbind returns torch.Tensors when nested_dim is 1
+        # TODO: contiguous nestedtensors should return tuples of contiguous nestedtensors on dimension 0
 
         def _test(a, b, c, d, e):
             nt = nestedtensor.as_nested_tensor([a, b])
@@ -322,6 +323,7 @@ class TestNestedTensor(TestCase):
               torch.tensor([]),
               torch.tensor([]))
 
+    @utils.debug_on()
     def test_unbind_dim(self):
         # Unbinding across nested dimensions or tensors dimensions
         # is akin splitting up the tree across a level.
@@ -363,7 +365,8 @@ class TestNestedTensor(TestCase):
         c = torch.rand(4, 3)
         nt = nestedtensor.nested_tensor([[a], [b, c]])
         self.assertEqual(nt.unbind(0), (nestedtensor.nested_tensor(
-            [[a]]), nestedtensor.nested_tensor([[b, c]])))
+            [a]), nestedtensor.nested_tensor([b, c])))
+        print("HEEE")
         result = (
             nestedtensor.nested_tensor(
                 [[a.unbind(0)[0]], [b.unbind(0)[0], c.unbind(0)[0]]]),

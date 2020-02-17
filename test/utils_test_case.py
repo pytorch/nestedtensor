@@ -7,6 +7,7 @@ from math import inf
 
 string_classes = (str, bytes)
 
+
 def is_iterable(obj):
     try:
         iter(obj)
@@ -15,6 +16,8 @@ def is_iterable(obj):
         return False
 
 # NOTE: Methods copy pasted from https://github.com/pytorch/pytorch/blob/4314620ba05bc1867f6a63455c4ac77fdfb1018d/test/common_utils.py#L773
+
+
 class TestCaseBase(unittest.TestCase):
     longMessage = True
     precision = 1e-5
@@ -40,7 +43,8 @@ class TestCaseBase(unittest.TestCase):
                              allow_inf=allow_inf)
         elif isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
             def assertTensorsEqual(a, b):
-                super(TestCaseBase, self).assertEqual(a.size(), b.size(), message)
+                super(TestCaseBase, self).assertEqual(
+                    a.size(), b.size(), message)
                 if a.numel() > 0:
                     if (a.device.type == 'cpu' and (a.dtype == torch.float16 or a.dtype == torch.bfloat16)):
                         # CPU half and bfloat16 tensors don't have the methods we need below
@@ -51,7 +55,8 @@ class TestCaseBase(unittest.TestCase):
                     b = b.to(a)
 
                     if (a.dtype == torch.bool) != (b.dtype == torch.bool):
-                        raise TypeError("Was expecting both tensors to be bool type.")
+                        raise TypeError(
+                            "Was expecting both tensors to be bool type.")
                     else:
                         if a.dtype == torch.bool and b.dtype == torch.bool:
                             # we want to respect precision but as bool doesn't support subtraction,
@@ -63,21 +68,25 @@ class TestCaseBase(unittest.TestCase):
                         if a.is_floating_point():
                             # check that NaNs are in the same locations
                             nan_mask = torch.isnan(a)
-                            self.assertTrue(torch.equal(nan_mask, torch.isnan(b)), message)
+                            self.assertTrue(torch.equal(
+                                nan_mask, torch.isnan(b)), message)
                             diff[nan_mask] = 0
                             # inf check if allow_inf=True
                             if allow_inf:
                                 inf_mask = torch.isinf(a)
                                 inf_sign = inf_mask.sign()
-                                self.assertTrue(torch.equal(inf_sign, torch.isinf(b).sign()), message)
+                                self.assertTrue(torch.equal(
+                                    inf_sign, torch.isinf(b).sign()), message)
                                 diff[inf_mask] = 0
                         # TODO: implement abs on CharTensor (int8)
                         if diff.is_signed() and diff.dtype != torch.int8:
                             diff = diff.abs()
                         max_err = diff.max()
                         self.assertLessEqual(max_err, prec, message)
-            super(TestCaseBase, self).assertEqual(x.is_sparse, y.is_sparse, message)
-            super(TestCaseBase, self).assertEqual(x.is_quantized, y.is_quantized, message)
+            super(TestCaseBase, self).assertEqual(
+                x.is_sparse, y.is_sparse, message)
+            super(TestCaseBase, self).assertEqual(
+                x.is_quantized, y.is_quantized, message)
             if x.is_sparse:
                 x = self.safeCoalesce(x)
                 y = self.safeCoalesce(y)
@@ -134,9 +143,11 @@ class TestCaseBase(unittest.TestCase):
                 if allow_inf:
                     super(TestCaseBase, self).assertEqual(x, y, message)
                 else:
-                    self.fail("Expected finite numeric values - x={}, y={}".format(x, y))
+                    self.fail(
+                        "Expected finite numeric values - x={}, y={}".format(x, y))
                 return
-            super(TestCaseBase, self).assertLessEqual(abs(x - y), prec, message)
+            super(TestCaseBase, self).assertLessEqual(
+                abs(x - y), prec, message)
         else:
             super(TestCaseBase, self).assertEqual(x, y, message)
 
@@ -181,8 +192,10 @@ class TestCaseBase(unittest.TestCase):
                 pass
             super(TestCaseBase, self).assertNotEqual(x, y, message)
 
+
 class TestCase(TestCaseBase):
-    # ToDo: remove ignore_contiguity flag. We should not use it. 
+    # ToDo: remove ignore_contiguity flag. We should not use it.
+    # ToDo: This doesn't support iterables or dictionaries.
     def assertAlmostEqual(self, x, y, places=None, msg=None, delta=None, allow_inf=None, ignore_contiguity=False):
         prec = delta
         if places:
@@ -190,50 +203,80 @@ class TestCase(TestCaseBase):
         self.assertEqual(x, y, prec, msg, allow_inf, ignore_contiguity)
 
     def assertEqual(self, x, y, prec=None, message='', allow_inf=False, ignore_contiguity=False):
-        if not isinstance(x, NT.NestedTensor) and not isinstance(y, NT.NestedTensor):
+        if isinstance(x, dict) and isinstance(y, dict):
+            if isinstance(x, OrderedDict) and isinstance(y, OrderedDict):
+                self.assertEqual(x.items(), y.items(), prec=prec,
+                                 message=message, allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+            else:
+                self.assertEqual(set(x.keys()), set(y.keys()), prec=prec,
+                                 message=message, allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+                key_list = list(x.keys())
+                self.assertEqual([x[k] for k in key_list],
+                                 [y[k] for k in key_list],
+                                 prec=prec, message=message,
+                                 allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+        elif is_iterable(x) and is_iterable(y):
+            super(TestCaseBase, self).assertEqual(len(x), len(y), message)
+            for x_, y_ in zip(x, y):
+                self.assertEqual(x_, y_, prec=prec, message=message,
+                                 allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+        elif not isinstance(x, NT.NestedTensor) and not isinstance(y, NT.NestedTensor):
             super().assertEqual(x, y, prec, message, allow_inf)
         elif not isinstance(x, NT.NestedTensor) or not isinstance(y, NT.NestedTensor):
             raise TypeError("Comparing a nested tensor to a non nested tensor")
         else:
             if x.dim() != y.dim():
-                self.fail("Nested tensors dimensionality don't match. {} != {}".format(x.dim(), y.dim()))
+                self.fail("Nested tensors dimensionality don't match. {} != {}".format(
+                    x.dim(), y.dim()))
 
             if x.nested_dim() != y.nested_dim():
-                self.fail("Nested tensors nested dimensionality don't match. {} != {}".format(x.nested_dim(), y.nested_dim()))
+                self.fail("Nested tensors nested dimensionality don't match. {} != {}".format(
+                    x.nested_dim(), y.nested_dim()))
 
             if x.tensor_dim() != y.tensor_dim():
-                self.fail("Nested tensors  dimentionality don't match. {} != {}".format(x.tensor_dim(), y.tensor_dim()))
+                self.fail("Nested tensors  dimentionality don't match. {} != {}".format(
+                    x.tensor_dim(), y.tensor_dim()))
 
             if x.is_pinned() != y.is_pinned():
-                self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(x.is_pinned(), y.is_pinned()))
+                self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(
+                    x.is_pinned(), y.is_pinned()))
 
             if x.layout != y.layout:
-                self.fail("Nested tensors layouts don't match. {} != {}".format(x.layout, y.layout))
+                self.fail("Nested tensors layouts don't match. {} != {}".format(
+                    x.layout, y.layout))
 
             if x.dtype != y.dtype:
-                self.fail("Nested tensors dtypes don't match. {} != {}".format(x.dtype, y.dtype))
+                self.fail("Nested tensors dtypes don't match. {} != {}".format(
+                    x.dtype, y.dtype))
 
             if x.device != y.device:
-                self.fail("Nested tensors devices don't match. {} != {}".format(x.device, y.device))
+                self.fail("Nested tensors devices don't match. {} != {}".format(
+                    x.device, y.device))
 
             if x.requires_grad != y.requires_grad:
-                self.fail("Nested tensors requires grad properties don't match. {} != {}".format(x.requires_grad, y.requires_grad))
+                self.fail("Nested tensors requires grad properties don't match. {} != {}".format(
+                    x.requires_grad, y.requires_grad))
 
             if not ignore_contiguity and x.is_contiguous() != y.is_contiguous():
-                self.fail("Nested tensors contiguity don't match. {} != {}".format(x.is_contiguous(), y.is_contiguous()))
+                self.fail("Nested tensors contiguity don't match. {} != {}".format(
+                    x.is_contiguous(), y.is_contiguous()))
 
             if x.element_size() != y.element_size():
-                self.fail("Nested tensors element sizes don't match. {} != {}".format(x.element_size(), y.element_size()))
+                self.fail("Nested tensors element sizes don't match. {} != {}".format(
+                    x.element_size(), y.element_size()))
 
             if x.size() != y.size():
-                self.fail("Nested tensors sizes don't match. {} != {}".format(x.size(), y.size()))
+                self.fail("Nested tensors sizes don't match. {} != {}".format(
+                    x.size(), y.size()))
 
             if x.nested_size() != y.nested_size():
-                self.fail("Nested tensors nested sizes don't match. {} != {}".format(x.nested_size(), y.nested_size()))
+                self.fail("Nested tensors nested sizes don't match. {} != {}".format(
+                    x.nested_size(), y.nested_size()))
 
             if x.nested_stride() != y.nested_stride():
-                self.fail("Nested tensors nested strides don't match. {} != {}".format(x.nested_stride(), y.nested_stride()))
-            
+                self.fail("Nested tensors nested strides don't match. {} != {}".format(
+                    x.nested_stride(), y.nested_stride()))
+
             for x_, y_ in zip(x, y):
                 self.assertEqual(x_, y_, prec=prec, message=message,
                                  allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
