@@ -203,28 +203,7 @@ class TestCase(TestCaseBase):
         self.assertEqual(x, y, prec, msg, allow_inf, ignore_contiguity)
 
     def assertEqual(self, x, y, prec=None, message='', allow_inf=False, ignore_contiguity=False):
-        if isinstance(x, dict) and isinstance(y, dict):
-            if isinstance(x, OrderedDict) and isinstance(y, OrderedDict):
-                self.assertEqual(x.items(), y.items(), prec=prec,
-                                 message=message, allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
-            else:
-                self.assertEqual(set(x.keys()), set(y.keys()), prec=prec,
-                                 message=message, allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
-                key_list = list(x.keys())
-                self.assertEqual([x[k] for k in key_list],
-                                 [y[k] for k in key_list],
-                                 prec=prec, message=message,
-                                 allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
-        elif is_iterable(x) and is_iterable(y):
-            super(TestCaseBase, self).assertEqual(len(x), len(y), message)
-            for x_, y_ in zip(x, y):
-                self.assertEqual(x_, y_, prec=prec, message=message,
-                                 allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
-        elif not isinstance(x, NT.NestedTensor) and not isinstance(y, NT.NestedTensor):
-            super().assertEqual(x, y, prec, message, allow_inf)
-        elif not isinstance(x, NT.NestedTensor) or not isinstance(y, NT.NestedTensor):
-            raise TypeError("Comparing a nested tensor to a non nested tensor")
-        else:
+        if isinstance(x, NT.NestedTensor) and isinstance(y, NT.NestedTensor):
             if x.dim() != y.dim():
                 self.fail("Nested tensors dimensionality don't match. {} != {}".format(
                     x.dim(), y.dim()))
@@ -237,9 +216,10 @@ class TestCase(TestCaseBase):
                 self.fail("Nested tensors  dimentionality don't match. {} != {}".format(
                     x.tensor_dim(), y.tensor_dim()))
 
-            if x.is_pinned() != y.is_pinned():
-                self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(
-                    x.is_pinned(), y.is_pinned()))
+            # TODO: We don't compare this for regular Tensors and it's a very expensive check.
+            # if x.is_pinned() != y.is_pinned():
+            #     self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(
+            #         x.is_pinned(), y.is_pinned()))
 
             if x.layout != y.layout:
                 self.fail("Nested tensors layouts don't match. {} != {}".format(
@@ -280,3 +260,21 @@ class TestCase(TestCaseBase):
             for x_, y_ in zip(x, y):
                 self.assertEqual(x_, y_, prec=prec, message=message,
                                  allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+        if isinstance(x, dict) and isinstance(y, dict):
+            if isinstance(x, OrderedDict) and isinstance(y, OrderedDict):
+                self.assertEqual(x.items(), y.items(), prec=prec,
+                                 message=message, allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+            else:
+                self.assertEqual(set(x.keys()), set(y.keys()), prec=prec,
+                                 message=message, allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+                key_list = list(x.keys())
+                self.assertEqual([x[k] for k in key_list],
+                                 [y[k] for k in key_list],
+                                 prec=prec, message=message,
+                                 allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+        if is_iterable(x) and is_iterable(y):
+            super(TestCaseBase, self).assertEqual(len(x), len(y), message)
+            for x_, y_ in zip(x, y):
+                self.assertEqual(x_, y_, prec=prec, message=message,
+                                 allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
+        super().assertEqual(x, y, prec, message, allow_inf)
