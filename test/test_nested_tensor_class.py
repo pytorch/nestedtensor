@@ -368,12 +368,8 @@ class TestNestedTensor(TestCase):
             [a]), nestedtensor.nested_tensor([b, c])))
         print("HEEE")
         result = (
-            nestedtensor.nested_tensor(
-                [[a.unbind(0)[0]], [b.unbind(0)[0], c.unbind(0)[0]]]),
-            nestedtensor.nested_tensor(
-                [[a.unbind(0)[1]], [b.unbind(0)[1], c.unbind(0)[1]]]),
-            nestedtensor.nested_tensor([[a.unbind(0)[2]], [c.unbind(0)[2]]]),
-            nestedtensor.nested_tensor([[], [c.unbind(0)[3]]]))
+            nestedtensor.nested_tensor([a, b]),
+            nestedtensor.nested_tensor([c]))
         self.assertEqual(nt.unbind(1), result, ignore_contiguity=True)
 
         # c, d = torch.rand(2, 3), torch.rand(4, 3), torch.rand(3, 4)
