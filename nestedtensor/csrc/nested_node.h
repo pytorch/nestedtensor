@@ -108,9 +108,6 @@ struct NestedNode {
   }
 
  private:
-  inline const NestedNode<T>* children_data(size_t i) const {
-    return _children.data() + i;
-  }
   bool _is_leaf;
   std::vector<NestedNode<T>> _children;
   // TODO: Make this const?
@@ -224,11 +221,15 @@ inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
   if (nested_node.degree() == 0) {
     return c10::nullopt;
   }
-  const NestedNode<A>* start = &nested_node;
-  while (!start->is_leaf()) {
-    start = start->children_data(0);
+  if (nested_node.is_leaf()) {
+    return nested_node.payload();
   }
-  return start->payload();
+  for (const auto& child : nested_node.unbind()) {
+    if (auto result = get_first_leaf(child)) {
+      return result;
+    }
+  }
+  return c10::nullopt;
 }
 
 template <class F, class A, class TypeList>
