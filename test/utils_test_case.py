@@ -195,7 +195,6 @@ class TestCaseBase(unittest.TestCase):
 
 class TestCase(TestCaseBase):
     # ToDo: remove ignore_contiguity flag. We should not use it.
-    # ToDo: This doesn't support iterables or dictionaries.
     def assertAlmostEqual(self, x, y, places=None, msg=None, delta=None, allow_inf=None, ignore_contiguity=False):
         prec = delta
         if places:
@@ -217,9 +216,9 @@ class TestCase(TestCaseBase):
                     x.tensor_dim(), y.tensor_dim()))
 
             # TODO: We don't compare this for regular Tensors and it's a very expensive check.
-            # if x.is_pinned() != y.is_pinned():
-            #     self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(
-            #         x.is_pinned(), y.is_pinned()))
+            if x.is_pinned() != y.is_pinned():
+                self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(
+                    x.is_pinned(), y.is_pinned()))
 
             if x.layout != y.layout:
                 self.fail("Nested tensors layouts don't match. {} != {}".format(
