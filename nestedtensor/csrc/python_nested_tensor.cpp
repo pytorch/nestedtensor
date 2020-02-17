@@ -35,9 +35,7 @@ THPNestedTensor THPNestedTensor::contiguous() {
 }
 
 // TODO: Since this returns vies there is no reason not to return a sequence of
-// contiguous NestedTensors for a given NestedTensor. We'll need to implement a
-// more specialized version of this operation to avoid a split or other memory
-// intensive implementation.
+// contiguous NestedTensors for a given NestedTensor.
 py::object THPNestedTensor::unbind() {
   if (nested_dim() == 1) {
     return wrap_nested_node(get_structure());
