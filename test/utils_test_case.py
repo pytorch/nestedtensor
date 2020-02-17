@@ -260,7 +260,7 @@ class TestCase(TestCaseBase):
             for x_, y_ in zip(x, y):
                 self.assertEqual(x_, y_, prec=prec, message=message,
                                  allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
-        if isinstance(x, dict) and isinstance(y, dict):
+        elif isinstance(x, dict) and isinstance(y, dict):
             if isinstance(x, OrderedDict) and isinstance(y, OrderedDict):
                 self.assertEqual(x.items(), y.items(), prec=prec,
                                  message=message, allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
@@ -272,9 +272,10 @@ class TestCase(TestCaseBase):
                                  [y[k] for k in key_list],
                                  prec=prec, message=message,
                                  allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
-        if is_iterable(x) and is_iterable(y):
+        elif is_iterable(x) and is_iterable(y):
             super(TestCaseBase, self).assertEqual(len(x), len(y), message)
             for x_, y_ in zip(x, y):
                 self.assertEqual(x_, y_, prec=prec, message=message,
                                  allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
-        super().assertEqual(x, y, prec, message, allow_inf)
+        else:
+            super().assertEqual(x, y, prec, message, allow_inf)
