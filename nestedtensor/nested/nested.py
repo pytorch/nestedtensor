@@ -170,7 +170,6 @@ class NestedTensor(object):
 
     # --- dependent on impl ---
 
-    # TODO: More tests
     def unbind(self, dim=0):
         """
         unbind returns a tuple containing the entries
@@ -181,6 +180,7 @@ class NestedTensor(object):
 
         Returns a tuple of views. Results might not be contiguous.
         """
+        # TODO: Design choice: Return zip_longest or zip?
 
         dim = utils._wrap_dim(self, dim)
         # if dim == 0:
