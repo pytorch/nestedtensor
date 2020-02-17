@@ -120,48 +120,7 @@ struct THPNestedTensor {
     py::sequence unbound = py::cast<py::sequence>(unbound_);
     return unbound[key];
   }
-  pybind11::object unbind() {
-    // FOR BUFFER
-    if (data().is_right()) {
-      auto nt = data().right();
-      if (nested_dim() == 1) {
-        TensorNode st = nt.get_structure();
-        return wrap_nested_node(st);
-      } else {
-        std::vector<int64_t> split_sizes;
-        auto sizes = nt.nested_size().unbind();
-        auto strides = nt.nested_stride().unbind();
-        for (int64_t i = 0; i < len(); i++) {
-          split_sizes.push_back(size_node_memory(sizes[i], strides[i]));
-        }
-        std::vector<at::Tensor> buffers = at::split_with_sizes(
-            nt.get_buffer(), c10::IntArrayRef(split_sizes), 0);
-        std::vector<py::object> result;
-        for (int64_t i = 0; i < len(); i++) {
-          result.push_back(py::cast(
-              THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
-                  std::move(buffers[i]),
-                  std::move(sizes[i]),
-                  std::move(strides[i])))));
-        }
-        return py::cast(result);
-      }
-    }
-
-    // FOR LIST
-    auto nt = data().left();
-    if (nested_dim() == 1) {
-      return wrap_nested_node(nt.get_structure());
-    } else {
-      std::vector<py::object> result;
-      for (const auto& _child : nt.get_structure().unbind()) {
-        auto child = _child;
-        result.push_back(py::cast(THPNestedTensor(
-            torch::nested_tensor::_ListNestedTensor(std::move(child)))));
-      }
-      return py::cast(result);
-    }
-  }
+  pybind11::object unbind();
   THPIValueNode nested_size() {
     return THPIValueNode(
         map([](c10::List<int64_t> e) { return c10::IValue(e); },
