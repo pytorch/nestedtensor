@@ -366,7 +366,6 @@ class TestNestedTensor(TestCase):
         nt = nestedtensor.nested_tensor([[a], [b, c]])
         self.assertEqual(nt.unbind(0), (nestedtensor.nested_tensor(
             [a]), nestedtensor.nested_tensor([b, c])))
-        print("HEEE")
         result = (
             nestedtensor.nested_tensor([a, b]),
             nestedtensor.nested_tensor([c]))
