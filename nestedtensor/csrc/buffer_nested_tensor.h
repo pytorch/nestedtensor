@@ -79,7 +79,7 @@ struct TORCH_API _BufferNestedTensor {
   bool is_pinned() {
     return _buffer.is_pinned();
   }
-  bool is_contiguous() {
+  bool is_contiguous() const {
     // NOTE: The Tensors might not be contiguous themselves.
     // For this to be contiguous not only do the Tensors need to
     // come from the buffer, but they also need to

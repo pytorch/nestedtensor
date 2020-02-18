@@ -55,20 +55,6 @@ using THPIntegerNode = THPNestedNode<int64_t>;
 using THPTensorNode = THPNestedNode<at::Tensor>;
 using THPIValueNode = THPNestedNode<c10::IValue>;
 
-template <class Result, class F>
-static inline Result data_map(
-    c10::either<NestedTensor, _BufferNestedTensor>& data,
-    F&& fn) {
-  return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
-}
-
-template <class Result, class F>
-static inline const Result data_map(
-    const c10::either<NestedTensor, _BufferNestedTensor>& data,
-    F&& fn) {
-  return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
-}
-
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
@@ -77,19 +63,24 @@ struct THPNestedTensor {
     return _data.right().get_buffer();
   }
   int64_t element_size() {
-    return data_map<int64_t>(
-        _data, [](auto data) { return data.element_size(); });
+    return _data.is_right() ? _data.right().element_size()
+                            : _data.left().element_size();
   }
   pybind11::object getDtype();
   pybind11::object getLayout();
   pybind11::object getDevice();
   pybind11::object to_list() {
-    return wrap_nested_node<at::Tensor, py::list>(get_structure());
+    auto node = _data.is_right() ? _data.right().get_structure()
+                                 : _data.left().get_structure();
+    return wrap_nested_node<at::Tensor, py::list>(node);
   }
   pybind11::object to_tuple() {
-    return wrap_nested_node<at::Tensor, py::tuple>(get_structure());
+    auto node = _data.is_right() ? _data.right().get_structure()
+                                 : _data.left().get_structure();
+    return wrap_nested_node<at::Tensor, py::tuple>(node);
   }
   bool requires_grad() {
+<<<<<<< HEAD
     return data_map<bool>(
         _data, [](auto data) { return data.requires_grad(); });
   }
@@ -98,6 +89,10 @@ struct THPNestedTensor {
   }
   const c10::either<NestedTensor, _BufferNestedTensor>& data() const {
     return _data;
+=======
+    return _data.is_right() ? _data.right().requires_grad()
+                            : _data.left().requires_grad();
+>>>>>>> master
   }
   std::vector<c10::optional<int64_t>> size() {
     SizeNode tmp =
@@ -121,119 +116,42 @@ struct THPNestedTensor {
     return unbound[key];
   }
   pybind11::object unbind();
-  THPIValueNode nested_size() {
-    return THPIValueNode(
-        map([](c10::List<int64_t> e) { return c10::IValue(e); },
-            data_map<SizeNode>(
-                _data, [](auto data) { return data.nested_size(); })),
-        "NestedSize");
-  }
-  THPIValueNode nested_size(c10::optional<int64_t> index) {
-    if (!index) {
-      return nested_size();
-    }
-    // TODO: Negative dims and slices
-    TORCH_CHECK(index < dim(), "dim argument out of range.");
-    SizeNode size_node =
-        data_map<SizeNode>(_data, [](auto data) { return data.nested_size(); });
-    auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
-      if (dim == 0) {
-        return IntegerNode(s.degree());
-      }
-      if (s.height() == 1) {
-        return map(
-            [dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
-      }
-      std::vector<IntegerNode> result;
-      for (const auto& child : s.unbind()) {
-        result.emplace_back(self(self, child, dim - 1));
-      }
-      return IntegerNode(std::move(result));
-    };
-    return THPIValueNode(
-        map([](int64_t e) { return c10::IValue(e); },
-            fn(fn, size_node, *index)),
-        "NestedSize");
-  }
-  THPIValueNode nested_stride() {
-    return THPIValueNode(
-        map([](c10::List<int64_t> e) { return c10::IValue(e); },
-            data_map<SizeNode>(
-                _data, [](auto data) { return data.nested_stride(); })),
-        "NestedStride");
-  }
-  THPIValueNode nested_stride(c10::optional<int64_t> index) {
-    if (!index) {
-      return nested_stride();
-    }
-    // TODO: Negative dims and slices
-    TORCH_CHECK(index < dim(), "dim argument out of range.");
-    SizeNode size_node = data_map<SizeNode>(
-        _data, [](auto data) { return data.nested_stride(); });
-    auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
-      if (dim == 0) {
-        return IntegerNode(s.degree());
-      }
-      if (s.height() == 1) {
-        return map(
-            [dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
-      }
-      std::vector<IntegerNode> result;
-      for (const auto& child : s.unbind()) {
-        result.emplace_back(self(self, child, dim - 1));
-      }
-      return IntegerNode(std::move(result));
-    };
-    return THPIValueNode(
-        map([](int64_t e) { return c10::IValue(e); },
-            fn(fn, size_node, *index)),
-        "NestedStride");
-  }
+  THPIValueNode nested_size();
+  THPIValueNode nested_stride();
+  THPIValueNode nested_size(c10::optional<int64_t> index);
+  THPIValueNode nested_stride(c10::optional<int64_t> index);
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad_) {
     bool requires_grad = requires_grad_;
-    return THPNestedTensor(
-        data_map<THPNestedTensor>(_data, [requires_grad](auto data) {
-          return data.requires_grad_(requires_grad);
-        }));
+    if (_data.is_right()) {
+      return THPNestedTensor(_data.right().requires_grad_(requires_grad));
+    }
+    return THPNestedTensor(_data.left().requires_grad_(requires_grad));
   }
   THPNestedTensor grad() {
-    return data_map<THPNestedTensor>(
-        _data, [](auto data) { return THPNestedTensor(data.grad()); });
+    if (_data.is_right()) {
+      return THPNestedTensor(_data.right().grad());
+    }
+    return THPNestedTensor(_data.left().grad());
   }
   THPNestedTensor detach() {
-    return data_map<THPNestedTensor>(
-        _data, [](auto data) { return THPNestedTensor(data.detach()); });
+    if (_data.is_right()) {
+      return THPNestedTensor(_data.right().detach());
+    }
+    return THPNestedTensor(_data.left().detach());
   }
   THPNestedTensor pin_memory() {
-    return data_map<THPNestedTensor>(
-        _data, [](auto data) { return THPNestedTensor(data.pin_memory()); });
+    if (_data.is_right()) {
+      return THPNestedTensor(_data.right().pin_memory());
+    }
+    return THPNestedTensor(_data.left().pin_memory());
   }
-  std::string str() {
-    return data_map<std::string>(_data, [](auto data) {
-      return NestedNode___str__(
-          data.get_structure(),
-          "nested_tensor",
-          [](c10::IValue payload, const std::string& tabs) {
-            std::vector<std::string> tokens = split_str(
-                THPUtils_unpackString(
-                    PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
-                "\n");
-            std::string result;
-            for (size_t i = 0; i < tokens.size(); i++) {
-              result = result + tabs + tokens[i];
-              if (i < tokens.size() - 1) {
-                result = result + "\n";
-              }
-            }
-            return result;
-          });
-    });
-  }
+  std::string str();
   int64_t len() {
-    return data_map<int64_t>(_data, [](auto data) { return data.__len__(); });
+    return _data.is_right() ? _data.right().__len__() : _data.left().__len__();
   }
   bool is_pinned() {
-    return data_map<bool>(_data, [](auto data) { return data.is_pinned(); });
+    return _data.is_right() ? _data.right().is_pinned()
+                            : _data.left().is_pinned();
   }
   int64_t nested_dim() {
     if (_data.is_right()) {
@@ -242,33 +160,27 @@ struct THPNestedTensor {
     return _data.left().nested_dim();
   }
   int64_t dim() {
-    return data_map<int64_t>(_data, [](auto data) { return data.dim(); });
+    return _data.is_right() ? _data.right().dim() : _data.left().dim();
   }
   int64_t numel() {
-    return data_map<int64_t>(_data, [](auto data) { return data.numel(); });
+    return _data.is_right() ? _data.right().numel() : _data.left().numel();
   }
   at::Tensor to_tensor() {
-    return data_map<at::Tensor>(
-        _data, [](auto data) { return data.to_tensor(); });
+    return _data.is_right() ? _data.right().to_tensor()
+                            : _data.left().to_tensor();
   }
   THPNestedTensor contiguous();
   bool is_contiguous() const {
-    return data_map<bool>(
-        _data, [](auto data) { return data.is_contiguous(); });
-  }
-  TensorNode& get_structure() {
-    if (_data.is_right()) {
-      return _data.right().get_structure();
-    }
-    return _data.left().get_structure();
-  }
-  const TensorNode get_structure() const {
-    return data_map<TensorNode>(
-        _data, [](auto data) { return data.get_structure(); });
+    return _data.is_right() ? _data.right().is_contiguous()
+                            : _data.left().is_contiguous();
   }
 
+<<<<<<< HEAD
  private:
   c10::either<NestedTensor, _BufferNestedTensor> _data;
+=======
+  c10::either<_ListNestedTensor, _BufferNestedTensor> _data;
+>>>>>>> master
 };
 
 } // namespace nested_tensor

@@ -90,7 +90,7 @@ struct NestedTensor {
   bool is_pinned() {
     return _first_variable.is_pinned();
   }
-  bool is_contiguous() {
+  bool is_contiguous() const {
     return false;
   }
   TensorNode& get_structure() {
