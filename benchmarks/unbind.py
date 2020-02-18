@@ -32,7 +32,7 @@ def gen_nt_unbind_2():
 
     def nt_2():
         [t.unbind() for t in nested_tensor.unbind()]
-    return nt
+    return nt_2
 
 
 def gen_ant_unbind_2():
@@ -41,11 +41,11 @@ def gen_ant_unbind_2():
 
     def ant_2():
         [t.unbind() for t in nested_tensor.unbind()]
-    return ant
+    return ant_2
 
 
 if __name__ == "__main__":
-    print(utils.benchmark_fn(gen_nt_unbind()))
-    print(utils.benchmark_fn(gen_ant_unbind()))
-    print(utils.benchmark_fn(gen_nt_unbind_2()))
-    print(utils.benchmark_fn(gen_ant_unbind_2()))
+    print(utils.benchmark_fn(gen_nt_unbind(), run_time = 5.0))
+    # print(utils.benchmark_fn(gen_ant_unbind()))
+    # print(utils.benchmark_fn(gen_nt_unbind_2()))
+    # print(utils.benchmark_fn(gen_ant_unbind_2()))
