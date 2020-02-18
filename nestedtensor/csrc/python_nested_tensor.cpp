@@ -34,5 +34,21 @@ THPNestedTensor THPNestedTensor::contiguous() {
   return THPNestedTensor(make_contiguous(this->get_structure()));
 }
 
+// TODO: Since this returns vies there is no reason not to return a sequence of
+// contiguous NestedTensors for a given NestedTensor.
+py::object THPNestedTensor::unbind() {
+  if (nested_dim() == 1) {
+    return wrap_nested_node(get_structure());
+  } else {
+    std::vector<py::object> result;
+    for (const auto& _child : get_structure().unbind()) {
+      auto child = _child;
+      result.push_back(py::cast(THPNestedTensor(
+          torch::nested_tensor::_ListNestedTensor(std::move(child)))));
+    }
+    return py::cast(result);
+  }
+}
+
 } // namespace nested_tensor
 } // namespace torch
