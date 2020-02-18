@@ -5,9 +5,9 @@ namespace torch {
 namespace nested_tensor {
 
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
-struct _ListNestedTensor {
-  _ListNestedTensor() = delete;
-  _ListNestedTensor(TensorNode&& structure)
+struct NestedTensor {
+  NestedTensor() = delete;
+  NestedTensor(TensorNode&& structure)
       : _structure(structure),
         _first_variable(
             get_first_leaf(_structure) ? *get_first_leaf(_structure)
@@ -25,27 +25,27 @@ struct _ListNestedTensor {
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
         _structure);
   }
-  _ListNestedTensor pin_memory() {
-    return _ListNestedTensor(
+  NestedTensor pin_memory() {
+    return NestedTensor(
         map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
-  _ListNestedTensor grad() {
-    return _ListNestedTensor(
+  NestedTensor grad() {
+    return NestedTensor(
         map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
   }
-  _ListNestedTensor detach() {
-    return _ListNestedTensor(
+  NestedTensor detach() {
+    return NestedTensor(
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
-  _ListNestedTensor requires_grad_(bool requires_grad) {
-    return _ListNestedTensor(map(
+  NestedTensor requires_grad_(bool requires_grad) {
+    return NestedTensor(map(
         [requires_grad](at::Tensor tensor) {
           return tensor.set_requires_grad(requires_grad);
         },
         _structure));
   }
   void backward(
-      _ListNestedTensor gradient,
+      NestedTensor gradient,
       bool retain_graph,
       bool create_graph) {
     apply(
@@ -101,7 +101,7 @@ struct _ListNestedTensor {
   }
   // TODO: Implement these and call into them isntead of implementing them
   // separately in Variable dispatch functions.
-  // _ListNestedTensor to - it's a pain due to the 100s of to overloads
+  // NestedTensor to - it's a pain due to the 100s of to overloads
   // separately in Variable dispatch functions.
 
  private:

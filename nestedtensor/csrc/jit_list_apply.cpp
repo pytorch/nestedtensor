@@ -151,7 +151,7 @@ py::cpp_function jit_tensorwise() {
                 operation.getSchema(), args, kwargs, c10::nullopt)) {
           py::gil_scoped_release release;
           THPNestedTensor result = THPNestedTensor(
-              _ListNestedTensor(apply_jit_function(*pack, operation)));
+              NestedTensor(apply_jit_function(*pack, operation)));
           return result;
         }
       }
@@ -186,7 +186,7 @@ py::cpp_function jit_tensorwise() {
             auto operation = op->getOperation();
             py::gil_scoped_release release;
             THPNestedTensor result = THPNestedTensor(
-                _ListNestedTensor(apply_jit_function(*pack, operation)));
+                NestedTensor(apply_jit_function(*pack, operation)));
             return result;
           }
         }

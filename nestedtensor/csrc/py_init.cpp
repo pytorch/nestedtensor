@@ -19,7 +19,7 @@
 // If depth is 0, it means that the current structure
 // is already a leaf, i.e. has no children.
 
-// NOTE: Implementations _ListNestedTensor and _BufferNestedTensor
+// NOTE: Implementations NestedTensor and _BufferNestedTensor
 // return lists of lists of integers for nested_size and nested_stride
 // for now. It's up to the consumer to correct this if required.
 

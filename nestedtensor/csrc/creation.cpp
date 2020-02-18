@@ -35,7 +35,7 @@ THPNestedTensor as_nested_tensor(py::sequence _list) {
   if (auto first = get_first_leaf(structure)) {
     TORCH_CHECK(_verify_variables(*first, structure), "Tensors don't line up.");
   }
-  return THPNestedTensor(_ListNestedTensor(std::move(structure)));
+  return THPNestedTensor(NestedTensor(std::move(structure)));
 }
 
 _BufferNestedTensor make_contiguous(TensorNode _structure) {

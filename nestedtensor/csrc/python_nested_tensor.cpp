@@ -44,7 +44,7 @@ py::object THPNestedTensor::unbind() {
     for (const auto& _child : get_structure().unbind()) {
       auto child = _child;
       result.push_back(py::cast(THPNestedTensor(
-          torch::nested_tensor::_ListNestedTensor(std::move(child)))));
+          torch::nested_tensor::NestedTensor(std::move(child)))));
     }
     return py::cast(result);
   }

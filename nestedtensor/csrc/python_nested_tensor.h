@@ -57,14 +57,14 @@ using THPIValueNode = THPNestedNode<c10::IValue>;
 
 template <class Result, class F>
 static inline Result data_map(
-    c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
+    c10::either<NestedTensor, _BufferNestedTensor>& data,
     F&& fn) {
   return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
 }
 
 template <class Result, class F>
 static inline const Result data_map(
-    const c10::either<_ListNestedTensor, _BufferNestedTensor>& data,
+    const c10::either<NestedTensor, _BufferNestedTensor>& data,
     F&& fn) {
   return data.map<Result>(std::forward<F>(fn), std::forward<F>(fn));
 }
@@ -72,7 +72,7 @@ static inline const Result data_map(
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
-  THPNestedTensor(_ListNestedTensor data) : _data(data) {}
+  THPNestedTensor(NestedTensor data) : _data(data) {}
   at::Tensor get_buffer() {
     return _data.right().get_buffer();
   }
@@ -93,10 +93,10 @@ struct THPNestedTensor {
     return data_map<bool>(
         _data, [](auto data) { return data.requires_grad(); });
   }
-  c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
+  c10::either<NestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
-  const c10::either<_ListNestedTensor, _BufferNestedTensor>& data() const {
+  const c10::either<NestedTensor, _BufferNestedTensor>& data() const {
     return _data;
   }
   std::vector<c10::optional<int64_t>> size() {
@@ -268,7 +268,7 @@ struct THPNestedTensor {
   }
 
  private:
-  c10::either<_ListNestedTensor, _BufferNestedTensor> _data;
+  c10::either<NestedTensor, _BufferNestedTensor> _data;
 };
 
 } // namespace nested_tensor
