@@ -20,18 +20,18 @@ struct TORCH_API _BufferNestedTensor {
       SizeNode nested_size,
       SizeNode nested_stride,
       TensorNode structure);
-  at::Tensor& get_buffer() {
-    return _buffer;
-  }
-  const at::Tensor& get_buffer() const {
-    return _buffer;
-  }
-  int64_t element_size() {
-    return _buffer.element_size();
-  }
-  int64_t __len__() {
-    return _nested_size.degree();
-  }
+  // at::Tensor& get_buffer() {
+  //   return _buffer;
+  // }
+  // const at::Tensor& get_buffer() const {
+  //   return _buffer;
+  // }
+  // int64_t element_size() {
+  //   return _buffer.element_size();
+  // }
+  // int64_t __len__() {
+  //   return _nested_size.degree();
+  // }
   at::ScalarType scalar_type() {
     return _buffer.scalar_type();
   }

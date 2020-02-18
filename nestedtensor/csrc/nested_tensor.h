@@ -12,6 +12,12 @@ struct NestedTensor {
         _first_variable(
             get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                        : at::ones({})) {}
+  c10::optional<at::Tensor> get_buffer() {
+    return _buffer;
+  }
+  const c10::optional<at::Tensor> get_buffer() const {
+    return _buffer;
+  }
   int64_t element_size() {
     return _first_variable.element_size();
   }

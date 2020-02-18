@@ -81,6 +81,8 @@ NestedTensor NestedTensor::contiguous() {
   SizeNode nested_stride = map(
       [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
   _structure = build_structure(buffer, nested_size, nested_stride);
+  _first_variable =
+      get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
   return *this;
 }
 
