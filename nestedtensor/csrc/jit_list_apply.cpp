@@ -48,9 +48,11 @@ c10::optional<IValueNode> try_nested_node(
   }
   if (argument.type()->kind() == TypeKind::TensorType &&
       py::isinstance<THPNestedTensor>(py_arg)) {
-    IValueNode node =
-        map([](at::Tensor tensor) { return torch::jit::IValue(tensor); },
-            py::cast<THPNestedTensor>(py_arg).get_structure());
+    auto thp = py::cast<THPNestedTensor>(py_arg);
+    auto thp_node = thp._data.is_right() ? thp._data.right().get_structure()
+                                         : thp._data.left().get_structure();
+    IValueNode node = map(
+        [](at::Tensor tensor) { return torch::jit::IValue(tensor); }, thp_node);
     return node;
   }
   return c10::nullopt;
