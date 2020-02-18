@@ -240,9 +240,6 @@ struct THPNestedTensor {
       return _data.right().nested_dim();
     }
     return _data.left().nested_dim();
-    //   retu
-    // return data_map<int64_t>(
-    //     _data, [](auto data) { return data.nested_dim(); });
   }
   int64_t dim() {
     return data_map<int64_t>(_data, [](auto data) { return data.dim(); });
