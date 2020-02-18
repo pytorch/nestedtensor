@@ -45,7 +45,7 @@ def gen_ant_cos():
 
 
 if __name__ == "__main__":
-    print(utils.benchmark_fn(gen_t_cos(), run_time = 100.0))
-    # print(utils.benchmark_fn(gen_t_loop_cos()))
-    # print(utils.benchmark_fn(gen_nt_cos()))
-    # print(utils.benchmark_fn(gen_ant_cos()))
+    print(utils.benchmark_fn(gen_t_cos()))
+    print(utils.benchmark_fn(gen_t_loop_cos()))
+    print(utils.benchmark_fn(gen_nt_cos()))
+    print(utils.benchmark_fn(gen_ant_cos()))
