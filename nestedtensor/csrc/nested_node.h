@@ -35,7 +35,7 @@ struct NestedNode {
   inline int64_t height() const {
     return _height;
   }
-  inline std::vector<NestedNode<T>> unbind() const {
+  inline const std::vector<NestedNode<T>> unbind() const {
     return _children;
   }
 
