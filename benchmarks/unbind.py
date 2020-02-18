@@ -45,7 +45,7 @@ def gen_ant_unbind_2():
 
 
 if __name__ == "__main__":
-    print(utils.benchmark_fn(gen_nt_unbind(), run_time = 5.0))
-    # print(utils.benchmark_fn(gen_ant_unbind()))
-    # print(utils.benchmark_fn(gen_nt_unbind_2()))
-    # print(utils.benchmark_fn(gen_ant_unbind_2()))
+    print(utils.benchmark_fn(gen_nt_unbind()))
+    print(utils.benchmark_fn(gen_ant_unbind()))
+    print(utils.benchmark_fn(gen_nt_unbind_2()))
+    print(utils.benchmark_fn(gen_ant_unbind_2()))

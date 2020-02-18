@@ -17,7 +17,6 @@ def gen_tensor():
     return torch.rand(EMBED_DIM)
 
 def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0):
-    # Warmup
     times = []
     num_runs = 0
     t = 0.0
