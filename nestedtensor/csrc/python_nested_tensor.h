@@ -80,19 +80,8 @@ struct THPNestedTensor {
     return wrap_nested_node<at::Tensor, py::tuple>(node);
   }
   bool requires_grad() {
-<<<<<<< HEAD
-    return data_map<bool>(
-        _data, [](auto data) { return data.requires_grad(); });
-  }
-  c10::either<NestedTensor, _BufferNestedTensor> data() {
-    return _data;
-  }
-  const c10::either<NestedTensor, _BufferNestedTensor>& data() const {
-    return _data;
-=======
     return _data.is_right() ? _data.right().requires_grad()
                             : _data.left().requires_grad();
->>>>>>> master
   }
   std::vector<c10::optional<int64_t>> size() {
     SizeNode tmp =
@@ -175,12 +164,7 @@ struct THPNestedTensor {
                             : _data.left().is_contiguous();
   }
 
-<<<<<<< HEAD
- private:
-  c10::either<NestedTensor, _BufferNestedTensor> _data;
-=======
   c10::either<_ListNestedTensor, _BufferNestedTensor> _data;
->>>>>>> master
 };
 
 } // namespace nested_tensor
