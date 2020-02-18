@@ -38,22 +38,5 @@ THPNestedTensor as_nested_tensor(py::sequence _list) {
   return THPNestedTensor(NestedTensor(std::move(structure)));
 }
 
-_BufferNestedTensor make_contiguous(TensorNode _structure) {
-  c10::List<at::Tensor> tensors;
-  for (const at::Tensor& tensor : flatten(_structure)) {
-    tensors.emplace_back(tensor.reshape({-1}));
-  }
-  at::Tensor buffer;
-  if (tensors.size() == 0) {
-    buffer = torch::ones({});
-  } else {
-    buffer = at::cat(tensors.vec(), 0);
-  }
-  SizeNode structure =
-      map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
-          _structure);
-  return _BufferNestedTensor(std::move(buffer), std::move(structure));
-}
-
 } // namespace nested_tensor
 } // namespace torch

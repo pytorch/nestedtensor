@@ -44,10 +44,7 @@ struct NestedTensor {
         },
         _structure));
   }
-  void backward(
-      NestedTensor gradient,
-      bool retain_graph,
-      bool create_graph) {
+  void backward(NestedTensor gradient, bool retain_graph, bool create_graph) {
     apply(
         [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
             -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
@@ -93,6 +90,7 @@ struct NestedTensor {
   bool is_contiguous() const {
     return false;
   }
+  NestedTensor contiguous();
   TensorNode& get_structure() {
     return _structure;
   }
@@ -107,6 +105,7 @@ struct NestedTensor {
  private:
   TensorNode _structure;
   at::Tensor _first_variable;
+  c10::optional<at::Tensor> _buffer;
 };
 } // namespace nested_tensor
 } // namespace torch
