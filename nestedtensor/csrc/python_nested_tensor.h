@@ -164,7 +164,7 @@ struct THPNestedTensor {
                             : _data.left().is_contiguous();
   }
 
-  c10::either<_ListNestedTensor, _BufferNestedTensor> _data;
+  c10::either<NestedTensor, _BufferNestedTensor> _data;
 };
 
 } // namespace nested_tensor
