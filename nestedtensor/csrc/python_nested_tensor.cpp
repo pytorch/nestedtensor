@@ -134,8 +134,8 @@ py::object THPNestedTensor::unbind() {
     std::vector<THPNestedTensor> result;
     for (const auto& _child : node.unbind()) {
       auto child = _child;
-      result.push_back(py::cast(THPNestedTensor(
-          torch::nested_tensor::NestedTensor(std::move(child)))));
+      result.push_back(THPNestedTensor(
+          torch::nested_tensor::NestedTensor(std::move(child))));
     }
     return py::cast(result);
   }
