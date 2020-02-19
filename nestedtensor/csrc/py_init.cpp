@@ -117,6 +117,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("unbind", &THPNestedTensor::unbind)
       .def("size", &THPNestedTensor::size)
       .def("requires_grad_", &THPNestedTensor::requires_grad_)
+      .def("backward", &THPNestedTensor::backward)
       .def("numel", &THPNestedTensor::numel)
       .def_property_readonly("grad", &THPNestedTensor::grad)
       .def("detach", &THPNestedTensor::detach)
