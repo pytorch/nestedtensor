@@ -10,6 +10,7 @@ from . import utils
 from . import creation
 
 import nestedtensor
+import itertools
 
 # Set this flag to true, if you want to enable additional verifications.
 DEBUG = int(os.getenv("DEBUG", 1))
@@ -169,7 +170,6 @@ class NestedTensor(object):
 
     # --- dependent on impl ---
 
-    # TODO: More tests
     def unbind(self, dim=0):
         """
         unbind returns a tuple containing the entries
@@ -177,14 +177,23 @@ class NestedTensor(object):
 
         For now unbind does not accept a dim argument akin
         to torch.Tensor.unbind
+
+        Returns a tuple of views. Results might not be contiguous.
         """
+        # TODO: Design choice: Return zip_longest or zip?
 
         dim = utils._wrap_dim(self, dim)
-        if dim == 0:
-            return tuple(t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind())
+        if self.nested_dim() == 1:
+            if dim == 0:
+                return self._impl.unbind()
+            tmp = tuple(t.unbind(dim - 1) for t in self._impl.unbind())
         else:
-            unbound = tuple(t.unbind(dim - 1) for t in self.unbind(dim - 1))
-            return tuple(creation.nested_tensor(t) for t in zip(*unbound))
+            if dim == 0:
+                return tuple(NestedTensor(t) for t in self._impl.unbind())
+            tmp = tuple(t.unbind(dim - 1) for t in self.unbind())
+        tmp = list(list(filter(lambda x: x is not None, t))
+                   for t in itertools.zip_longest(*tmp))
+        return tuple(nestedtensor.nested_tensor(e) for e in tmp)
 
     def to_tensor(self, dim=0):
         """
