@@ -15,18 +15,12 @@ struct NestedTensor {
   const c10::optional<at::Tensor> get_buffer() const {
     return _buffer;
   }
-  std::vector<c10::optional<int64_t>> size() {
-    SizeNode tmp =
-        map([](c10::IValue e) { return e.toIntList(); }, nested_size());
-    return construct_size(tmp);
-  }
+  std::vector<c10::optional<int64_t>> size();
   int64_t element_size() {
     return _first_variable.element_size();
   }
   SizeNode nested_size() {
-    return map(
-        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
-        _structure);
+    return _nested_size;
   }
   SizeNode nested_stride() {
     return map(
@@ -45,9 +39,8 @@ struct NestedTensor {
       // performed on those will accumulate in the buffer's grad. What we're
       // creating here are views into the grad, which could then be used
       // further.
-      TensorNode grad_tensor_node =
-          build_structure(grad_buffer, _nested_size, _nested_stride);
-      return NestedTensor(std::move(grad_tensor_node));
+      at::Tensor grad_buffer = (*_buffer).grad();
+      return NestedTensor(std::move(grad_buffer), _nested_size);
     }
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
@@ -66,13 +59,13 @@ struct NestedTensor {
         },
         _structure);
     if (is_contiguous()) {
-      _buffer.set_requires_grad(requires_grad);
+      (*_buffer).set_requires_grad(requires_grad);
     }
     return *this;
   }
   void backward(NestedTensor gradient, bool retain_graph, bool create_graph) {
     if (is_contiguous() && gradient.is_contiguous()) {
-      _buffer.backward(gradient.get_buffer(), retain_graph, create_graph);
+      (*_buffer).backward((*gradient.get_buffer()), retain_graph, create_graph);
     } else {
       apply(
           [retain_graph, create_graph](
@@ -96,7 +89,7 @@ struct NestedTensor {
         }
         new_size.push_back(*si);
       }
-      return _buffer.reshape(at::IntArrayRef(new_size));
+      return (*_buffer).reshape(at::IntArrayRef(new_size));
     }
     return stack(flatten(_structure).vec());
   }
@@ -129,7 +122,7 @@ struct NestedTensor {
   }
   bool is_pinned() {
     if (is_contiguous()) {
-      return _buffer.is_pinned();
+      return (*_buffer).is_pinned();
     } else {
       return _first_variable.is_pinned();
     }
@@ -141,7 +134,7 @@ struct NestedTensor {
     auto fn = [](at::Tensor leaf, bool input) {
       return input && leaf.is_contiguous();
     };
-    return _buffer.is_contiguous() &&
+    return _buffer && (*_buffer).is_contiguous() &&
         reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
   NestedTensor contiguous();
@@ -160,6 +153,7 @@ struct NestedTensor {
   c10::optional<at::Tensor> _buffer;
   TensorNode _structure;
   at::Tensor _first_variable;
+  SizeNode _nested_size;
 };
 } // namespace nested_tensor
 } // namespace torch

@@ -58,7 +58,7 @@ struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(NestedTensor data) : _data(data) {}
   at::Tensor get_buffer() {
-    return _data.right().get_buffer();
+    return (*_data.get_buffer());
   }
   int64_t element_size() {
     return _data.element_size();
@@ -132,7 +132,9 @@ struct THPNestedTensor {
   at::Tensor to_tensor() {
     return _data.to_tensor();
   }
-  THPNestedTensor contiguous();
+  THPNestedTensor contiguous() {
+    return _data.contiguous();
+  }
   bool is_contiguous() const {
     return _data.is_contiguous();
   }

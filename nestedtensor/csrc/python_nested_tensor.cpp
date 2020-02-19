@@ -98,14 +98,6 @@ py::object THPNestedTensor::getDevice() {
   return torch::jit::toPyObject(_data.device());
 }
 
-THPNestedTensor THPNestedTensor::contiguous() {
-  if (this->is_contiguous()) {
-    return *this;
-  }
-  auto node = _data.get_structure();
-  return THPNestedTensor(make_contiguous(node));
-}
-
 // TODO: Since this returns vies there is no reason not to return a sequence of
 // contiguous NestedTensors for a given NestedTensor.
 py::object THPNestedTensor::unbind() {
