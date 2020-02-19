@@ -21,6 +21,123 @@ NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
   }
 }
 
+bool _verify_variables(
+    const at::Tensor& first_variable,
+    const int64_t dim,
+    const at::Layout& layout,
+    const at::Device& device,
+    const at::ScalarType& dtype,
+    bool requires_grad,
+    const TensorNode& nested_node,
+    bool throw_error = false) {
+  constexpr std::string advice =
+      ("To form a valid NestedTensor all Tensor / NestedTensor constiuents of the given list must be of the same dimension, layout, device, dtype and either all or none require gradients."
+      " There many further also only be either NestedTensor  / list / tuple entries in a given list or Tensor entries. Or put differently, if one entry is a Tensor, so
+      must all the others. If one entry is a NestedTensor / list / tuple, so must all the others.");
+  // The attributes must match across all constiuents
+  //
+  // The NestedTensor's attributes then become that of its
+  // constiuents.
+  //
+  // data must be a list of Tensors or NestedTensors
+  //
+  // Attributes:
+  //     dim()
+  //     layout
+  //     device
+  //     dtype
+  //     requires_grad
+  //     is_pinned()
+  bool valid = true;
+  if (nested_node.is_leaf()) {
+    const at::Tensor& variable = nested_node.payload();
+    // TODO: Add more checks?
+
+    valid = valid && (dim == variable.dim());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given tensor / tensor constiuent of dimension ";
+      error << variable.dim();
+      error << " is of incompatible dimension. ";
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (layout == variable.layout());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given tensor / tensor constiuent of layout ";
+      error << variable.layout();
+      error << " is of incompatible layout. ";
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (device == variable.device());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given tensor / tensor constiuent of device ";
+      error << variable.device();
+      error << " is of incompatible device. ";
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (dtype == variable.dtype());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given tensor / tensor constiuent of dtype ";
+      error << variable.dtype();
+      error << " is of incompatible dtype. ";
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (requires_grad == variable.requires_grad());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      if (variable.requires_grad()) {
+        error << "Given tensor / tensor constiuent requires gradient. ";
+      } else {
+        error << "Given tensor / tensor constiuent requires gradient. ";
+      }
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    // TODO: Checking is_pinned is prohibitively costly. It also shouldn't be
+    // required. If making the Tensor contiguous we'll create memory in the
+    // usual address space and then require the user to move it over into pinned
+    // memory manually. However, if it's not contiguous this special memory
+    // location might forbid certain operations unexpectedly. For now we blindly
+    // rely on those throwing intelligible error.
+  } else {
+    // NOTE: Checking height is very cheap, so we should do it first.
+    for (size_t i = 1; i < nested_node.degree(); i++) {
+      valid = valid &&
+          (nested_node.children(i).height() ==
+           nested_node.children(i - 1).height());
+      if (!valid) {
+        return false;
+        if (throw_error) {
+          TORCH_CHECK(
+              false,
+              "The to-be constructed NestedTensor is of inconsistent height.");
+        }
+      }
+    }
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      valid = valid &&
+          _verify_variables(
+                  dim,
+                  kayout,
+                  device,
+                  dtype,
+                  requires_grad_,
+                  nested_node.children(i));
+      if (!valid) {
+        return false;
+      }
+    }
+  }
+  return valid;
+}
+
 THPNestedTensor as_nested_tensor(py::sequence _list) {
   py::object list = _list;
   NestedNode<c10::IValue> ivalue_structure = _get_structure(list);
