@@ -116,14 +116,9 @@ NestedTensor NestedTensor::contiguous() {
   }
   at::Tensor buffer;
   if (tensors.size() == 0) {
-    buffer = at::ones({});
-  } else {
-    buffer = at::cat(tensors.vec(), 0);
+    return NestedTensor(at::ones({}), _nested_size);
   }
-  _structure = build_structure(buffer, _nested_size);
-  _first_variable =
-      get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
-  return *this;
+  return NestedTensor(at::cat(tensors.vec(), 0), _nested_size);
 }
 
 NestedTensor::NestedTensor(TensorNode&& structure)

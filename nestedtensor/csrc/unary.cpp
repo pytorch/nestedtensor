@@ -7,15 +7,15 @@ template <class F>
 auto unary(F& fn) {
   return [&fn](const THPNestedTensor& self) {
     if (self.is_contiguous()) {
-      Tensor buffer = (*self.data().get_buffer());
-      SizeNode nested_size = self.data().nested_size();
-      Tensor result = at::empty({0}, buffer.options());
+      auto buffer = (*self.data().get_buffer());
+      auto nested_size = self.data().nested_size();
+      auto result = at::empty({0}, buffer.options());
       fn(result, buffer);
       return THPNestedTensor(
           NestedTensor(std::move(result), std::move(nested_size)));
     }
-    Tensor buffer = (*self.data().get_buffer());
-    SizeNode nested_size = self.data().nested_size();
+    auto buffer = (*self.data().get_buffer());
+    auto nested_size = self.data().nested_size();
     Tensor result = at::empty({0}, buffer.options());
     fn(result, buffer);
     return THPNestedTensor(
@@ -44,7 +44,7 @@ auto unary_(F& fn) {
       Tensor& buffer = (*self.data().get_buffer());
       fn(buffer, buffer);
     } else {
-      auto self_node = self.data().get_structure();
+      TensorNode& self_node = self.data().get_structure();
       apply([&fn](at::Tensor& tensor) { fn(tensor, tensor); }, self_node);
     }
     return self;

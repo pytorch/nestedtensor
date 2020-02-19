@@ -139,10 +139,10 @@ struct THPNestedTensor {
     return _data.is_contiguous();
   }
   NestedTensor data() {
-    return _data
+    return _data;
   }
   const NestedTensor& data() const {
-    return _data
+    return _data;
   }
 
  private:

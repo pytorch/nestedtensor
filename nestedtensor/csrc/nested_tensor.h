@@ -9,20 +9,20 @@ struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
-  c10::optional<at::Tensor> get_buffer() {
+  c10::optional<at::Tensor>& get_buffer() {
     return _buffer;
   }
-  const c10::optional<at::Tensor> get_buffer() const {
+  const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
   std::vector<c10::optional<int64_t>> size();
-  int64_t element_size() {
+  int64_t element_size() const {
     return _first_variable.element_size();
   }
-  SizeNode nested_size() {
+  SizeNode nested_size() const {
     return _nested_size;
   }
-  SizeNode nested_stride() {
+  SizeNode nested_stride() const {
     return map(
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
         _structure);
@@ -76,7 +76,7 @@ struct NestedTensor {
           gradient.get_structure());
     }
   }
-  int64_t __len__() {
+  int64_t __len__() const {
     return _structure.degree();
   }
   at::Tensor to_tensor() {
@@ -93,34 +93,34 @@ struct NestedTensor {
     }
     return stack(flatten(_structure).vec());
   }
-  int64_t nested_dim() {
+  int64_t nested_dim() const {
     return _structure.height();
   }
-  at::ScalarType scalar_type() {
+  at::ScalarType scalar_type() const {
     return _first_variable.scalar_type();
   }
-  at::Backend backend() {
+  at::Backend backend() const {
     return options().backend();
   }
-  at::Device device() {
+  at::Device device() const {
     return _first_variable.device();
   }
-  at::TensorOptions options() {
+  at::TensorOptions options() const {
     return _first_variable.options();
   }
-  bool requires_grad() {
+  bool requires_grad() const {
     return _first_variable.requires_grad();
   }
-  int64_t dim() {
+  int64_t dim() const {
     return _first_variable.dim() + nested_dim();
   }
-  int64_t numel() {
+  int64_t numel() const {
     auto fn = [](at::Tensor leaf, int64_t input) {
       return input + leaf.numel();
     };
     return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
   }
-  bool is_pinned() {
+  bool is_pinned() const {
     if (is_contiguous()) {
       return (*_buffer).is_pinned();
     } else {
