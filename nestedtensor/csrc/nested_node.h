@@ -24,7 +24,7 @@ struct NestedNode {
   }
   // NestedNode(NestedNode&) = delete;
   // NestedNode(const NestedNode&) = delete;
-  NestedNode& operator=(NestedNode) = delete;
+  // NestedNode& operator=(NestedNode) = delete;
   NestedNode(T&& payload) : _is_leaf(true), _payload(payload), _height(0) {}
   inline bool is_leaf() const {
     return _is_leaf;
