@@ -5,8 +5,8 @@ import utils
 import random
 
 
-# RAND_INTS = [random.randint(100, 300) for _ in range(200)]
 RAND_INTS = [random.randint(10, 30) for _ in range(2000)] # Performance tanks hard for lots of small Tensors as expected
+RAND_INTS = [random.randint(100, 300) for _ in range(20)]
 
 
 def gen_t_cos():

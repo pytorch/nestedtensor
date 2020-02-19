@@ -20,8 +20,9 @@ jobs:
             apt-get update
             apt-get install -y gcc
             apt-get install -y g++
-            pip install .
+            NUM_JOBS=2 pip install -v .
             python test/test_nested_tensor_autograd.py
+            python test/test_nested_tensor_buffer.py
             python test/test_nested_tensor_class.py
             python test/test_nested_tensor_functional.py
             python test/test_nested_tensor_masking.py
