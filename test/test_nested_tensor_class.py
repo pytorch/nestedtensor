@@ -276,6 +276,7 @@ class TestNestedTensor(TestCase):
         # assigned to it a unique PyObject* by construction.
 
         # TODO: Check that unbind returns torch.Tensors when nested_dim is 1
+        # TODO: contiguous nestedtensors should return tuples of contiguous nestedtensors on dimension 0
 
         def _test(a, b, c, d, e):
             nt = nestedtensor.as_nested_tensor([a, b])
@@ -321,6 +322,47 @@ class TestNestedTensor(TestCase):
               torch.tensor([]),
               torch.tensor([]),
               torch.tensor([]))
+
+    @utils.debug_on()
+    def test_unbind_dim(self):
+        # Unbinding across nested dimensions or tensors dimensions
+        # is akin splitting up the tree across a level.
+
+        nt = nestedtensor.nested_tensor([])
+        self.assertEqual(nt.unbind(0), ())
+        self.assertRaises(ValueError, lambda: nt.unbind(1))
+
+        a = torch.rand(3, 2)
+        nt = nestedtensor.nested_tensor([a])
+        self.assertEqual(nt.unbind(0), (a,))
+        result = (
+            nestedtensor.nested_tensor([a.unbind(0)[0]]),
+            nestedtensor.nested_tensor([a.unbind(0)[1]]),
+            nestedtensor.nested_tensor([a.unbind(0)[2]]))
+        self.assertEqual(nt.unbind(1), result, ignore_contiguity=True)
+        result = (
+            nestedtensor.nested_tensor([a.unbind(1)[0]]),
+            nestedtensor.nested_tensor([a.unbind(1)[1]]))
+        self.assertEqual(nt.unbind(2), result, ignore_contiguity=True)
+
+        b = torch.rand(2, 3)
+        nt = nestedtensor.nested_tensor([a, b])
+        self.assertEqual(nt.unbind(0), (a, b))
+        result = (
+            nestedtensor.nested_tensor([a.unbind(0)[0], b.unbind(0)[0]]),
+            nestedtensor.nested_tensor([a.unbind(0)[1], b.unbind(0)[1]]),
+            nestedtensor.nested_tensor([a.unbind(0)[2]]))
+        self.assertEqual(nt.unbind(1), result, ignore_contiguity=True)
+
+        c = torch.rand(4, 3)
+        nt = nestedtensor.nested_tensor([[a], [b, c]])
+        nt_a, nt_b = nt.unbind(0)
+        self.assertEqual(nt_a, nestedtensor.nested_tensor([a]), ignore_contiguity=True)
+        self.assertEqual(nt_b, nestedtensor.nested_tensor([b, c]), ignore_contiguity=True)
+        result = (
+            nestedtensor.nested_tensor([a, b]),
+            nestedtensor.nested_tensor([c]))
+        self.assertEqual(nt.unbind(1), result, ignore_contiguity=True)
 
     def test_size(self):
         a = nestedtensor.nested_tensor([])

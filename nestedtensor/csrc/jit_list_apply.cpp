@@ -48,9 +48,10 @@ c10::optional<IValueNode> try_nested_node(
   }
   if (argument.type()->kind() == TypeKind::TensorType &&
       py::isinstance<THPNestedTensor>(py_arg)) {
-    IValueNode node =
-        map([](at::Tensor tensor) { return torch::jit::IValue(tensor); },
-            py::cast<THPNestedTensor>(py_arg).get_structure());
+    auto thp = py::cast<THPNestedTensor>(py_arg);
+    auto thp_node = thp.data().get_structure();
+    IValueNode node = map(
+        [](at::Tensor tensor) { return torch::jit::IValue(tensor); }, thp_node);
     return node;
   }
   return c10::nullopt;
@@ -151,7 +152,7 @@ py::cpp_function jit_tensorwise() {
                 operation.getSchema(), args, kwargs, c10::nullopt)) {
           py::gil_scoped_release release;
           THPNestedTensor result = THPNestedTensor(
-              _ListNestedTensor(apply_jit_function(*pack, operation)));
+              NestedTensor(apply_jit_function(*pack, operation)));
           return result;
         }
       }
@@ -186,7 +187,7 @@ py::cpp_function jit_tensorwise() {
             auto operation = op->getOperation();
             py::gil_scoped_release release;
             THPNestedTensor result = THPNestedTensor(
-                _ListNestedTensor(apply_jit_function(*pack, operation)));
+                NestedTensor(apply_jit_function(*pack, operation)));
             return result;
           }
         }

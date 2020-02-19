@@ -24,7 +24,7 @@ struct NestedNode {
   }
   // NestedNode(NestedNode&) = delete;
   // NestedNode(const NestedNode&) = delete;
-  NestedNode& operator=(NestedNode) = delete;
+  // NestedNode& operator=(NestedNode) = delete;
   NestedNode(T&& payload) : _is_leaf(true), _payload(payload), _height(0) {}
   inline bool is_leaf() const {
     return _is_leaf;
@@ -35,7 +35,7 @@ struct NestedNode {
   inline int64_t height() const {
     return _height;
   }
-  inline std::vector<NestedNode<T>> unbind() const {
+  inline const std::vector<NestedNode<T>> unbind() const {
     return _children;
   }
 
@@ -108,9 +108,6 @@ struct NestedNode {
   }
 
  private:
-  inline const NestedNode<T>* children_data(size_t i) const {
-    return _children.data() + i;
-  }
   bool _is_leaf;
   std::vector<NestedNode<T>> _children;
   // TODO: Make this const?
@@ -221,14 +218,18 @@ bool _verify_variables(
 
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
+  if (nested_node.is_leaf()) {
+    return nested_node.payload();
+  }
   if (nested_node.degree() == 0) {
     return c10::nullopt;
   }
-  const NestedNode<A>* start = &nested_node;
-  while (!start->is_leaf()) {
-    start = start->children_data(0);
+  for (const auto& child : nested_node.unbind()) {
+    if (auto result = get_first_leaf(child)) {
+      return result;
+    }
   }
-  return start->payload();
+  return c10::nullopt;
 }
 
 template <class F, class A, class TypeList>
