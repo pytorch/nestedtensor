@@ -344,13 +344,6 @@ class TestNestedTensor(TestCase):
         result = (
             nestedtensor.nested_tensor([a.unbind(1)[0]]),
             nestedtensor.nested_tensor([a.unbind(1)[1]]))
-        # print('nt')
-        # print(nt)
-        # print(nt.nested_dim())
-        # print(nt._impl.unbind())
-        # print(tuple(t.unbind(0) for t in nt._impl.unbind()))
-        # print('nt.unbind(2)')
-        # print(nt.unbind(2))
         self.assertEqual(nt.unbind(2), result, ignore_contiguity=True)
 
         b = torch.rand(2, 3)
@@ -364,15 +357,13 @@ class TestNestedTensor(TestCase):
 
         c = torch.rand(4, 3)
         nt = nestedtensor.nested_tensor([[a], [b, c]])
-        self.assertEqual(nt.unbind(0), (nestedtensor.nested_tensor(
-            [a]), nestedtensor.nested_tensor([b, c])))
+        nt_a, nt_b = nt.unbind(0)
+        self.assertEqual(nt_a, nestedtensor.nested_tensor([a]), ignore_contiguity=True)
+        self.assertEqual(nt_b, nestedtensor.nested_tensor([b, c]), ignore_contiguity=True)
         result = (
             nestedtensor.nested_tensor([a, b]),
             nestedtensor.nested_tensor([c]))
         self.assertEqual(nt.unbind(1), result, ignore_contiguity=True)
-
-        # c, d = torch.rand(2, 3), torch.rand(4, 3), torch.rand(3, 4)
-        # nt = nestedtensor.nested_tensor([[a, b], [c, d]])
 
     def test_size(self):
         a = nestedtensor.nested_tensor([])
