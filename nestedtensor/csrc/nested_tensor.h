@@ -8,7 +8,7 @@ namespace nested_tensor {
 struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
-  NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
+  NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
   c10::optional<at::Tensor> get_buffer() {
     return _buffer;
   }
