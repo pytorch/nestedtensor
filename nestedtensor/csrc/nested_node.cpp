@@ -40,6 +40,8 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
 bool _verify_variables(
     const at::Tensor& first_variable,
     const TensorNode& nested_node) {
+  constexpr std::string advice =
+      "To form a valid NestedTensor all Tensor constiuents must be of the same dimension, layout, device, dtype and either all or none require gradients.";
   // The attributes must match across all constiuents
   //
   // The NestedTensor's attributes then become that of its
@@ -58,12 +60,43 @@ bool _verify_variables(
   if (nested_node.is_leaf()) {
     const at::Tensor& variable = nested_node.payload();
     // TODO: Add more checks?
+
     valid = valid && (variable.dim() == first_variable.dim());
+    TORCH_CHECK(
+        valid,
+        "Given tensor / tensor constiuent of dimension " +
+            std::to_string(variable.dim()),
+        " is of incompatible dimension. " + advice);
     valid = valid && (variable.layout() == first_variable.layout());
+    TORCH_CHECK(
+        valid,
+        "Given tensor / tensor constiuent of layout " +
+            std::to_string(variable.layout()),
+        " is of incompatible layout. " + advice);
     valid = valid && (variable.device() == first_variable.device());
+    TORCH_CHECK(
+        valid,
+        "Given tensor / tensor constiuent of device " +
+            std::to_string(variable.device()),
+        " is of incompatible device. " + advice);
     valid = valid && (variable.dtype() == first_variable.dtype());
+    TORCH_CHECK(
+        valid,
+        "Given tensor / tensor constiuent of dtype " +
+            std::to_string(variable.dtype()),
+        " is of incompatible dtype. " + advice);
     valid =
         valid && (variable.requires_grad() == first_variable.requires_grad());
+    if (!valid) {
+      if (variable.requires_grad()) {
+        TORCH_CHECK(
+            valid, "Given tensor / tensor constiuent requires a gradient ");
+      } else {
+        TORCH_CHECK(
+            valid,
+            "Given tensor / tensor constiuent doesn't require a gradient ");
+      }
+    }
     // NOTE: This is a very costly check! For now we'll let this to be
     // enabled manually. valid = valid && (variable_.is_pinned() ==
     // first_variable.is_pinned());

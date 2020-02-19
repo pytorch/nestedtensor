@@ -58,9 +58,9 @@ struct NestedNode {
   friend std::vector<c10::optional<int64_t>> construct_size(
       const NestedNode<c10::List<int64_t>>&);
 
-  friend bool _verify_variables(
-      const at::Tensor& first_variable,
-      const NestedNode<at::Tensor>& nested_node);
+//  friend bool _verify_variables(
+//      const at::Tensor& first_variable,
+//      const NestedNode<at::Tensor>& nested_node);
 
   template <typename A>
   friend inline c10::optional<A> get_first_leaf(NestedNode<A>);
@@ -212,9 +212,9 @@ at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);
 
 std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
 
-bool _verify_variables(
-    const at::Tensor& first_variable,
-    const TensorNode& nested_node);
+// bool _verify_variables(
+//     const at::Tensor& first_variable,
+//     const TensorNode& nested_node);
 
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
