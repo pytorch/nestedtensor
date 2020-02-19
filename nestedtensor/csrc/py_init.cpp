@@ -22,7 +22,7 @@
 using namespace torch::nested_tensor;
 
 template <class C>
-void add_thp_node(auto m, std::string name) {
+void add_thp_node(py::module m, std::string name) {
   py::class_<C>(m, name.c_str())
       .def("__str__", &C::str)
       .def("unbind", &C::unbind)
@@ -31,7 +31,7 @@ void add_thp_node(auto m, std::string name) {
 }
 
 template <class C, class F>
-void add_thp_node(auto m, std::string name, F eq_fn) {
+void add_thp_node(py::module m, std::string name, F eq_fn) {
   py::class_<C>(m, name.c_str())
       .def("__str__", &C::str)
       .def("unbind", &C::unbind)
