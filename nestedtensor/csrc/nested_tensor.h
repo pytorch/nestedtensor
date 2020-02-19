@@ -137,7 +137,7 @@ struct NestedTensor {
     return _buffer && (*_buffer).is_contiguous() &&
         reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
-  NestedTensor contiguous();
+  NestedTensor contiguous() const;
   TensorNode& get_structure() {
     return _structure;
   }

@@ -106,19 +106,17 @@ SizeNode infer_nested_size(const TensorNode& _structure) {
       _structure);
 }
 
-NestedTensor NestedTensor::contiguous() {
+NestedTensor NestedTensor::contiguous() const {
   if (is_contiguous()) {
     return *this;
   }
-  c10::List<at::Tensor> tensors;
-  for (const at::Tensor& tensor : flatten(_structure)) {
-    tensors.emplace_back(tensor.reshape({-1}));
-  }
-  at::Tensor buffer;
+  TensorNode flat_structure =
+      map([](at::Tensor tensor) { return tensor.reshape({-1}); }, _structure);
+  auto tensors = flatten(flat_structure).vec();
   if (tensors.size() == 0) {
     return NestedTensor(at::ones({}), _nested_size);
   }
-  return NestedTensor(at::cat(tensors.vec(), 0), _nested_size);
+  return NestedTensor(at::cat(tensors, 0), _nested_size);
 }
 
 NestedTensor::NestedTensor(TensorNode&& structure)
@@ -130,11 +128,11 @@ NestedTensor::NestedTensor(TensorNode&& structure)
 
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
-      _structure(build_structure(buffer, nested_size)),
+      _structure(build_structure(*_buffer, nested_size)),
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                      : at::ones({})),
-      _nested_size(infer_nested_size(_structure)) {}
+      _nested_size(nested_size) {}
 
 } // namespace nested_tensor
 } // namespace torch

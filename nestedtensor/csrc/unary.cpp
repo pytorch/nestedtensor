@@ -6,17 +6,10 @@ namespace nested_tensor {
 template <class F>
 auto unary(F& fn) {
   return [&fn](const THPNestedTensor& self) {
-    if (self.is_contiguous()) {
-      auto buffer = (*self.data().get_buffer());
-      auto nested_size = self.data().nested_size();
-      auto result = at::empty({0}, buffer.options());
-      fn(result, buffer);
-      return THPNestedTensor(
-          NestedTensor(std::move(result), std::move(nested_size)));
-    }
-    auto buffer = (*self.data().get_buffer());
-    auto nested_size = self.data().nested_size();
-    Tensor result = at::empty({0}, buffer.options());
+    NestedTensor cont_self = self.data().contiguous();
+    const at::Tensor& buffer = (*cont_self.get_buffer());
+    SizeNode nested_size = self.data().nested_size();
+    at::Tensor result = at::empty({0}, buffer.options());
     fn(result, buffer);
     return THPNestedTensor(
         NestedTensor(std::move(result), std::move(nested_size)));
@@ -40,11 +33,12 @@ auto unary_out(F& fn) {
 template <class F>
 auto unary_(F& fn) {
   return [&fn](THPNestedTensor& self) {
-    if (self.is_contiguous()) {
-      Tensor& buffer = (*self.data().get_buffer());
+    NestedTensor& self_nt = self.data();
+    if (self_nt.is_contiguous()) {
+      Tensor& buffer = (*self_nt.get_buffer());
       fn(buffer, buffer);
     } else {
-      TensorNode& self_node = self.data().get_structure();
+      TensorNode& self_node = self_nt.get_structure();
       apply([&fn](at::Tensor& tensor) { fn(tensor, tensor); }, self_node);
     }
     return self;

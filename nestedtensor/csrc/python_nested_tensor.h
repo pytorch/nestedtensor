@@ -138,7 +138,7 @@ struct THPNestedTensor {
   bool is_contiguous() const {
     return _data.is_contiguous();
   }
-  NestedTensor data() {
+  NestedTensor& data() {
     return _data;
   }
   const NestedTensor& data() const {
