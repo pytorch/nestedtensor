@@ -327,7 +327,6 @@ class TestNestedTensor(TestCase):
     def test_unbind_dim(self):
         # Unbinding across nested dimensions or tensors dimensions
         # is akin splitting up the tree across a level.
-        pass
 
         nt = nestedtensor.nested_tensor([])
         self.assertEqual(nt.unbind(0), ())
