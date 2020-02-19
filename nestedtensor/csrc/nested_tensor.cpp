@@ -60,8 +60,14 @@ TensorNode build_structure(
       nested_stride);
 }
 
+TensorNode build_structure(at::Tensor buffer, SizeNode nested_size) {
+  SizeNode nested_stride = map(
+      [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
+  return build_structure(buffer, nested_size, nested_stride);
+}
+
 NestedTensor NestedTensor::contiguous() {
-  if (this->is_contiguous()) {
+  if (is_contiguous()) {
     return *this;
   }
   auto node = _data.get_structure();
@@ -85,6 +91,19 @@ NestedTensor NestedTensor::contiguous() {
       get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
   return *this;
 }
+
+NestedTensor::NestedTensor(TensorNode&& structure)
+    : _structure(structure),
+      _first_variable(
+          get_first_leaf(_structure) ? *get_first_leaf(_structure)
+                                     : at::ones({})) {}
+
+NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
+    : _buffer(buffer),
+      _structure(build_structure(_buffer, nested_size)),
+      _first_variable(
+          get_first_leaf(_structure) ? *get_first_leaf(_structure)
+                                     : at::ones({})) {}
 
 } // namespace nested_tensor
 } // namespace torch

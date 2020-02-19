@@ -7,23 +7,21 @@ template <class F>
 auto unary(F& fn) {
   return [&fn](const THPNestedTensor& self) {
     if (self.is_contiguous()) {
-      _BufferNestedTensor cont_self = self._data.right();
-      Tensor buffer = cont_self.get_buffer();
+      Tensor buffer = cont_self._data.get_buffer();
       SizeNode nested_size = cont_self.nested_size();
       Tensor result = at::empty({0}, buffer.options());
       fn(result, buffer);
       return THPNestedTensor(
-          _BufferNestedTensor(std::move(result), std::move(nested_size)));
+          NestedTensor(std::move(result), std::move(nested_size)));
     }
     auto node = self._data.is_right() ? self._data.right().get_structure()
                                       : self._data.left().get_structure();
-    _BufferNestedTensor cont_self = make_contiguous(node);
-    Tensor buffer = cont_self.get_buffer();
+    Tensor buffer = cont_self._data.get_buffer();
     SizeNode nested_size = cont_self.nested_size();
     Tensor result = at::empty({0}, buffer.options());
     fn(result, buffer);
     return THPNestedTensor(
-        _BufferNestedTensor(std::move(result), std::move(nested_size)));
+        NestedTensor(std::move(result), std::move(nested_size)));
   };
 }
 
@@ -48,8 +46,7 @@ template <class F>
 auto unary_(F& fn) {
   return [&fn](THPNestedTensor& self) {
     if (self.is_contiguous()) {
-      _BufferNestedTensor cont_self = self._data.right();
-      Tensor& buffer = cont_self.get_buffer();
+      Tensor& buffer = cont_self._data.get_buffer();
       fn(buffer, buffer);
     } else {
       auto self_node = self._data.is_right()

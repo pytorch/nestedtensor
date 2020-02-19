@@ -79,10 +79,7 @@ struct THPNestedTensor {
     return _data.requires_grad();
   }
   std::vector<c10::optional<int64_t>> size() {
-    SizeNode tmp =
-        map([](c10::IValue e) { return e.toIntList(); },
-            this->nested_size().get_node());
-    return construct_size(tmp);
+    return _data.size();
   }
   // TODO: Not covered by 0.0.2 or 0.0.1!
   // NOTE: Returns a view
