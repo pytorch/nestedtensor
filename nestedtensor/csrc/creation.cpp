@@ -119,12 +119,12 @@ bool _verify_variables(
           (nested_node.children(i).height() ==
            nested_node.children(i - 1).height());
       if (!valid) {
-        return false;
         if (throw_error) {
           TORCH_CHECK(
               false,
               "The to-be constructed NestedTensor is of inconsistent height.");
         }
+        break;
       }
     }
     for (size_t i = 0; i < nested_node.degree(); i++) {
@@ -138,7 +138,7 @@ bool _verify_variables(
                   nested_node.children(i),
                   throw_error);
       if (!valid) {
-        return false;
+        break;
       }
     }
   }
