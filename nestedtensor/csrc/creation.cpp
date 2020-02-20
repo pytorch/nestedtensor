@@ -25,13 +25,13 @@ bool _verify_variables(
     const int64_t dim,
     const at::Layout& layout,
     const at::Device& device,
-    const at::ScalarType& dtype,
+    const at::ScalarType& scalar_type,
     bool requires_grad,
     const TensorNode& nested_node,
     bool throw_error = false) {
   constexpr const char* advice =
       ("To form a valid NestedTensor all Tensor / NestedTensor constiuents of the given list must be of the same dimension, layout, device,"
-       " dtype and either all or none require gradients. There many further also only be either NestedTensor  / list / tuple entries in a"
+       " scalar type and either all or none require gradients. There many further also only be either NestedTensor  / list / tuple entries in a"
        " given list or Tensor entries. Or put differently, if one entry is a Tensor, so must all the others. If one entry is a "
        " NestedTensor / list / tuple, so must all the others.");
   // The attributes must match across all constiuents
@@ -45,7 +45,7 @@ bool _verify_variables(
   //     dim()
   //     layout
   //     device
-  //     dtype
+  //     scalar_type
   //     requires_grad
   //     is_pinned()
   bool valid = true;
@@ -56,46 +56,52 @@ bool _verify_variables(
     valid = valid && (dim == variable.dim());
     if (!valid && throw_error) {
       std::stringstream error;
-      error << "Given tensor / tensor constiuent of dimension ";
+      error << "Given Tensor / NestedTensor constiuent of dimension ";
       error << variable.dim();
-      error << " is of incompatible dimension. ";
+      error << " doesn't match another constiuent of dimension ";
+      error << dim;
+      error << ". ";
       error << advice;
       TORCH_CHECK(false, error.str());
     }
     valid = valid && (layout == variable.layout());
     if (!valid && throw_error) {
       std::stringstream error;
-      error << "Given tensor / tensor constiuent of layout ";
+      error << "Given Tensor / NestedTensor constiuent of layout ";
       error << variable.layout();
-      error << " is of incompatible layout. ";
+      error << " doesn't match another constiuent of layout ";
+      error << layout;
+      error << ". ";
       error << advice;
       TORCH_CHECK(false, error.str());
     }
     valid = valid && (device == variable.device());
     if (!valid && throw_error) {
       std::stringstream error;
-      error << "Given tensor / tensor constiuent of device ";
+      error << "Given Tensor / NestedTensor constiuent of device ";
       error << variable.device();
-      error << " is of incompatible device. ";
-      error << advice;
+      error << " doesn't match another constiuent of device ";
+      error << device;
+      error << ". ";
       TORCH_CHECK(false, error.str());
     }
-    valid = valid && (dtype == variable.dtype());
+    valid = valid && (scalar_type == variable.scalar_type());
     if (!valid && throw_error) {
       std::stringstream error;
-      error << "Given tensor / tensor constiuent of dtype ";
-      error << variable.dtype();
-      error << " is of incompatible dtype. ";
-      error << advice;
+      error << "Given Tensor / NestedTensor constiuent of scalar type ";
+      error << variable.scalar_type();
+      error << " doesn't match another constiuent of scalar type ";
+      error << scalar_type;
+      error << ". ";
       TORCH_CHECK(false, error.str());
     }
     valid = valid && (requires_grad == variable.requires_grad());
     if (!valid && throw_error) {
       std::stringstream error;
       if (variable.requires_grad()) {
-        error << "Given tensor / tensor constiuent requires gradient. ";
+        error << "Given Tensor / NestedTensor constiuent requires gradient in contrast to another constiuent. ";
       } else {
-        error << "Given tensor / tensor constiuent requires gradient. ";
+        error << "Given Tensor / NestedTensor constiuent doesnt't requires gradient in contrast to another constiuent. ";
       }
       error << advice;
       TORCH_CHECK(false, error.str());
@@ -127,7 +133,7 @@ bool _verify_variables(
                   dim,
                   layout,
                   device,
-                  dtype,
+                  scalar_type,
                   requires_grad,
                   nested_node.children(i),
                   throw_error);
@@ -146,10 +152,10 @@ bool _verify_variables(
   const int64_t dim = first_variable.dim();
   const at::Layout& layout = first_variable.layout();
   const at::Device& device = first_variable.device();
-  const at::ScalarType& dtype = first_variable.dtype();
+  const at::ScalarType& scalar_type = first_variable.scalar_type();
   bool requires_grad = first_variable.requires_grad();
   return _verify_variables(
-      dim, layout, device, dtype, requires_grad, nested_node, throw_error);
+      dim, layout, device, scalar_type, requires_grad, nested_node, throw_error);
 }
 
 THPNestedTensor as_nested_tensor(py::sequence _list) {
