@@ -1,9 +1,7 @@
 #pragma once
-#include <torch/csrc/jit/pybind_utils.h>
-#include <torch/csrc/utils/python_strings.h>
 
 namespace torch {
-namespace nested_tensor {
+namespace utils {
 
 // NOTE: For comparisons please use the map and reduce
 // functions to define what you mean by equal, etc. on your own
@@ -38,25 +36,6 @@ struct NestedNode {
   inline const std::vector<NestedNode<T>> unbind() const {
     return _children;
   }
-
-  template <typename A, typename F>
-  friend std::string NestedNode___str__(
-      const NestedNode<A>&,
-      const std::string,
-      F,
-      const std::string&);
-
-  friend int64_t size_node_memory(
-      NestedNode<c10::List<int64_t>>,
-      NestedNode<c10::List<int64_t>>);
-
-  template <typename A, typename B>
-  friend B wrap_nested_node(NestedNode<A>);
-
-  friend at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>&);
-
-  friend std::vector<c10::optional<int64_t>> construct_size(
-      const NestedNode<c10::List<int64_t>>&);
 
   template <typename A>
   friend inline c10::optional<A> get_first_leaf(NestedNode<A>);
@@ -112,9 +91,6 @@ struct NestedNode {
   int64_t _height;
 };
 
-using TensorNode = NestedNode<at::Tensor>;
-using IValueNode = NestedNode<c10::IValue>;
-
 // This is a C++ representation of a nested list of torch.Sizes
 //
 // It can never be a list of just numbers, because torch.Size
@@ -154,59 +130,6 @@ inline std::vector<std::string> split_str(
   result.push_back(s);
   return result;
 }
-
-template <typename T, typename F>
-std::string NestedNode___str__(
-    const NestedNode<T>& nested_node,
-    const std::string name,
-    F payload_to_str,
-    const std::string& tabs = "") {
-  std::stringstream result;
-  if (nested_node.is_leaf()) {
-    result << payload_to_str(nested_node.payload(), tabs);
-  } else {
-    auto tabs_ = tabs + "\t";
-    result << tabs;
-    result << name;
-    result << "([";
-    result << std::endl;
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      if (i > 0) {
-        result << ",";
-        result << std::endl;
-      }
-      result << NestedNode___str__<T, F>(
-          nested_node.children(i), name, payload_to_str, tabs_);
-    }
-    result << std::endl;
-    result << tabs;
-    result << "])";
-  }
-  return result.str();
-}
-
-c10::optional<c10::IValue> py_obj_to_ivalue(py::object py_obj);
-
-int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride);
-
-int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
-
-template <typename A, typename B = py::object>
-B wrap_nested_node(NestedNode<A> nested_node) {
-  if (nested_node.is_leaf()) {
-    return B(torch::jit::toPyObject(nested_node.payload()));
-  } else {
-    std::vector<B> result;
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      result.push_back(wrap_nested_node(nested_node.children(i)));
-    }
-    return B(py::cast(result));
-  }
-}
-
-at::Tensor NestedNode_to_tensor(const NestedNode<at::Tensor>& nested_node);
-
-std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
 
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
@@ -366,7 +289,6 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
   return result;
 }
 
-
 // TODO: Assuming all NestedNodes have same shape.
 template <class F, class... A>
 inline void apply(F&& fn, NestedNode<A>&... nested_node) {
@@ -380,5 +302,5 @@ inline void apply(F&& fn, NestedNode<A>&... nested_node) {
   }
 }
 
-} // namespace nested_tensor
+} // namespace utils
 } // namespace torch

@@ -3,6 +3,16 @@
 namespace torch {
 namespace nested_tensor {
 
+int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
+  // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
+  // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
+  // but carry 0 memory.
+  if (size.size() == 0) {
+    return 1;
+  }
+  return size[0] * stride[0];
+}
+
 std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   if (size_node.is_leaf()) {
     std::vector<c10::optional<int64_t>> result;
