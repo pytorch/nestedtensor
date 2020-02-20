@@ -22,7 +22,6 @@ NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
 }
 
 bool _verify_variables(
-    const at::Tensor& first_variable,
     const int64_t dim,
     const at::Layout& layout,
     const at::Device& device,
@@ -30,10 +29,11 @@ bool _verify_variables(
     bool requires_grad,
     const TensorNode& nested_node,
     bool throw_error = false) {
-  constexpr std::string advice =
-      ("To form a valid NestedTensor all Tensor / NestedTensor constiuents of the given list must be of the same dimension, layout, device, dtype and either all or none require gradients."
-      " There many further also only be either NestedTensor  / list / tuple entries in a given list or Tensor entries. Or put differently, if one entry is a Tensor, so
-      must all the others. If one entry is a NestedTensor / list / tuple, so must all the others.");
+  constexpr const char* advice =
+      ("To form a valid NestedTensor all Tensor / NestedTensor constiuents of the given list must be of the same dimension, layout, device,"
+       " dtype and either all or none require gradients. There many further also only be either NestedTensor  / list / tuple entries in a"
+       " given list or Tensor entries. Or put differently, if one entry is a Tensor, so must all the others. If one entry is a "
+       " NestedTensor / list / tuple, so must all the others.");
   // The attributes must match across all constiuents
   //
   // The NestedTensor's attributes then become that of its
@@ -125,17 +125,31 @@ bool _verify_variables(
       valid = valid &&
           _verify_variables(
                   dim,
-                  kayout,
+                  layout,
                   device,
                   dtype,
-                  requires_grad_,
-                  nested_node.children(i));
+                  requires_grad,
+                  nested_node.children(i),
+                  throw_error);
       if (!valid) {
         return false;
       }
     }
   }
   return valid;
+}
+
+bool _verify_variables(
+    const at::Tensor& first_variable,
+    const TensorNode& nested_node,
+    bool throw_error = false) {
+  const int64_t dim = first_variable.dim();
+  const at::Layout& layout = first_variable.layout();
+  const at::Device& device = first_variable.device();
+  const at::ScalarType& dtype = first_variable.dtype();
+  bool requires_grad = first_variable.requires_grad();
+  return _verify_variables(
+      dim, layout, device, dtype, requires_grad, nested_node, throw_error);
 }
 
 THPNestedTensor as_nested_tensor(py::sequence _list) {
@@ -146,11 +160,13 @@ THPNestedTensor as_nested_tensor(py::sequence _list) {
       reduce<decltype(fn), bool, c10::IValue>(ivalue_structure, fn, true);
   TORCH_CHECK(
       all_same,
-      "Input nested list entries need to consist entirely of Tensors.");
+      "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
   TensorNode structure =
       map([](c10::IValue a) { return a.toTensor(); }, ivalue_structure);
   if (auto first = get_first_leaf(structure)) {
-    TORCH_CHECK(_verify_variables(*first, structure), "Tensors don't line up.");
+    if (!_verify_variables(*first, structure)) {
+      _verify_variables(*first, structure, true);
+    }
   }
   return THPNestedTensor(NestedTensor(std::move(structure)));
 }
