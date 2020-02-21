@@ -1,8 +1,14 @@
 #pragma once
-#include <nested_node.h>
+#include <utils/nested_node.h>
+#include <torch/extension.h>
 
 namespace torch {
 namespace nested_tensor {
+
+using TensorNode = NestedNode<at::Tensor>;
+using IValueNode = NestedNode<c10::IValue>;
+using SizeNode = NestedNode<c10::List<int64_t>>;
+using IntegerNode = NestedNode<int64_t>;
 
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
 struct NestedTensor {
