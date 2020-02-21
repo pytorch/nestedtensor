@@ -1,5 +1,6 @@
 #pragma once
 #include <nested_tensor.h>
+#include <py_utils.h>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
