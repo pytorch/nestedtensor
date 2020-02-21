@@ -103,12 +103,16 @@ def get_extensions():
     extensions_dir = os.path.join(this_dir, 'nestedtensor', 'csrc')
     utils_dir = os.path.join(extensions_dir, 'utils')
 
-    extension_sources = set(os.path.join(p) for p in glob.glob(os.path.join(extensions_dir, '*.cpp')))
-    utils_sources = set(os.path.join(p) for p in glob.glob(os.path.join(utils_dir, '*.cpp')))
+    extension_sources = set(os.path.join(extensions_dir, p) for p in glob.glob(os.path.join(extensions_dir, '*.cpp')))
+    utils_sources = set(os.path.join(utils_dir, p) for p in glob.glob(os.path.join(utils_dir, '*.cpp')))
 
     sources = list(set(extension_sources) | set(utils_sources))
 
     include_dirs = [extensions_dir, utils_dir]
+    print('sources')
+    print(sources)
+    print('include_dirs')
+    print(include_dirs)
 
     ext_modules = [
         extension(
@@ -154,7 +158,7 @@ setuptools.setup(
     ],
     zip_safe=True,
     cmdclass={'clean': clean,
-              'build_ext': BuildExtension.with_options(use_ninja=False)},
+              'build_ext': BuildExtension.with_options(use_ninja=True)},
     install_requires=requirements,
     ext_modules=get_extensions()
 )

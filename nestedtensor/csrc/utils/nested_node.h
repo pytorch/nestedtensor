@@ -1,4 +1,5 @@
 #pragma once
+#include <torch/extension.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -113,8 +114,6 @@ struct NestedNode {
 // That means, if the list is not empty it is either a list of
 // lists of numbers or a list of empty lists.
 
-using SizeNode = NestedNode<c10::List<int64_t>>;
-using IntegerNode = NestedNode<int64_t>;
 
 inline std::vector<std::string> split_str(
     std::string s,
