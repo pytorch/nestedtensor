@@ -79,8 +79,11 @@ if os.getenv('PYTORCH_VERSION'):
 def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
     extensions_dir = os.path.join(this_dir, 'nestedtensor', 'csrc')
+    utils_dir = os.path.join(extensions_dir, 'utils')
 
-    sources = glob.glob(os.path.join(extensions_dir, '*.cpp'))
+    sources = set(glob.glob(os.path.join(extensions_dir, '*.cpp')))
+    sources = sources | set(glob.glob(os.path.join(utils_dir, '*.cpp')))
+    sources = list(sources)
     extension = CppExtension
 
     define_macros = []

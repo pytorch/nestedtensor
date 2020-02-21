@@ -4,6 +4,9 @@
 namespace torch {
 namespace nested_tensor {
 
+using TensorNode = NestedNode<at::Tensor>;
+using IValueNode = NestedNode<c10::IValue>;
+
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
 struct NestedTensor {
   NestedTensor() = delete;
