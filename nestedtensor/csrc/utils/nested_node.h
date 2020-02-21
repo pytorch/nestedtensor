@@ -1,7 +1,7 @@
 #pragma once
 
 namespace torch {
-namespace utils {
+namespace nested_tensor {
 
 // NOTE: For comparisons please use the map and reduce
 // functions to define what you mean by equal, etc. on your own
