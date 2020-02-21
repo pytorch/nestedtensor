@@ -109,10 +109,6 @@ def get_extensions():
     sources = list(set(extension_sources) | set(utils_sources))
 
     include_dirs = [extensions_dir, utils_dir]
-    print('sources')
-    print(sources)
-    print('include_dirs')
-    print(include_dirs)
 
     ext_modules = [
         extension(
