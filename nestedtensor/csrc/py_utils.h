@@ -1,3 +1,4 @@
+#pragma once
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/python_strings.h>
 #include <utils/nested_node.h>
