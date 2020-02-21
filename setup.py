@@ -158,7 +158,7 @@ setuptools.setup(
     ],
     zip_safe=True,
     cmdclass={'clean': clean,
-              'build_ext': BuildExtension.with_options(use_ninja=True)},
+              'build_ext': BuildExtension.with_options(use_ninja=False)},
     install_requires=requirements,
     ext_modules=get_extensions()
 )
