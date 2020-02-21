@@ -1,5 +1,8 @@
 #pragma once
-#include <torch/extension.h>
+#include <ATen/core/List.h>
+#include <c10/util/Metaprogramming.h>
+#include <c10/util/Optional.h>
+#include <c10/util/TypeList.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -113,7 +116,6 @@ struct NestedNode {
 //
 // That means, if the list is not empty it is either a list of
 // lists of numbers or a list of empty lists.
-
 
 inline std::vector<std::string> split_str(
     std::string s,
@@ -301,5 +303,5 @@ inline void apply(F&& fn, NestedNode<A>&... nested_node) {
   }
 }
 
-} // namespace utils
+} // namespace nested_tensor
 } // namespace torch
