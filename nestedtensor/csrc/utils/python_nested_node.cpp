@@ -1,7 +1,19 @@
+#include <py_utils.h>
 #include <python_nested_node.h>
+#include <nested_node_functions.h>
 
 namespace torch {
 namespace nested_tensor {
+
+using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
+using THPIntegerNode = THPNestedNode<int64_t>;
+using THPTensorNode = THPNestedNode<at::Tensor>;
+using THPIValueNode = THPNestedNode<c10::IValue>;
+
+using SizeNode = NestedNode<c10::List<int64_t>>;
+using IntegerNode = NestedNode<int64_t>;
+using TensorNode = NestedNode<at::Tensor>;
+using IValueNode = NestedNode<c10::IValue>;
 
 using namespace torch::nested_tensor;
 namespace py = pybind11;

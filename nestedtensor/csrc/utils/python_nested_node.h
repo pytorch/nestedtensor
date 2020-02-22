@@ -26,7 +26,6 @@ struct THPNestedNode {
   std::string get_name() {
     return _name;
   }
-
   pybind11::object unbind() {
     std::vector<pybind11::object> result;
     for (const auto& child : _size_node.unbind()) {
