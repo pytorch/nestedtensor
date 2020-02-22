@@ -1,24 +1,24 @@
 #include <creation.h>
-#include <utils/nested_node.h>
+#include <py_utils.h>
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/extension.h>
-#include <py_utils.h>
+#include <utils/nested_node.h>
 
 namespace py = pybind11;
 
 namespace torch {
 namespace nested_tensor {
 
-NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
+NestedNode<py::object> py_to_nested_node(py::object py_obj) {
   if (py::isinstance<py::sequence>(py_obj)) {
-    std::vector<NestedNode<c10::IValue>> result;
+    std::vector<NestedNode<py::object>> result;
     auto py_seq = py::sequence(py_obj);
     for (size_t i = 0; i < py_seq.size(); i++) {
-      result.emplace_back(_get_structure(py_seq[i]));
+      result.emplace_back(py_to_nested_node(py_seq[i]));
     }
-    return NestedNode<c10::IValue>(std::move(result));
+    return NestedNode<py::object>(std::move(result));
   } else {
-    return NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj));
+    return NestedNode<py::object>(std::move(py_obj));
   }
 }
 
@@ -100,9 +100,11 @@ bool _verify_variables(
     if (!valid && throw_error) {
       std::stringstream error;
       if (variable.requires_grad()) {
-        error << "Given Tensor / NestedTensor constiuent requires gradient in contrast to another constiuent. ";
+        error
+            << "Given Tensor / NestedTensor constiuent requires gradient in contrast to another constiuent. ";
       } else {
-        error << "Given Tensor / NestedTensor constiuent doesnt't requires gradient in contrast to another constiuent. ";
+        error
+            << "Given Tensor / NestedTensor constiuent doesnt't requires gradient in contrast to another constiuent. ";
       }
       error << advice;
       TORCH_CHECK(false, error.str());
@@ -156,12 +158,26 @@ bool _verify_variables(
   const at::ScalarType& scalar_type = first_variable.scalar_type();
   bool requires_grad = first_variable.requires_grad();
   return _verify_variables(
-      dim, layout, device, scalar_type, requires_grad, nested_node, throw_error);
+      dim,
+      layout,
+      device,
+      scalar_type,
+      requires_grad,
+      nested_node,
+      throw_error);
 }
 
 THPNestedTensor as_nested_tensor(py::sequence _list) {
   py::object list = _list;
-  NestedNode<c10::IValue> ivalue_structure = _get_structure(list);
+  NestedNode<py::object> py_nested_node = py_to_nested_node(std::move(list));
+  NestedNode<c10::IValue> ivalue_structure = map(
+      [](py::object obj) {
+        auto maybe_ivalue = py_obj_to_ivalue(obj);
+        TORCH_CHECK(
+            maybe_ivalue, "Can't convert given Python object to IValue.");
+        return *maybe_ivalue;
+      },
+      py_nested_node);
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
   bool all_same =
       reduce<decltype(fn), bool, c10::IValue>(ivalue_structure, fn, true);

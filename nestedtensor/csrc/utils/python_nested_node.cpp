@@ -1,6 +1,6 @@
-#include <py_utils.h>
-#include <python_nested_node.h>
+#include <creation.h>
 #include <nested_node_functions.h>
+#include <python_nested_node.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -9,11 +9,13 @@ using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
 using THPTensorNode = THPNestedNode<at::Tensor>;
 using THPIValueNode = THPNestedNode<c10::IValue>;
+using THPPythonNode = THPNestedNode<py::object>;
 
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
+using PythonNode = NestedNode<py::object>;
 
 using namespace torch::nested_tensor;
 namespace py = pybind11;
@@ -37,7 +39,14 @@ void add_thp_node(py::module m, std::string name, F eq_fn) {
       .def("__eq__", eq_fn);
 }
 
+py::object as_nested_node(py::sequence _list) {
+  py::object list = _list;
+  NestedNode<py::object> py_nested_node = py_to_nested_node(std::move(list));
+}
+
 void register_python_nested_node(py::module m) {
+  add_thp_node<THPPythonNode>(m, "PythonNode");
+
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
         SizeNode a = a_.get_node();
@@ -85,6 +94,8 @@ void register_python_nested_node(py::module m) {
         };
         return all<decltype(fn2)>(std::move(fn2), a, b);
       });
+
+  m.def("as_nested_node", &as_nested_node);
 }
 
 } // namespace nested_tensor
