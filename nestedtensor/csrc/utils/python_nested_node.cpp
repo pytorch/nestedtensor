@@ -39,9 +39,10 @@ void add_thp_node(py::module m, std::string name, F eq_fn) {
       .def("__eq__", eq_fn);
 }
 
-py::object as_nested_node(py::sequence _list) {
+THPPythonNode as_nested_node(py::sequence _list) {
   py::object list = _list;
   NestedNode<py::object> py_nested_node = py_to_nested_node(std::move(list));
+  return THPPythonNode(py_nested_node, "PythonNode");
 }
 
 void register_python_nested_node(py::module m) {

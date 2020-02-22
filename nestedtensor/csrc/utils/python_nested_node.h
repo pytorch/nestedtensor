@@ -24,9 +24,6 @@ struct THPNestedNode {
   const NestedNode<T>& get_node() const {
     return _size_node;
   }
-  std::string get_name() {
-    return _name;
-  }
   pybind11::object unbind() {
     std::vector<pybind11::object> result;
     for (const auto& child : _size_node.unbind()) {
@@ -63,9 +60,6 @@ struct THPNestedNode<py::object> {
   }
   const NestedNode<pybind11::object>& get_node() const {
     return _size_node;
-  }
-  std::string get_name() {
-    return _name;
   }
   pybind11::object unbind() {
     std::vector<pybind11::object> result;
