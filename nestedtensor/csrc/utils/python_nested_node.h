@@ -39,5 +39,6 @@ struct THPNestedNode {
   NestedNode<T> _size_node;
   std::string _name;
 };
+
 }
 }
