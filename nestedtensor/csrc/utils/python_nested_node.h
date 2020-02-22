@@ -1,3 +1,7 @@
+#pragma once
+#include <torch/csrc/jit/pybind_utils.h>
+#include <nested_node.h>
+
 namespace torch {
 namespace nested_tensor {
 
@@ -23,16 +27,16 @@ struct THPNestedNode {
     return _name;
   }
 
-  py::object unbind() {
-    std::vector<py::object> result;
+  pybind11::object unbind() {
+    std::vector<pybind11::object> result;
     for (const auto& child : _size_node.unbind()) {
       if (child.height() == 0) {
         result.push_back(wrap_nested_node(child));
       } else {
-        result.push_back(py::cast(THPNestedNode<T>(child, _name)));
+        result.push_back(pybind11::cast(THPNestedNode<T>(child, _name)));
       }
     }
-    return py::cast(result);
+    return pybind11::cast(result);
   }
 
  private:
@@ -40,5 +44,7 @@ struct THPNestedNode {
   std::string _name;
 };
 
-}
-}
+void register_python_nested_node(pybind11::module m);
+
+} // namespace nested_tensor
+} // namespace torch
