@@ -1,5 +1,6 @@
 #pragma once
 #include <nested_tensor.h>
+#include <utils/python_nested_node.h>
 #include <py_utils.h>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
@@ -10,7 +11,6 @@
 
 namespace torch {
 namespace nested_tensor {
-
 
 using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
