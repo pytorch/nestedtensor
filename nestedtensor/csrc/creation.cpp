@@ -23,6 +23,7 @@ NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
   }
 }
 
+
 bool _verify_variables(
     const int64_t dim,
     const at::Layout& layout,
@@ -168,17 +169,21 @@ bool _verify_variables(
       throw_error);
 }
 
-THPNestedTensor as_nested_tensor(py::sequence _list) {
-  py::object list = _list;
-  NestedNode<py::object> py_nested_node = py_to_nested_node(std::move(list));
-  NestedNode<c10::IValue> ivalue_structure = map(
-      [](py::object obj) {
-        auto maybe_ivalue = py_obj_to_ivalue(obj);
-        TORCH_CHECK(
-            maybe_ivalue, "Can't convert given Python object to IValue.");
-        return *maybe_ivalue;
-      },
-      py_nested_node);
+NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
+  if (py::isinstance<py::sequence>(py_obj)) {
+    std::vector<NestedNode<c10::IValue>> result;
+    auto py_seq = py::sequence(py_obj);
+    for (size_t i = 0; i < py_seq.size(); i++) {
+      result.emplace_back(py_to_nested_tensor(py_seq[i]));
+    }
+    return NestedNode<c10::IValue>(std::move(result));
+  } else {
+    return NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj));
+  }
+}
+
+THPNestedTensor as_nested_tensor(py::sequence list) {
+  NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
   bool all_same =
       reduce<decltype(fn), bool, c10::IValue>(ivalue_structure, fn, true);
