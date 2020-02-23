@@ -185,7 +185,7 @@ class NestedTensor(object):
         dim = utils._wrap_dim(self, dim)
         if self.nested_dim() == 1:
             if dim == 0:
-                return self._impl.unbind()
+                return self._impl.unbind(dim)
             tmp = tuple(t.unbind(dim - 1) for t in self._impl.unbind())
         else:
             if dim == 0:

@@ -49,16 +49,16 @@ struct THPNestedTensor {
   // TODO: Tensor-wise select
   // TODO: Tuple support
   pybind11::object getitem(int64_t key) {
-    py::object unbound_ = unbind();
+    py::object unbound_ = unbind(0);
     py::sequence unbound = py::cast<py::sequence>(unbound_);
     return unbound[key];
   }
   pybind11::object getitem(py::slice key) {
-    py::object unbound_ = unbind();
+    py::object unbound_ = unbind(0);
     py::sequence unbound = py::cast<py::sequence>(unbound_);
     return unbound[key];
   }
-  pybind11::object unbind();
+  pybind11::object unbind(int64_t dim);
   THPIValueNode nested_size();
   THPIValueNode nested_stride();
   THPIValueNode nested_size(c10::optional<int64_t> index);

@@ -100,13 +100,15 @@ py::object THPNestedTensor::getDevice() {
 
 // TODO: Since this returns vies there is no reason not to return a sequence of
 // contiguous NestedTensors for a given NestedTensor.
-py::object THPNestedTensor::unbind() {
+py::object THPNestedTensor::unbind(int64_t dim) {
   auto node = _data.get_structure();
   auto nested_dim = _data.nested_dim();
   if (nested_dim == 1) {
-    std::vector<at::Tensor> result;
-    for (const auto& child : node.unbind()) {
-      result.push_back(child.payload());
+    if (dim == 0) {
+      std::vector<at::Tensor> result;
+      for (const auto& child : node.unbind()) {
+        result.push_back(child.payload());
+      }
     }
     return py::cast(result);
   } else {
