@@ -45,6 +45,12 @@ THPPythonNode as_nested_node(py::sequence _list) {
   return THPPythonNode(py_nested_node, "PythonNode");
 }
 
+THPPythonNode py_map(py::function fn, THPPythonNode node) {
+  PythonNode result =
+      map([&fn](py::object obj) { return fn(obj); }, node.get_node());
+  return THPPythonNode(result, "PythonNode");
+}
+
 void register_python_nested_node(py::module m) {
   add_thp_node<THPPythonNode>(m, "PythonNode");
 
@@ -97,6 +103,7 @@ void register_python_nested_node(py::module m) {
       });
 
   m.def("as_nested_node", &as_nested_node);
+  m.def("map", &py_map);
 }
 
 } // namespace nested_tensor

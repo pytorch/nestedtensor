@@ -9,12 +9,13 @@ namespace py = pybind11;
 namespace torch {
 namespace nested_tensor {
 
-NestedNode<py::object> py_to_nested_node(py::object py_obj) {
-  if (py::isinstance<py::sequence>(py_obj)) {
+NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
+  if (py::isinstance<py::list>(py_obj) || py::isinstance<py::tuple>(py_obj)) {
     std::vector<NestedNode<py::object>> result;
     auto py_seq = py::sequence(py_obj);
     for (size_t i = 0; i < py_seq.size(); i++) {
-      result.emplace_back(py_to_nested_node(py_seq[i]));
+      py::object py_seq_i(py_seq[i]);
+      result.emplace_back(py_to_nested_node(std::move(py_seq_i)));
     }
     return NestedNode<py::object>(std::move(result));
   } else {

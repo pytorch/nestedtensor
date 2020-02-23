@@ -4,7 +4,7 @@
 namespace torch {
 namespace nested_tensor {
 
-NestedNode<py::object> py_to_nested_node(py::object py_obj);
+NestedNode<py::object> py_to_nested_node(py::object&& py_obj);
 
 THPNestedTensor as_nested_tensor(pybind11::sequence list);
 
