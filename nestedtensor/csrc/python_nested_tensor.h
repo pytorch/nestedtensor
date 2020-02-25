@@ -1,7 +1,7 @@
 #pragma once
 #include <nested_tensor.h>
-#include <utils/python_nested_node.h>
 #include <py_utils.h>
+#include <utils/python_nested_node.h>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
@@ -49,16 +49,13 @@ struct THPNestedTensor {
   // TODO: Tensor-wise select
   // TODO: Tuple support
   pybind11::object getitem(int64_t key) {
-    py::object unbound_ = unbind();
-    py::sequence unbound = py::cast<py::sequence>(unbound_);
-    return unbound[key];
+    return unbind(0)[key];
   }
   pybind11::object getitem(py::slice key) {
-    py::object unbound_ = unbind();
-    py::sequence unbound = py::cast<py::sequence>(unbound_);
+    py::list unbound = py::cast(unbind(0));
     return unbound[key];
   }
-  pybind11::object unbind();
+  std::vector<pybind11::object> unbind(int64_t dim);
   THPIValueNode nested_size();
   THPIValueNode nested_stride();
   THPIValueNode nested_size(c10::optional<int64_t> index);

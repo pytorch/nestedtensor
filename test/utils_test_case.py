@@ -231,7 +231,8 @@ class TestCase(TestCaseBase):
             if x.nested_size() != y.nested_size():
                 self.fail("Nested tensors nested sizes don't match. {} != {}".format(x.nested_size(), y.nested_size()))
 
-            if x.nested_stride() != y.nested_stride():
+            # If you ignore contiguity you should also ignore the striding
+            if not ignore_contiguity and x.nested_stride() != y.nested_stride():
                 self.fail("Nested tensors nested strides don't match. {} != {}".format(x.nested_stride(), y.nested_stride()))
             
             for x_, y_ in zip(x, y):
