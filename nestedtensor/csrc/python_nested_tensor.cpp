@@ -2,6 +2,7 @@
 #include <python_nested_tensor.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
 #include <torch/csrc/jit/pybind_utils.h>
+#include <ATen/WrapDimUtils.h>
 
 namespace py = pybind11;
 
@@ -101,13 +102,14 @@ py::object THPNestedTensor::getDevice() {
 // TODO: Since this returns vies there is no reason not to return a sequence of
 // contiguous NestedTensors for a given NestedTensor.
 std::vector<py::object> THPNestedTensor::unbind(int64_t dim) {
+  dim = at::maybe_wrap_dim(dim, _data.dim());
   auto node = _data.get_structure();
   auto nested_dim = _data.nested_dim();
   if (nested_dim == 1) {
     if (dim == 0) {
       std::vector<py::object> result;
       for (const auto& child : node.unbind()) {
-        result.push_back(py::object(child.payload()));
+        result.push_back(py::cast(child.payload()));
       }
       return result;
     } else {
@@ -129,7 +131,7 @@ std::vector<py::object> THPNestedTensor::unbind(int64_t dim) {
       for (size_t i = 0; i < unbound.size(); i++) {
         TensorNode tmp = TensorNode(std::move(unbound[i]));
         THPNestedTensor tmp_thd = THPNestedTensor(NestedTensor(std::move(tmp)));
-        result.push_back(py::object(tmp_thd));
+        result.push_back(py::cast(tmp_thd));
       }
       return result;
     }
@@ -141,26 +143,31 @@ std::vector<py::object> THPNestedTensor::unbind(int64_t dim) {
   if (dim == 0) {
     std::vector<py::object> result;
     for (auto elem : unbound_thp) {
-      result.push_back(py::object(elem));
+      result.push_back(py::cast(elem));
     }
     return result;
   }
   std::vector<std::vector<TensorNode>> unbound;
   for (size_t i = 0; i < unbound_thp.size(); i++) {
-    std::vector<py::object> = unbound_thp[i].unbind(dim - 1);
+    std::vector<py::object> tmp = unbound_thp[i].unbind(dim - 1);
     for (size_t j = 0; j < tmp.size(); j++) {
       if (unbound.size() >= j) {
         unbound.resize(j + 1);
       }
-      unbound[j].push_back(
-          py::cast<THPNestedTensor>(tmp[j])._data.get_structure());
+      py::object tmp_j = tmp[j];
+      if (py::isinstance<THPNestedTensor>(tmp_j)) {
+        unbound[j].push_back(
+            py::cast<THPNestedTensor>(tmp[j])._data.get_structure());
+      } else {
+        unbound[j].push_back(TensorNode(py::cast<at::Tensor>(tmp_j)));
+      }
     }
   }
   std::vector<py::object> result;
   for (size_t i = 0; i < unbound.size(); i++) {
     TensorNode tmp = TensorNode(std::move(unbound[i]));
     THPNestedTensor tmp_thd = THPNestedTensor(NestedTensor(std::move(tmp)));
-    result.push_back(py::object(tmp_thd));
+    result.push_back(py::cast(tmp_thd));
   }
   return result;
 }

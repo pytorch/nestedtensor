@@ -182,20 +182,9 @@ class NestedTensor(object):
         """
         # TODO: Design choice: Return zip_longest or zip?
 
-        dim = utils._wrap_dim(self, dim)
+        # dim = utils._wrap_dim(self, dim)
         return tuple(t if torch.is_tensor(t) else NestedTensor(t)
                      for t in self._impl.unbind(dim))
-        if dim == 0:
-            return tuple(t if torch.is_tensor(t) else NestedTensor(t)
-                         for t in self._impl.unbind(dim))
-        if self.nested_dim() == 1:
-            return tuple(t if torch.is_tensor(t) else NestedTensor(t)
-                         for t in self._impl.unbind(dim))
-        else:
-            tmp = tuple(t.unbind(dim - 1) for t in self.unbind())
-            tmp = list(list(filter(lambda x: x is not None, t))
-                       for t in itertools.zip_longest(*tmp))
-            return tuple(nestedtensor.nested_tensor(e) for e in tmp)
 
     def to_tensor(self, dim=0):
         """

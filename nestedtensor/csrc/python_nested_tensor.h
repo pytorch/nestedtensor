@@ -49,13 +49,10 @@ struct THPNestedTensor {
   // TODO: Tensor-wise select
   // TODO: Tuple support
   pybind11::object getitem(int64_t key) {
-    py::object unbound_ = unbind(0);
-    py::sequence unbound = py::cast<py::sequence>(unbound_);
-    return unbound[key];
+    return unbind(0)[key];
   }
   pybind11::object getitem(py::slice key) {
-    py::object unbound_ = unbind(0);
-    py::sequence unbound = py::cast<py::sequence>(unbound_);
+    py::list unbound = py::cast(unbind(0));
     return unbound[key];
   }
   std::vector<pybind11::object> unbind(int64_t dim);
