@@ -339,13 +339,13 @@ class TestNestedTensor(TestCase):
             nestedtensor.nested_tensor([a.unbind(0)[0]]),
             nestedtensor.nested_tensor([a.unbind(0)[1]]),
             nestedtensor.nested_tensor([a.unbind(0)[2]]))
-        for a, b in zip(nt.unbind(1), result):
-            self.assertEqual(a, b, ignore_contiguity=True)
+        for x, y in zip(nt.unbind(1), result):
+            self.assertEqual(x, y, ignore_contiguity=True)
         result = (
             nestedtensor.nested_tensor([a.unbind(1)[0]]),
             nestedtensor.nested_tensor([a.unbind(1)[1]]))
-        for a, b in zip(nt.unbind(2), result):
-            self.assertEqual(a, b, ignore_contiguity=True)
+        for x, y in zip(nt.unbind(2), result):
+            self.assertEqual(x, y, ignore_contiguity=True)
 
         b = torch.rand(2, 3)
         nt = nestedtensor.nested_tensor([a, b])
@@ -354,8 +354,8 @@ class TestNestedTensor(TestCase):
             nestedtensor.nested_tensor([a.unbind(0)[0], b.unbind(0)[0]]),
             nestedtensor.nested_tensor([a.unbind(0)[1], b.unbind(0)[1]]),
             nestedtensor.nested_tensor([a.unbind(0)[2]]))
-        for a, b in zip(nt.unbind(1), result):
-            self.assertEqual(a, b, ignore_contiguity=True)
+        for x, y in zip(nt.unbind(1), result):
+            self.assertEqual(x, y, ignore_contiguity=True)
         # TODO: Add more tensors and unbind across more dimensions to create mixing
 
         c = torch.rand(4, 3)
@@ -366,8 +366,8 @@ class TestNestedTensor(TestCase):
         result = (
             nestedtensor.nested_tensor([a, b]),
             nestedtensor.nested_tensor([c]))
-        for a, b in zip(nt.unbind(1), result):
-            self.assertEqual(a, b, ignore_contiguity=True)
+        for x, y in zip(nt.unbind(1), result):
+            self.assertEqual(x, y, ignore_contiguity=True)
 
     def test_size(self):
         a = nestedtensor.nested_tensor([])
