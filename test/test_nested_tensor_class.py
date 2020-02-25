@@ -93,11 +93,17 @@ class TestNestedTensor(TestCase):
             self.assertRaises(TypeError, lambda: constructor(4.0))
             for constructor2 in _iter_constructors():
                 self.assertRaises(RuntimeError, lambda: constructor([
-                            constructor2([]),
-                            constructor2([
-                                torch.tensor([1], dtype=torch.float)
-                            ])
-                        ]))
+                    constructor2([]),
+                    constructor2([
+                        torch.tensor([1], dtype=torch.float)
+                    ])
+                ]))
+                self.assertRaises(RuntimeError, lambda: constructor([
+                    constructor2([]),
+                    constructor2([
+                        torch.tensor(1)
+                    ])
+                ]))
 
     def test_default_constructor(self):
         # nested_dim is 1 and dim is 1 too.
@@ -360,8 +366,10 @@ class TestNestedTensor(TestCase):
         c = torch.rand(4, 3)
         nt = nestedtensor.nested_tensor([[a], [b, c]])
         nt_a, nt_b = nt.unbind(0)
-        self.assertEqual(nt_a, nestedtensor.nested_tensor([a]), ignore_contiguity=True)
-        self.assertEqual(nt_b, nestedtensor.nested_tensor([b, c]), ignore_contiguity=True)
+        self.assertEqual(nt_a, nestedtensor.nested_tensor(
+            [a]), ignore_contiguity=True)
+        self.assertEqual(nt_b, nestedtensor.nested_tensor(
+            [b, c]), ignore_contiguity=True)
         result = (
             nestedtensor.nested_tensor([a, b]),
             nestedtensor.nested_tensor([c]))
