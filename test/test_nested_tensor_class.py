@@ -323,14 +323,13 @@ class TestNestedTensor(TestCase):
               torch.tensor([]),
               torch.tensor([]))
 
-    @utils.debug_on()
     def test_unbind_dim(self):
         # Unbinding across nested dimensions or tensors dimensions
         # is akin splitting up the tree across a level.
 
         nt = nestedtensor.nested_tensor([])
         self.assertEqual(nt.unbind(0), ())
-        self.assertRaises(RuntimeError, lambda: nt.unbind(1))
+        self.assertRaises(IndexError, lambda: nt.unbind(1))
 
         a = torch.rand(3, 2)
         nt = nestedtensor.nested_tensor([a])
