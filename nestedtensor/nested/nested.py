@@ -181,8 +181,6 @@ class NestedTensor(object):
         Returns a tuple of views. Results might not be contiguous.
         """
         # TODO: Design choice: Return zip_longest or zip?
-
-        # dim = utils._wrap_dim(self, dim)
         return tuple(t if torch.is_tensor(t) else NestedTensor(t)
                      for t in self._impl.unbind(dim))
 
