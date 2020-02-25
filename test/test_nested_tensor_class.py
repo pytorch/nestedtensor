@@ -353,6 +353,7 @@ class TestNestedTensor(TestCase):
             nestedtensor.nested_tensor([a.unbind(0)[1], b.unbind(0)[1]]),
             nestedtensor.nested_tensor([a.unbind(0)[2]]))
         self.assertEqual(nt.unbind(1), result, ignore_contiguity=True)
+        # TODO: Add more tensors and unbind across more dimensions to create mixing
 
         c = torch.rand(4, 3)
         nt = nestedtensor.nested_tensor([[a], [b, c]])

@@ -191,7 +191,10 @@ class TestCase(TestCaseBase):
 
     def assertEqual(self, x, y, prec=None, message='', allow_inf=False, ignore_contiguity=False):
         if not isinstance(x, NT.NestedTensor) and not isinstance(y, NT.NestedTensor):
-            super().assertEqual(x, y, prec, message, allow_inf)
+            if is_iterable(x) and is_iterable(y):
+                for x_, y_ in zip(x, y):
+                    self.assertEqual(x_, y_, prec=prec, message=message,
+                                     allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
         elif not isinstance(x, NT.NestedTensor) or not isinstance(y, NT.NestedTensor):
             raise TypeError("Comparing a nested tensor to a non nested tensor")
         else:
@@ -231,7 +234,8 @@ class TestCase(TestCaseBase):
             if x.nested_size() != y.nested_size():
                 self.fail("Nested tensors nested sizes don't match. {} != {}".format(x.nested_size(), y.nested_size()))
 
-            if x.nested_stride() != y.nested_stride():
+            # If you ignore contiguity you should also ignore the striding
+            if not ignore_contiguity and x.nested_stride() != y.nested_stride():
                 self.fail("Nested tensors nested strides don't match. {} != {}".format(x.nested_stride(), y.nested_stride()))
             
             for x_, y_ in zip(x, y):

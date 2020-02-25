@@ -111,24 +111,24 @@ py::object THPNestedTensor::unbind(int64_t dim) {
       }
       return py::cast(result);
     } else {
-      std::vector<std::vector<at::Tensor>> unbound;
+      int64_t dim_max_size = 0;
       for (const auto& child : node.unbind()) {
-        unbound.push_back(at::unbind(child.payload(), dim - 1));
+        int64_t dim_size = child.payload().size(dim - 1);
+        dim_max_size = dim_max_size > dim_size ? dim_max_size : dim_size;
       }
-      size_t max_size = 0;
-      for (const auto& tensors : unbound) {
-        max_size = max_size > tensors.size() ? max_size : tensors.size();
+      std::vector<std::vector<TensorNode>> unbound;
+      unbound.resize(dim_max_size);
+      for (const auto& child : node.unbind()) {
+        std::vector<at::Tensor> unbound_tensors =
+            at::unbind(child.payload(), dim - 1);
+        for (size_t i = 0; i < unbound_tensors.size(); i++) {
+          unbound[i].push_back(TensorNode(std::move(unbound_tensors[i])));
+        }
       }
       std::vector<THPNestedTensor> result;
-      for (size_t j = 0; j < unbound.size(); j++) {
-        std::vector<TensorNode> tmp;
-        for (size_t i = 0; i < max_size; i++) {
-          if (j < unbound[j].size()) {
-            tmp.push_back(TensorNode(std::move(unbound[i][j])));
-          }
-        }
-        TensorNode tensor_node(std::move(tmp));
-        result.push_back(THPNestedTensor(NestedTensor(std::move(tensor_node))));
+      for (size_t i = 0; i < unbound.size(); i++) {
+        TensorNode tmp = TensorNode(std::move(unbound[i]));
+        result.push_back(THPNestedTensor(NestedTensor(std::move(tmp))));
       }
       return py::cast(result);
     }

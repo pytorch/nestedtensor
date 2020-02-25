@@ -188,7 +188,7 @@ class NestedTensor(object):
                          for t in self._impl.unbind(dim))
         else:
             if dim == 0:
-                return tuple(NestedTensor(t) for t in self._impl.unbind())
+                return tuple(NestedTensor(t) for t in self._impl.unbind(0))
             tmp = tuple(t.unbind(dim - 1) for t in self.unbind())
         tmp = list(list(filter(lambda x: x is not None, t))
                    for t in itertools.zip_longest(*tmp))
