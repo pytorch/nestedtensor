@@ -109,14 +109,36 @@ py::object THPNestedTensor::unbind(int64_t dim) {
       for (const auto& child : node.unbind()) {
         result.push_back(child.payload());
       }
+      return py::cast(result);
+    } else {
+      std::vector<std::vector<at::Tensor>> unbound;
+      for (const auto& child : node.unbind()) {
+        unbound.push_back(at::unbind(child.payload(), dim - 1));
+      }
+      size_t max_size = 0;
+      for (const auto& tensors : unbound) {
+        max_size = max_size > tensors.size() ? max_size : tensors.size();
+      }
+      std::vector<THPNestedTensor> result;
+      for (size_t j = 0; j < unbound.size(); j++) {
+        std::vector<TensorNode> tmp;
+        for (size_t i = 0; i < max_size; i++) {
+          if (j < unbound[j].size()) {
+            tmp.push_back(TensorNode(std::move(unbound[i][j])));
+          }
+        }
+        TensorNode tensor_node(std::move(tmp));
+        result.push_back(THPNestedTensor(NestedTensor(std::move(tensor_node))));
+      }
+      return py::cast(result);
     }
-    return py::cast(result);
   } else {
     std::vector<THPNestedTensor> result;
-    for (const auto& _child : node.unbind()) {
-      auto child = _child;
-      result.push_back(THPNestedTensor(
-          torch::nested_tensor::NestedTensor(std::move(child))));
+    if (dim == 0) {
+      for (const auto& _child : node.unbind()) {
+        auto child = _child;
+        result.push_back(THPNestedTensor(NestedTensor(std::move(child))));
+      }
     }
     return py::cast(result);
   }

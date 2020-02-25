@@ -184,9 +184,8 @@ class NestedTensor(object):
 
         dim = utils._wrap_dim(self, dim)
         if self.nested_dim() == 1:
-            if dim == 0:
-                return self._impl.unbind(dim)
-            tmp = tuple(t.unbind(dim - 1) for t in self._impl.unbind())
+            return tuple(t if torch.is_tensor(t) else NestedTensor(t)
+                         for t in self._impl.unbind(dim))
         else:
             if dim == 0:
                 return tuple(NestedTensor(t) for t in self._impl.unbind())
