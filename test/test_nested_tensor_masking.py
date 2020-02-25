@@ -14,7 +14,6 @@ class TestTensorMask(TestCase):
     #
     # Group of tests to test to_tensor_mask() 
     # 
-    '''
     def test_gen_nested_tensor(self):
         nt1 = utils.gen_nested_tensor(seed=1, nested_dim=1, tensor_dim=1, size_low=2, size_high=2)
         self.assertTrue(nt.is_nested_tensor(nt1))
@@ -65,7 +64,7 @@ class TestTensorMask(TestCase):
         self.assertEqual(mask, torch.tensor([[], []]))
         self.assertEqual(tensor, torch.tensor([[], []]))
 
-    #TODO once bug fixed
+    #TODO once .to_list() bug fixed
     def test_empty_tensor(self):
         #a = nt.nested_tensor([
         #        torch.tensor([])
@@ -121,7 +120,7 @@ class TestTensorMask(TestCase):
 
         self.assertRaisesRegex(RuntimeError, "Mask dimention is bigger than nested dimention of a nested tensor.", lambda: a.to_tensor_mask(mask_dim=3))
 
-    #TODO once bug fixed
+    #TODO once .to_list() bug fixed
     def test_multi_scalar(self):
         # TODO: add test cases
         #a = nt.nested_tensor([
@@ -274,36 +273,36 @@ class TestTensorMask(TestCase):
 
         a = nt.nested_tensor([
                 nt.nested_tensor([
-                    torch.tensor(1),
-                    torch.tensor(2),
-                    torch.tensor(3)
+                    torch.tensor([1]),
+                    torch.tensor([2]),
+                    torch.tensor([3])
                 ])
             ])
         tensor, mask = a.to_tensor_mask()
-        self.assertEqual(tensor, torch.tensor([[1, 2, 3]]))
+        self.assertEqual(tensor, torch.tensor([[[1], [2], [3]]]))
         self.assertEqual(mask, torch.tensor(True))
         
         tensor, mask = a.to_tensor_mask(mask_dim=2)
-        self.assertEqual(tensor, torch.tensor([[1, 2, 3]]))
+        self.assertEqual(tensor, torch.tensor([[[1], [2], [3]]]))
         self.assertEqual(mask, torch.tensor([[True, True, True]]))
 
         a = nt.nested_tensor([
                 nt.nested_tensor([
-                    torch.tensor(1)
+                    torch.tensor([1])
                 ]),
                 nt.nested_tensor([
-                    torch.tensor(2)
+                    torch.tensor([2])
                 ]),
                 nt.nested_tensor([
-                    torch.tensor(3)
+                    torch.tensor([3])
                 ])
             ])
         tensor, mask = a.to_tensor_mask()
-        self.assertEqual(tensor, torch.tensor([[1], [2], [3]]))
+        self.assertEqual(tensor, torch.tensor([[[1]], [[2]], [[3]]]))
         self.assertEqual(mask, torch.tensor(True))
-        
+
         tensor, mask = a.to_tensor_mask(mask_dim=2)
-        self.assertEqual(tensor, torch.tensor([[1], [2], [3]]))
+        self.assertEqual(tensor, torch.tensor([[[1]], [[2]], [[3]]]))
         self.assertEqual(mask, torch.tensor([[True], [True], [True]]))
 
     def test_multi_tensor2(self):
@@ -368,7 +367,7 @@ class TestTensorMask(TestCase):
         
         for dim in range(4):
             self.assertRaisesRegex(RuntimeError, "Mask dimention is too small to represent data tensor.", lambda: a.to_tensor_mask(mask_dim=dim))
-    '''
+
     #
     # Group of tests to test nested_tensor_from_tensor_mask() 
     #
@@ -387,6 +386,7 @@ class TestTensorMask(TestCase):
 
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, tensor, nested_dim=2))
 
+    def test_ntftm_empty2(self):
         tensor = torch.tensor([[], []])
         
         expected_nt1 = nt.nested_tensor([
@@ -410,44 +410,238 @@ class TestTensorMask(TestCase):
 
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, tensor, nested_dim=3))
 
-    def test_scalar_mask_false(self):
+    def test_ntftm_empty_error(self):
+        tensor = torch.tensor([])
+        mask = torch.tensor([True])
+        self.assertRaisesRegex(RuntimeError, 
+                               "Data tensor can't be emtpy if a mask has values.", 
+                               lambda: nt.nested_tensor_from_tensor_mask(tensor, mask))
+
+        tensor = torch.tensor([1])
+        mask = torch.tensor([])
+        self.assertRaisesRegex(RuntimeError, 
+                               "Mask tensor can't be emtpy if a data tensor has values.",
+                               lambda: nt.nested_tensor_from_tensor_mask(tensor, mask))
+
+    def test_ntftm_single_scalar_mask_false(self):
         scalar = torch.tensor([1], dtype=torch.uint8)
         mask = torch.tensor(False)
         self.assertRaisesRegex(RuntimeError, "Scalar mask cant be False.", lambda: nt.nested_tensor_from_tensor_mask(scalar, mask))
-    
-    def atest_foo(self):
-        a = nt.nested_tensor([
-            nt.nested_tensor([]),
-            nt.nested_tensor([])
-        ])
 
-        tensor, mask = a.to_tensor_mask()
-        #print(a.nested_dim()) == 2
-
-        a = nt.nested_tensor([
-            torch.tensor([]),
-            torch.tensor([])
-        ])
-        tensor, mask = a.to_tensor_mask()
-        #print(a.nested_dim()) == 1
-
-        scalar = torch.tensor([1], dtype=torch.uint8)
-        print(scalar.dim())
-        print(scalar.numel())
-        print('\n')
-        
-        scalar = torch.tensor(1, dtype=torch.uint8)
-        print(scalar.dim())
-        print(scalar.numel())
-        print('\n')
-        
-        scalar = torch.tensor([], dtype=torch.uint8)
-        print(scalar.dim())
-        print(scalar.numel())
-
+    def test_ntftm_single_scalar_error(self):
+        tensor = torch.tensor(1)
         mask = torch.tensor(True)
-        res_nt =  nt.nested_tensor_from_tensor_mask(scalar, mask)
-        print(res_nt)
+        self.assertRaisesRegex(RuntimeError, "Can't construct nested tensor from a scalar.", lambda: nt.nested_tensor_from_tensor_mask(tensor, mask))
+
+    def test_ntftm_test_single_scalar(self):
+        tensor = torch.tensor([1])
+        mask = torch.tensor(True)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([torch.tensor(1)]))
+
+        mask = torch.tensor([True])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([torch.tensor(1)]))
+
+        # Extra dim
+        tensor = torch.tensor([[1]])
+        mask = torch.tensor(True)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, 
+                        nt.nested_tensor([
+                            torch.tensor([1])
+                        ]))
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        self.assertEqual(res_nt, 
+                        nt.nested_tensor([
+                            nt.nested_tensor([
+                                torch.tensor(1)
+                            ])
+                        ]))
+
+    def test_ntftm_test_multi_scalars(self):
+        tensor = torch.tensor([1, 2, 3])
+        mask = torch.tensor(True)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, 
+                        nt.nested_tensor([
+                            torch.tensor(1),
+                            torch.tensor(2),
+                            torch.tensor(3)
+                        ]))
+
+        mask = torch.tensor([True])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, 
+                        nt.nested_tensor([
+                            torch.tensor(1),
+                            torch.tensor(2),
+                            torch.tensor(3)
+                        ]))
+
+        self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2))
+
+        # Extra dim
+        tensor = torch.tensor([[1, 2, 3]])
+        mask = torch.tensor(True)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, 
+                        nt.nested_tensor([
+                            torch.tensor([1, 2, 3])
+                        ]))
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        self.assertEqual(res_nt, 
+                        nt.nested_tensor([
+                            nt.nested_tensor([
+                                torch.tensor(1),
+                                torch.tensor(2),
+                                torch.tensor(3)
+                            ])
+                        ]))
+
+    def test_ntftm_test_single_tensor_all_true_mask(self):
+        tensor = torch.tensor([[1]])
+        mask = torch.tensor(True)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([torch.tensor([1])]))
+
+        mask = torch.tensor([True])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([torch.tensor([1])]))
+
+    def test_ntftm_test_multi_tensor_scalar_true_mask(self):
+        tensor = torch.tensor([[1], [2], [3]])
+        mask = torch.tensor(True)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, 
+                        nt.nested_tensor([
+                            torch.tensor([1]),
+                            torch.tensor([2]),
+                            torch.tensor([3])
+                        ]))
+
+        # Extra dim
+        tensor = torch.tensor([[[1]], [[2]], [[3]]])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        expected_res1 = nt.nested_tensor([
+                            torch.tensor([[1]]),
+                            torch.tensor([[2]]),
+                            torch.tensor([[3]])
+                        ])
+        self.assertEqual(res_nt, expected_res1)
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        expected_res2 = nt.nested_tensor([
+                            nt.nested_tensor([
+                                torch.tensor([1])
+                            ]),
+                            nt.nested_tensor([
+                                torch.tensor([2])
+                            ]),
+                            nt.nested_tensor([
+                                torch.tensor([3])
+                            ])
+                        ])
+        self.assertEqual(res_nt, expected_res2)
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
+        expected_res3 = nt.nested_tensor([
+                            nt.nested_tensor([
+                                nt.nested_tensor([
+                                    torch.tensor(1)
+                                ])
+                            ]),
+                            nt.nested_tensor([
+                                nt.nested_tensor([
+                                    torch.tensor(2)
+                                ])
+                            ]),
+                            nt.nested_tensor([
+                                nt.nested_tensor([
+                                    torch.tensor(3)
+                                ])
+                            ])
+                        ])
+        self.assertEqual(res_nt, expected_res3)
+
+    def test_ntftm_test_multi_tensor_true_mask(self):
+        extected_nt1 = nt.nested_tensor([
+                    torch.tensor([[1]]),
+                    torch.tensor([[2]]),
+                    torch.tensor([[3]])
+                ])
+
+        extected_nt2 = nt.nested_tensor([
+                            nt.nested_tensor([
+                                torch.tensor([1])
+                            ]),
+                            nt.nested_tensor([
+                                torch.tensor([2])
+                            ]),
+                            nt.nested_tensor([
+                                torch.tensor([3])
+                            ])
+                        ])
+
+        tensor = torch.tensor([[[1]],
+                               [[2]],
+                               [[3]]])
+
+        # Mask dim 3 
+        mask3 = torch.tensor([[[True]],
+                              [[True]],
+                              [[True]]])
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask3)
+        self.assertEqual(extected_nt1, res_nt)
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask3, nested_dim=2)
+        self.assertEqual(extected_nt2, res_nt)
+
+        # Mask dim 2 
+        mask2 = torch.tensor([[True],
+                              [True],
+                              [True]])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask2)
+        self.assertEqual(extected_nt1, res_nt)
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask2, nested_dim=2)
+        self.assertEqual(extected_nt2, res_nt)
+
+        # Mask dim 1
+        mask1 = torch.tensor([True, True, True])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask1)
+        self.assertEqual(extected_nt1, res_nt)
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask1, nested_dim=2)
+        self.assertEqual(extected_nt2, res_nt)
+
+    def test_ntftm_test_single_tensor_all_false_mask(self): 
+        tensor = torch.tensor([[1]])
+        mask = torch.tensor([False])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([]))
+
+        tensor = torch.tensor([[1, 2, 3]])
+        mask = torch.tensor([False])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([]))
+
+    def test_ntftm_test_multi_tensor_all_false_mask(self):
+        tensor = torch.tensor([[[1], [2], [3]]])
+        mask = torch.tensor([False])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([]))
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        self.assertEqual(res_nt, nt.nested_tensor([]))
+
+        mask = torch.tensor([[[False], [False], [False]]])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([]))
+
 
 if __name__ == "__main__":
     unittest.main()

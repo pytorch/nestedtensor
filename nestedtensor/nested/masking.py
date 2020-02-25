@@ -12,13 +12,6 @@ def nested_tensor_from_padded_tensor(tensor, nested_dim=None, padding=-1):
     mask = (tensor != padding)
     return nested_tensor_from_tensor_mask(tensor, mask, nested_dim)
 
-"""
-Given a tensor t of size N_1 x N_2 x ... N_n and mask m of size M_1 x M_2 x ... M_d where d <= n
-return a NestedTensor of dimensionality d where subtensor t[i_1][i_2]...[i_d] is included as a Tensor constituent if m[i_1][i_2]...[i_d].
-The resulting NestedTensor will be of dimension n.
-Unless specific, it is attempted to yield a NestedTensor of minimal nested dimension.
-"""
-
 # TODO 
 # case with none passed 
 # case with empty passed 
@@ -26,6 +19,10 @@ Unless specific, it is attempted to yield a NestedTensor of minimal nested dimen
 # case when different devices passed
 
 def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
+    # Scalar was passed
+    if tensor.dim() == 0:
+        raise RuntimeError("Can't construct nested tensor from a scalar.")
+
     if nested_dim == 0:
         raise RuntimeError("Nested dimention can't be 0.")
 
@@ -35,68 +32,34 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
     if nested_dim is not None and nested_dim > tensor.dim():
         raise RuntimeError("Nested dimention ({0}) can't be bigger than data tensor dimention ({1}).".format(nested_dim, tensor.dim()))
 
+    if tensor.numel() == 0 and mask.numel() != 0:
+        raise RuntimeError("Data tensor can't be emtpy if a mask has values.")
+
+    if tensor.numel() != 0 and mask.numel() == 0:
+        raise RuntimeError("Mask tensor can't be emtpy if a data tensor has values.")
+
     return nt_from_tensor_mask(tensor, mask, nested_dim)
+
 
 def nt_from_tensor_mask(tensor, mask, nested_dim):
     if nested_dim == 0:
-        return tensor
+        if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
+            return tensor
+        else:
+            return None
     else:
         inner_tensors = []
-        for i in range(len(tensor)):
-            inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
-
-        return creation.nested_tensor(inner_tensors)
-
-
-def nested_tensor_from_tensor_mask2(tensor, mask, nested_dim=None):
-    if nested_dim == 0:
-        raise RuntimeError("Nested dimention can't be 0.")
-
-    #if not mask.dim() > 0:
-    #    raise RuntimeError("Mask has to have dimention > 0")
-
-    if nested_dim is not None and nested_dim > tensor.dim():
-        raise RuntimeError("Nested dimention ({0}) can't be bigger than data tensor dimention ({1}).".format(nested_dim, tensor.dim()))
-    
-    #if nested_dim is not None and mask.dim() < nested_dim:
-    #    raise ValueError("Mask dimension ({0}) is too small to construct nested tensor with nested dimension of ({1})".format(mask.dim(), nested_dim))
-
-    def create_nested_tensor(tensors, nested_dim=None):
-        #assert len(tensors) > 0, "Can't merge empty list of tensors. Please, report this error."
-
-        def should_create_nested_tensor(tensors, nested_dim):
-            if nested_dim == None:
-                if len(tensors) == 0:
-                    return True
-
-                size = tensors[0].size()
-                return any(size != t.size() for t in tensors)
-            else:
-                return nested_dim >= 1
-
-        if should_create_nested_tensor(tensors, nested_dim):
-            return creation.nested_tensor(tensors)
+        if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
+            for i in range(len(tensor)):
+                inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
+        elif (mask.numel() == 1 and mask == False):
+            inner_tensors.append(None)
         else:
-            return torch.stack(tensors)
+            inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
 
-    if mask.dim() == 1:
-        tensors = []
-        for i in range(len(mask)):
-            if mask[i]:
-                tensors.append(tensor[i])
-
-        #if len(tensors) == 0:
-        #    return tensor.narrow(0, 0, 0)
-
-        return create_nested_tensor(tensors, nested_dim)
-    else:
-        sub_nested_dim = None if nested_dim is None else nested_dim - 1
-        tensors = [nested_tensor_from_tensor_mask(
-            t, m, sub_nested_dim) for (t, m) in zip(tensor, mask)]
-        #tensors = list(filter(lambda x: x.numel() > 0, tensors))
-        if len(tensors) == 0:
-            return tensor.narrow(0, 0, 0)
-        return create_nested_tensor(tensors, nested_dim)
+        # Filtering out None values which were ignored by mask
+        inner_tensors = list(filter(lambda x: x is not None, inner_tensors))
+        return creation.nested_tensor(inner_tensors)
 
 
 # Return a tuple of a tensor and a mask that represent the given tensor list
