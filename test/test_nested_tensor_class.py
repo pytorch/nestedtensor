@@ -91,6 +91,13 @@ class TestNestedTensor(TestCase):
                 self.assertRaises(RuntimeError, lambda: constructor(
                     [torch.tensor([2.0]), constructor2([torch.tensor([3.0])])]))
             self.assertRaises(TypeError, lambda: constructor(4.0))
+            for constructor2 in _iter_constructors():
+                self.assertRaises(RuntimeError, lambda: constructor([
+                            constructor2([]),
+                            constructor2([
+                                torch.tensor([1], dtype=torch.float)
+                            ])
+                        ]))
 
     def test_default_constructor(self):
         # nested_dim is 1 and dim is 1 too.
@@ -110,10 +117,6 @@ class TestNestedTensor(TestCase):
                              default_tensor.requires_grad)
             self.assertEqual(default_nested_tensor.is_pinned(),
                              default_tensor.is_pinned())
-
-    # def test_scalar_constructor(self):
-    #     # Not a valid NestedTensor. This is not a list of Tensors or constructables for Tensors.
-    #     ntimeError, lambda: nestedtensor.nested_tensor([1.0]))
 
     def test_repr_string(self):
         for constructor in _iter_constructors():
