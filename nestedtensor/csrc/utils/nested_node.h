@@ -41,9 +41,6 @@ struct NestedNode {
     return _children;
   }
 
-  template <typename A>
-  friend inline c10::optional<A> get_first_leaf(NestedNode<A>);
-
   template <class F, class A, class TypeList>
   friend class _map;
 
@@ -130,22 +127,6 @@ inline std::vector<std::string> split_str(
   }
   result.push_back(s);
   return result;
-}
-
-template <typename A>
-inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
-  if (nested_node.is_leaf()) {
-    return nested_node.payload();
-  }
-  if (nested_node.degree() == 0) {
-    return c10::nullopt;
-  }
-  for (const auto& child : nested_node.unbind()) {
-    if (auto result = get_first_leaf(child)) {
-      return result;
-    }
-  }
-  return c10::nullopt;
 }
 
 template <class F, class A, class TypeList>

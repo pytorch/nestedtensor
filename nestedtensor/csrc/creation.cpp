@@ -23,7 +23,6 @@ NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
   }
 }
 
-
 bool _verify_variables(
     const int64_t dim,
     const at::Layout& layout,
@@ -182,6 +181,16 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   }
 }
 
+at::Tensor get_comparison_key(NestedNode<at::Tensor> nested_node) {
+  if (nested_node.is_leaf()) {
+    return nested_node.payload();
+  }
+  if (nested_node.degree() == 0) {
+    return torch::ones({});
+  }
+  return get_comparison_key(nested_node.children(0));
+}
+
 THPNestedTensor as_nested_tensor(py::sequence list) {
   NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
@@ -192,10 +201,9 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
       "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
   TensorNode structure =
       map([](c10::IValue a) { return a.toTensor(); }, ivalue_structure);
-  if (auto first = get_first_leaf(structure)) {
-    if (!_verify_variables(*first, structure)) {
-      _verify_variables(*first, structure, true);
-    }
+  at::Tensor key = get_comparison_key(structure);
+  if (!_verify_variables(key, structure)) {
+    _verify_variables(key, structure, true);
   }
   return THPNestedTensor(NestedTensor(std::move(structure)));
 }
