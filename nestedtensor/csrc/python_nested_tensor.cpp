@@ -132,16 +132,29 @@ py::object THPNestedTensor::unbind(int64_t dim) {
       }
       return py::cast(result);
     }
-  } else {
-    std::vector<THPNestedTensor> result;
-    if (dim == 0) {
-      for (const auto& _child : node.unbind()) {
-        auto child = _child;
-        result.push_back(THPNestedTensor(NestedTensor(std::move(child))));
-      }
+  }
+  std::vector<THPNestedTensor> result;
+  if (dim == 0) {
+    for (auto child : node.unbind()) {
+      result.push_back(THPNestedTensor(NestedTensor(std::move(child))));
     }
     return py::cast(result);
   }
+  std::vector<std::vector<TensorNode>> unbound;
+  for (size_t i = 0; i < result.size(); i++) {
+    std::vector<THPNestedTensor> tmp = result[i].unbind(dim - 1);
+    for (size_t j = 0; j < tmp.size(); j++) {
+      if (unbound.size() >= j) {
+        unbound.resize(j + 1);
+      }
+      unbound[j].push_back(tmp[j]._data.get_structure());
+    }
+  }
+  for (size_t i = 0; i < unbound.size(); i++) {
+    TensorNode tmp = TensorNode(std::move(unbound[i]));
+    result.push_back(THPNestedTensor(NestedTensor(std::move(tmp))));
+  }
+  return py::cast(result);
 }
 
 } // namespace nested_tensor
