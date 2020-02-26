@@ -45,10 +45,13 @@ def nt_from_tensor_mask(tensor, mask, nested_dim):
     if nested_dim == 0:
         if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
             return tensor
+        if mask.numel() > 1:
+            return tensor.masked_select(mask)
         else:
             return None
     else:
         inner_tensors = []
+
         if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
             for i in range(len(tensor)):
                 inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
