@@ -18,6 +18,52 @@ def nested_tensor_from_padded_tensor(tensor, nested_dim=None, padding=-1):
 # case when not tensor passed 
 # case when different devices passed
 
+def nested_tensor_from_tensor_mask2(tensor, mask, nested_dim=None):
+    # TODO: Should be possible with views only.
+    if not mask.dim() > 0:
+        raise RuntimeError("Mask has to have dimention > 0")
+
+    # TODO: Need to define empty-list and 0 numel semantics
+    # TODO: Test edge-cases and kwargs
+    def _merge(tensors, nested_dim=None):
+        assert len(tensors) > 0
+
+        def _mergable_tensors(tensors, nested_dim):
+            if nested_dim is None:
+                size0 = tensors[0].size()
+                compliant = all(torch.is_tensor(t) for t in tensors)
+                compliant = all(size0 == t.size()
+                                for t in tensors) and compliant
+                return compliant
+            else:
+                return nested_dim < 1
+
+        if _mergable_tensors(tensors, nested_dim):
+            return torch.stack(tensors)
+        else:
+            return creation.nested_tensor(tensors)
+
+    if nested_dim is not None and mask.dim() < nested_dim:
+        raise ValueError("Mask dimension ({0}) is too small to construct nested tensor with nested dimension of {1}".format(mask.dim(), nested_dim))
+
+    if mask.dim() == 1:
+        tensors = [tensor[i] if mask[i]
+                   else None for i in range(len(mask))]
+        tensors = list(filter(lambda x: x is not None, tensors))
+        if len(tensors) == 0:
+            return tensor.narrow(0, 0, 0)
+        return _merge(tensors, nested_dim)
+    else:
+        sub_nested_dim = None if nested_dim is None else nested_dim - 1
+        tensors = [nested_tensor_from_tensor_mask(
+            t, m, sub_nested_dim) for (t, m) in zip(tensor, mask)]
+        if not all(t.numel() == 0 for t in tensors):
+            tensors = list(filter(lambda x: x.numel() > 0, tensors))
+        if len(tensors) == 0:
+            return tensor.narrow(0, 0, 0)
+        return _merge(tensors, nested_dim)
+
+
 def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
     # Scalar was passed
     if tensor.dim() == 0:
@@ -38,27 +84,58 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
     if tensor.numel() != 0 and mask.numel() == 0:
         raise RuntimeError("Mask tensor can't be emtpy if a data tensor has values.")
 
-    return nt_from_tensor_mask(tensor, mask, nested_dim)
+    return nt_from_tensor_mask(tensor, mask, nested_dim, tensor.dtype)
 
 
-def nt_from_tensor_mask(tensor, mask, nested_dim):
+def nt_from_tensor_mask(tensor, mask, nested_dim, dt):
+
+    #    def _merge(tensors, nested_dim=None):
+    #        assert len(tensors) > 0
+    #        def _mergable_tensors(tensors, nested_dim):
+    #            if nested_dim is None:
+    #                size0 = tensors[0].size()
+    #                compliant = all(torch.is_tensor(t) for t in tensors)
+    #                compliant = all(size0 == t.size()
+    #                                for t in tensors) and compliant
+    #                return compliant
+    #            else:
+    #                return nested_dim < 1
+    #        if _mergable_tensors(tensors, nested_dim):
+    #            return torch.stack(tensors)
+    #        else:
+    #            return creation.nested_tensor(tensors)
+    #
+
+    def _merge(tensors, nested_dim):
+        if len(tensors) == 0:
+            return torch.tensor([], dtype=dt)
+        return torch.stack(tensors)
+
     if nested_dim == 0:
         if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
             return tensor
-        if mask.numel() > 1:
-            return tensor.masked_select(mask)
+
+        if mask.dim() == 1:
+            tensors = [tensor[i] if mask[i] else None for i in range(len(mask))]
+            tensors = list(filter(lambda x: x is not None, tensors))
+            return _merge(tensors, nested_dim)
+
+        if mask.dim() > 1:
+            tensors = [nt_from_tensor_mask(t, m, nested_dim, dt) for (t, m) in zip(tensor, mask)]
+            if not all(t.numel() == 0 for t in tensors):
+                tensors = list(filter(lambda x: x.numel() > 0, tensors))
+            return _merge(tensors, nested_dim)
         else:
             return None
     else:
         inner_tensors = []
-
         if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
             for i in range(len(tensor)):
-                inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
+                inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1, dt))
         elif (mask.numel() == 1 and mask == False):
             inner_tensors.append(None)
         else:
-            inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
+            inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1, dt) for (t, m) in zip(tensor, mask)]
 
         # Filtering out None values which were ignored by mask
         inner_tensors = list(filter(lambda x: x is not None, inner_tensors))

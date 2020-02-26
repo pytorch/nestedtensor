@@ -14,6 +14,7 @@ class TestTensorMask(TestCase):
     #
     # Group of tests to test to_tensor_mask() 
     # 
+
     def test_gen_nested_tensor(self):
         nt1 = utils.gen_nested_tensor(seed=1, nested_dim=1, tensor_dim=1, size_low=2, size_high=2)
         self.assertTrue(nt.is_nested_tensor(nt1))
@@ -368,7 +369,8 @@ class TestTensorMask(TestCase):
         
         for dim in range(4):
             self.assertRaisesRegex(RuntimeError, "Mask dimention is too small to represent data tensor.", lambda: a.to_tensor_mask(mask_dim=dim))
-    
+
+
     #
     # Group of tests to test nested_tensor_from_tensor_mask() 
     #
@@ -639,11 +641,34 @@ class TestTensorMask(TestCase):
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
         self.assertEqual(res_nt, nt.nested_tensor([]))
 
+        mask = torch.tensor([False, False, False])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, nt.nested_tensor([]))
+
+        mask = torch.tensor([[False], [False], [False]])
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
+        self.assertEqual(res_nt, 
+                         nt.nested_tensor([
+                             torch.tensor([], dtype=tensor.dtype)
+                         ]))
+
+    def test_ntftm_multi_tensor_all_false_mask2(self):
+        tensor = torch.tensor([[[1], [2], [3]]])
         mask = torch.tensor([[[False], [False], [False]]])
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
         self.assertEqual(res_nt, 
                          nt.nested_tensor([
-                            torch.tensor([], dtype=torch.int64)
+                            torch.empty((3, 0), dtype=tensor.dtype)
+                         ]))
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
+        self.assertEqual(res_nt, 
+                         nt.nested_tensor([
+                            nt.nested_tensor([
+                                torch.tensor([], dtype=tensor.dtype),
+                                torch.tensor([], dtype=tensor.dtype),
+                                torch.tensor([], dtype=tensor.dtype)
+                            ])
                          ]))
 
     def test_ntgtm_multi_scalar_mix_mask(self):
@@ -717,7 +742,6 @@ class TestTensorMask(TestCase):
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
         self.assertEqual(expected_nt2, res_nt)
 
-    #TODO: FIX
     def test_ntftm_test_multi_tensor_mix_mask2(self):
         expected_nt1 = nt.nested_tensor([
             torch.tensor([[1, 2, 3]]),
@@ -764,13 +788,12 @@ class TestTensorMask(TestCase):
 
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=4))
 
-    #TODO: FIX
     def test_ntftm_test_multi_tensor_mix_mask3(self):
         expected_nt2 = nt.nested_tensor([
             nt.nested_tensor([
                 torch.tensor([[[1, 2, 3, 4],
                                [5, 6, 7, 8]]]),
-                torch.tensor([[[1, 2],
+                torch.tensor([[[0, 0],
                                [3, 4]]]),
                 torch.tensor([[[1]]])
             ])
@@ -783,7 +806,8 @@ class TestTensorMask(TestCase):
                                       [5, 6, 7, 8]])
                     ]),
                     nt.nested_tensor([
-                        torch.tensor([[1, 2], [3, 4]])
+                        torch.tensor([[0, 0], 
+                                      [3, 4]])
                     ]),
                     nt.nested_tensor([
                         torch.tensor([[1]])
@@ -807,7 +831,50 @@ class TestTensorMask(TestCase):
                 ]),
                 nt.nested_tensor([
                         nt.nested_tensor([
-                            torch.tensor([1])
+                            torch.tensor([1]),
+                            torch.tensor([], dtype=torch.long)
+                        ])
+                ])
+            ])
+        ])
+
+        expected_nt5 = nt.nested_tensor([
+            nt.nested_tensor([
+                nt.nested_tensor([
+                    nt.nested_tensor([
+                        nt.nested_tensor([
+                            torch.tensor(1),
+                            torch.tensor(2),
+                            torch.tensor(3),
+                            torch.tensor(4)
+                        ]),
+                        nt.nested_tensor([
+                            torch.tensor(5),
+                            torch.tensor(6),
+                            torch.tensor(7),
+                            torch.tensor(8)
+                        ]),
+                    ])
+                ]),
+                nt.nested_tensor([
+                        nt.nested_tensor([
+                            nt.nested_tensor([
+                                torch.tensor(0),
+                                torch.tensor(0)
+                            ]),
+                            nt.nested_tensor([
+                                torch.tensor(3),
+                                torch.tensor(4)
+                            ])
+                        ])
+                ]),
+                nt.nested_tensor([
+                        nt.nested_tensor([
+                            nt.nested_tensor([
+                                torch.tensor(1)
+                            ]),
+                            nt.nested_tensor([
+                            ])
                         ])
                 ])
             ])
@@ -843,7 +910,9 @@ class TestTensorMask(TestCase):
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=4)
         self.assertEqual(expected_nt4, res_nt)
 
-        #TODO ADD CASE FOR 5
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=5)
+        self.assertEqual(expected_nt5, res_nt)
+
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=6))
 
 if __name__ == "__main__":
