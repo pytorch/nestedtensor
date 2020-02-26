@@ -1015,15 +1015,15 @@ class TestTensorMask(TestCase):
             nt.nested_tensor([
                 nt.nested_tensor([
                     torch.tensor([[1, 2, 3, 4],
-                                  [5, 6, 7, 8]])
+                                  [5, 6, 7, 8]], dtype=torch.float16, device='cuda', requires_grad=False)
                 ]),
                 nt.nested_tensor([
                     torch.tensor([[1, 2, 3, 4],
-                                  [5, 6, 7, 8]])
+                                  [5, 6, 7, 8]], dtype=torch.float16, device='cuda', requires_grad=False)
                 ]),
                 nt.nested_tensor([
                     torch.tensor([[1, 2, 3, 4],
-                                  [5, 6, 7, 8]])
+                                  [5, 6, 7, 8]], dtype=torch.float16, device='cuda', requires_grad=False)
                 ]),
             ])
         ])
@@ -1033,6 +1033,7 @@ class TestTensorMask(TestCase):
             res_nt = nt.nested_tensor_from_tensor_mask(t, m, nested_dim=a.nested_dim())
             self.assertEqual(a, res_nt)
             self.assertEqual(res_nt.nested_dim(), a.nested_dim())
+            check_tensor_options(self, a, res_nt)
 
 if __name__ == "__main__":
     unittest.main()
