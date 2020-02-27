@@ -83,21 +83,18 @@ def nt_from_tensor_mask(tensor, mask, nested_dim, dt):
 # If mask_dim was not passed, a mask with the smallest dimensionality would be returned.
 # if passed mask_dim is lower than the minimal dimensionality of the mask that can represent 
 # the data tensor, an error is thrown.
+
 def to_tensor_mask(nt, mask_dim):
     if mask_dim is not None and mask_dim > nt.dim():
         raise RuntimeError("Mask dimention is bigger than nested dimention of a nested tensor.")
 
     # Check if scalar was passed
     if not isinstance(nt, list) and nt.size() == (1,):
-        tensor_lst = nt
+        res_scalar = torch.tensor([nt[0].item()], dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
+        return res_scalar, torch.tensor(True)
     else:
         tensor_lst = nt.to_list()
 
-    # check if a scalar was passed
-    if not isinstance(tensor_lst, list) and tensor_lst.size() == (1,):
-        res_scalar = torch.tensor([tensor_lst[0].item()], dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
-        return res_scalar, torch.tensor(True)
-    
     assert isinstance(tensor_lst, list), "A scalar or a list was expected. Please, report this error."
     
     tensor_mask_tuple = make_tensor_mask_tuple(tensor_lst, nt)
@@ -126,7 +123,7 @@ def merge_tensor_mask(tensor_mask, mask_dim):
     mask = tensor_mask.mask
     if mask_dim is not None and mask.dim() == mask_dim:
         return tensor_mask
-    
+
     if mask.dim() == 0:
         if mask:
             return tensor_mask
