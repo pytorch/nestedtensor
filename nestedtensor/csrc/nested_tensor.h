@@ -1,6 +1,6 @@
 #pragma once
-#include <utils/nested_node.h>
 #include <torch/extension.h>
+#include <utils/nested_node.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -85,19 +85,38 @@ struct NestedTensor {
   int64_t __len__() const {
     return _structure.degree();
   }
+  const std::vector<TensorNode> unbind() {
+    return _structure.unbind();
+  }
   at::Tensor to_tensor() {
-    if (is_contiguous()) {
-      std::vector<int64_t> new_size;
-      for (const auto& si : size()) {
-        if (!si) {
-          throw std::runtime_error(
-              "to_tensor only works if none of size() is None.");
-        }
-        new_size.push_back(*si);
+    std::vector<int64_t> new_size;
+    for (const auto& si : size()) {
+      if (!si) {
+        throw std::runtime_error(
+            "to_tensor only works if none of size() is None.");
       }
+      new_size.push_back(*si);
+    }
+    if (is_contiguous()) {
       return (*_buffer).reshape(at::IntArrayRef(new_size));
     }
+    // TODO: Not necessarily a view because of stack. Fix this?
     return stack(flatten(_structure).vec());
+  }
+  NestedTensor to_tensor(int64_t dim) {
+    dim = at::maybe_wrap_dim(dim, dim());
+    TORCH_CHECK(dim == 0, "For dimension set to 0 please call to_tensor()");
+    // If dim is bigger than nested_dim the NestedTensor is already
+    // of Tensor for dimensions bigger than the given.
+    if (nested_dim() == 1) {
+      return *this;
+    }
+    std::vector<TensorNode> result;
+    for (TensorNode child : unbind()) {
+      result.push_back(
+          NestedTensor(std::move(child)).to_tensor(dim - 1).get_structure());
+    }
+    return NestedTensor(TensorNode(std::move(result)));
   }
   int64_t nested_dim() const {
     return _structure.height();
