@@ -104,7 +104,7 @@ struct NestedTensor {
     return stack(flatten(_structure).vec());
   }
   NestedTensor to_tensor(int64_t dim) {
-    dim = at::maybe_wrap_dim(dim, dim());
+    dim = at::maybe_wrap_dim(dim, this->dim());
     TORCH_CHECK(dim == 0, "For dimension set to 0 please call to_tensor()");
     // If dim is bigger than nested_dim the NestedTensor is already
     // of Tensor for dimensions bigger than the given.
