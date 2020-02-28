@@ -1,9 +1,9 @@
 #include <creation.h>
 #include <jit_list_apply.h>
-#include <utils/nested_node_functions.h>
-#include <utils/python_nested_node.h>
 #include <torch/extension.h>
 #include <unary.h>
+#include <utils/nested_node_functions.h>
+#include <utils/python_nested_node.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
@@ -20,10 +20,8 @@
 // If depth is 0, it means that the current structure
 // is already a leaf, i.e. has no children.
 
-
 using namespace torch::nested_tensor;
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-
   register_python_nested_node(m);
 
   // NOTE: Never forget about pybind return value policies
@@ -64,7 +62,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("is_contiguous", &THPNestedTensor::is_contiguous)
       .def("contiguous", &THPNestedTensor::contiguous)
       .def("get_buffer", &THPNestedTensor::get_buffer)
-      .def("to_tensor", &THPNestedTensor::to_tensor)
+      .def("to_tensor", py::overload_cast<>(&THPNestedTensor::to_tensor))
+      .def("to_tensor", py::overload_cast<int64_t>(&THPNestedTensor::to_tensor))
       .def("to_list", &THPNestedTensor::to_list)
       .def("to_tuple", &THPNestedTensor::to_tuple)
       .def("__str__", &THPNestedTensor::str)
