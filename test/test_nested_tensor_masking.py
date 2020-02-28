@@ -384,6 +384,32 @@ class TestTensorMask(TestCase):
         self.assertEqual(expected_m, mask)
         check_tensor_options(self, tensor, a)
 
+    def test_multi_tensor3(self):
+        a = nt.nested_tensor([
+                nt.nested_tensor([
+                    torch.tensor([[1, 2, 3], [4, 5, 6]]),
+                    torch.tensor([[1, 2, 0, 4], [4, 0, 6, 5]]),
+                    torch.tensor([[0, 0], [0, 0]])
+                ])
+            ])
+
+        expected_t = torch.tensor([[
+            [[1, 2, 3, 0], [4, 5, 6, 0]],
+            [[1, 2, 0, 4], [4, 0, 6, 5]],
+            [[0, 0, 0, 0], [0, 0, 0, 0]]
+        ]])
+
+        expected_m = torch.tensor([[
+            [[True, True, True, False], [True, True, True, False]],
+            [[True, True, True, True], [True, True, True, True]],
+            [[True, True, False, False], [True, True, False, False]]    
+        ]])
+
+        tensor, mask = a.to_tensor_mask()
+        self.assertEqual(expected_t, tensor)
+        self.assertEqual(expected_m, mask)
+        check_tensor_options(self, tensor, a)
+
     def test_mask_dim_too_small_error(self):
         a = nt.nested_tensor([
             torch.tensor([1, 2,]),
