@@ -489,6 +489,24 @@ class TestTensorMask(TestCase):
 
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, tensor, nested_dim=3))
 
+    def test_ntftm_empty3(self):
+        tensor = torch.tensor([0])
+        mask = torch.tensor(False)
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, tensor)
+        self.assertEqual(res_nt, nt.nested_tensor([]))
+
+        tensor = torch.tensor([[0], [0]])
+        mask = torch.tensor(False)
+
+        expected_nt = nt.nested_tensor([
+            nt.nested_tensor([]),
+            nt.nested_tensor([])
+        ])
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, tensor, nested_dim=expected_nt.nested_dim())
+        self.assertEqual(res_nt, expected_nt)
+
     def test_ntftm_empty_error(self):
         tensor = torch.tensor([])
         mask = torch.tensor([True])

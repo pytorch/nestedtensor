@@ -172,7 +172,6 @@ def to_tensor_mask(nt, mask_dim):
     max_size = get_max_size_nt(nt)
     res_tensor = get_result_tensor(nt, max_size)
     res_mask = get_result_mask(nt, max_size)
-
     tensor_mask_tuple = merge_tensor_mask(TensorMask(res_tensor, res_mask), mask_dim)
 
     return tensor_mask_tuple.tensor, tensor_mask_tuple.mask
