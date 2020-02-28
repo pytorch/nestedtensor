@@ -50,8 +50,8 @@ class TestTensorMask(TestCase):
         a = nt.nested_tensor([])
         tensor, mask = a.to_tensor_mask()
 
-        self.assertEqual(mask, torch.tensor([]))
-        self.assertEqual(tensor, torch.tensor([]))
+        self.assertEqual(mask, torch.tensor(False))
+        self.assertEqual(tensor, torch.tensor([0]))
         check_tensor_options(self, tensor, a)
 
         a = nt.nested_tensor([
@@ -59,8 +59,9 @@ class TestTensorMask(TestCase):
         ])
 
         tensor, mask = a.to_tensor_mask()
-        self.assertEqual(mask, torch.tensor([[]]))
-        self.assertEqual(tensor, torch.tensor([[]]))
+
+        self.assertEqual(mask, torch.tensor(False))
+        self.assertEqual(tensor, torch.tensor([[0]]))
         check_tensor_options(self, tensor, a)
 
         a = nt.nested_tensor([
@@ -69,8 +70,8 @@ class TestTensorMask(TestCase):
         ])
 
         tensor, mask = a.to_tensor_mask()
-        self.assertEqual(mask, torch.tensor([[], []]))
-        self.assertEqual(tensor, torch.tensor([[], []]))
+        self.assertEqual(mask, torch.tensor(False))
+        self.assertEqual(tensor, torch.tensor([[0], [0]]))
         check_tensor_options(self, tensor, a)
 
     #TODO once .to_list() bug fixed
