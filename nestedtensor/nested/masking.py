@@ -104,11 +104,10 @@ def get_max_size_nt(obj, res=[1]):
     return res
 
 
-# TODO: mereg padding method with the one from get_result_tensor once NT.fill_ works
-# as expected for NT([])
-def get_result_mask(nt, shape):
+def get_tensor_mask(nt, shape):
     def pad_nt(nt, shape):
-        res = []
+        res_tensor = []
+        res_mask = []
 
         if isinstance(nt, torch.Tensor):
             if nt.numel() == 0:
@@ -116,44 +115,26 @@ def get_result_mask(nt, shape):
 
             # Dont pad in case of a scalar
             if nt.dim() == 0:
-                return nt.item()
+                return nt.item(), nt.item()
 
-            return pad_tensor_to_shape(nt.new_full(nt.size(), True), shape).tolist()
+            t = pad_tensor_to_shape(nt, shape).tolist()
+            m = pad_tensor_to_shape(nt.new_full(nt.size(), True), shape).tolist()
+            return t, m
         else:
             if len(nt) == 0:
-                return [0]
+                return [0], [0]
             else:
                 for entry in nt:
-                    res.append(pad_nt(entry, shape))
+                    a, b = pad_nt(entry, shape)
+                    res_tensor.append(a)
+                    res_mask.append(b)
 
-        return res
+        return res_tensor, res_mask
 
-    return torch.tensor(pad_nt(nt, shape), dtype=torch.bool, device=nt.device)
-
-
-def get_result_tensor(nt, shape):
-    def pad_nt(nt, shape):
-        res = []
-
-        if isinstance(nt, torch.Tensor):
-            if nt.numel() == 0:
-                raise RuntimeError("Empty tensors are not yet supported.")
-            
-            # Dont pad in case of a scalar
-            if nt.dim() == 0:
-                return nt.item()
-
-            return pad_tensor_to_shape(nt, shape).tolist()
-        else:
-            if len(nt) == 0:
-                return [0]
-            else:
-                for entry in nt:
-                    res.append(pad_nt(entry, shape))
-
-        return res
-
-    return torch.tensor(pad_nt(nt, shape), dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
+    t, m = pad_nt(nt, shape)
+    tensor = torch.tensor(t, dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
+    mask = torch.tensor(m, dtype=torch.bool, device=nt.device)
+    return tensor, mask
 
 # Return a tuple of a tensor and a mask that represent the given tensor list
 # Returned tensor is always the same no matter what mask_dim was passed.
@@ -170,8 +151,7 @@ def to_tensor_mask(nt, mask_dim):
         return res_scalar, torch.tensor(True)
 
     max_size = get_max_size_nt(nt)
-    res_tensor = get_result_tensor(nt, max_size)
-    res_mask = get_result_mask(nt, max_size)
+    res_tensor, res_mask = get_tensor_mask(nt, max_size)
     tensor_mask_tuple = merge_tensor_mask(TensorMask(res_tensor, res_mask), mask_dim)
 
     return tensor_mask_tuple.tensor, tensor_mask_tuple.mask
