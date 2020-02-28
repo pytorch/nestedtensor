@@ -25,13 +25,10 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
         raise RuntimeError("Can't construct nested tensor from a scalar.")
 
     if nested_dim == 0:
-        raise RuntimeError("Nested dimention can't be 0.")
-
-    if mask.dim() == 0 and mask == False:
-        raise RuntimeError("Scalar mask cant be False.")
+        raise RuntimeError("Nested dimension can't be 0.")
 
     if nested_dim is not None and nested_dim > tensor.dim():
-        raise RuntimeError("Nested dimention ({0}) can't be bigger than data tensor dimention ({1}).".format(nested_dim, tensor.dim()))
+        raise RuntimeError("Nested dimension ({0}) can't be bigger than data tensor dimension ({1}).".format(nested_dim, tensor.dim()))
 
     if tensor.numel() == 0 and mask.numel() != 0:
         raise RuntimeError("Data tensor can't be emtpy if a mask has values.")
@@ -79,13 +76,13 @@ def nt_from_tensor_mask(tensor, mask, nested_dim, dt):
         return creation.nested_tensor(inner_tensors)
 
 
-def get_max_size_nt(obj, res=[1]):
+def get_max_size(obj, res=[1]):
     if isinstance(obj, list) or isinstance(obj, tuple):
         for o in obj:
-            res = get_max_size_nt(o, res)
+            res = get_max_size(o, res)
 
     if isinstance(obj, nestedtensor.nested.nested.NestedTensor):
-        tres = get_max_size_nt(obj.unbind())
+        tres = get_max_size(obj.unbind())
         while len(tres) > len(res):
                 res.append(0)
 
@@ -143,14 +140,14 @@ def get_tensor_mask(nt, shape):
 # the data tensor, an error is thrown.
 def to_tensor_mask(nt, mask_dim):
     if mask_dim is not None and mask_dim > nt.dim():
-        raise RuntimeError("Mask dimention is bigger than nested dimention of a nested tensor.")
+        raise RuntimeError("Mask dimension is bigger than nested dimension of a nested tensor.")
 
     # Check if scalar was passed
     if not isinstance(nt, list) and nt.size() == (1,):
         res_scalar = torch.tensor([nt[0].item()], dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
         return res_scalar, torch.tensor(True)
 
-    max_size = get_max_size_nt(nt)
+    max_size = get_max_size(nt)
     res_tensor, res_mask = get_tensor_mask(nt, max_size)
     tensor_mask_tuple = merge_tensor_mask(TensorMask(res_tensor, res_mask), mask_dim)
 
@@ -175,7 +172,7 @@ def merge_tensor_mask(tensor_mask, mask_dim):
         return merge_tensor_mask(TensorMask(tensor=tensor, mask=collapsed_mask), mask_dim)
     
     if mask_dim is not None and mask_dim != mask.dim():
-        raise RuntimeError("Mask dimention is too small to represent data tensor.")
+        raise RuntimeError("Mask dimension is too small to represent data tensor.")
     return TensorMask(tensor=tensor, mask=mask)
 
 
