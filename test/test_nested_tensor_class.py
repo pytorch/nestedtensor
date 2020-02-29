@@ -360,8 +360,10 @@ class TestNestedTensor(TestCase):
         c = torch.rand(4, 3)
         nt = nestedtensor.nested_tensor([[a], [b, c]])
         nt_a, nt_b = nt.unbind(0)
-        self.assertEqual(nt_a, nestedtensor.nested_tensor([a]), ignore_contiguity=True)
-        self.assertEqual(nt_b, nestedtensor.nested_tensor([b, c]), ignore_contiguity=True)
+        self.assertEqual(nt_a, nestedtensor.nested_tensor(
+            [a]), ignore_contiguity=True)
+        self.assertEqual(nt_b, nestedtensor.nested_tensor(
+            [b, c]), ignore_contiguity=True)
         result = (
             nestedtensor.nested_tensor([a, b]),
             nestedtensor.nested_tensor([c]))
@@ -369,27 +371,44 @@ class TestNestedTensor(TestCase):
             self.assertEqual(x, y, ignore_contiguity=True)
 
     def test_size(self):
-        a = nestedtensor.nested_tensor([])
-        self.assertEqual(a.size(), (0,))
+        for constructor in _iter_constructors():
+            a = constructor([])
+            self.assertEqual(a.size(), (0,))
 
-        a = nestedtensor.nested_tensor([torch.tensor(1)])
-        self.assertEqual(a.size(), (1,))
+            a = constructor([torch.tensor(1)])
+            self.assertEqual(a.size(), (1,))
 
-        a = nestedtensor.nested_tensor([torch.tensor(1), torch.tensor(2)])
-        self.assertEqual(a.size(), (2,))
+            a = constructor([torch.tensor(1), torch.tensor(2)])
+            self.assertEqual(a.size(), (2,))
 
-        a = nestedtensor.nested_tensor([[torch.rand(1, 8),
-                                         torch.rand(3, 8)],
-                                        [torch.rand(7, 8)]])
-        self.assertEqual(a.size(), (2, None, None, 8))
+            a = constructor([[torch.rand(1, 8),
+                              torch.rand(3, 8)],
+                             [torch.rand(7, 8)]])
+            self.assertEqual(a.size(), (2, None, None, 8))
 
-        a = nestedtensor.nested_tensor([torch.rand(1, 2),
-                                        torch.rand(1, 8)])
-        self.assertEqual(a.size(), (2, 1, None))
+            a = constructor([torch.rand(1, 2),
+                             torch.rand(1, 8)])
+            self.assertEqual(a.size(), (2, 1, None))
 
-        a = nestedtensor.nested_tensor([torch.rand(3, 4),
-                                        torch.rand(5, 4)])
-        self.assertEqual(a.size(), (2, None, 4))
+            a = constructor([torch.rand(3, 4),
+                             torch.rand(5, 4)])
+            self.assertEqual(a.size(), (2, None, 4))
+
+    def test_to_tensor(self):
+        for constructor in _iter_constructors():
+            # a = constructor([torch.tensor(1)])
+            a = constructor([torch.randn(1, 2)])
+            print("-a-")
+            print(a.to_tensor())
+            # print(a.to_tensor(0))
+            print(a.to_tensor(1))
+            print(a.to_tensor(2))
+            print("-b-")
+            # self.assertEqual(a.nested_size().unbind(), [[]])
+
+            # a = constructor(
+            #     [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
+            # na = [[1, 2], [2, 3], [4, 5]]
 
     def test_to(self):
         tensors = [torch.randn(1, 8),

@@ -89,8 +89,28 @@ struct THPNestedTensor {
   int64_t numel() {
     return _data.numel();
   }
-  at::Tensor to_tensor() {
-    return _data.to_tensor();
+  // TODO: Can't have mixed return types in C++
+  // for different input values.
+  py::object to_tensor(c10::optional<int64_t> dim_) {
+    if (!dim_) {
+      return _data.to_tensor();
+    }
+    int64_t dim = at::maybe_wrap_dim((*dim_), _data.dim());
+    if (dim == 0) {
+      return _data.to_tensor();
+    }
+    TORCH_CHECK(dim == 0, "For dimension set to 0 please call to_tensor()");
+    // If dim is bigger than nested_dim the NestedTensor is already
+    // of Tensor for dimensions bigger than the given.
+    if (nested_dim() == 1) {
+      return *this;
+    }
+    std::vector<TensorNode> result;
+    for (TensorNode child : unbind()) {
+      result.push_back(
+          NestedTensor(std::move(child)).to_tensor(dim - 1).get_structure());
+    }
+    return NestedTensor(TensorNode(std::move(result)));
   }
   THPNestedTensor contiguous() {
     return _data.contiguous();
