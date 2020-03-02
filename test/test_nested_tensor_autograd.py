@@ -63,5 +63,42 @@ class TestNestedTensorAutograd(TestCase):
         self.assertIsNone(nt2[0].grad)
         self.assertIsNone(nt2[1].grad)
         self.assertIsNone(nt2[2].grad)
+
+    def test_grad_nt_from_tensor_mask(self):
+        def some_func(x):
+            return torch.sum(x ** 2 + x ** 3)
+
+        t1 = torch.tensor([1., 2., 3., 4.], requires_grad=True)
+        t2 = torch.tensor([1., 2., 3.], requires_grad=True)
+        t3 = torch.tensor([1., 2.], requires_grad=True)
+
+        res1 = some_func(t1)
+        res2 = some_func(t2)
+        res3 = some_func(t3)
+        total_t_sum = res1 + res2 + res3
+
+        res1.backward()
+        res2.backward()
+        res3.backward()
+
+        nt_tensor = torch.tensor([[1., 2., 3., 4.],
+                                  [1., 2., 3., 0.],
+                                  [1., 2., 0., 0.]], requires_grad=True)
+        nt_mask = torch.tensor([[ True,  True,  True,  True],
+                                [ True,  True,  True, False],
+                                [ True,  True, False, False]])
+
+        nt = nestedtensor.nested_tensor_from_tensor_mask(nt_tensor, nt_mask)
+        self.assertEqual(True, nt.requires_grad)
+        
+        nt_sum_res = some_func(nt)
+        nt_sum_res.backward()
+
+        self.assertEqual(total_t_sum, nt_sum_res)
+        self.assertIsNone(nt[0].grad)
+        self.assertIsNone(nt[1].grad)
+        self.assertIsNone(nt[2].grad)
+
+
 if __name__ == "__main__":
     unittest.main()
