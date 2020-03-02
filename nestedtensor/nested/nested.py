@@ -188,10 +188,6 @@ class NestedTensor(object):
         """
         Not necessarily a view.
         """
-        dim = utils._wrap_dim(self, dim)
-        # Convert entire NestedTensor into Tensor
-        if dim == 0:
-            return self._impl.to_tensor()
         return self._impl.to_tensor(dim)
 
     def __repr__(self):

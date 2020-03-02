@@ -397,10 +397,14 @@ class TestNestedTensor(TestCase):
     def test_to_tensor(self):
         for constructor in _iter_constructors():
             # a = constructor([torch.tensor(1)])
-            a = constructor([torch.randn(1, 2)])
-            print("-a-")
+            a = constructor([[torch.randn(2, 2), torch.randn(2, 2)]])
+            print("-a1-")
+            print(a)
             print(a.to_tensor())
-            # print(a.to_tensor(0))
+            a = constructor([[torch.randn(2, 2), torch.randn(2, 2)], [torch.randn(2, 2), torch.randn(2, 2)]])
+            print("-a2-")
+            print(a)
+            print(a.to_tensor(0))
             print(a.to_tensor(1))
             print(a.to_tensor(2))
             print("-b-")
