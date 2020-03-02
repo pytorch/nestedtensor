@@ -67,7 +67,7 @@ class TestTensorMask(TestCase):
 
         tensor, mask = a.to_tensor_mask(mask_dim=1)
         TestCase.assertEqual(self, tensor, torch.tensor([1], dtype=torch.uint8))
-        TestCase.assertEqual(self, mask, torch.tensor(True))
+        TestCase.assertEqual(self, mask, torch.tensor([True]))
 
         self.assertRaisesRegex(RuntimeError, "Mask dimension is bigger than nested dimension of a nested tensor.", lambda: a.to_tensor_mask(mask_dim=2))
 

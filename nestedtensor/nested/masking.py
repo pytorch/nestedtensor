@@ -145,7 +145,8 @@ def to_tensor_mask(nt, mask_dim):
     # Check if scalar was passed
     if not isinstance(nt, list) and nt.size() == (1,):
         res_scalar = torch.tensor([nt[0].item()], dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
-        return res_scalar, torch.tensor(True)
+        mask = torch.tensor(True) if mask_dim == 0 or mask_dim == None else torch.tensor([True])
+        return res_scalar, mask
 
     max_size = get_max_size(nt)
     res_tensor, res_mask = get_tensor_mask(nt, max_size)
