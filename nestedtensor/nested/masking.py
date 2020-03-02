@@ -13,6 +13,8 @@ def nested_tensor_from_padded_tensor(tensor, nested_dim=None, padding=-1):
     mask = (tensor != padding)
     return nested_tensor_from_tensor_mask(tensor, mask, nested_dim)
 
+
+# Constructs nested tensor from passed tensor and mask.
 def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
     if tensor is None:
         raise RuntimeError("Tensor can't be undefined (None).")
@@ -75,7 +77,7 @@ def nt_from_tensor_mask(tensor, mask, nested_dim, dt):
         inner_tensors = list(filter(lambda x: x is not None, inner_tensors))
         return creation.nested_tensor(inner_tensors)
 
-
+# Get max size per each dimension from all the passed tensors.
 def get_max_size(obj, res=[1]):
     if isinstance(obj, list) or isinstance(obj, tuple):
         for o in obj:
@@ -133,6 +135,7 @@ def get_tensor_mask(nt, shape):
     mask = torch.tensor(m, dtype=torch.bool, device=nt.device)
     return tensor, mask
 
+
 # Return a tuple of a tensor and a mask that represent the given tensor list
 # Returned tensor is always the same no matter what mask_dim was passed.
 # If mask_dim was not passed, a mask with the smallest dimensionality would be returned.
@@ -155,6 +158,7 @@ def to_tensor_mask(nt, mask_dim):
     return tensor_mask_tuple.tensor, tensor_mask_tuple.mask
 
 
+# Merge mask to a given dimension if possible.
 def merge_tensor_mask(tensor_mask, mask_dim):
     tensor = tensor_mask.tensor
     mask = tensor_mask.mask
@@ -169,19 +173,12 @@ def merge_tensor_mask(tensor_mask, mask_dim):
     is_last_size = (collapsed_mask == last_size)
     is_zero = (collapsed_mask == 0)
     if (is_last_size.sum() + is_zero.sum()) == collapsed_mask.numel():
-        collapsed_mask = normalize_mask(collapsed_mask)
+        collapsed_mask = collapsed_mask.to(torch.bool)
         return merge_tensor_mask(TensorMask(tensor=tensor, mask=collapsed_mask), mask_dim)
-    
+
     if mask_dim is not None and mask_dim != mask.dim():
         raise RuntimeError("Mask dimension is too small to represent data tensor.")
     return TensorMask(tensor=tensor, mask=mask)
-
-
-# Convert mask values to boolean type
-def normalize_mask(mask):
-    assert (mask >= 0).sum() == mask.numel()
-    mask = (mask > 0)
-    return mask
 
 
 def pad_tensor_to_shape(t, goal_shape):

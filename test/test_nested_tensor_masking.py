@@ -1,14 +1,7 @@
-import traceback
-import functools
-import pdb
-import sys
 import torch
 import nestedtensor as nt
 import unittest
-import random
-import utils
 from utils import TestCase
-from utils import nested_size_to_list
 
 class TestTensorMask(TestCase):
     #
@@ -265,6 +258,10 @@ class TestTensorMask(TestCase):
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[[1], [2], [3]]]))
         TestCase.assertEqual(self, mask, torch.tensor(True))
+
+        tensor, mask = a.to_tensor_mask(mask_dim=1)
+        TestCase.assertEqual(self, tensor, torch.tensor([[[1], [2], [3]]]))
+        TestCase.assertEqual(self, mask, torch.tensor([True]))
 
         tensor, mask = a.to_tensor_mask(mask_dim=2)
         TestCase.assertEqual(self, tensor, torch.tensor([[[1], [2], [3]]]))
