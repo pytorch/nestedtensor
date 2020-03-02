@@ -117,6 +117,10 @@ class TestTensorMask(TestCase):
         TestCase.assertEqual(self, tensor, torch.tensor([[1, 2, 3]]))
         TestCase.assertEqual(self, mask, torch.tensor(True))
 
+        tensor, mask = a.to_tensor_mask(mask_dim=1)
+        TestCase.assertEqual(self, tensor, torch.tensor([[1, 2, 3]]))
+        TestCase.assertEqual(self, mask, torch.tensor([True]))
+
         tensor, mask = a.to_tensor_mask(mask_dim=2)
         TestCase.assertEqual(self, tensor, torch.tensor([[1, 2, 3]]))
         TestCase.assertEqual(self, mask, torch.tensor([[True, True, True]]))
@@ -137,6 +141,10 @@ class TestTensorMask(TestCase):
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[1], [2], [3]]))
         TestCase.assertEqual(self, mask, torch.tensor(True))
+
+        tensor, mask = a.to_tensor_mask(mask_dim=1)
+        TestCase.assertEqual(self, tensor, torch.tensor([[1], [2], [3]]))
+        TestCase.assertEqual(self, mask, torch.tensor([True, True, True]))
 
         tensor, mask = a.to_tensor_mask(mask_dim=2)
         TestCase.assertEqual(self, tensor, torch.tensor([[1], [2], [3]]))
@@ -276,6 +284,10 @@ class TestTensorMask(TestCase):
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[[1]], [[2]], [[3]]]))
         TestCase.assertEqual(self, mask, torch.tensor(True))
+
+        tensor, mask = a.to_tensor_mask(mask_dim=1)
+        TestCase.assertEqual(self, tensor, torch.tensor([[[1]], [[2]], [[3]]]))
+        TestCase.assertEqual(self, mask, torch.tensor([True, True, True]))
 
         tensor, mask = a.to_tensor_mask(mask_dim=2)
         TestCase.assertEqual(self, tensor, torch.tensor([[[1]], [[2]], [[3]]]))

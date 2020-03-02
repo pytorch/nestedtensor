@@ -114,17 +114,17 @@ def get_tensor_mask(nt, shape):
             if nt.dim() == 0:
                 return nt.item(), nt.item()
 
-            t = pad_tensor_to_shape(nt, shape).tolist()
-            m = pad_tensor_to_shape(nt.new_full(nt.size(), True), shape).tolist()
-            return t, m
+            tensor = pad_tensor_to_shape(nt, shape).tolist()
+            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True), shape).tolist()
+            return tensor, mask
         else:
             if len(nt) == 0:
                 return [0], [0]
             else:
                 for entry in nt:
-                    a, b = pad_nt(entry, shape)
-                    res_tensor.append(a)
-                    res_mask.append(b)
+                    tensor, mask = pad_nt(entry, shape)
+                    res_tensor.append(tensor)
+                    res_mask.append(mask)
 
         return res_tensor, res_mask
 
