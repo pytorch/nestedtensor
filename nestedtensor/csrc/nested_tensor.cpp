@@ -151,7 +151,7 @@ at::Tensor NestedTensor::to_tensor() {
     if (!si) {
       // TODO: This assumes we'll extend to_tensor to also work with int64_t at
       // this level.
-      throw std::runtime_error(
+      throw std::out_of_range(
           "to_tensor()/to_tensor(0) only works if there is no None in size().");
     }
     new_size.push_back(*si);

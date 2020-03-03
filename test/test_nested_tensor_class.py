@@ -399,14 +399,14 @@ class TestNestedTensor(TestCase):
             a = constructor([])
             self.assertEqual(a.to_tensor(), torch.tensor([]))
             self.assertEqual(a.to_tensor(0), torch.tensor([]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
+            self.assertRaises(IndexError, lambda: a.to_tensor(1))
+            self.assertRaises(IndexError, lambda: a.to_tensor(2))
 
             a = constructor([torch.tensor(1)])
             self.assertEqual(a.to_tensor(), torch.tensor([1]))
             self.assertEqual(a.to_tensor(0), torch.tensor([1]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
+            self.assertRaises(IndexError, lambda: a.to_tensor(1))
+            self.assertRaises(IndexError, lambda: a.to_tensor(2))
 
             t_a = torch.randn(2, 3)
             t_b = torch.randn(2, 3)
@@ -417,7 +417,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.to_tensor(1), nestedtensor.as_nested_tensor([torch.stack([t_a, t_b])]))
             self.assertEqual(a.to_tensor(2), nestedtensor.as_nested_tensor([[t_a, t_b]]))
             self.assertEqual(a.to_tensor(3), nestedtensor.as_nested_tensor([[t_a, t_b]]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(4))
+            self.assertRaises(IndexError, lambda: a.to_tensor(4))
 
             t_c = torch.randn(2, 3)
             t_d = torch.randn(2, 3)
@@ -428,7 +428,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.to_tensor(1), nestedtensor.as_nested_tensor([torch.stack([t_a, t_b]), torch.stack([t_c, t_d])]))
             self.assertEqual(a.to_tensor(2), nestedtensor.as_nested_tensor([[t_a, t_b], [t_c, t_d]]))
             self.assertEqual(a.to_tensor(3), nestedtensor.as_nested_tensor([[t_a, t_b], [t_c, t_d]]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(4))
+            self.assertRaises(IndexError, lambda: a.to_tensor(4))
 
             t_e = torch.randn(3, 2)
             t_f = torch.randn(3, 2)
@@ -437,7 +437,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.to_tensor(1), nestedtensor.as_nested_tensor([torch.stack([t_a, t_b]), torch.stack([t_e, t_f])]))
             self.assertEqual(a.to_tensor(2), nestedtensor.as_nested_tensor([[t_a, t_b], [t_e, t_f]]))
             self.assertEqual(a.to_tensor(3), nestedtensor.as_nested_tensor([[t_a, t_b], [t_e, t_f]]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(4))
+            self.assertRaises(IndexError, lambda: a.to_tensor(4))
 
     def test_to(self):
         tensors = [torch.randn(1, 8),
