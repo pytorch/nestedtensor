@@ -1,7 +1,7 @@
 #include <jit_list_apply.h>
-#include <torch/csrc/jit/script/builtin_functions.h>
+#include <torch/csrc/jit/frontend/builtin_functions.h>
 #include <torch/extension.h>
-#include <torch/csrc/jit/pybind_utils.h>
+#include <torch/csrc/jit/python/pybind_utils.h>
 
 namespace torch {
 namespace nested_tensor {
