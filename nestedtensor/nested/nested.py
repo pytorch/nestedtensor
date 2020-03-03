@@ -188,18 +188,8 @@ class NestedTensor(object):
         """
         Not necessarily a view.
         """
-        dim = utils._wrap_dim(self, dim)
-        # Convert entire NestedTensor into Tensor
-        if dim == 0:
-            if None in self.size():
-                raise ValueError("Shape not Tensor compliant")
-            return self._impl.to_tensor()
-        # If dim is bigger than nested_dim the NestedTensor is already
-        # of Tensor for dimensions bigger than the given.
-        if self.nested_dim() == 1:
-            return self
-        unbound = [t.to_tensor(dim=dim - 1) for t in self.unbind()]
-        return creation.nested_tensor(unbound)
+        result = self._impl.to_tensor(dim)
+        return result if torch.is_tensor(result) else NestedTensor(result)
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with

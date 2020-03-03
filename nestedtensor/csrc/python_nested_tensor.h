@@ -89,9 +89,7 @@ struct THPNestedTensor {
   int64_t numel() {
     return _data.numel();
   }
-  at::Tensor to_tensor() {
-    return _data.to_tensor();
-  }
+  py::object to_tensor(c10::optional<int64_t>);
   THPNestedTensor contiguous() {
     return _data.contiguous();
   }

@@ -124,9 +124,42 @@ NestedTensor NestedTensor::contiguous() const {
       map([](at::Tensor tensor) { return tensor.reshape({-1}); }, _structure);
   auto tensors = flatten(flat_structure).vec();
   if (tensors.size() == 0) {
-    return NestedTensor(at::ones({}), _nested_size);
+    return NestedTensor(at::ones({0}), _nested_size);
   }
   return NestedTensor(at::cat(tensors, 0), _nested_size);
+}
+
+at::Tensor _to_tensor(TensorNode node) {
+  // TODO: Recursive stacking is expensive.
+  if (node.is_leaf()) {
+    return node.payload();
+  }
+  if (node.degree() == 0) {
+    return at::empty({0});
+  }
+  std::vector<at::Tensor> flat;
+  for (auto child : node.unbind()) {
+    flat.push_back(_to_tensor(child));
+  }
+  return stack(flat);
+}
+
+at::Tensor NestedTensor::to_tensor() {
+  // TODO: Not necessarily a view because of stack and reshape.
+  std::vector<int64_t> new_size;
+  for (const auto& si : size()) {
+    if (!si) {
+      // TODO: This assumes we'll extend to_tensor to also work with int64_t at
+      // this level.
+      throw std::out_of_range(
+          "to_tensor()/to_tensor(0) only works if there is no None in size().");
+    }
+    new_size.push_back(*si);
+  }
+  if (is_contiguous()) {
+    return (*_buffer).reshape(at::IntArrayRef(new_size));
+  }
+  return _to_tensor(_structure);
 }
 
 NestedTensor::NestedTensor(TensorNode&& structure)
