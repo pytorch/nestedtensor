@@ -1,5 +1,5 @@
 #include <py_utils.h>
-#include <torch/csrc/jit/pybind_utils.h>
+#include <torch/csrc/jit/python/pybind_utils.h>
 
 namespace torch {
 namespace nested_tensor {
