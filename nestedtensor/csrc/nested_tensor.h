@@ -1,6 +1,6 @@
 #pragma once
-#include <utils/nested_node.h>
 #include <torch/extension.h>
+#include <utils/nested_node.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -85,20 +85,7 @@ struct NestedTensor {
   int64_t __len__() const {
     return _structure.degree();
   }
-  at::Tensor to_tensor() {
-    if (is_contiguous()) {
-      std::vector<int64_t> new_size;
-      for (const auto& si : size()) {
-        if (!si) {
-          throw std::runtime_error(
-              "to_tensor only works if none of size() is None.");
-        }
-        new_size.push_back(*si);
-      }
-      return (*_buffer).reshape(at::IntArrayRef(new_size));
-    }
-    return stack(flatten(_structure).vec());
-  }
+  at::Tensor to_tensor();
   int64_t nested_dim() const {
     return _structure.height();
   }

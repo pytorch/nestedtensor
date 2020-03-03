@@ -1,8 +1,8 @@
+#include <ATen/WrapDimUtils.h>
 #include <creation.h>
 #include <python_nested_tensor.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
-#include <torch/csrc/jit/pybind_utils.h>
-#include <ATen/WrapDimUtils.h>
+#include <torch/csrc/jit/python/pybind_utils.h>
 
 namespace py = pybind11;
 
@@ -99,8 +99,43 @@ py::object THPNestedTensor::getDevice() {
   return torch::jit::toPyObject(_data.device());
 }
 
-// TODO: Since this returns vies there is no reason not to return a sequence of
-// contiguous NestedTensors for a given NestedTensor.
+// TODO: Can't have mixed return types in C++
+// for different input values.
+py::object THPNestedTensor::to_tensor(c10::optional<int64_t> dim_) {
+  if (!dim_) {
+    return py::cast(_data.to_tensor());
+  }
+  int64_t dim = at::maybe_wrap_dim((*dim_), _data.dim());
+  if (dim == 0) {
+    return py::cast(_data.to_tensor());
+  }
+  // If dim is bigger than nested_dim the NestedTensor is already
+  // of Tensor for dimensions bigger than the given.
+  if (nested_dim() == 1) {
+    return py::cast(*this);
+  }
+  // At this point nested_dim is at least 2. That means any unbind
+  // operation of a child must yield NestedTensors.
+  // If dim is 1 then we'll apply to_tensor(0) to the children and must expect
+  // Tensors.
+  std::vector<TensorNode> result;
+  if (dim == 1) {
+    for (py::object child : unbind(0)) {
+      result.push_back(TensorNode(
+          py::cast<at::Tensor>(py::cast<THPNestedTensor>(child).to_tensor(0))));
+    }
+  } else {
+    for (py::object child : unbind(0)) {
+      result.push_back(py::cast<THPNestedTensor>(
+                           py::cast<THPNestedTensor>(child).to_tensor(dim - 1))
+                           ._data.get_structure());
+    }
+  }
+  return py::cast(THPNestedTensor(TensorNode(std::move(result))));
+}
+
+// TODO: Since this returns vies there is no reason not to return a sequence
+// of contiguous NestedTensors for a given NestedTensor.
 std::vector<py::object> THPNestedTensor::unbind(int64_t dim) {
   dim = at::maybe_wrap_dim(dim, _data.dim());
   auto node = _data.get_structure();
