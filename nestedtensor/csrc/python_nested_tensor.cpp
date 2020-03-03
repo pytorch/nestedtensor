@@ -2,7 +2,7 @@
 #include <creation.h>
 #include <python_nested_tensor.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
-#include <torch/csrc/jit/pybind_utils.h>
+#include <torch/csrc/jit/python/pybind_utils.h>
 
 namespace py = pybind11;
 
