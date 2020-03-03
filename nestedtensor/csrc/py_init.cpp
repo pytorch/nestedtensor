@@ -49,7 +49,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def(
           "__getitem__",
           py::overload_cast<py::slice>(&THPNestedTensor::getitem))
-      .def("unbind", &THPNestedTensor::unbind)
+      .def(
+          "unbind",
+          torch::wrap_pybind_function([](THPNestedTensor self, int64_t dim) {
+            return self.unbind(dim);
+          }))
       .def("size", &THPNestedTensor::size)
       .def("requires_grad_", &THPNestedTensor::requires_grad_)
       .def("numel", &THPNestedTensor::numel)

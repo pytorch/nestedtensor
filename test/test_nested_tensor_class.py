@@ -329,7 +329,7 @@ class TestNestedTensor(TestCase):
 
         nt = nestedtensor.nested_tensor([])
         self.assertEqual(nt.unbind(0), ())
-        self.assertRaises(RuntimeError, lambda: nt.unbind(1))
+        self.assertRaises(IndexError, lambda: nt.unbind(1))
 
         a = torch.rand(3, 2)
         nt = nestedtensor.nested_tensor([a])
