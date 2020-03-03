@@ -85,21 +85,7 @@ struct NestedTensor {
   int64_t __len__() const {
     return _structure.degree();
   }
-  at::Tensor to_tensor() {
-    std::vector<int64_t> new_size;
-    for (const auto& si : size()) {
-      if (!si) {
-        throw std::runtime_error(
-            "to_tensor only works if none of size() is None.");
-      }
-      new_size.push_back(*si);
-    }
-    if (is_contiguous()) {
-      return (*_buffer).reshape(at::IntArrayRef(new_size));
-    }
-    // TODO: Not necessarily a view because of stack. Fix this?
-    return stack(flatten(_structure).vec());
-  }
+  at::Tensor to_tensor();
   int64_t nested_dim() const {
     return _structure.height();
   }

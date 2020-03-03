@@ -188,7 +188,8 @@ class NestedTensor(object):
         """
         Not necessarily a view.
         """
-        return self._impl.to_tensor(dim)
+        result = self._impl.to_tensor(dim)
+        return result if torch.is_tensor(result) else NestedTensor(result)
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
