@@ -130,6 +130,7 @@ NestedTensor NestedTensor::contiguous() const {
 }
 
 at::Tensor _to_tensor(TensorNode node) {
+  // TODO: Recursive stacking is expensive.
   if (node.is_leaf()) {
     return node.payload();
   }
@@ -140,11 +141,11 @@ at::Tensor _to_tensor(TensorNode node) {
   for (auto child : node.unbind()) {
     flat.push_back(_to_tensor(child));
   }
-  // TODO: Not necessarily a view because of stack. Fix this?
   return stack(flat);
 }
 
 at::Tensor NestedTensor::to_tensor() {
+  // TODO: Not necessarily a view because of stack and reshape.
   std::vector<int64_t> new_size;
   for (const auto& si : size()) {
     if (!si) {
