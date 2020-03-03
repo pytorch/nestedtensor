@@ -132,23 +132,6 @@ py::object THPNestedTensor::to_tensor(c10::optional<int64_t> dim_) {
     }
   }
   return py::cast(THPNestedTensor(TensorNode(std::move(result))));
-  // TORCH_CHECK(false, "ASF");
-  // for (py::object child : unbind(0)) {
-  //   TORCH_CHECK(
-  //       py::isinstance<THPNestedTensor>(child),
-  //       "Unexpected internal error, please open an issue.");
-  //   py_object_result.push_back(
-  //       py::cast<THPNestedTensor>(child).to_tensor(dim - 1));
-  // }
-  // for (py::object child : py_object_result) {
-  //   if (py::isinstance<at::Tensor>(child)) {
-  //     result.push_back(TensorNode(py::cast<at::Tensor>(child)));
-  //   } else {
-  //     result.push_back(py::cast<THPNestedTensor>(child)._data.get_structure());
-  //   }
-  // }
-  // return
-  // py::cast(THPNestedTensor(NestedTensor(TensorNode(std::move(result)))));
 }
 
 // TODO: Since this returns vies there is no reason not to return a sequence
