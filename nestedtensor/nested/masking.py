@@ -38,17 +38,17 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
     if tensor.numel() != 0 and mask.numel() == 0:
         raise RuntimeError("Mask tensor can't be emtpy if a data tensor has values.")
 
-    return nt_from_tensor_mask(tensor, mask, nested_dim, tensor.dtype)
+    return nt_from_tensor_mask(tensor, mask, nested_dim)
 
 
-def nt_from_tensor_mask(tensor, mask, nested_dim, dt):
+def nt_from_tensor_mask(tensor, mask, nested_dim):
     def _merge(tensors, nested_dim):
         if len(tensors) == 0:
-            return torch.tensor([], dtype=dt)
+            return torch.tensor([], dtype=tensor.dtype, device=tensor.device, requires_grad=tensor.requires_grad)
         return torch.stack(tensors)
 
     if nested_dim == 0:
-        if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
+        if (mask.numel() == 0) or (mask.numel() == 1 and mask.item() == True):
             return tensor
 
         if mask.dim() == 1:
@@ -57,7 +57,7 @@ def nt_from_tensor_mask(tensor, mask, nested_dim, dt):
             return _merge(tensors, nested_dim)
 
         if mask.dim() > 1:
-            tensors = [nt_from_tensor_mask(t, m, nested_dim, dt) for (t, m) in zip(tensor, mask)]
+            tensors = [nt_from_tensor_mask(t, m, nested_dim) for (t, m) in zip(tensor, mask)]
             if not all(t.numel() == 0 for t in tensors):
                 tensors = list(filter(lambda x: x.numel() > 0, tensors))
             return _merge(tensors, nested_dim)
@@ -67,11 +67,11 @@ def nt_from_tensor_mask(tensor, mask, nested_dim, dt):
         inner_tensors = []
         if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
             for i in range(len(tensor)):
-                inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1, dt))
+                inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
         elif (mask.numel() == 1 and mask == False):
             inner_tensors.append(None)
         else:
-            inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1, dt) for (t, m) in zip(tensor, mask)]
+            inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
 
         # Filtering out None values which were ignored by mask
         inner_tensors = list(filter(lambda x: x is not None, inner_tensors))
@@ -101,7 +101,6 @@ def get_max_size(obj, res=[1]):
             res = [max(i, j) for (i, j) in zip(res, obj.size())]
 
     return res
-
 
 def get_tensor_mask(nt, shape):
     def pad_nt(nt, shape):

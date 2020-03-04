@@ -155,6 +155,7 @@ class TestTensorMask(TestCase):
         TestCase.assertEqual(self, tensor, torch.tensor([[0], [11]], dtype=torch.long))
         TestCase.assertEqual(self, mask, torch.tensor([False,  True]))
 
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_scalar_and_empty_nt_cuda(self):
         a = nt.nested_tensor([
             nt.nested_tensor([], dtype=torch.long, device='cuda'),
@@ -295,6 +296,44 @@ class TestTensorMask(TestCase):
                 nt.nested_tensor([
                     nt.nested_tensor([
                         torch.tensor([[1, 2, 3, 4],
+                                      [5, 6, 7, 8]], dtype=torch.bfloat16, requires_grad=True)
+                    ]),
+                    nt.nested_tensor([
+                        torch.tensor([[0, 0], [3, 4]], dtype=torch.bfloat16, requires_grad=True)
+                    ]),
+                    nt.nested_tensor([
+                        torch.tensor([[1]], dtype=torch.bfloat16, requires_grad=True)
+                    ]),
+                ])
+            ])
+
+        expected_t = torch.tensor([[
+            [[[1, 2, 3, 4],
+              [5, 6, 7, 8]]],
+            [[[0, 0, 0, 0],
+              [3, 4, 0, 0]]],
+            [[[1, 0, 0, 0],
+              [0, 0, 0, 0]]],
+        ]])
+
+        expected_m = torch.tensor([[
+            [[[ True,  True,  True,  True],
+              [ True,  True,  True,  True]]],
+            [[[ True,  True, False, False],
+              [ True,  True, False, False]]],
+            [[[ True, False, False, False],
+              [False, False, False, False]]]]])
+
+        tensor, mask = a.to_tensor_mask()
+        TestCase.assertEqual(self, expected_t, tensor)
+        TestCase.assertEqual(self, expected_m, mask)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_multi_tensor2_cuda(self):
+        a = nt.nested_tensor([
+                nt.nested_tensor([
+                    nt.nested_tensor([
+                        torch.tensor([[1, 2, 3, 4],
                                       [5, 6, 7, 8]], dtype=torch.bfloat16, device='cuda', requires_grad=True)
                     ]),
                     nt.nested_tensor([
@@ -430,18 +469,18 @@ class TestTensorMask(TestCase):
         tensor = torch.tensor([0])
         mask = torch.tensor(False)
 
-        res_nt = nt.nested_tensor_from_tensor_mask(tensor, tensor)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
         TestCase.assertEqual(self, res_nt, nt.nested_tensor([]))
 
         tensor = torch.tensor([[0], [0]])
-        mask = torch.tensor(False)
+        mask = torch.tensor([[False], [False]])
 
         expected_nt = nt.nested_tensor([
             nt.nested_tensor([]),
             nt.nested_tensor([])
         ])
 
-        res_nt = nt.nested_tensor_from_tensor_mask(tensor, tensor, nested_dim=expected_nt.nested_dim())
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=expected_nt.nested_dim())
         TestCase.assertEqual(self, res_nt, expected_nt)
 
     def test_ntftm_empty_error(self):
@@ -602,6 +641,8 @@ class TestTensorMask(TestCase):
                         ])
         TestCase.assertEqual(self, res_nt, expected_res3)
 
+        self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=4))
+
     def test_ntftm_multi_tensor_true_mask(self):
         extected_nt1 = nt.nested_tensor([
                     torch.tensor([[1]]),
@@ -654,6 +695,14 @@ class TestTensorMask(TestCase):
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask1, nested_dim=2)
         TestCase.assertEqual(self, extected_nt2, res_nt)
 
+        # Mask dim 0
+        mask0 = torch.tensor(True)
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask0)
+        TestCase.assertEqual(self, extected_nt1, res_nt)
+        
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask0, nested_dim=2)
+        TestCase.assertEqual(self, extected_nt2, res_nt)
+
     def test_ntftm_single_tensor_all_false_mask(self): 
         tensor = torch.tensor([[1]])
         mask = torch.tensor([False])
@@ -684,6 +733,15 @@ class TestTensorMask(TestCase):
                          nt.nested_tensor([
                              torch.tensor([], dtype=tensor.dtype)
                          ]))
+
+        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=3)
+        TestCase.assertEqual(self, res_nt, 
+                        nt.nested_tensor([
+                            nt.nested_tensor([
+                            ])
+                        ]))
+
+        self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=4))
 
     def test_ntftm_multi_tensor_all_false_mask2(self):
         tensor = torch.tensor([[[1], [2], [3]]])
@@ -949,6 +1007,31 @@ class TestTensorMask(TestCase):
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=6))
 
     def test_ntftm_mask_dim(self):
+        a = nt.nested_tensor([
+            nt.nested_tensor([
+                nt.nested_tensor([
+                    torch.tensor([[1, 2, 3, 4],
+                                  [5, 6, 7, 8]], dtype=torch.float16, requires_grad=False)
+                ]),
+                nt.nested_tensor([
+                    torch.tensor([[1, 2, 3, 4],
+                                  [5, 6, 7, 8]], dtype=torch.float16, requires_grad=False)
+                ]),
+                nt.nested_tensor([
+                    torch.tensor([[1, 2, 3, 4],
+                                  [5, 6, 7, 8]], dtype=torch.float16, requires_grad=False)
+                ]),
+            ])
+        ])
+
+        for i in range(a.dim()):
+            t, m = a.to_tensor_mask(mask_dim=i)
+            res_nt = nt.nested_tensor_from_tensor_mask(t, m, nested_dim=a.nested_dim())
+            TestCase.assertEqual(self, a, res_nt)
+            TestCase.assertEqual(self, res_nt.nested_dim(), a.nested_dim())
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_ntftm_mask_dim_cuda(self):
         a = nt.nested_tensor([
             nt.nested_tensor([
                 nt.nested_tensor([
