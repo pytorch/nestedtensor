@@ -273,8 +273,8 @@ class NestedTensor(object):
         element. These two tensors can be used to contruct a NestedTensor, however,
         nested_dim will be lost in this process."""
 
-        return masking.make_tensor_mask(self.to_list(), mask_dim)
+        return masking.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = masking.make_tensor_mask(self.to_list(), mask_dim)
+        tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)
