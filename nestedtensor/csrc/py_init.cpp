@@ -72,6 +72,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               [](THPNestedTensor self, c10::optional<int64_t> dim) {
                 return self.to_tensor(dim);
               }))
+      .def(
+          "to_nested_tensor",
+          torch::wrap_pybind_function(
+              [](THPNestedTensor self, c10::optional<int64_t> dim) {
+                return self.to_nested_tensor(dim);
+              }))
       .def("to_list", &THPNestedTensor::to_list)
       .def("to_tuple", &THPNestedTensor::to_tuple)
       .def("__str__", &THPNestedTensor::str)

@@ -86,6 +86,7 @@ struct NestedTensor {
     return _structure.degree();
   }
   at::Tensor to_tensor();
+  NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
   int64_t nested_dim() const {
     return _structure.height();
   }
@@ -137,10 +138,6 @@ struct NestedTensor {
   const TensorNode& get_structure() const {
     return _structure;
   }
-  // TODO: Implement these and call into them isntead of implementing them
-  // separately in Variable dispatch functions.
-  // NestedTensor to - it's a pain due to the 100s of to overloads
-  // separately in Variable dispatch functions.
 
  private:
   c10::optional<at::Tensor> _buffer;
