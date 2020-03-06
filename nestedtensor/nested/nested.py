@@ -243,17 +243,7 @@ class NestedTensor(object):
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
-        # TODO: Better errors when conversion fails.
-        """
-        Not a view.
-        """
-        if dim < self.nested_dim:
-            raise ValueError("Given dimension is already nested")
-        else:
-            if self.nested_dim == dim:
-                return creation.nested_tensor(list(t.unbind() for t in self.unbind()))
-            else:
-                return creation.nested_tensor(list(t.to_nested_tensor(dim - 1) for t in self.unbind()))
+        return NestedTensor(self._impl.to_nested_tensor(dim))
 
     def to_list(self):
         return self._impl.to_list()

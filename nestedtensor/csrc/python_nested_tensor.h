@@ -90,6 +90,9 @@ struct THPNestedTensor {
     return _data.numel();
   }
   py::object to_tensor(c10::optional<int64_t>);
+  THPNestedTensor to_nested_tensor(c10::optional<int64_t> dim) {
+      return THPNestedTensor(_data.to_nested_tensor(dim));
+  }
   THPNestedTensor contiguous() {
     return _data.contiguous();
   }
