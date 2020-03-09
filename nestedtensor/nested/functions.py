@@ -13,6 +13,7 @@ import os
 from . import utils
 from . import nested
 
+import nestedtensor
 from nestedtensor import _C
 
 orig_squeeze = torch.squeeze
@@ -73,28 +74,12 @@ def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
     return utils.tensorwise()(_conv2d)(input, weight, bias, stride, padding, dilation, groups)
 
 
-orig_max_pool2d = torch.nn.functional.max_pool2d
-
-
 def max_pool2d(input, *args, **kwargs):
-    # TODO: Support more NestedTensor arguments?
-    if utils.find_nested_tensor_dispatch_key(input) is None:
-        return orig_max_pool2d(input, *args, **kwargs)
-
-    def _max_pool2d(input, *args, **kwargs):
-        # Support for unbatched image
-        if input.dim() == 3:
-            input = input.unsqueeze(0)
-            result = orig_max_pool2d(input, *args, **kwargs)
-            return result.squeeze(0)
-        return orig_max_pool2d(input, *args, **kwargs)
-
-    return utils.tensorwise()(_max_pool2d)(input, *args, **kwargs)
+    tw_max_pool2d = utils.tensorwise()(torch.nn.functional.max_pool2d)
+    return tw_max_pool2d(input, *args, **kwargs)
 
 
 orig_embedding_bag = torch.nn.functional.embedding_bag
-
-
 def embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
                   scale_grad_by_freq=False, mode='mean', sparse=False,
                   per_sample_weights=None):
@@ -154,13 +139,6 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None, trainin
     if utils.find_nested_tensor_dispatch_key(input, running_mean, running_var, weight, bias, training, momentum, eps) is None:
         return orig_batch_norm(input, running_mean, running_var, weight, bias, training, momentum, eps)
 
-    if utils.is_nested_tensor(input) and input.is_contiguous() and None not in input.size():
-        # TODO: The unsqueeze and squeeze needs to depend on input dimension
-        input_buffer = input._impl.get_buffer().reshape(input.size())
-        result = orig_batch_norm(
-            input_buffer, running_mean, running_var, weight, bias, training, momentum, eps)
-        return nested.NestedTensor(_C._BufferNestedTensor(result.flatten(), input.nested_size()))
-
     def t_batch_norm(input: torch.Tensor, running_mean: torch.Tensor, running_var: torch.Tensor, weight, bias, training, momentum, eps):
         squeeze_after = False
         # TODO: Need support for BatchNorm1d and BatchNorm2d as well
@@ -180,9 +158,28 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None, trainin
     return tw_batch_norm(input, running_mean, running_var, weight, bias, training, momentum, eps)
 
 
+def relu(input, inplace=False):
+    tw_relu = utils.tensorwise()(torch.nn.functional.relu)
+    return tw_relu(input, inplace)
+
+
+def dropout(input, p=0.5, training=True, inplace=False):
+    tw_relu = utils.tensorwise()(torch.nn.functional.dropout)
+    return tw_relu(input, p, training, inplace)
+
+
+def cross_entropy(input, target, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean'):
+    print("in cross entropy")
+    tw_relu = utils.tensorwise()(torch.nn.functional.cross_entropy)
+    return tw_relu(input, target, weight, size_average, ignore_index, reduce, reduction)
+
+
+def interpolate(input, size=None, scale_factor=None, mode='nearest', align_corners=None, recompute_scale_factor=None):
+    t, m = input.to_tensor_mask()
+    return torch.nn.functional.interpolate(t, size, scale_factor, mode, align_corners, recompute_scale_factor)
+
+
 orig_nll_loss = torch.nn.functional.nll_loss
-
-
 # TODO: Return scalar?
 def nll_loss(input, target, *args, **kwargs):
     if utils.is_nested_tensor(input):
@@ -223,30 +220,6 @@ def lstm_forward(self, input, hx=None):
     hidden0 = torch.cat([h[0] for (o, h) in result], dim=1)
     hidden1 = torch.cat([h[1] for (o, h) in result], dim=1)
     return output, (hidden0, hidden1)
-
-
-orig_interpolate = torch.nn.functional.interpolate
-
-
-def interpolate(input, size=None, scale_factor=None, mode='nearest',
-                align_corners=None):
-    if utils.find_nested_tensor_dispatch_key(input) is None:
-        return orig_interpolate(input, size, scale_factor, mode, align_corners)
-
-    def _interpolate(input: torch.Tensor, size: int, scale_factor: float, mode: str, align_corners: bool) -> torch.Tensor:
-        # TODO: Document this
-        squeeze_after = False
-        if input.dim() == 3:
-            input = input.unsqueeze(0)
-            squeeze_after = True
-        result = orig_interpolate(input, size,
-                                  scale_factor, mode, align_corners)
-        if squeeze_after:
-            result = result.squeeze(0)
-        return result
-
-    tf = utils.tensorwise(unbind_args=[1, 'size'])(_interpolate)
-    return tf(input, size, scale_factor, mode, align_corners)
 
 
 def _set_size(nested_size, dim, size):
