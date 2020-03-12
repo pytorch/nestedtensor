@@ -21,21 +21,15 @@ class TestFunctional(TestCase):
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)])
 
     def test_conv2d(self):
-        def _conv2d(input, *args, **kwargs):
-            if input.dim() == 3:
-                input = input.unsqueeze(0)
-                result = torch.conv2d(input, *args, **kwargs)
-                return result.squeeze(0)
-            return torch.conv2d(input, *args, **kwargs)
+        tensor1 = torch.rand(3, 128, 128)
+        tensor2 = torch.rand(3, 128, 128) 
+        list_of_tensors = [tensor1, tensor2]
 
-        weight = torch.rand(64, 3, 7, 7)
-        tf = nestedtensor.tensorwise()(_conv2d)
-        images = [torch.rand(3, (i * 16) % 40 + 40, (i * 16) % 50 + 40) for i in range(128)]
-        nt = nestedtensor.nested_tensor(images)
-        result = tf(nt, weight)
-        result2 = torch.nn.functional.conv2d(nt, weight)
-        for r, r2 in zip(result, result2):
-            self.assertEqual(r, r2)
+        weight = torch.rand(3, 3, 7, 7)
+        nt = nestedtensor.nested_tensor(list_of_tensors)
+        nt_res = [t for t in torch.nn.functional.conv2d(nt, weight).unbind()]
+        tensor_res = [torch.nn.functional.conv2d(t.unsqueeze(0), weight).squeeze(0) for t in list_of_tensors]
+        self.assertEqual(nt_res, tensor_res)
 
 if __name__ == "__main__":
     unittest.main()
