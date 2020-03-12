@@ -47,7 +47,11 @@ auto unary_(F& fn) {
 
 // template <int64_t N, int64_t M, class F>
 template <class F>
-void add_unary(auto m, auto c, std::string name, F& at_out) {
+void add_unary(
+    pybind11::module m,
+    pybind11::class_<torch::nested_tensor::THPNestedTensor> c,
+    std::string name,
+    F& at_out) {
   m.def(name.c_str(), torch::nested_tensor::unary(at_out));
   m.def(name.c_str(), torch::nested_tensor::unary_out(at_out));
   // py::arg("input"),
