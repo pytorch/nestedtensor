@@ -66,6 +66,9 @@ def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
     if input.nested_dim() != 1:
         raise RuntimeError("Only NestedTensor with nested dimension of 1 are currenlty supported. Current nested dimension: {}".format(input.nested_dim()))
 
+    if input.dim() != 4:
+        raise RuntimeError("Only NestedTensor with dimension of 4 are currenlty supported. Current dimension: {}".format(input.dim()))
+
     res = []
     for tensor in iter(input):
         if tensor.dim() != 3:
