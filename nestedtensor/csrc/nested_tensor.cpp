@@ -1,4 +1,5 @@
 #include <nested_tensor.h>
+#include <ATen/ATen.h>
 
 namespace torch {
 namespace nested_tensor {

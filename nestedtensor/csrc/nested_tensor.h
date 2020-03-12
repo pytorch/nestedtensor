@@ -1,5 +1,4 @@
 #pragma once
-#include <torch/extension.h>
 #include <utils/nested_node.h>
 
 namespace torch {
