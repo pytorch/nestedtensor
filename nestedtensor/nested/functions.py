@@ -60,18 +60,22 @@ orig_conv2d = torch.nn.functional.conv2d
 
 
 def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
-    # TODO: Dispatch on bias NestedTensor too?
-    if utils.find_nested_tensor_dispatch_key(input, weight) is None:
-        return orig_conv2d(input, weight, bias, stride, padding, dilation, groups)
+    if not utils.is_nested_tensor(input):
+        raise RuntimeError("Expected NestedTensor as an input. Got: {}".format(type(input)))
 
-    def _conv2d(input, *args, **kwargs):
-        if input.dim() == 3:
-            input = input.unsqueeze(0)
-            result = orig_conv2d(input, *args, **kwargs)
-            return result.squeeze(0)
-        return orig_conv2d(input, *args, **kwargs)
+    if input.nested_dim() != 1:
+        raise RuntimeError("Only NestedTensor with nested dimension of 1 are currenlty supported. Current nested dimension: {}".format(input.nested_dim()))
 
-    return utils.tensorwise()(_conv2d)(input, weight, bias, stride, padding, dilation, groups)
+    res = []
+    for tensor in iter(input):
+        if tensor.dim() != 3:
+            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
+
+        tensor = tensor.unsqueeze(0)
+        tensor = orig_conv2d(tensor, weight, bias, stride, padding, dilation, groups)
+        res.append(tensor.squeeze(0))
+
+    return nestedtensor.nested_tensor(res)
 
 
 def max_pool2d(input, *args, **kwargs):
