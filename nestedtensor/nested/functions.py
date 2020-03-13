@@ -60,16 +60,8 @@ def linear(input, weight, bias=None):
 
 orig_conv2d = torch.nn.functional.conv2d
 
-
 def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
-    if not utils.is_nested_tensor(input):
-        raise RuntimeError("Expected NestedTensor as an input. Got: {}".format(type(input)))
-
-    if input.nested_dim() != 1:
-        raise RuntimeError("Only NestedTensor with nested dimension of 1 are currenlty supported. Current nested dimension: {}".format(input.nested_dim()))
-
-    if input.dim() != 4:
-        raise RuntimeError("Only NestedTensor with dimension of 4 are currenlty supported. Current dimension: {}".format(input.dim()))
+    validate_nt(input)
 
     res = []
     for tensor in iter(input):
@@ -143,35 +135,11 @@ def embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
 
 orig_batch_norm = torch.nn.functional.batch_norm
 
-
 def batch_norm(input, running_mean, running_var, weight=None, bias=None, training=False, momentum=0.1, eps=1e-05):
-    if utils.find_nested_tensor_dispatch_key(input, running_mean, running_var, weight, bias, training, momentum, eps) is None:
-        return orig_batch_norm(input, running_mean, running_var, weight, bias, training, momentum, eps)
-
-    if utils.is_nested_tensor(input) and input.is_contiguous() and None not in input.size():
-        # TODO: The unsqueeze and squeeze needs to depend on input dimension
-        input_buffer = input._impl.get_buffer().reshape(input.size())
-        result = orig_batch_norm(
-            input_buffer, running_mean, running_var, weight, bias, training, momentum, eps)
-        return nested.NestedTensor(_C._BufferNestedTensor(result.flatten(), input.nested_size()))
-
-    def t_batch_norm(input: torch.Tensor, running_mean: torch.Tensor, running_var: torch.Tensor, weight, bias, training, momentum, eps):
-        squeeze_after = False
-        # TODO: Need support for BatchNorm1d and BatchNorm2d as well
-        if input.dim() == 3:
-            # Check if is single image (leading batch dimension removed)
-            if input.size(1) != running_mean.size(0):
-                input = input.unsqueeze(0)
-                squeeze_after = True
-        result = orig_batch_norm(
-            input, running_mean, running_var, weight, bias, training, momentum, eps)
-        if squeeze_after:
-            result = result.squeeze(0)
-        return result
-
-    tw_batch_norm = utils.tensorwise()(t_batch_norm)
-
-    return tw_batch_norm(input, running_mean, running_var, weight, bias, training, momentum, eps)
+    validate_nt(input)
+    tensor, mask = input.to_tensor_mask()
+    res = orig_batch_norm(tensor, running_mean, running_var, weight, bias, training, momentum, eps)
+    return nestedtensor.nested_tensor_from_tensor_mask(res, mask)
 
 
 def relu(input, inplace=False):
@@ -185,7 +153,6 @@ def dropout(input, p=0.5, training=True, inplace=False):
 
 
 def cross_entropy(input, target, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean'):
-    print("in cross entropy")
     tw_relu = utils.tensorwise()(torch.nn.functional.cross_entropy)
     return tw_relu(input, target, weight, size_average, ignore_index, reduce, reduction)
 
@@ -302,3 +269,13 @@ def addmm(*args, **kwargs):
         return _addmm(1, args[0], 1, *args[1:], **kwargs)
     else:
         raise ValueError("Unrecognized signature for addmm")
+
+def validate_nt(input):
+    if not utils.is_nested_tensor(input):
+        raise RuntimeError("Expected NestedTensor as an input. Got: {}".format(type(input)))
+
+    if input.nested_dim() != 1:
+        raise RuntimeError("Only NestedTensor with nested dimension of 1 are currenlty supported. Current nested dimension: {}".format(input.nested_dim()))
+
+    if input.dim() != 4:
+        raise RuntimeError("Only NestedTensor with dimension of 4 are currenlty supported. Current dimension: {}".format(input.dim()))

@@ -31,5 +31,34 @@ class TestFunctional(TestCase):
         tensor_res = [torch.nn.functional.conv2d(t.unsqueeze(0), weight).squeeze(0) for t in list_of_tensors]
         self.assertEqual(nt_res, tensor_res)
 
+    def test_batch_norm(self):
+        inputs = [
+            torch.tensor([[[-0.5000]], [[0.5000]]]),
+            torch.tensor([
+                [
+                    [-1.0000, 1.0000], [-0.2500, -0.5000]
+                ],
+                [
+                    [0.2500, 0.5000],   [1.5000, -1.5000]
+                ]
+            ])
+        ]
+
+        nt = nestedtensor.nested_tensor(inputs)
+
+        tensor_res = []
+        for i in range(2):
+            batch_norm = torch.nn.BatchNorm2d(2, 1e-05, 0.1)
+            batch_norm.eval()
+            t_res = batch_norm(inputs[i].unsqueeze(0).contiguous())
+            tensor_res.append(t_res.squeeze(0))
+
+        batch_norm = torch.nn.BatchNorm2d(2, 1e-05, 0.1)
+        batch_norm.eval()
+        nt_res = batch_norm(nt)
+
+        self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+
+
 if __name__ == "__main__":
     unittest.main()
