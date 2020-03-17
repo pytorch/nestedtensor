@@ -210,15 +210,16 @@ def interpolate(input, size=None, scale_factor=None, mode='nearest', align_corne
     validate_nt(input)
 
     res = []
-    for i, tensor in enumerate(input):
+
+    for tensor in iter(input):
         if tensor.dim() != 3:
            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
 
         if size is None:
             currSize = tensor.unsqueeze(0).shape[-2]
         else: 
-            currSize = size[i]
-        
+            currSize = size
+
         tensor = tensor.unsqueeze(0).contiguous()
         tensor = torch.nn.functional.interpolate(tensor, currSize, scale_factor, mode, align_corners, recompute_scale_factor)
         res.append(tensor.squeeze(0))
