@@ -204,7 +204,7 @@ class NestedTensor(object):
 
     # --- dependent on impl ends ---
 
-    def __torch_function__(self, func, args=(), kwargs=None):
+    def __torch_function__(self, func, types, args=(), kwargs=None):
         _local_func = None
         if func in NestedTensor.__C_functions:
             assert len(args) == 1
