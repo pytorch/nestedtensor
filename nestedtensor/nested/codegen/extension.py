@@ -74,7 +74,7 @@ def get_unary_functions():
         'expm1',
         'floor',
         'fill',
-        'fmod',  # Requires extra kwargs
+        # 'fmod',  # Requires extra kwargs
         'frac',
         # 'hardshrink', # TODO: Not part of aten
         'lgamma',
