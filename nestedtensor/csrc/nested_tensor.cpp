@@ -42,7 +42,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<c10::optional<int64_t>> NestedTensor::size() {
+std::vector<c10::optional<int64_t>> NestedTensor::size() const {
   return construct_size(_nested_size);
 }
 

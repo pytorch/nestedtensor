@@ -7,7 +7,7 @@ import nestedtensor
 import unittest
 import random
 
-from .utils import TestCase
+from utils import TestCase
 
 class TestNestedTensorAutograd(TestCase):
     def test_basic_grad(self):
