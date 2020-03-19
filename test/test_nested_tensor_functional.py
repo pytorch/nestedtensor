@@ -12,12 +12,12 @@ import utils
 class TestFunctional(TestCase):
 
     def test_nll_loss(self):
-        a = utils.gen_float_tensor(1, (40, 5))
-        b = utils.gen_float_tensor(1, (40,))
+        utils.gen_float_tensor(1, (40, 5))
+        utils.gen_float_tensor(1, (40,))
 
     def test_addmm(self):
-        a, b = torch.rand(5), torch.rand(4, 5)
-        nt = nestedtensor.nested_tensor(
+        torch.rand(5), torch.rand(4, 5)
+        nestedtensor.nested_tensor(
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)])
 
     def test_conv2d(self):

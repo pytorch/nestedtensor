@@ -51,10 +51,12 @@ struct THPNestedTensor {
   pybind11::object getitem(int64_t key) {
     return unbind(0)[key];
   }
+#if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
   pybind11::object getitem(py::slice key) {
     py::list unbound = py::cast(unbind(0));
     return unbound[key];
   }
+#endif
   std::vector<pybind11::object> unbind(int64_t dim);
   THPIValueNode nested_size();
   THPIValueNode nested_stride();

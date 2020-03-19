@@ -38,8 +38,8 @@ class TestNestedTensor(TestCase):
         for constructor in _iter_constructors():
             num_nested_tensor = 3
             # TODO: Shouldn't be constructable
-            nested_tensors = [utils.gen_nested_tensor(i, i, 3, constructor=constructor)
-                              for i in range(1, num_nested_tensor)]
+            [utils.gen_nested_tensor(i, i, 3, constructor=constructor)
+             for i in range(1, num_nested_tensor)]
 
     def test_list_constructor(self):
         """
@@ -564,7 +564,7 @@ class TestNestedTensor(TestCase):
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
-        for i in range(1, 10):
+        for _ in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
             nt = nestedtensor.nested_tensor(data)

@@ -46,9 +46,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           py::overload_cast<c10::optional<int64_t>>(
               &THPNestedTensor::nested_stride))
       .def("__getitem__", py::overload_cast<int64_t>(&THPNestedTensor::getitem))
+#if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
       .def(
           "__getitem__",
           py::overload_cast<py::slice>(&THPNestedTensor::getitem))
+#endif
       .def(
           "unbind",
           torch::wrap_pybind_function([](THPNestedTensor self, int64_t dim) {

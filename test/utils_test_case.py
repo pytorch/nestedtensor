@@ -4,6 +4,7 @@ import torch
 import nestedtensor as NT
 from numbers import Number
 from math import inf
+from collections import OrderedDict
 
 string_classes = (str, bytes)
 
@@ -182,7 +183,7 @@ class TestCaseBase(unittest.TestCase):
             super(TestCaseBase, self).assertNotEqual(x, y, message)
 
 class TestCase(TestCaseBase):
-    # ToDo: remove ignore_contiguity flag. We should not use it. 
+    # ToDo: remove ignore_contiguity flag. We should not use it.
     def assertAlmostEqual(self, x, y, places=None, msg=None, delta=None, allow_inf=None, ignore_contiguity=False):
         prec = delta
         if places:
@@ -235,7 +236,7 @@ class TestCase(TestCaseBase):
             # If you ignore contiguity you should also ignore the striding
             if not ignore_contiguity and x.nested_stride() != y.nested_stride():
                 self.fail("Nested tensors nested strides don't match. {} != {}".format(x.nested_stride(), y.nested_stride()))
-            
+
             for x_, y_ in zip(x, y):
                 self.assertEqual(x_, y_, prec=prec, message=message,
                                  allow_inf=allow_inf, ignore_contiguity=ignore_contiguity)
