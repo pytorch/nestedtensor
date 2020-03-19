@@ -5,9 +5,6 @@ def monkey_patch(NestedTensor):
     of the torch.Tensor or torch module corresponding implementations.
     """
 
-    import os
-    DEBUG = int(os.getenv("DEBUG", 0))
-
     from nestedtensor.nested import codegen
     from nestedtensor.nested import functions
     import torch
@@ -248,7 +245,6 @@ def monkey_patch(NestedTensor):
 
     # module.NestedTensor = NestedTensor
 
-    setattr(NestedTensor, '_NestedTensor__function_dispatch', function_dispatch)
-    setattr(NestedTensor, '_NestedTensor__jit_function_dispatch',
-            jit_function_dispatch)
-    setattr(NestedTensor, '_NestedTensor__C_functions', C_functions)
+    NestedTensor._NestedTensor__function_dispatch = function_dispatch
+    NestedTensor._NestedTensor__jit_function_dispatch = jit_function_dispatch
+    NestedTensor._NestedTensor__C_functions = C_functions

@@ -5,11 +5,10 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
+from .utils import TestCase
 import random
 
 
-import utils
 
 # TODO: Test unbind, test grad and backward
 
