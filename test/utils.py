@@ -7,7 +7,7 @@ import nestedtensor
 import unittest
 import random
 
-from .utils_test_case import TestCase
+from utils_test_case import TestCase
 
 
 def nested_size_to_list(ns):

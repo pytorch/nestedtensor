@@ -5,10 +5,10 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from .utils import TestCase
+from utils import TestCase
 import random
 
-from . import utils
+import utils
 
 class TestTensorWise(TestCase):
 
