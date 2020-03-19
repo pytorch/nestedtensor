@@ -132,8 +132,8 @@ class TestFunctional(TestCase):
         ]
 
         targets = [
-            torch.randint(1, (1, 300, 300), dtype=torch.int64),
-            torch.randint(1, (1, 400, 400), dtype=torch.int64)
+            torch.randint(1, (300, 300), dtype=torch.int64),
+            torch.randint(1, (400, 400), dtype=torch.int64)
         ]
 
         input_nt = nestedtensor.nested_tensor(inputs)
@@ -142,7 +142,7 @@ class TestFunctional(TestCase):
 
         tensor_res = []
         for i in range(2):
-            t_res = torch.nn.functional.cross_entropy(inputs[i].unsqueeze(0).contiguous(), targets[i])
+            t_res = torch.nn.functional.cross_entropy(inputs[i].unsqueeze(0).contiguous(), targets[i].unsqueeze(0))
             tensor_res.append(t_res.squeeze(0))
 
         self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
