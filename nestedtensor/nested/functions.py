@@ -191,7 +191,7 @@ def dropout(input, p=0.5, training=True, inplace=False):
 
 def cross_entropy(input, target, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean'):
     validate_nt(input)
-    validate_nt(target)
+    validate_nt(target, ignore_dim4_check=True)
 
     if weight is not None and not isinstance(weight, torch.Tensor):
         raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
@@ -202,6 +202,7 @@ def cross_entropy(input, target, weight=None, size_average=None, ignore_index=-1
             raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
 
         tensor = tensor.unsqueeze(0)
+        trg = trg.unsqueeze(0)
         tensor = torch.nn.functional.cross_entropy(tensor, trg, weight, size_average, ignore_index, reduce, reduction)
         res.append(tensor.squeeze(0))
 
@@ -335,12 +336,12 @@ def addmm(*args, **kwargs):
         raise ValueError("Unrecognized signature for addmm")
 
 
-def validate_nt(input):
+def validate_nt(input, ignore_dim4_check=False):
     if not utils.is_nested_tensor(input):
         raise RuntimeError("Expected NestedTensor as an input. Got: {}".format(type(input)))
 
     if input.nested_dim() != 1:
         raise RuntimeError("Only NestedTensor with nested dimension of 1 are currenlty supported. Current nested dimension: {}".format(input.nested_dim()))
 
-    if input.dim() != 4:
+    if not ignore_dim4_check and input.dim() != 4:
         raise RuntimeError("Only NestedTensor with dimension of 4 are currenlty supported. Current dimension: {}".format(input.dim()))
