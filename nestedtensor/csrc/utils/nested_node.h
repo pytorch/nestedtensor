@@ -95,10 +95,34 @@ struct NestedNode {
   int64_t _height;
 };
 
+<<<<<<< HEAD
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
+=======
+// This is a C++ representation of a nested list of torch.Sizes
+//
+// It can never be a list of just numbers, because torch.Size
+// is always a list and NestedTensors represent lists of torch.Tensors
+//
+// Noteworthy cases:
+//
+// This is an empty list of lists if we construct
+// nested_tensor([])
+// which is of nested_dim 1, dim 1 and tensor_dim 0
+//
+// This is a list of empty lists if we construct e.g.
+// nested_tensor([torch.tensor(0), torch.tensor(1), ...])
+// which is of nested_dim 1, dim 1 and tensor_dim 0
+//
+// This is a list of list of numbers if we construct e.g.
+// nested_tensor([torch.tensor([1]), torch.tensor([2]), ...])
+// which is of nested_dim 1, dim 2 and tensor_dim 1
+//
+// That means, if the list is not empty it is either a list of
+// lists of numbers or a list of empty lists.
+>>>>>>> Set up ShipIt
 
 inline std::vector<std::string> split_str(
     std::string s,
@@ -195,7 +219,10 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
   if (structure.is_leaf()) {
     return std::pair<int64_t, NestedNode<R>>(
         index + 1, NestedNode<R>(content[index]));
+<<<<<<< HEAD
 
+=======
+>>>>>>> Set up ShipIt
   } else {
     std::vector<NestedNode<R>> result;
     for (size_t i = 0; i < structure.degree(); i++) {

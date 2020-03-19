@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 #pragma once
+=======
+>>>>>>> Set up ShipIt
 #include <creation.h>
 #include <python_nested_tensor.h>
 #include <torch/extension.h>

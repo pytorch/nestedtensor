@@ -5,7 +5,11 @@ import sys
 import torch
 import nestedtensor
 import unittest
+<<<<<<< HEAD
 from utils import TestCase
+=======
+from .utils import TestCase
+>>>>>>> Set up ShipIt
 import random
 
 

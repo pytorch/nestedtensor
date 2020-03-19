@@ -3,13 +3,17 @@
 #include <python_nested_tensor.h>
 #include <torch/csrc/autograd/utils/wrap_outputs.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
+<<<<<<< HEAD
 #include <torch/csrc/Size.h>
+=======
+>>>>>>> Set up ShipIt
 
 namespace py = pybind11;
 
 namespace torch {
 namespace nested_tensor {
 
+<<<<<<< HEAD
 py::object _nested_helper(
     c10::optional<int64_t> index,
     SizeNode&& size_node) {
@@ -64,6 +68,63 @@ py::object THPNestedTensor::nested_stride(c10::optional<int64_t> index_) {
   int64_t index = at::maybe_wrap_dim((*index_), _data.dim());
   SizeNode size_node = _data.nested_stride();
   return _nested_helper(index, std::move(size_node));
+=======
+THPIValueNode THPNestedTensor::nested_size() {
+  return THPIValueNode(
+      map([](c10::List<int64_t> e) { return c10::IValue(e); },
+          _data.nested_size()),
+      "NestedSize");
+}
+THPIValueNode THPNestedTensor::nested_stride() {
+  return THPIValueNode(
+      map([](c10::List<int64_t> e) { return c10::IValue(e); },
+          _data.nested_stride()),
+      "NestedStride");
+}
+
+THPIValueNode _nested_helper(
+    c10::optional<int64_t> index,
+    SizeNode&& size_node,
+    std::string name) {
+  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
+    if (dim == 0) {
+      return IntegerNode(s.degree());
+    }
+    if (s.height() == 1) {
+      return map(
+          [dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
+    }
+    std::vector<IntegerNode> result;
+    for (const auto& child : s.unbind()) {
+      result.emplace_back(self(self, child, dim - 1));
+    }
+    return IntegerNode(std::move(result));
+  };
+  return THPIValueNode(
+      map([](int64_t e) { return c10::IValue(e); }, fn(fn, size_node, *index)),
+      name);
+}
+
+THPIValueNode THPNestedTensor::nested_size(c10::optional<int64_t> index) {
+  if (!index) {
+    return nested_size();
+  }
+  auto dim = _data.dim();
+  // TODO: Negative dims and slices
+  TORCH_CHECK(index < dim, "dim argument out of range.");
+  SizeNode size_node = _data.nested_size();
+  return _nested_helper(index, std::move(size_node), "NestedSize");
+}
+THPIValueNode THPNestedTensor::nested_stride(c10::optional<int64_t> index) {
+  if (!index) {
+    return nested_stride();
+  }
+  // TODO: Negative dims and slices
+  auto dim = _data.dim();
+  TORCH_CHECK(index < dim, "dim argument out of range.");
+  SizeNode size_node = _data.nested_size();
+  return _nested_helper(index, std::move(size_node), "NestedStride");
+>>>>>>> Set up ShipIt
 }
 
 std::string THPNestedTensor::str() {

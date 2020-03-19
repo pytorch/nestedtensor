@@ -7,7 +7,11 @@ import nestedtensor
 import unittest
 import random
 
+<<<<<<< HEAD
 from utils import TestCase
+=======
+from .utils import TestCase
+>>>>>>> Set up ShipIt
 
 class TestNestedTensorAutograd(TestCase):
     def test_basic_grad(self):

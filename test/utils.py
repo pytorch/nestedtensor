@@ -7,7 +7,18 @@ import nestedtensor
 import unittest
 import random
 
+<<<<<<< HEAD
 from utils_test_case import TestCase
+=======
+from .utils_test_case import TestCase
+
+
+def nested_size_to_list(ns):
+    if isinstance(ns, list):
+        return ns
+    else:
+        return [nested_size_to_list(n) for n in ns.unbind()]
+>>>>>>> Set up ShipIt
 
 def debug_on(*exceptions):
     if not exceptions:

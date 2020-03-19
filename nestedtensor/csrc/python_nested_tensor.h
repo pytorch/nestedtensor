@@ -1,5 +1,8 @@
 #pragma once
+<<<<<<< HEAD
 
+=======
+>>>>>>> Set up ShipIt
 #include <nested_tensor.h>
 #include <py_utils.h>
 #include <utils/python_nested_node.h>
@@ -13,9 +16,19 @@
 namespace torch {
 namespace nested_tensor {
 
+<<<<<<< HEAD
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   // TODO: Move constructor
+=======
+using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
+using THPIntegerNode = THPNestedNode<int64_t>;
+using THPTensorNode = THPNestedNode<at::Tensor>;
+using THPIValueNode = THPNestedNode<c10::IValue>;
+
+struct THPNestedTensor {
+  THPNestedTensor() = delete;
+>>>>>>> Set up ShipIt
   THPNestedTensor(NestedTensor data) : _data(data) {}
   at::Tensor get_buffer() {
     return (*_data.get_buffer());
@@ -38,9 +51,13 @@ struct THPNestedTensor {
     return _data.requires_grad();
   }
   std::vector<c10::optional<int64_t>> size() {
+<<<<<<< HEAD
     // NOTE: torch.Tensor.size maps to at::Tensor.sizes
     // because at:: came after torch.Tensor.
     return _data.sizes();
+=======
+    return _data.size();
+>>>>>>> Set up ShipIt
   }
   // TODO: Not covered by 0.0.2 or 0.0.1!
   // NOTE: Returns a view
@@ -57,8 +74,15 @@ struct THPNestedTensor {
   }
 #endif
   std::vector<pybind11::object> unbind(int64_t dim);
+<<<<<<< HEAD
   py::object nested_size(c10::optional<int64_t> index);
   py::object nested_stride(c10::optional<int64_t> index);
+=======
+  THPIValueNode nested_size();
+  THPIValueNode nested_stride();
+  THPIValueNode nested_size(c10::optional<int64_t> index);
+  THPIValueNode nested_stride(c10::optional<int64_t> index);
+>>>>>>> Set up ShipIt
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad_) {
     bool requires_grad = requires_grad_;
     return THPNestedTensor(_data.requires_grad_(requires_grad));

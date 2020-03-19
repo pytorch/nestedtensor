@@ -4,7 +4,10 @@
 #include <unary.h>
 #include <utils/nested_node_functions.h>
 #include <utils/python_nested_node.h>
+<<<<<<< HEAD
 #include <python_functions.h>
+=======
+>>>>>>> Set up ShipIt
 
 // TODO: Add a field such as is_empty to _NestedNode?
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
@@ -21,10 +24,14 @@
 // If depth is 0, it means that the current structure
 // is already a leaf, i.e. has no children.
 
+<<<<<<< HEAD
 namespace py = pybind11;
 
 using namespace torch::nested_tensor;
 
+=======
+using namespace torch::nested_tensor;
+>>>>>>> Set up ShipIt
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   register_python_nested_node(m);
 
@@ -38,6 +45,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def_property_readonly("requires_grad", &THPNestedTensor::requires_grad)
       .def("__len__", &THPNestedTensor::len)
       .def("element_size", &THPNestedTensor::element_size)
+<<<<<<< HEAD
       .def("nested_size",
           torch::wrap_pybind_function([](THPNestedTensor self, c10::optional<int64_t> dim) {
             return self.nested_size(dim);
@@ -46,6 +54,19 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           torch::wrap_pybind_function([](THPNestedTensor self, c10::optional<int64_t> dim) {
             return self.nested_stride(dim);
           }))
+=======
+      .def("nested_size", py::overload_cast<>(&THPNestedTensor::nested_size))
+      .def(
+          "nested_size",
+          py::overload_cast<c10::optional<int64_t>>(
+              &THPNestedTensor::nested_size))
+      .def(
+          "nested_stride", py::overload_cast<>(&THPNestedTensor::nested_stride))
+      .def(
+          "nested_stride",
+          py::overload_cast<c10::optional<int64_t>>(
+              &THPNestedTensor::nested_stride))
+>>>>>>> Set up ShipIt
       .def("__getitem__", py::overload_cast<int64_t>(&THPNestedTensor::getitem))
 #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
       .def(
@@ -87,7 +108,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("__repr__", &THPNestedTensor::str);
 
   add_unary_functions(m, c);
+<<<<<<< HEAD
   add_functions(m, c);
+=======
+>>>>>>> Set up ShipIt
 
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);

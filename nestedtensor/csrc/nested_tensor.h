@@ -13,7 +13,10 @@ using IntegerNode = NestedNode<int64_t>;
 struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
+<<<<<<< HEAD
   NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
+=======
+>>>>>>> Set up ShipIt
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
   c10::optional<at::Tensor>& get_buffer() {
     return _buffer;
@@ -21,6 +24,7 @@ struct NestedTensor {
   const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
+<<<<<<< HEAD
   std::vector<c10::optional<int64_t>> sizes() const;
   caffe2::TypeMeta dtype() const {
     return _first_variable.dtype();
@@ -49,6 +53,12 @@ struct NestedTensor {
   //
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
+=======
+  std::vector<c10::optional<int64_t>> size();
+  int64_t element_size() const {
+    return _first_variable.element_size();
+  }
+>>>>>>> Set up ShipIt
   SizeNode nested_size() const {
     return _nested_size;
   }
@@ -163,16 +173,22 @@ struct NestedTensor {
     return _structure;
   }
 
+<<<<<<< HEAD
 // torch.Tensor methods
   NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
   NestedTensor squeeze_(c10::optional<int64_t> dim);
 
+=======
+>>>>>>> Set up ShipIt
  private:
   c10::optional<at::Tensor> _buffer;
   TensorNode _structure;
   at::Tensor _first_variable;
   SizeNode _nested_size;
 };
+<<<<<<< HEAD
 
+=======
+>>>>>>> Set up ShipIt
 } // namespace nested_tensor
 } // namespace torch
