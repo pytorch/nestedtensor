@@ -16,6 +16,7 @@ using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
 using THPTensorNode = THPNestedNode<at::Tensor>;
 using THPIValueNode = THPNestedNode<c10::IValue>;
+using THPPyObjectNode = THPNestedNode<pybind11::object>;
 
 struct THPNestedTensor {
   THPNestedTensor() = delete;
@@ -58,8 +59,9 @@ struct THPNestedTensor {
   }
 #endif
   std::vector<pybind11::object> unbind(int64_t dim);
-  THPIValueNode nested_size(c10::optional<int64_t> index);
-  THPIValueNode nested_stride(c10::optional<int64_t> index);
+//  THPIValueNode nested_size(c10::optional<int64_t> index);
+  THPPyObjectNode nested_size(c10::optional<int64_t> index);
+//  THPIValueNode nested_stride(c10::optional<int64_t> index);
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad_) {
     bool requires_grad = requires_grad_;
     return THPNestedTensor(_data.requires_grad_(requires_grad));

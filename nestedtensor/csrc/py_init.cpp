@@ -35,7 +35,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("__len__", &THPNestedTensor::len)
       .def("element_size", &THPNestedTensor::element_size)
       .def("nested_size", &THPNestedTensor::nested_size)
-      .def("nested_stride", &THPNestedTensor::nested_stride)
+//      .def("nested_stride", &THPNestedTensor::nested_stride)
       .def("__getitem__", py::overload_cast<int64_t>(&THPNestedTensor::getitem))
 #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
       .def(
