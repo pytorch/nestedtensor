@@ -9,19 +9,6 @@ namespace py = pybind11;
 namespace torch {
 namespace nested_tensor {
 
-THPIValueNode THPNestedTensor::nested_size() {
-  return THPIValueNode(
-      map([](c10::List<int64_t> e) { return c10::IValue(e); },
-          _data.nested_size()),
-      "NestedSize");
-}
-THPIValueNode THPNestedTensor::nested_stride() {
-  return THPIValueNode(
-      map([](c10::List<int64_t> e) { return c10::IValue(e); },
-          _data.nested_stride()),
-      "NestedStride");
-}
-
 THPIValueNode _nested_helper(
     c10::optional<int64_t> index,
     SizeNode&& size_node,
@@ -41,13 +28,17 @@ THPIValueNode _nested_helper(
     return IntegerNode(std::move(result));
   };
   return THPIValueNode(
-      map([](int64_t e) { return c10::IValue(e); }, fn(fn, size_node, *index)),
+      map([](int64_t e) { return c10::IValue(e); },
+      fn(fn, size_node, *index)),
       name);
 }
 
 THPIValueNode THPNestedTensor::nested_size(c10::optional<int64_t> index) {
   if (!index) {
-    return nested_size();
+    return THPIValueNode(
+        map([](c10::List<int64_t> e) { return c10::IValue(e); },
+            _data.nested_size()),
+        "NestedSize");
   }
   auto dim = _data.dim();
   // TODO: Negative dims and slices
@@ -57,7 +48,10 @@ THPIValueNode THPNestedTensor::nested_size(c10::optional<int64_t> index) {
 }
 THPIValueNode THPNestedTensor::nested_stride(c10::optional<int64_t> index) {
   if (!index) {
-    return nested_stride();
+    return THPIValueNode(
+        map([](c10::List<int64_t> e) { return c10::IValue(e); },
+            _data.nested_stride()),
+        "NestedStride");
   }
   // TODO: Negative dims and slices
   auto dim = _data.dim();

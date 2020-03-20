@@ -17,7 +17,7 @@ import utils
 
 def _iter_constructors():
     yield nestedtensor.as_nested_tensor
-    yield nestedtensor.nested_tensor
+    # yield nestedtensor.nested_tensor
 
 
 def _test_property(self, fn):
@@ -179,6 +179,37 @@ class TestNestedTensor(TestCase):
 
     def test_nested_size(self):
         for constructor in _iter_constructors():
+            # a = constructor([])
+            # print(a)
+            # print(a.nested_size())
+            # print("")
+
+            # a = constructor([torch.tensor(1)])
+            # print(a)
+            # print(a.nested_size())
+            # print(a.nested_size(0))
+            # print("")
+
+            a = constructor([torch.randn(1)])
+            print(a)
+            print(a.nested_size())
+            print(a.nested_size(0))
+            print("")
+
+            continue
+
+            a = constructor([torch.randn(1, 2)])
+            print(a)
+            print(a.nested_size())
+            print("")
+
+            a = constructor([[torch.randn(1)], [torch.randn(2), torch.randn(1)]])
+            print(a)
+            print(a.nested_size())
+            print("")
+
+            continue
+
             a = constructor([torch.tensor(1)])
             self.assertEqual(a.nested_size().unbind(), [[]])
 
