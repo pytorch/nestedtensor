@@ -6,6 +6,7 @@ import torch
 import nestedtensor
 import unittest
 <<<<<<< HEAD
+<<<<<<< HEAD
 from utils import TestCase
 import random
 import utils
@@ -17,8 +18,11 @@ def _iter_constructors():
 class TestFunctional(TestCase):
 =======
 from .utils import TestCase
+=======
+from utils import TestCase
+>>>>>>> 20200319 pytorch/nestedtensor import (#83)
 import random
-from . import utils
+import utils
 
 class TestFunctional(TestCase):
 

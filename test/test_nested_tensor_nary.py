@@ -6,6 +6,7 @@ import torch
 import nestedtensor
 import unittest
 <<<<<<< HEAD
+<<<<<<< HEAD
 from utils import TestCase
 import random
 import utils
@@ -14,6 +15,11 @@ from .utils import TestCase
 import random
 from . import utils
 >>>>>>> Set up ShipIt
+=======
+from utils import TestCase
+import random
+import utils
+>>>>>>> 20200319 pytorch/nestedtensor import (#83)
 
 
 class DynamicClassBase(TestCase):

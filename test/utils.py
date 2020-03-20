@@ -8,9 +8,13 @@ import unittest
 import random
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 from utils_test_case import TestCase
 =======
 from .utils_test_case import TestCase
+=======
+from utils_test_case import TestCase
+>>>>>>> 20200319 pytorch/nestedtensor import (#83)
 
 
 def nested_size_to_list(ns):

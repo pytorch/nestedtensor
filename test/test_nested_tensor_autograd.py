@@ -8,10 +8,14 @@ import unittest
 import random
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 from utils import TestCase
 =======
 from .utils import TestCase
 >>>>>>> Set up ShipIt
+=======
+from utils import TestCase
+>>>>>>> 20200319 pytorch/nestedtensor import (#83)
 
 class TestNestedTensorAutograd(TestCase):
     def test_basic_grad(self):

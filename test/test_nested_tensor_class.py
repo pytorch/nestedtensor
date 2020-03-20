@@ -6,6 +6,7 @@ import torch
 import nestedtensor
 import unittest
 <<<<<<< HEAD
+<<<<<<< HEAD
 from utils import TestCase
 import random
 
@@ -17,6 +18,13 @@ import random
 
 from . import utils
 >>>>>>> Set up ShipIt
+=======
+from utils import TestCase
+from utils import nested_size_to_list
+import random
+
+import utils
+>>>>>>> 20200319 pytorch/nestedtensor import (#83)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.

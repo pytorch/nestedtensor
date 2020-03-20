@@ -47,10 +47,14 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
 =======
 std::vector<c10::optional<int64_t>> NestedTensor::size() {
 >>>>>>> Set up ShipIt
+=======
+std::vector<c10::optional<int64_t>> NestedTensor::size() const {
+>>>>>>> 20200319 pytorch/nestedtensor import (#83)
   return construct_size(_nested_size);
 }
 

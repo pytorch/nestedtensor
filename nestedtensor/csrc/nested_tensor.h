@@ -25,6 +25,7 @@ struct NestedTensor {
     return _buffer;
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
   std::vector<c10::optional<int64_t>> sizes() const;
   caffe2::TypeMeta dtype() const {
     return _first_variable.dtype();
@@ -55,6 +56,12 @@ struct NestedTensor {
   // lists of numbers or a list of empty lists.
 =======
   std::vector<c10::optional<int64_t>> size();
+=======
+  std::vector<c10::optional<int64_t>> size() const;
+  caffe2::TypeMeta dtype() const {
+    return _first_variable.dtype();
+  }
+>>>>>>> 20200319 pytorch/nestedtensor import (#83)
   int64_t element_size() const {
     return _first_variable.element_size();
   }
