@@ -19,14 +19,12 @@ py::object _nested_helper(
     }
     // List of Tensors
     if (s.height() == 1) {
-      std::cout << "DDD" << std::endl;
       std::vector<int64_t> result;
       for (const auto& child : s.unbind()) {
         result.push_back(child.payload().get(dim - 1));
       }
       return py::tuple(py::cast(result));
     }
-    std::cout << "EEE" << std::endl;
     std::vector<py::object> result;
     for (const auto& child : s.unbind()) {
       result.emplace_back(self(self, child, dim - 1));
