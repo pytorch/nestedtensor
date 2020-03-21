@@ -60,7 +60,7 @@ struct THPNestedTensor {
 #endif
   std::vector<pybind11::object> unbind(int64_t dim);
 //  THPIValueNode nested_size(c10::optional<int64_t> index);
-  THPPyObjectNode nested_size(c10::optional<int64_t> index);
+  py::object nested_size(c10::optional<int64_t> index);
 //  THPIValueNode nested_stride(c10::optional<int64_t> index);
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad_) {
     bool requires_grad = requires_grad_;

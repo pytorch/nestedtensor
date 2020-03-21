@@ -10,33 +10,35 @@ namespace py = pybind11;
 namespace torch {
 namespace nested_tensor {
 
-THPPyObjectNode _nested_helper(
+py::object _nested_helper(
     c10::optional<int64_t> index,
-    SizeNode&& size_node,
-    std::string name) {
-  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> IntegerNode {
+    SizeNode&& size_node) {
+  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
     if (dim == 0) {
-      return IntegerNode(s.degree());
+      return py::cast(s.degree());
     }
+    // List of Tensors
     if (s.height() == 1) {
-      return map(
-          [dim](c10::List<int64_t> si) { return si.extract(dim - 1); }, s);
+      std::cout << "DDD" << std::endl;
+      std::vector<int64_t> result;
+      for (const auto& child : s.unbind()) {
+        result.push_back(child.payload().get(dim - 1));
+      }
+      return py::tuple(py::cast(result));
     }
-    std::vector<IntegerNode> result;
+    std::cout << "EEE" << std::endl;
+    std::vector<py::object> result;
     for (const auto& child : s.unbind()) {
       result.emplace_back(self(self, child, dim - 1));
     }
-    return IntegerNode(std::move(result));
+    return py::make_tuple(result);
   };
-  return THPPyObjectNode(
-      map([](int64_t e) { return torch::jit::toPyObject(c10::IValue(e)); },
-      fn(fn, size_node, *index)),
-      name);
+  return fn(fn, size_node, *index);
 }
 
-THPPyObjectNode THPNestedTensor::nested_size(c10::optional<int64_t> index_) {
-  if (!index) {
-    return THPPyObjectNode(
+py::object THPNestedTensor::nested_size(c10::optional<int64_t> index_) {
+  if (!index_) {
+    return py::cast(THPPyObjectNode(
         map([](c10::List<int64_t> e)
           { 
           std::vector<int64_t> e_vec = e.vec();
@@ -44,13 +46,11 @@ THPPyObjectNode THPNestedTensor::nested_size(c10::optional<int64_t> index_) {
               THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
           },
           _data.nested_size()),
-        "NestedSize");
+        "NestedSize"));
   }
   int64_t index = at::maybe_wrap_dim((*index_), _data.dim());
-  // TODO: Negative dims and slices
-  TORCH_CHECK(index < dim, "dim argument out of range.");
   SizeNode size_node = _data.nested_size();
-  return _nested_helper(index, std::move(size_node), "NestedSize");
+  return _nested_helper(index, std::move(size_node));
 }
 // THPIValueNode THPNestedTensor::nested_stride(c10::optional<int64_t> index) {
 //   if (!index) {

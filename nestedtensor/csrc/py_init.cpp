@@ -20,7 +20,10 @@
 // If depth is 0, it means that the current structure
 // is already a leaf, i.e. has no children.
 
+namespace py = pybind11;
+
 using namespace torch::nested_tensor;
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   register_python_nested_node(m);
 
