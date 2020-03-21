@@ -12,12 +12,6 @@
 namespace torch {
 namespace nested_tensor {
 
-using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
-using THPIntegerNode = THPNestedNode<int64_t>;
-using THPTensorNode = THPNestedNode<at::Tensor>;
-using THPIValueNode = THPNestedNode<c10::IValue>;
-using THPPyObjectNode = THPNestedNode<pybind11::object>;
-
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   THPNestedTensor(NestedTensor data) : _data(data) {}

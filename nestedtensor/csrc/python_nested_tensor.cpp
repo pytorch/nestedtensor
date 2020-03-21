@@ -38,7 +38,7 @@ py::object _nested_helper(
 
 py::object THPNestedTensor::nested_size(c10::optional<int64_t> index_) {
   if (!index_) {
-    return py::cast(THPPyObjectNode(
+    return py::cast(THPPythonNode(
         map([](c10::List<int64_t> e)
           { 
           std::vector<int64_t> e_vec = e.vec();
@@ -55,7 +55,7 @@ py::object THPNestedTensor::nested_size(c10::optional<int64_t> index_) {
 
 py::object THPNestedTensor::nested_stride(c10::optional<int64_t> index_) {
   if (!index_) {
-    return py::cast(THPPyObjectNode(
+    return py::cast(THPPythonNode(
         map([](c10::List<int64_t> e) -> py::object
           {
           return py::tuple(py::cast(e.vec()));
