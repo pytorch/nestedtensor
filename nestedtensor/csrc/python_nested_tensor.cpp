@@ -29,7 +29,7 @@ py::object _nested_helper(
     for (const auto& child : s.unbind()) {
       result.emplace_back(self(self, child, dim - 1));
     }
-    return py::make_tuple(result);
+    return py::tuple(py::cast(result));
   };
   return fn(fn, size_node, *index);
 }

@@ -17,6 +17,9 @@ void add_thp_node(py::module m, std::string name) {
       .def("__len__", &C::len);
 }
 
+void add_thppython_node(py::module m, std::string name) {
+}
+
 template <class C, class F>
 void add_thp_node(py::module m, std::string name, F eq_fn) {
   py::class_<C>(m, name.c_str())
@@ -40,7 +43,12 @@ THPPythonNode py_map(py::function fn, THPPythonNode node) {
 }
 
 void register_python_nested_node(py::module m) {
-  add_thp_node<THPPythonNode>(m, "PythonNode");
+  py::class_<THPPythonNode>(m, "PythonNode")
+      .def("__str__", &THPPythonNode::str)
+      .def("unbind", &THPPythonNode::unbind)
+      .def("__getitem__", &THPPythonNode::operator[])
+      .def("__repr__", &THPPythonNode::str)
+      .def("__len__", &THPPythonNode::len);
 
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {

@@ -75,6 +75,16 @@ struct THPNestedNode<py::object> {
     }
     return pybind11::cast(result);
   }
+  pybind11::object operator[](size_t index) {
+    TORCH_CHECK(index < _size_node.degree(), "Index out of range.");
+    std::vector<pybind11::object> result;
+    NestedNode<py::object> child = _size_node.unbind()[index];
+    if (child.height() == 0) {
+      return child.payload();
+    } else {
+      return pybind11::cast(THPNestedNode<pybind11::object>(child, _name));
+    }
+  }
 
  private:
   NestedNode<pybind11::object> _size_node;

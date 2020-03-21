@@ -179,79 +179,55 @@ class TestNestedTensor(TestCase):
 
     def test_nested_size(self):
         for constructor in _iter_constructors():
-            # a = constructor([])
-            # print(a)
-            # print(a.nested_size())
-            # print("")
-
-            # a = constructor([torch.tensor(1)])
-            # print(a)
-            # print(a.nested_size())
-            # print(a.nested_size(0))
-            # print("")
-
-            # a = constructor([torch.randn(1)])
-            # print(a)
-            # print(a.nested_size())
-            # print(a.nested_size(0))
-            # print("")
-
-            a = constructor([torch.randn(1, 2)])
-            print(a)
-            print(a.nested_size())
-            print(a.nested_size(0))
-            print('a.nested_size(1)')
-            print(a.nested_size(1))
-            b = a.nested_size(1)
-            print('b')
-            print(b)
-            print('b[0]')
-            print(b[0])
-            print('a.nested_size(1)')
-            print(a.nested_size(1))
-            print('a')
-            print(a)
-            print('a.nested_size()')
-            print(a.nested_size())
-            print('a.nested_size(1)[0]')
-            print(a.nested_size(1)[0])
-            print('a.nested_size(1)[0][0]')
-            print(a.nested_size(1)[0][0])
-            print('')
-            print(a.nested_size(2))
-            print(a.nested_size(3))
-            print("")
-
-            a = constructor([[torch.randn(1)], [torch.randn(2), torch.randn(1)]])
-            print(a)
-            print(a.nested_size())
-            print("")
-
-            continue
+            a = constructor([])
+            self.assertEqual(len(a.nested_size()), 0)
+            self.assertRaises(RuntimeError, lambda: a.nested_size()[0])
 
             a = constructor([torch.tensor(1)])
-            self.assertEqual(a.nested_size().unbind(), [[]])
+            self.assertEqual(len(a.nested_size()), 1)
+            self.assertEqual(a.nested_size()[0], torch.Size([]))
+            self.assertEqual(a.nested_size(0), 1)
+            self.assertRaises(IndexError, lambda: a.nested_size(1))
 
-            a = constructor(
-                [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-            na = [[1, 2], [2, 3], [4, 5]]
-            self.assertEqual(nested_size_to_list(a.nested_size()), na)
+            a = constructor([torch.randn(1)])
+            self.assertEqual(a.nested_size()[0], torch.Size([1]))
+            self.assertEqual(a.nested_size()[0][0], 1)
+            self.assertEqual(a.nested_size(0), 1)
+            self.assertEqual(a.nested_size(1), (1,))
+            self.assertRaises(IndexError, lambda: a.nested_size(2))
 
-            a = constructor(
-                [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-            na = [[1, 2], [2, 3], [4, 5]]
-            self.assertEqual(nested_size_to_list(a.nested_size()), na)
-            values = [torch.rand(1, 2) for i in range(10)]
-            values = [values[1:i] for i in range(2, 10)]
-            nt = constructor(values)
-            nts = nt.nested_size(1).unbind()
-            lens = list(map(len, values))
-            self.assertEqual(nts, lens)
+            a = constructor([torch.randn(1, 2)])
+            self.assertEqual(a.nested_size()[0], torch.Size([1, 2]))
+            self.assertEqual(a.nested_size(0), 1)
+            self.assertEqual(a.nested_size(1), (1,))
+            self.assertEqual(a.nested_size(2), (2,))
+            self.assertRaises(IndexError, lambda: a.nested_size(3))
 
-            a = constructor(
-                [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-            na = [[1, 2], [2, 3], [4, 5]]
-            self.assertEqual(nested_size_to_list(a.nested_size()), na)
+            # Make sure object is not bound to life-time of NestedTensor instance
+            b = a.nested_size()
+            del a
+            self.assertEqual(len(b), 1)
+            self.assertEqual(b[0], torch.Size([1, 2]))
+            self.assertEqual(b[0][0], 1)
+            self.assertEqual(b[0][1], 2)
+
+            a = constructor([[torch.randn(1)], [torch.randn(2), torch.randn(1)]])
+            self.assertEqual(a.nested_size()[0][0], torch.Size([1]))
+            self.assertEqual(a.nested_size()[1][0], torch.Size([2]))
+            self.assertEqual(a.nested_size()[1][1], torch.Size([1]))
+            self.assertEqual(a.nested_size(0), 2)
+            self.assertEqual(a.nested_size(1), (1, 2))
+            self.assertEqual(a.nested_size(2), ((1,), (2, 1)))
+            self.assertRaises(IndexError, lambda: a.nested_size(3))
+
+            a = constructor([[torch.tensor(1)],
+                            [torch.tensor(2), torch.tensor(1)]])
+            self.assertEqual(a.nested_size()[0][0], torch.Size([]))
+            self.assertEqual(a.nested_size()[1][0], torch.Size([]))
+            self.assertEqual(a.nested_size()[1][1], torch.Size([]))
+            self.assertEqual(a.nested_size(0), 2)
+            self.assertEqual(a.nested_size(1), (1, 2))
+            self.assertRaises(IndexError, lambda: a.nested_size(2))
 
     def test_nested_stride(self):
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
