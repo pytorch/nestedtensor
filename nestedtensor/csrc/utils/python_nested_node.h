@@ -6,6 +6,8 @@
 namespace torch {
 namespace nested_tensor {
 
+using PythonNode = NestedNode<pybind11::object>;
+
 template <typename T>
 struct THPNestedNode {
   THPNestedNode(NestedNode<T> size_node, std::string name)
