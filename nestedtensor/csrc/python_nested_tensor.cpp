@@ -52,19 +52,21 @@ py::object THPNestedTensor::nested_size(c10::optional<int64_t> index_) {
   SizeNode size_node = _data.nested_size();
   return _nested_helper(index, std::move(size_node));
 }
-// THPIValueNode THPNestedTensor::nested_stride(c10::optional<int64_t> index) {
-//   if (!index) {
-//     return THPIValueNode(
-//         map([](c10::List<int64_t> e) { return c10::IValue(e); },
-//             _data.nested_stride()),
-//         "NestedStride");
-//   }
-//   // TODO: Negative dims and slices
-//   auto dim = _data.dim();
-//   TORCH_CHECK(index < dim, "dim argument out of range.");
-//   SizeNode size_node = _data.nested_size();
-//   return _nested_helper(index, std::move(size_node), "NestedStride");
-// }
+
+py::object THPNestedTensor::nested_stride(c10::optional<int64_t> index_) {
+  if (!index_) {
+    return py::cast(THPPyObjectNode(
+        map([](c10::List<int64_t> e) -> py::object
+          {
+          return py::tuple(py::cast(e.vec()));
+          },
+          _data.nested_stride()),
+        "NestedStride"));
+  }
+  int64_t index = at::maybe_wrap_dim((*index_), _data.dim());
+  SizeNode size_node = _data.nested_stride();
+  return _nested_helper(index, std::move(size_node));
+}
 
 std::string THPNestedTensor::str() {
   auto node = _data.get_structure();
