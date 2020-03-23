@@ -139,6 +139,7 @@ class TestFunctional(TestCase):
 
         nt = nestedtensor.nested_tensor(inputs)
 
+        # No size
         tensor_res = []
         for i in range(2):
             t_res = torch.nn.functional.interpolate(inputs[i].unsqueeze(0).contiguous(), inputs[i].unsqueeze(0).shape[-2])
@@ -146,6 +147,16 @@ class TestFunctional(TestCase):
 
         nt_res = torch.nn.functional.interpolate(nt)
         self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+
+        # tuple/int size
+        for size  in [(200, 200), 100]:
+            tensor_res = []
+            for i in range(2):
+                t_res = torch.nn.functional.interpolate(inputs[i].unsqueeze(0).contiguous(), size)
+                tensor_res.append(t_res.squeeze(0))
+
+            nt_res = torch.nn.functional.interpolate(nt, size)
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
 if __name__ == "__main__":
     unittest.main()
