@@ -9,6 +9,7 @@ from utils import TestCase
 import random
 import utils
 
+class TestFunctional(TestCase):
     def test_nll_loss(self):
         utils.gen_float_tensor(1, (40, 5))
         utils.gen_float_tensor(1, (40,))
@@ -18,7 +19,6 @@ import utils
         nestedtensor.nested_tensor(
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)])
 
-class TestFunctional(TestCase):
     def test_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
         tensor2 = torch.rand(3, 300, 400) 
