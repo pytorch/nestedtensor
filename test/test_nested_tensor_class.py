@@ -6,7 +6,6 @@ import torch
 import nestedtensor
 import unittest
 from utils import TestCase
-from utils import nested_size_to_list
 import random
 
 import utils
@@ -17,7 +16,7 @@ import utils
 
 def _iter_constructors():
     yield nestedtensor.as_nested_tensor
-    # yield nestedtensor.nested_tensor
+    yield nestedtensor.nested_tensor
 
 
 def _test_property(self, fn):
@@ -233,14 +232,20 @@ class TestNestedTensor(TestCase):
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
             2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
         a = nestedtensor.as_nested_tensor(tensors)
-        na = list(list(t.stride()) for t in tensors)
-        self.assertEqual(nested_size_to_list(a.nested_stride()), na)
+        na = tuple(tuple(t.stride()) for t in tensors)
+        ans = a.nested_stride()
+        result = tuple(ans[i] for i in range(len(ans)))
+        for r, s in zip(result, na):
+            self.assertEqual(r, s)
 
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
             2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
         a = nestedtensor.nested_tensor(tensors)
         na = list(list(t.contiguous().stride()) for t in tensors)
-        self.assertEqual(nested_size_to_list(a.nested_stride()), na)
+        ans = a.nested_stride()
+        result = tuple(ans[i] for i in range(len(ans)))
+        for r, s in zip(result, na):
+            self.assertEqual(r, s)
 
     def test_len(self):
         for constructor in _iter_constructors():
