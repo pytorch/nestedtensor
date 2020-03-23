@@ -17,6 +17,7 @@ jobs:
           name: run tests
           command: |
             conda install pytorch cpuonly -c pytorch-nightly -q -y
+            conda install torchvision
             apt-get update
             apt-get install -y gcc
             apt-get install -y g++
