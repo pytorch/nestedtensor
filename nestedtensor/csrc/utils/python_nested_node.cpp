@@ -48,7 +48,18 @@ void register_python_nested_node(py::module m) {
       .def("unbind", &THPPythonNode::unbind)
       .def("__getitem__", &THPPythonNode::operator[])
       .def("__repr__", &THPPythonNode::str)
-      .def("__len__", &THPPythonNode::len);
+      .def("__len__", &THPPythonNode::len)
+      .def("__eq__", [](THPPythonNode& a_, THPPythonNode& b_) {
+        NestedNode<py::object> a = a_.get_node();
+        NestedNode<py::object> b = b_.get_node();
+        if (!shape_matches(a, b)) {
+          return false;
+        }
+        auto fn = [](py::object a, py::object b) {
+          return a.equal(b);
+        };
+        return all<decltype(fn)>(std::move(fn), a, b);
+      });
 
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
