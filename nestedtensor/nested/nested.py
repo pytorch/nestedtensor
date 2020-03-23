@@ -210,8 +210,11 @@ class NestedTensor(object):
             assert len(args) == 1
             if kwargs is None:
                 return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl))
-            assert len(kwargs) == 1 and 'out' in kwargs
-            return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, kwargs['out']._impl))
+            #assert len(kwargs) == 1 and 'out' in kwargs
+            if 'out' in kwargs:
+                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, kwargs['out']._impl))
+            else:
+                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, kwargs['inplace']))
 
         if kwargs is None:
             kwargs = {}

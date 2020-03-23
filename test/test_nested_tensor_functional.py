@@ -109,7 +109,7 @@ class TestFunctional(TestCase):
 
         self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def test_max_relu(self):
+    def test_relu(self):
         inputs = [
             torch.randn(3, 500, 600),
             torch.randn(3, 128, 128)
@@ -117,13 +117,19 @@ class TestFunctional(TestCase):
         nt = nestedtensor.nested_tensor(inputs)
 
         tensor_res = []
+        tensor_res_inplace = []
         for i in range(2):
             t_res = torch.nn.functional.relu(inputs[i].unsqueeze(0).contiguous())
             tensor_res.append(t_res.squeeze(0))
+            tensor_res_inplace.append(torch.nn.functional.relu_(inputs[i].contiguous()))
 
         nt_res = torch.nn.functional.relu(nt)
 
+        torch.nn.functional.relu_(nt)
+
+        self.assertEqual(tensor_res, tensor_res_inplace)
         self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+        self.assertEqual(nt_res, nt)
 
     def test_cross_entropy(self):
         inputs = [

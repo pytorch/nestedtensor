@@ -8,6 +8,11 @@ from collections import namedtuple
 # to efficiently implement a pointwise unary function such as cos
 # and then generalize it using the list of unary functions.
 
+def get_nn_C_functions():
+    return [
+        "relu",
+        "relu_"
+    ]
 
 def get_unary_C_functions():
     return [
