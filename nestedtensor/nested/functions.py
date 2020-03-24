@@ -154,10 +154,17 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None, trainin
     if weight is not None and not isinstance(weight, torch.Tensor):
         raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
 
-    tensor, mask = input.to_tensor_mask()
-    res = torch.nn.functional.batch_norm(tensor, running_mean, running_var, weight, bias, training, momentum, eps)
-    return nestedtensor.nested_tensor_from_tensor_mask(res, mask)
+    res = []
+    for tensor in iter(input):
+        if tensor.dim() != 3:
+            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
 
+        tensor = tensor.unsqueeze(0)
+        tensor = torch.nn.functional.batch_norm(tensor, running_mean, running_var, weight, bias, training, momentum, eps)
+        res.append(tensor.squeeze(0))
+
+    return nestedtensor.nested_tensor(res)
+    
 
 def relu(input, inplace=False):
     validate_nt(input)

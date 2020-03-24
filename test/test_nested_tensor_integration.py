@@ -53,10 +53,14 @@ class ConfusionMatrix(object):
 
 class TestIntegration(TestCase):
     def test_segmentation_pretrained_test_only(self):
-        t1 = torch.randn(3, 5, 7)
-        t2 = torch.randn(3, 5, 7)
-        tr1 = torch.randn(5, 7)
-        tr2 = torch.randn(5, 7)
+        t1 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
+        t2 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
+        nt_t1 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
+        nt_t2 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
+        tr1 = torch.tensor([[0.1, 0.12], [0.13, 0.1]], requires_grad=True)
+        tr2 = torch.tensor([[0.11, 0.12], [0.13, 0.1]], requires_grad=True)
+        nt_tr1 =  torch.tensor([[0.11, 0.12], [0.13, 0.1]], requires_grad=True)
+        nt_tr2 =  torch.tensor([[0.11, 0.12], [0.13, 0.1]], requires_grad=True)
 
         model_name = 'fcn_resnet101'
         num_classes = 21
@@ -71,25 +75,36 @@ class TestIntegration(TestCase):
         t_target = torch.stack([tr1, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        output = model(t_input)
-        output = output['out']
-
-        confmat.update(t_target.flatten(), output.argmax(1).flatten())
+        output1 = model(t_input)
+        output1 = output1['out']
+        
+        confmat.update(t_target.flatten(), output1.argmax(1).flatten())
         confmat.reduce_from_all_processes()
 
         # nt run
-        nt_input = nestedtensor.nested_tensor([t1, t2])
-        nt_target = nestedtensor.nested_tensor([tr1, tr2])
+        nt_input = nestedtensor.nested_tensor([nt_t1, nt_t2], requires_grad=True)
+        nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
         confmat2 = ConfusionMatrix(num_classes)
 
-        output = model(nt_input)
-        output = output['out']
+        output2 = model(nt_input)
+        output2 = output2['out']
 
-        for a, b in zip(nt_target, output):
+        for a, b in zip(nt_target, output2):
             confmat2.update(a.flatten(), b.argmax(0).flatten())
         
         confmat2.reduce_from_all_processes()
         self.assertEqual(confmat.mat, confmat2.mat)
+
+        # grad test
+        output1_sum = output1[0].sum()
+        output2_sum = output2[0].sum()
+        self.assertEqual(output1_sum, output2_sum)
+
+        output1_sum.backward()
+        output2_sum.backward()
+
+        self.assertEqual(t1.grad, nt_t1.grad)
+        self.assertEqual(t2.grad, nt_t2.grad)
 
 
 if __name__ == "__main__":
