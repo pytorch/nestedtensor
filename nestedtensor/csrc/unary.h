@@ -1,3 +1,4 @@
+#pragma once
 #include <creation.h>
 #include <python_nested_tensor.h>
 #include <torch/extension.h>

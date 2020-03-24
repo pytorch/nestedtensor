@@ -13,6 +13,7 @@ using IntegerNode = NestedNode<int64_t>;
 struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
+  NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
   c10::optional<at::Tensor>& get_buffer() {
     return _buffer;

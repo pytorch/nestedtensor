@@ -1,5 +1,6 @@
 #include <nested_tensor.h>
 #include <ATen/ATen.h>
+#include <utils/nested_node_functions.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -195,12 +196,30 @@ NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
   return *this;
 }
 
+
 NestedTensor::NestedTensor(TensorNode&& structure)
     : _structure(structure),
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
+
+// NOTE: It is assumed that structure is a tree of views
+// of buffer.
+// TODO: Add an explicit test for debug purposes.
+NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
+    : _buffer(buffer),
+      _structure(structure),
+      _first_variable(
+          get_first_leaf(_structure) ? *get_first_leaf(_structure)
+                                     : at::ones({})),
+      _nested_size(infer_nested_size(_structure)) {
+        TORCH_CHECK(
+          all([this](at::Tensor tensor) {
+              return tensor.is_view() && (tensor.data_ptr() == (*_buffer).data_ptr());
+            }, _structure),
+            "Constiuent passed during constiuent is not view of given buffer");
+      }
 
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
