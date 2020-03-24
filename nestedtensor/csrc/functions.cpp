@@ -11,7 +11,7 @@ NestedTensor squeeze(
   auto sizes = input.sizes();
   if (dim) {
     TORCH_CHECK(
-        (sizes[*dim]) && (*(sizes[*dim]) == 1),
+        ((sizes[*dim]) && ((*(sizes[*dim])) == 1)),
         "Given dimension is either undefined or not a singleton.");
   }
   TensorNode result = map(
@@ -23,7 +23,7 @@ NestedTensor squeeze(
       },
       input.get_structure());
   if (out) {
-    (*out).copy_(NestedTensor(result));
+    (*out).copy_(NestedTensor(std::move(result)));
     return *out;
   }
   // Squeeze doens't touch the underlying data and is effectively a meta-data
@@ -31,7 +31,7 @@ NestedTensor squeeze(
   // so we can copy the buffer as is.
   auto buffer = input.get_buffer();
   if (buffer) {
-    return NestedTensor(std::move(result), std::move(*buffer));
+    return NestedTensor(std::move(*buffer), std::move(result));
   }
   return NestedTensor(std::move(result));
 }

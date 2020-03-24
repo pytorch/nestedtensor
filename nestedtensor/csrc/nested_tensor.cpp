@@ -230,9 +230,11 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
 
 // torch.Tensor methods
 NestedTensor NestedTensor::copy_(
-    const NestedTensor& source, 
+    const NestedTensor& source,
     bool non_blocking) {
-  TORCH_CHECK(shape_matches(nested_size(), source.nested_size()), "self and source don't match in shape");
+  TORCH_CHECK(
+      shape_matches(nested_size(), source.nested_size()),
+      "self and source don't match in shape");
   if (_buffer && source.get_buffer()) {
     _buffer->copy_(*source.get_buffer());
     return *this;
@@ -242,9 +244,10 @@ NestedTensor NestedTensor::copy_(
     _buffer->copy_(*cont_source.get_buffer());
     return *this;
   }
-  apply([](at::Tensor self, at::Tensor source) {
-      self.copy_(source);
-      }, _structure, source.get_structure());
+  auto result =
+      map([](at::Tensor self, at::Tensor source) { return self.copy_(source); },
+          _structure,
+          source.get_structure());
   return *this;
 }
 
