@@ -21,7 +21,7 @@ struct NestedTensor {
   const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
-  std::vector<c10::optional<int64_t>> size() const;
+  std::vector<c10::optional<int64_t>> sizes() const;
   caffe2::TypeMeta dtype() const {
     return _first_variable.dtype();
   }
@@ -169,5 +169,6 @@ struct NestedTensor {
   at::Tensor _first_variable;
   SizeNode _nested_size;
 };
+
 } // namespace nested_tensor
 } // namespace torch

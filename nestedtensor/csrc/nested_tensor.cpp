@@ -43,7 +43,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<c10::optional<int64_t>> NestedTensor::size() const {
+std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
   return construct_size(_nested_size);
 }
 
@@ -195,7 +195,6 @@ NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
   }
   return *this;
 }
-
 
 NestedTensor::NestedTensor(TensorNode&& structure)
     : _structure(structure),
