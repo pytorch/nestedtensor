@@ -37,7 +37,9 @@ struct THPNestedTensor {
     return _data.requires_grad();
   }
   std::vector<c10::optional<int64_t>> size() {
-    return _data.size();
+    // NOTE: torch.Tensor.size maps to at::Tensor.sizes
+    // because at:: came after torch.Tensor.
+    return _data.sizes();
   }
   // TODO: Not covered by 0.0.2 or 0.0.1!
   // NOTE: Returns a view

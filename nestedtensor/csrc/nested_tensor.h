@@ -163,6 +163,9 @@ struct NestedTensor {
     return _structure;
   }
 
+// torch.Tensor methods
+  NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
+
  private:
   c10::optional<at::Tensor> _buffer;
   TensorNode _structure;

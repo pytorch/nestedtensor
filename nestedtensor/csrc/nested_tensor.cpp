@@ -149,7 +149,7 @@ at::Tensor _to_tensor(TensorNode node) {
 at::Tensor NestedTensor::to_tensor() {
   // TODO: Not necessarily a view because of stack and reshape.
   std::vector<int64_t> new_size;
-  for (const auto& si : size()) {
+  for (const auto& si : sizes()) {
     if (!si) {
       // TODO: This assumes we'll extend to_tensor to also work with int64_t at
       // this level.
@@ -227,6 +227,26 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                      : at::ones({})),
       _nested_size(nested_size) {}
+
+// torch.Tensor methods
+NestedTensor NestedTensor::copy_(
+    const NestedTensor& source, 
+    bool non_blocking) {
+  TORCH_CHECK(shape_matches(nested_size(), source.nested_size()), "self and source don't match in shape");
+  if (_buffer && source.get_buffer()) {
+    _buffer->copy_(*source.get_buffer());
+    return *this;
+  }
+  if (_buffer) {
+    NestedTensor cont_source = source.contiguous();
+    _buffer->copy_(*cont_source.get_buffer());
+    return *this;
+  }
+  apply([](at::Tensor self, at::Tensor source) {
+      self.copy_(source);
+      }, _structure, source.get_structure());
+  return *this;
+}
 
 } // namespace nested_tensor
 } // namespace torch
