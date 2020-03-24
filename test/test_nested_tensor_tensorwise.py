@@ -20,8 +20,8 @@ class TestTensorWise(TestCase):
 
         a = torch.tensor([1, 2])
         b = torch.tensor([7, 8])
-        nt1 = nestedtensor.nested_tensor([a, b])
-        nt2 = nestedtensor.nested_tensor([b, a])
+        nestedtensor.nested_tensor([a, b])
+        nestedtensor.nested_tensor([b, a])
 
     def test_tensorwise_nested_dim_2(self):
 
@@ -33,7 +33,7 @@ class TestTensorWise(TestCase):
         b = torch.tensor([7, 8])
         nt1 = nestedtensor.nested_tensor([[a, b], [b]])
         nt2 = nestedtensor.nested_tensor([[b, a], [a]])
-        nt3 = simple_fn(nt1, nt2)
+        simple_fn(nt1, nt2)
 
     def test_tensorwise_scalar(self):
 

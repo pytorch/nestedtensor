@@ -7,14 +7,13 @@ import nestedtensor
 import unittest
 import random
 
-import utils
 from utils import TestCase
 
 class TestNestedTensorAutograd(TestCase):
     def test_basic_grad(self):
         def some_func(x):
             return torch.sum(x ** 2 + x ** 3)
-        
+
         # single tensor case for comparison
         verification_tensor = torch.tensor([[1, 2], [3, 4]], dtype=torch.float, requires_grad=True)
         sum_res = some_func(verification_tensor)
@@ -22,7 +21,7 @@ class TestNestedTensorAutograd(TestCase):
 
         # as_nested_tensor constructor
         tensor = torch.tensor([[1, 2], [3, 4]], dtype=torch.float, requires_grad=True)
-        nt = nestedtensor.as_nested_tensor([tensor]) 
+        nt = nestedtensor.as_nested_tensor([tensor])
         nt_sum_res = some_func(nt)
         nt_sum_res.backward()
         self.assertEqual(sum_res, nt_sum_res)
@@ -31,7 +30,7 @@ class TestNestedTensorAutograd(TestCase):
 
         # nested_tensor constructor
         tensor2 = torch.tensor([[1, 2], [3, 4]], dtype=torch.float, requires_grad=True)
-        nt2 = nestedtensor.nested_tensor([tensor2]) 
+        nt2 = nestedtensor.nested_tensor([tensor2])
         nt_sum_res2 = some_func(nt2)
         nt_sum_res2.backward()
         self.assertEqual(sum_res, nt_sum_res2)
@@ -47,14 +46,14 @@ class TestNestedTensorAutograd(TestCase):
                                              torch.tensor([1, 2], dtype=torch.float, requires_grad=True)])
         nt_sum_res = some_func(nt1)
         nt_sum_res.backward()
-        
+
         nt2 = nestedtensor.as_nested_tensor([torch.tensor([1, 2, 3, 4], dtype=torch.float, requires_grad=True),
                                              torch.tensor([1, 2, 3], dtype=torch.float, requires_grad=True),
                                              torch.tensor([1, 2], dtype=torch.float, requires_grad=True)])
         tensor, mask = nt2.to_tensor_mask(mask_dim=2)
         sum_res = some_func(tensor)
         sum_res.backward()
-        
+
         self.assertEqual(sum_res, nt_sum_res)
         self.assertEqual(nt1[0].grad.data, tensor.grad[0].data)
         self.assertEqual(nt1[1].grad.data, tensor.grad[1].data.masked_select(mask[1]))
@@ -90,7 +89,7 @@ class TestNestedTensorAutograd(TestCase):
 
         nt = nestedtensor.nested_tensor_from_tensor_mask(nt_tensor, nt_mask)
         self.assertEqual(True, nt.requires_grad)
-        
+
         nt_sum_res = some_func(nt)
         nt_sum_res.backward()
 

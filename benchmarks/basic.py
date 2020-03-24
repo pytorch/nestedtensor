@@ -7,13 +7,13 @@ import random
 def gen_list_nested_tensor_construction():
     tensors = [torch.rand(random.randint(500, 1500), 25600) for _ in range(20)]
     def _algorithm():
-        nt = torch._ListNestedTensor(tensors)
+        torch._ListNestedTensor(tensors)
     return _algorithm
 
 def gen_list_nested_tensor_unbind():
     nested_tensor = torch._ListNestedTensor([torch.rand(random.randint(500, 1500), 25600) for _ in range(20)])
     def _algorithm():
-        ts = nested_tensor.unbind()
+        nested_tensor.unbind()
     return _algorithm
 
 if __name__ == "__main__":

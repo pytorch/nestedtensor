@@ -99,7 +99,7 @@ def gen_nested_list(seed, nested_dim, tensor_dim, size_low=1, size_high=10):
 
             tensors.append(gen_float_tensor(ran, ran_size))
     else:
-        for i in range(num_tensors):
+        for _ in range(num_tensors):
             tensors.append(gen_nested_list(
                 num_tensors * seed, nested_dim - 1, tensor_dim, size_low=size_low, size_high=size_high))
     return tensors

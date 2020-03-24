@@ -16,6 +16,8 @@ from . import nested
 import nestedtensor
 from nestedtensor import _C
 
+from numbers import Number
+
 orig_squeeze = torch.squeeze
 
 
@@ -152,10 +154,17 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None, trainin
     if weight is not None and not isinstance(weight, torch.Tensor):
         raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
 
-    tensor, mask = input.to_tensor_mask()
-    res = torch.nn.functional.batch_norm(tensor, running_mean, running_var, weight, bias, training, momentum, eps)
-    return nestedtensor.nested_tensor_from_tensor_mask(res, mask)
+    res = []
+    for tensor in iter(input):
+        if tensor.dim() != 3:
+            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
 
+        tensor = tensor.unsqueeze(0)
+        tensor = torch.nn.functional.batch_norm(tensor, running_mean, running_var, weight, bias, training, momentum, eps)
+        res.append(tensor.squeeze(0))
+
+    return nestedtensor.nested_tensor(res)
+    
 
 def relu(input, inplace=False):
     validate_nt(input)
@@ -267,7 +276,10 @@ def lstm_forward(self, input, hx=None):
     hidden1 = torch.cat([h[1] for (o, h) in result], dim=1)
     return output, (hidden0, hidden1)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> segNT
 def _set_size(nested_size, dim, size):
     if isinstance(nested_size, torch.Size):
         result = list(nested_size)
@@ -288,10 +300,9 @@ def mm(*args, **kwargs):
             self.nested_size(), self.dim() - 1, result.size(-1))
         buffer_ = result.flatten()
         return nested.NestedTensor(
-            _C._BufferNestedTensor(buffer_,
-                                           result_nested_size))
+            _C._BufferNestedTensor(buffer_, result_nested_size))
 
-    tf = utils.tensorwise()(getattr(torch.Tensor, 'mm'))
+    tf = utils.tensorwise()(torch.Tensor.mm)
     return tf(*args, **kwargs)
 
 

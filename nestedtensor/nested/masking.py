@@ -78,7 +78,9 @@ def nt_from_tensor_mask(tensor, mask, nested_dim):
         return creation.nested_tensor(inner_tensors)
 
 # Get max size per each dimension from all the passed tensors.
-def get_max_size(obj, res=[1]):
+def get_max_size(obj, res=None):
+    if res is None:
+        res = [1]
     if isinstance(obj, list) or isinstance(obj, tuple):
         for o in obj:
             res = get_max_size(o, res)
@@ -138,7 +140,7 @@ def get_tensor_mask(nt, shape):
 # Return a tuple of a tensor and a mask that represent the given tensor list
 # Returned tensor is always the same no matter what mask_dim was passed.
 # If mask_dim was not passed, a mask with the smallest dimensionality would be returned.
-# if passed mask_dim is lower than the minimal dimensionality of the mask that can represent 
+# if passed mask_dim is lower than the minimal dimensionality of the mask that can represent
 # the data tensor, an error is thrown.
 def to_tensor_mask(nt, mask_dim):
     if mask_dim is not None and mask_dim > nt.dim():

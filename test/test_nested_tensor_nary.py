@@ -125,20 +125,21 @@ def _gen_test_binary(func):
     return _test_binary
 
 
+TestUnary = type('TestUnary', (DynamicClassBase,), {})
+for func__ in nestedtensor.nested.codegen.extension.get_unary_functions():
+    if func__ == 'fill':
+        continue
+    for nested_dim in range(1, 5):
+        avail_devices = ['cpu']
+        if torch.cuda.is_available():
+            avail_devices += ['cuda']
+        for device in avail_devices:
+            setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
+                func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
+TestBinary = type('TestBinary', (DynamicClassBase,), {})
+for func in nestedtensor.nested.codegen.extension.get_binary_functions():
+    setattr(TestBinary, "test_{0}".format(func),
+            _gen_test_binary(func))
+
 if __name__ == "__main__":
-    globals()['TestUnary'] = type('TestUnary', (DynamicClassBase,), {})
-    for func__ in nestedtensor.nested.codegen.extension.get_unary_functions():
-        if func__ == 'fill':
-            continue
-        for nested_dim in range(1, 5):
-            avail_devices = ['cpu']
-            if torch.cuda.is_available():
-                avail_devices += ['cuda']
-            for device in avail_devices:
-                setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
-                    func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
-    globals()['TestBinary'] = type('TestBinary', (DynamicClassBase,), {})
-    for func in nestedtensor.nested.codegen.extension.get_binary_functions():
-        setattr(TestBinary, "test_{0}".format(func),
-                _gen_test_binary(func))
     unittest.main()

@@ -18,7 +18,6 @@ def gen_tensor():
 
 def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0):
     times = []
-    num_runs = 0
     t = 0.0
     pr = cProfile.Profile()
     cuda_avail = torch.cuda.is_available()
