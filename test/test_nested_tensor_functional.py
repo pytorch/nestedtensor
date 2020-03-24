@@ -44,7 +44,6 @@ class TestFunctional(TestCase):
         ]
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-
             tensor_res = []
             for i in range(2):
                 batch_norm = torch.nn.BatchNorm2d(2, 1e-05, 0.1)
@@ -76,7 +75,7 @@ class TestFunctional(TestCase):
 
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def test_max_relu(self):
+    def test_relu(self):
         inputs = [
             torch.randn(3, 500, 600),
             torch.randn(3, 128, 128)

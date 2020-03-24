@@ -57,10 +57,10 @@ def linear(input, weight, bias=None):
 def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
     validate_nt(input)
 
-    if weight is not None and not isinstance(weight, torch.Tensor):
+    if weight is not None and not torch.is_tensor(weight):
         raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
 
-    if bias is not None and not isinstance(bias, torch.Tensor):
+    if bias is not None and not torch.is_tensor(bias):
         raise RuntimeError("Expected bias to be a Tensor. Got: {}".format(type(bias)))
 
     res = []
@@ -145,13 +145,13 @@ def embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
 
 def batch_norm(input, running_mean, running_var, weight=None, bias=None, training=False, momentum=0.1, eps=1e-05):
     validate_nt(input)
-    if running_mean is not None and not isinstance(running_mean, torch.Tensor):
+    if running_mean is not None and not torch.is_tensor(running_mean):
         raise RuntimeError("Expected running_mean to be a Tensor. Got: {}".format(type(running_mean)))
 
-    if running_var is not None and not isinstance(running_var, torch.Tensor):
+    if running_var is not None and not torch.is_tensor(running_var):
         raise RuntimeError("Expected running_var to be a Tensor. Got: {}".format(type(running_var)))
 
-    if weight is not None and not isinstance(weight, torch.Tensor):
+    if weight is not None and not torch.is_tensor(weight):
         raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
 
     res = []
@@ -200,7 +200,7 @@ def cross_entropy(input, target, weight=None, size_average=None, ignore_index=-1
     validate_nt(input)
     validate_nt(target, ignore_dim4_check=True)
 
-    if weight is not None and not isinstance(weight, torch.Tensor):
+    if weight is not None and not torch.is_tensor(weight):
         raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
     
     res = []
