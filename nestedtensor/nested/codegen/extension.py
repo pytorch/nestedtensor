@@ -11,7 +11,13 @@ from collections import namedtuple
 def get_nn_C_functions():
     return [
         "relu",
-        "relu_"
+        "relu_",
+        "dropout",
+        "conv2d",
+        "max_pool2d",
+        "batch_norm",
+        "cross_entropy",
+        "interpolate",
     ]
 
 def get_unary_C_functions():

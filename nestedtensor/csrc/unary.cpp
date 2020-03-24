@@ -61,28 +61,6 @@ void add_unary(
       (name + std::string("_")).c_str(), torch::nested_tensor::unary_(at_out));
 }
 
-THPNestedTensor relu_cpp(THPNestedTensor input, bool inplace=false) {
-  NestedTensor cont_self = input.data().contiguous();
-  const at::Tensor& buffer = (*cont_self.get_buffer());
-  SizeNode nested_size = input.data().nested_size();
-  at::Tensor result = at::empty({0}, buffer.options());
-  result = torch::relu(buffer);
-  return THPNestedTensor(
-      NestedTensor(std::move(result), std::move(nested_size)));
-}
-
-THPNestedTensor relu_out_cpp(THPNestedTensor& input) {
-  input = relu_cpp(input, true);
-  return input;
-}
-
-void add_relu(
-    pybind11::module m,
-    pybind11::class_<torch::nested_tensor::THPNestedTensor> c,
-    std::string name) {
-      m.def(name.c_str(), relu_cpp);
-      m.def((name + std::string("_")).c_str(), relu_out_cpp);
- }
 
 void add_unary_functions(
     pybind11::module m,
@@ -128,8 +106,6 @@ void add_unary_functions(
   add_unary(m, c, "tan", at::tan_out);
   add_unary(m, c, "tanh", at::tanh_out);
   add_unary(m, c, "trunc", at::trunc_out);
-  
-  add_relu(m, c, "relu");
 }
 
 } // namespace nested_tensor

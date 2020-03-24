@@ -53,14 +53,20 @@ class ConfusionMatrix(object):
 
 class TestIntegration(TestCase):
     def test_segmentation_pretrained_test_only(self):
-        t1 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
-        t2 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
-        nt_t1 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
-        nt_t2 = torch.tensor([[[0.1, 0.2], [0.3, 0.24]], [[0.01, 0.6], [0.7, 0.8]], [[0.9, 0.10], [0.11, 0.12]]], requires_grad=True)
-        tr1 = torch.tensor([[0.1, 0.12], [0.13, 0.1]], requires_grad=True)
-        tr2 = torch.tensor([[0.11, 0.12], [0.13, 0.1]], requires_grad=True)
-        nt_tr1 =  torch.tensor([[0.11, 0.12], [0.13, 0.1]], requires_grad=True)
-        nt_tr2 =  torch.tensor([[0.11, 0.12], [0.13, 0.1]], requires_grad=True)
+        t1 = torch.randn(3, 2, 2, requires_grad=True)
+        t2 = torch.randn(3, 2, 2, requires_grad=True)
+        tr1 = torch.randn(2, 2, requires_grad=True)
+        tr2 = torch.randn(2, 2, requires_grad=True)
+       
+       
+        nt_t1 = t1.detach().requires_grad_()
+        nt_t2 = t2.detach().requires_grad_()
+        nt_tr1 = tr1.detach().requires_grad_()
+        nt_tr2 = tr2.detach().requires_grad_()
+        nt_t1.retain_grad()
+        nt_t2.retain_grad()
+        nt_tr1.retain_grad()
+        nt_tr2.retain_grad()
 
         model_name = 'fcn_resnet101'
         num_classes = 21
