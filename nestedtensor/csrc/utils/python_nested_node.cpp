@@ -5,18 +5,6 @@
 namespace torch {
 namespace nested_tensor {
 
-using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
-using THPIntegerNode = THPNestedNode<int64_t>;
-using THPTensorNode = THPNestedNode<at::Tensor>;
-using THPIValueNode = THPNestedNode<c10::IValue>;
-using THPPythonNode = THPNestedNode<py::object>;
-
-using SizeNode = NestedNode<c10::List<int64_t>>;
-using IntegerNode = NestedNode<int64_t>;
-using TensorNode = NestedNode<at::Tensor>;
-using IValueNode = NestedNode<c10::IValue>;
-using PythonNode = NestedNode<py::object>;
-
 using namespace torch::nested_tensor;
 namespace py = pybind11;
 
@@ -27,6 +15,9 @@ void add_thp_node(py::module m, std::string name) {
       .def("unbind", &C::unbind)
       .def("__repr__", &C::str)
       .def("__len__", &C::len);
+}
+
+void add_thppython_node(py::module m, std::string name) {
 }
 
 template <class C, class F>
@@ -52,7 +43,23 @@ THPPythonNode py_map(py::function fn, THPPythonNode node) {
 }
 
 void register_python_nested_node(py::module m) {
-  add_thp_node<THPPythonNode>(m, "PythonNode");
+  py::class_<THPPythonNode>(m, "PythonNode")
+      .def("__str__", &THPPythonNode::str)
+      .def("unbind", &THPPythonNode::unbind)
+      .def("__getitem__", &THPPythonNode::operator[])
+      .def("__repr__", &THPPythonNode::str)
+      .def("__len__", &THPPythonNode::len)
+      .def("__eq__", [](THPPythonNode& a_, THPPythonNode& b_) {
+        NestedNode<py::object> a = a_.get_node();
+        NestedNode<py::object> b = b_.get_node();
+        if (!shape_matches(a, b)) {
+          return false;
+        }
+        auto fn = [](py::object a, py::object b) {
+          return a.equal(b);
+        };
+        return all<decltype(fn)>(std::move(fn), a, b);
+      });
 
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {
