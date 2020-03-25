@@ -37,5 +37,8 @@ class TestFunctional(TestCase):
         for r, r2 in zip(result, result2):
             self.assertEqual(r, r2)
 
+    def test_copy_(self):
+        pass
+
 if __name__ == "__main__":
     unittest.main()
