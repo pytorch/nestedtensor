@@ -9,6 +9,9 @@ from utils import TestCase
 import random
 import utils
 
+def _iter_constructors():
+    yield nestedtensor.as_nested_tensor
+    yield nestedtensor.nested_tensor
 
 class TestFunctional(TestCase):
     def test_nll_loss(self):
@@ -41,8 +44,26 @@ class TestFunctional(TestCase):
             self.assertEqual(r, r2)
 
     def test_copy_(self):
-        nt = nestedtensor.as_nested_tensor([torch.randn(1, 2, 3), torch.randn(2, 1, 3)])
-        pass
+        for constructor in _iter_constructors():
+            nt1 = constructor([])
+            nt2 = constructor([])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
+
+            nt1 = constructor([torch.randn(1, 2, 3)])
+            nt2 = constructor([torch.randn(1, 2, 3)])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
+
+            nt1 = constructor([torch.randn(1, 2, 3), torch.randn(2, 1, 3)])
+            nt2 = constructor([torch.randn(1, 2, 3), torch.randn(2, 1, 3)])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
+
+            nt1 = constructor([[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
+            nt2 = constructor([[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
 
 
 if __name__ == "__main__":
