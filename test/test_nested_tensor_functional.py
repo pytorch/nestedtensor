@@ -65,6 +65,9 @@ class TestFunctional(TestCase):
             nt1.copy_(nt2)
             self.assertEqual(nt1, nt2)
 
+    def test_squeeze(self):
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()
