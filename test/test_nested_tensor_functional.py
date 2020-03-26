@@ -68,6 +68,7 @@ class TestFunctional(TestCase):
     def test_squeeze(self):
         for constructor in _iter_constructors():
             nt = constructor([torch.randn(1, 2, 3)])
+            print(nt)
 
 
 if __name__ == "__main__":

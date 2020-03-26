@@ -5,6 +5,7 @@
 namespace torch {
 namespace nested_tensor {
 
+// TODO: Make dim work for nested dimensions.
 NestedTensor squeeze(
     NestedTensor input,
     c10::optional<int64_t> dim,
@@ -15,6 +16,7 @@ NestedTensor squeeze(
         ((sizes[*dim]) && ((*(sizes[*dim])) == 1)),
         "Given dimension is either undefined or not a singleton.");
   }
+  int64_t nested_dim = input.nested_dim();
   TensorNode result = map(
       [dim](at::Tensor tensor) {
         if (dim) {
