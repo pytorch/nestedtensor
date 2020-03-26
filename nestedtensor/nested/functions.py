@@ -17,26 +17,7 @@ from nestedtensor import _C
 
 from numbers import Number
 
-orig_squeeze = torch.squeeze
-
-
-def squeeze(*args, **kwargs):
-    if utils.find_nested_tensor_dispatch_key(*args) is None:
-        return orig_squeeze(*args, **kwargs)
-    return utils.tensorwise(dim_args=[1, 'dim'], wrap_dim_args=False)(orig_squeeze)(*args, **kwargs)
-
-
-orig_unsqueeze = torch.squeeze
-
-
-def unsqueeze(*args, **kwargs):
-    if utils.find_nested_tensor_dispatch_key(*args) is None:
-        return orig_unsqueeze(*args, **kwargs)
-    return utils.tensorwise(dim_args=[1, 'dim'], wrap_dim_args=False)(orig_unsqueeze)(*args, **kwargs)
-
-
 orig_linear = torch.nn.functional.linear
-
 
 def linear(input, weight, bias=None):
     # TODO: what if bias is a NestedTensor?

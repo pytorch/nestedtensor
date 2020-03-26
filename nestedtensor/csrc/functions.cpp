@@ -1,5 +1,6 @@
 #include <functions.h>
 #include <utils/nested_node_functions.h>
+#include <torch/extension.h>
 
 namespace torch {
 namespace nested_tensor {

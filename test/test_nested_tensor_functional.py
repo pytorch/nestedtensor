@@ -66,7 +66,8 @@ class TestFunctional(TestCase):
             self.assertEqual(nt1, nt2)
 
     def test_squeeze(self):
-        pass
+        for constructor in _iter_constructors():
+            nt = constructor([torch.randn(1, 2, 3)])
 
 
 if __name__ == "__main__":

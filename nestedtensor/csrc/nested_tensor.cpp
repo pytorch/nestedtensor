@@ -90,7 +90,7 @@ TensorNode build_structure(
     }
   }
   TensorNode tmp = unflatten(nested_size, c10::List<at::Tensor>(buffers));
-  return map(
+  TensorNode result = map(
       [](at::Tensor buffer,
          c10::List<int64_t> size,
          c10::List<int64_t> stride) {
@@ -102,6 +102,7 @@ TensorNode build_structure(
       tmp,
       nested_size,
       nested_stride);
+  return result;
 }
 
 TensorNode build_structure(
@@ -212,13 +213,7 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                      : at::ones({})),
-      _nested_size(infer_nested_size(_structure)) {
-        TORCH_CHECK(
-          all([this](at::Tensor tensor) {
-              return tensor.is_view() && (tensor.data_ptr() == (*_buffer).data_ptr());
-            }, _structure),
-            "Constiuent passed during constiuent is not view of given buffer");
-      }
+      _nested_size(infer_nested_size(_structure)) {}
 
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
