@@ -23,7 +23,6 @@ NestedTensor squeeze(
   auto sizes = input.sizes();
   if (dim_) {
     int64_t dim = at::maybe_wrap_dim(*dim_, input.dim());
-    std::cout << "Dim: " << dim << std::endl;
     TORCH_CHECK(
         ((sizes[dim]) && ((*(sizes[dim])) == 1)),
         "Given dimension is either undefined or not a singleton.");
@@ -53,9 +52,6 @@ NestedTensor squeeze(
     for (size_t i = 0; i < sizes.size() - 1; i++) {
       size_t index = sizes.size() - i - 1;
       c10::optional<int64_t> s = sizes[index];
-      if (s) {
-        std::cout << " s: " << *s;
-      }
       if (s && ((*s) == 1)) {
         input = squeeze(input, index, c10::nullopt);
       }
