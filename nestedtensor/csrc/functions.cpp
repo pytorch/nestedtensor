@@ -53,24 +53,18 @@ NestedTensor squeeze(
     for (size_t i = 0; i < sizes.size() - 1; i++) {
       size_t index = sizes.size() - i - 1;
       c10::optional<int64_t> s = sizes[index];
-      std::cout << "index: " << index;
       if (s) {
         std::cout << " s: " << *s;
       }
       if (s && ((*s) == 1)) {
         input = squeeze(input, index, c10::nullopt);
       }
-      std::cout << " i: " << i;
-      std::cout << std::endl;
     }
-    std::cout << "DONE" << std::endl;
   }
-    std::cout << "DONE1" << std::endl;
   if (out) {
     (*out).copy_(input);
     return *out;
   }
-    std::cout << "DONE2" << std::endl;
   return input;
 }
 }
