@@ -13,7 +13,7 @@ TensorNode _squeeze_nested_dim(TensorNode structure,
   return TensorNode(_squeeze_nested_dim(structure, dim - 1));
 }
 
-// TODO: Make dim work for nested dimensions.
+// TODO: If size(0) is 1 and we squeeze should this turn into a Tensor?
 // Squeeze doens't touch the underlying data and is effectively a meta-data
 // operation
 NestedTensor squeeze(
@@ -23,6 +23,7 @@ NestedTensor squeeze(
   auto sizes = input.sizes();
   if (dim_) {
     int64_t dim = at::maybe_wrap_dim(*dim_, input.dim());
+    std::cout << "Dim: " << dim << std::endl;
     TORCH_CHECK(
         ((sizes[dim]) && ((*(sizes[dim])) == 1)),
         "Given dimension is either undefined or not a singleton.");
@@ -48,17 +49,28 @@ NestedTensor squeeze(
       input = NestedTensor(std::move(structure));
     }
   } else {
-    for (size_t i = 0; i < sizes.size(); i++) {
-      c10::optional<int64_t> s = sizes[sizes.size() - i - 1];
-      if (s && (*s) == 1) {
-        input = squeeze(input, *s);
+    // TODO: First dimension is always ignored.
+    for (size_t i = 0; i < sizes.size() - 1; i++) {
+      size_t index = sizes.size() - i - 1;
+      c10::optional<int64_t> s = sizes[index];
+      std::cout << "index: " << index;
+      if (s) {
+        std::cout << " s: " << *s;
       }
+      if (s && ((*s) == 1)) {
+        input = squeeze(input, index, c10::nullopt);
+      }
+      std::cout << " i: " << i;
+      std::cout << std::endl;
     }
+    std::cout << "DONE" << std::endl;
   }
+    std::cout << "DONE1" << std::endl;
   if (out) {
     (*out).copy_(input);
     return *out;
   }
+    std::cout << "DONE2" << std::endl;
   return input;
 }
 }

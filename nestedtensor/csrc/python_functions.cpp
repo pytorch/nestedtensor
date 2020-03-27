@@ -31,12 +31,18 @@ void add_functions(
       py::arg("self"),
       py::arg("dim") = nullptr,
       py::arg("out") = nullptr);
-  c.def("squeeze", [](THPNestedTensor self, c10::optional<int64_t> dim) {
-    return THPNestedTensor(squeeze(self.data(), dim, c10::nullopt));
-  });
-  c.def("squeeze_", [](THPNestedTensor self, c10::optional<int64_t> dim) {
-    return THPNestedTensor(squeeze(self.data(), dim, self.data()));
-  });
+  c.def(
+      "squeeze",
+      [](THPNestedTensor self, c10::optional<int64_t> dim) {
+        return THPNestedTensor(squeeze(self.data(), dim, c10::nullopt));
+      },
+      py::arg("dim") = nullptr);
+  c.def(
+      "squeeze_",
+      [](THPNestedTensor self, c10::optional<int64_t> dim) {
+        return THPNestedTensor(squeeze(self.data(), dim, self.data()));
+      },
+      py::arg("dim") = nullptr);
 }
 }
 } // namespace torch

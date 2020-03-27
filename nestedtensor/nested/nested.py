@@ -272,3 +272,9 @@ class NestedTensor(object):
     # Tensor methods
     def copy_(self, source, non_blocking=False):
         return NestedTensor(self._impl.copy_(source._impl, non_blocking))
+
+    def squeeze(self, dim=None):
+        return NestedTensor(self._impl.squeeze(dim))
+
+    def squeeze_(self, dim=None):
+        return NestedTensor(self._impl.squeeze_(dim))

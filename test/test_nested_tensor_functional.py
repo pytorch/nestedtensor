@@ -11,7 +11,7 @@ import utils
 
 def _iter_constructors():
     yield nestedtensor.as_nested_tensor
-    yield nestedtensor.nested_tensor
+    # yield nestedtensor.nested_tensor
 
 class TestFunctional(TestCase):
     def test_nll_loss(self):
@@ -68,7 +68,11 @@ class TestFunctional(TestCase):
     def test_squeeze(self):
         for constructor in _iter_constructors():
             nt = constructor([torch.randn(1, 2, 3)])
-            print(nt)
+            print(nt.nested_size())
+            print(nt.squeeze().nested_size())
+            nt = constructor([[torch.randn(1, 2, 3)]])
+            print(nt.nested_size())
+            print(nt.squeeze().nested_size())
 
 
 if __name__ == "__main__":
