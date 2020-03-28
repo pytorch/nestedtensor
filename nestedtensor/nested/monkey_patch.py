@@ -322,7 +322,6 @@ def monkey_patch(NestedTensor):
     # set_nt_method('addmm', utils.dispatch(orig_fn=torch.Tensor.addmm)(methods.addmm))
     # setattr(module, 'addmm', utils.dispatch(orig_fn=torch.addmm)(methods.addmm))
 
-    print(dir(_C))
     C_functions[torch.squeeze] = "squeeze"
 
     set_function(torch.conv2d, functions.conv2d)
