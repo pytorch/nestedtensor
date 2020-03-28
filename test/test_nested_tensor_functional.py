@@ -67,12 +67,12 @@ class TestFunctional(TestCase):
 
     def test_squeeze(self):
         for constructor in _iter_constructors():
-            nt = constructor([torch.randn(1, 2, 3)])
-            print(nt.nested_size())
-            print(nt.squeeze().nested_size())
-            nt = constructor([[torch.randn(1, 2, 3)]])
-            print(nt.nested_size())
-            print(nt.squeeze().nested_size())
+            t = torch.randn(2, 3)
+            result = constructor([t])
+            nt = constructor([t.reshape(1, 2, 3)])
+            self.assertEqual(nt.squeeze(), result)
+            nt = constructor([[t.reshape(1, 2, 3)]])
+            self.assertEqual(nt.squeeze(), result)
 
 
 if __name__ == "__main__":
