@@ -69,9 +69,15 @@ class TestFunctional(TestCase):
         for constructor in _iter_constructors():
             t = torch.randn(2, 3)
             result = constructor([t])
+            nt = constructor([t.reshape(2, 3)])
+            self.assertEqual(nt.squeeze(), result)
             nt = constructor([t.reshape(1, 2, 3)])
             self.assertEqual(nt.squeeze(), result)
-            nt = constructor([[t.reshape(1, 2, 3)]])
+            nt = constructor([t.reshape(1, 2, 1, 3, 1)])
+            self.assertEqual(nt.squeeze(), result)
+            nt = constructor([[t.reshape(1, 2, 1, 3)]])
+            self.assertEqual(nt.squeeze(), result)
+            nt = constructor([[[t.reshape(1, 2, 3)]]])
             self.assertEqual(nt.squeeze(), result)
 
 
