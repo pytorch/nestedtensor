@@ -11,7 +11,7 @@ import utils
 
 def _iter_constructors():
     yield nestedtensor.as_nested_tensor
-    # yield nestedtensor.nested_tensor
+    yield nestedtensor.nested_tensor
 
 class TestFunctional(TestCase):
     def test_nll_loss(self):
@@ -79,6 +79,18 @@ class TestFunctional(TestCase):
             self.assertEqual(nt.squeeze(), result)
             nt = constructor([[[t.reshape(1, 2, 3)]]])
             self.assertEqual(nt.squeeze(), result)
+
+            nt = constructor([t.reshape(1, 2, 3)])
+            self.assertEqual(nt.squeeze(1), result)
+            self.assertRaises(RuntimeError, lambda: nt.squeeze(0))
+            self.assertRaises(RuntimeError, lambda: nt.squeeze(2))
+            self.assertRaises(RuntimeError, lambda: nt.squeeze(3))
+            self.assertRaises(IndexError, lambda: nt.squeeze(4))
+
+            nt = constructor([[t.reshape(1, 2, 1, 3)]])
+            self.assertEqual(nt.squeeze(1), constructor([t.reshape(1, 2, 1, 3)]))
+            self.assertEqual(nt.squeeze(2), constructor([[t.reshape(2, 1, 3)]]))
+            self.assertEqual(nt.squeeze(4), constructor([[t.reshape(1, 2, 3)]]))
 
 
 if __name__ == "__main__":

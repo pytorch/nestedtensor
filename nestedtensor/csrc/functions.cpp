@@ -23,6 +23,7 @@ NestedTensor squeeze(
   auto sizes = input.sizes();
   if (dim_) {
     int64_t dim = at::maybe_wrap_dim(*dim_, input.dim());
+    TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
     TORCH_CHECK(
         ((sizes[dim]) && ((*(sizes[dim])) == 1)),
         "Given dimension is either undefined or not a singleton.");
