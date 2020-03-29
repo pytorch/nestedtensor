@@ -1,4 +1,5 @@
 #pragma once
+
 #include <nested_tensor.h>
 #include <py_utils.h>
 #include <utils/python_nested_node.h>
@@ -14,6 +15,7 @@ namespace nested_tensor {
 
 struct THPNestedTensor {
   THPNestedTensor() = delete;
+  // TODO: Move constructor
   THPNestedTensor(NestedTensor data) : _data(data) {}
   at::Tensor get_buffer() {
     return (*_data.get_buffer());
@@ -36,7 +38,9 @@ struct THPNestedTensor {
     return _data.requires_grad();
   }
   std::vector<c10::optional<int64_t>> size() {
-    return _data.size();
+    // NOTE: torch.Tensor.size maps to at::Tensor.sizes
+    // because at:: came after torch.Tensor.
+    return _data.sizes();
   }
   // TODO: Not covered by 0.0.2 or 0.0.1!
   // NOTE: Returns a view

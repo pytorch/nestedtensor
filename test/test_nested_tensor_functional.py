@@ -9,6 +9,10 @@ from utils import TestCase
 import random
 import utils
 
+def _iter_constructors():
+    yield nestedtensor.as_nested_tensor
+    yield nestedtensor.nested_tensor
+
 class TestFunctional(TestCase):
     def test_nll_loss(self):
         utils.gen_float_tensor(1, (40, 5))
@@ -17,7 +21,8 @@ class TestFunctional(TestCase):
     def test_addmm(self):
         torch.rand(5), torch.rand(4, 5)
         nestedtensor.nested_tensor(
-            [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)])
+            [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)]
+        )
 
     def test_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
@@ -155,6 +160,76 @@ class TestFunctional(TestCase):
 
                 nt_res = torch.nn.functional.interpolate(nt, size)
                 self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+
+    def test_copy_(self):
+        for constructor in _iter_constructors():
+            nt1 = constructor([])
+            nt2 = constructor([])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
+
+            nt1 = constructor([torch.randn(1, 2, 3)])
+            nt2 = constructor([torch.randn(1, 2, 3)])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
+
+            nt1 = constructor([torch.randn(1, 2, 3), torch.randn(2, 1, 3)])
+            nt2 = constructor([torch.randn(1, 2, 3), torch.randn(2, 1, 3)])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
+
+            nt1 = constructor([[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
+            nt2 = constructor([[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
+            nt1.copy_(nt2)
+            self.assertEqual(nt1, nt2)
+
+    def test_squeeze(self):
+        for constructor in _iter_constructors():
+            t = torch.randn(2, 3)
+            result = constructor([t])
+
+            nt = constructor([[t.reshape(1, 2, 1, 3)]])
+            self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
+            nt = constructor([t.reshape(2, 3)])
+            self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
+            nt = constructor([[t.reshape(2, 3)]])
+            self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
+            nt = constructor([t.reshape(1, 2, 3)])
+            self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
+            nt = constructor([t.reshape(1, 2, 1, 3, 1)])
+            self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
+            nt = constructor([[[t.reshape(1, 2, 3)]]])
+            self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
+            nt = constructor([t.reshape(1, 2, 3)])
+            self.assertEqual(nt.squeeze(1), result)
+            self.assertRaises(RuntimeError, lambda: nt.squeeze(0))
+            self.assertRaises(RuntimeError, lambda: nt.squeeze(2))
+            self.assertRaises(RuntimeError, lambda: nt.squeeze(3))
+            self.assertRaises(IndexError, lambda: nt.squeeze(4))
+
+            nt = constructor([[t.reshape(1, 2, 1, 3)]])
+            self.assertEqual(nt.squeeze(1), constructor([t.reshape(1, 2, 1, 3)]))
+            self.assertEqual(nt.squeeze(2), constructor([[t.reshape(2, 1, 3)]]))
+            self.assertEqual(nt.squeeze(4), constructor([[t.reshape(1, 2, 3)]]))
+
 
 if __name__ == "__main__":
     unittest.main()

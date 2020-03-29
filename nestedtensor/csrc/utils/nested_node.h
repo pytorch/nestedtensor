@@ -195,6 +195,7 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
   if (structure.is_leaf()) {
     return std::pair<int64_t, NestedNode<R>>(
         index + 1, NestedNode<R>(content[index]));
+
   } else {
     std::vector<NestedNode<R>> result;
     for (size_t i = 0; i < structure.degree(); i++) {

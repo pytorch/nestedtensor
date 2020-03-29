@@ -13,6 +13,7 @@ using IntegerNode = NestedNode<int64_t>;
 struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
+  NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
   c10::optional<at::Tensor>& get_buffer() {
     return _buffer;
@@ -20,7 +21,7 @@ struct NestedTensor {
   const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
-  std::vector<c10::optional<int64_t>> size() const;
+  std::vector<c10::optional<int64_t>> sizes() const;
   caffe2::TypeMeta dtype() const {
     return _first_variable.dtype();
   }
@@ -162,11 +163,16 @@ struct NestedTensor {
     return _structure;
   }
 
+// torch.Tensor methods
+  NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
+  NestedTensor squeeze_(c10::optional<int64_t> dim);
+
  private:
   c10::optional<at::Tensor> _buffer;
   TensorNode _structure;
   at::Tensor _first_variable;
   SizeNode _nested_size;
 };
+
 } // namespace nested_tensor
 } // namespace torch
