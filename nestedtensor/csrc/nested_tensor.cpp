@@ -258,11 +258,11 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
     // TODO: First dimension is always ignored.
     // We could decide to return a Tensor if the 0th
     // dimension can be squeezed.
-    for (int64_t i = 0; i < dim() - 1; i++) {
-      int64_t index = dim() - i - 1;
-      c10::optional<int64_t> s = sizes()[index];
+    auto init_sizes = sizes();
+    for (int64_t i = 0; i < init_sizes.size() - 1; i++) {
+      int64_t index = init_sizes.size() - i - 1;
+      c10::optional<int64_t> s = init_sizes[index];
       if (s && ((*s) == 1)) {
-        std::cout << "index: " << index << " - i: " << i << std::endl;
         this->squeeze_(index);
       }
     }
@@ -277,18 +277,14 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
     _structure = _squeeze_nested_dim(_structure, dim);
   } else {
     int64_t height = _structure.height();
-    std::cout << "ASDF dim - height: " << dim - height << std::endl;
     _structure =
         map([dim, height](
                 at::Tensor tensor) { return tensor.squeeze(dim - height); },
             _structure);
   }
-      std::cout << "ASDF 1" << std::endl;
   _first_variable =
       get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
-      std::cout << "ASDF 2" << std::endl;
   _nested_size = infer_nested_size(_structure);
-      std::cout << "ASDF 3" << std::endl;
   return *this;
 }
 

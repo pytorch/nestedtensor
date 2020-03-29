@@ -37,9 +37,13 @@ void add_functions(
         return THPNestedTensor(squeeze(self.data(), dim, c10::nullopt));
       },
       py::arg("dim") = nullptr);
+  // NOTE: It is critical that this is passed by referenc!
+  // THPNestedTensor is not holding a pointer and a copy won't
+  // copy a pointer to underlying storage, but actually cause
+  // a deep copy.
   c.def(
       "squeeze_",
-      [](THPNestedTensor self, c10::optional<int64_t> dim) {
+      [](THPNestedTensor& self, c10::optional<int64_t> dim) {
         self.data().squeeze_(dim);
         return self;
       },
