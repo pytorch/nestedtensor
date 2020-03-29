@@ -83,7 +83,6 @@ void add_unary_functions(
   add_unary(m, c, "expm1", at::expm1_out);
   add_unary(m, c, "floor", at::floor_out);
   add_unary(m, c, "frac", at::frac_out);
-  add_unary(m, c, "imag", at::imag_out);
   add_unary(m, c, "inverse", at::inverse_out);
   add_unary(m, c, "lgamma", at::lgamma_out);
   add_unary(m, c, "log", at::log_out);
@@ -93,7 +92,6 @@ void add_unary_functions(
   add_unary(m, c, "logical_not", at::logical_not_out);
   add_unary(m, c, "neg", at::neg_out);
   add_unary(m, c, "nonzero", at::nonzero_out);
-  add_unary(m, c, "real", at::real_out);
   add_unary(m, c, "reciprocal", at::reciprocal_out);
   add_unary(m, c, "round", at::round_out);
   add_unary(m, c, "rsqrt", at::rsqrt_out);
