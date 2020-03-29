@@ -189,14 +189,30 @@ class TestFunctional(TestCase):
             result = constructor([t])
             nt = constructor([t.reshape(2, 3)])
             self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
             nt = constructor([t.reshape(1, 2, 3)])
             self.assertEqual(nt.squeeze(), result)
+            print(nt.nested_size())
+            nt.squeeze_()
+            print(nt.nested_size())
+            self.assertEqual(nt, result)
+
             nt = constructor([t.reshape(1, 2, 1, 3, 1)])
             self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
             nt = constructor([[t.reshape(1, 2, 1, 3)]])
             self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
+
             nt = constructor([[[t.reshape(1, 2, 3)]]])
             self.assertEqual(nt.squeeze(), result)
+            nt.squeeze_()
+            self.assertEqual(nt, result)
 
             nt = constructor([t.reshape(1, 2, 3)])
             self.assertEqual(nt.squeeze(1), result)

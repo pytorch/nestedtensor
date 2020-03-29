@@ -165,6 +165,7 @@ struct NestedTensor {
 
 // torch.Tensor methods
   NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
+  NestedTensor squeeze_(c10::optional<int64_t> dim);
 
  private:
   c10::optional<at::Tensor> _buffer;

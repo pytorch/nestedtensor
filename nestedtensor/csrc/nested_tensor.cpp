@@ -246,5 +246,51 @@ NestedTensor NestedTensor::copy_(
   return *this;
 }
 
+inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
+  if (dim == 0) {
+    return structure.children(0);
+  }
+  return TensorNode(_squeeze_nested_dim(structure, dim - 1));
+}
+
+NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
+  if (!dim_) {
+    // TODO: First dimension is always ignored.
+    // We could decide to return a Tensor if the 0th
+    // dimension can be squeezed.
+    for (int64_t i = 0; i < dim() - 1; i++) {
+      int64_t index = dim() - i - 1;
+      c10::optional<int64_t> s = sizes()[index];
+      if (s && ((*s) == 1)) {
+        std::cout << "index: " << index << " - i: " << i << std::endl;
+        this->squeeze_(index);
+      }
+    }
+    return *this;
+  }
+  int64_t dim = at::maybe_wrap_dim(*dim_, this->dim());
+  TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
+  TORCH_CHECK(
+      ((sizes()[dim]) && ((*(sizes()[dim])) == 1)),
+      "Given dimension is either undefined or not a singleton.");
+  if (dim < this->nested_dim()) {
+    _structure = _squeeze_nested_dim(_structure, dim);
+  } else {
+    int64_t height = _structure.height();
+    std::cout << "ASDF dim - height: " << dim - height << std::endl;
+    _structure =
+        map([dim, height](
+                at::Tensor tensor) { return tensor.squeeze(dim - height); },
+            _structure);
+  }
+      std::cout << "ASDF 1" << std::endl;
+  _first_variable =
+      get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
+      std::cout << "ASDF 2" << std::endl;
+  _nested_size = infer_nested_size(_structure);
+      std::cout << "ASDF 3" << std::endl;
+  return *this;
+}
+
 } // namespace nested_tensor
 } // namespace torch

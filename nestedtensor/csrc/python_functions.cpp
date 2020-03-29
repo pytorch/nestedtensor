@@ -40,7 +40,8 @@ void add_functions(
   c.def(
       "squeeze_",
       [](THPNestedTensor self, c10::optional<int64_t> dim) {
-        return THPNestedTensor(squeeze(self.data(), dim, self.data()));
+        self.data().squeeze_(dim);
+        return self;
       },
       py::arg("dim") = nullptr);
 }
