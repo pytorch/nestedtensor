@@ -325,9 +325,14 @@ def monkey_patch(NestedTensor):
     C_functions[torch.squeeze] = "squeeze"
 
     set_function(torch.conv2d, functions.conv2d)
-    set_function(torch.max_pool2d, functions.max_pool2d)
+    set_function(torch.nn.functional.max_pool2d, functions.max_pool2d)
     set_function(torch.embedding_bag, functions.embedding_bag)
-    set_function(torch.batch_norm, functions.batch_norm)
+    set_function(torch.nn.functional.batch_norm, functions.batch_norm)
+    set_function(torch.nn.functional.relu, functions.relu)
+    set_function(torch.nn.functional.interpolate, functions.interpolate)
+    set_function(torch.nn.functional.cross_entropy, functions.cross_entropy)
+    set_function(torch.nn.functional.dropout, functions.dropout)
+    
     # module.nn.functional.linear = functions.linear
     # module.nn.functional.interpolate = functions.interpolate
     # # module.nn.functional.nll_loss = functions.nll_loss
