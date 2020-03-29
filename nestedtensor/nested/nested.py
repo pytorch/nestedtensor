@@ -55,6 +55,10 @@ class NestedTensor(object):
         return self._impl.is_pinned()
 
     @property
+    def shape(self):
+        return self._impl.size()
+
+    @property
     def dtype(self):
         """
         The data type of ```self``` NestedTensor.
