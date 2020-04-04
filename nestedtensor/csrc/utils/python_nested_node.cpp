@@ -55,8 +55,12 @@ void register_python_nested_node(py::module m) {
         if (!shape_matches(a, b)) {
           return false;
         }
-        auto fn = [](py::object a, py::object b) {
-          return a.equal(b);
+        auto fn = [](py::object a, py::object b) -> bool {
+          // return a.equal(b);
+          int rv = PyObject_RichCompareBool(a.ptr(), b.ptr(), Py_EQ);
+          if (rv == -1)
+              throw py::error_already_set();
+          return rv == 1;
         };
         return all<decltype(fn)>(std::move(fn), a, b);
       });

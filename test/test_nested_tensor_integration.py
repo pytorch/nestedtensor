@@ -52,17 +52,18 @@ class ConfusionMatrix(object):
                 iu.mean().item() * 100)
 
 class TestIntegration(TestCase):
+    @unittest.skip("Disabled within fbcode due to dependency on the internet.")
     def test_segmentation_pretrained_test_only(self):
         t1 = torch.randn(3, 2, 2, requires_grad=True)
         t2 = torch.randn(3, 2, 2, requires_grad=True)
         tr1 = torch.randn(2, 2, requires_grad=True)
         tr2 = torch.randn(2, 2, requires_grad=True)
-       
+
         nt_t1 = t1.detach().requires_grad_()
         nt_t2 = t2.detach().requires_grad_()
         nt_tr1 = tr1.detach().requires_grad_()
         nt_tr2 = tr2.detach().requires_grad_()
-        
+
         model_name = 'fcn_resnet101'
         num_classes = 21
         aux_loss = 'store_true'
@@ -78,7 +79,7 @@ class TestIntegration(TestCase):
 
         output1 = model(t_input)
         output1 = output1['out']
-        
+
         confmat.update(t_target.flatten(), output1.argmax(1).flatten())
         confmat.reduce_from_all_processes()
 
@@ -92,7 +93,7 @@ class TestIntegration(TestCase):
 
         for a, b in zip(nt_target, output2):
             confmat2.update(a.flatten(), b.argmax(0).flatten())
-        
+
         confmat2.reduce_from_all_processes()
         self.assertEqual(confmat.mat, confmat2.mat)
 
