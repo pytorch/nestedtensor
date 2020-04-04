@@ -1,15 +1,7 @@
 import torch
 import nestedtensor as nt
 import unittest
-<<<<<<< HEAD
-<<<<<<< HEAD
 from utils import TestCase
-=======
-from .utils import TestCase
->>>>>>> Set up ShipIt
-=======
-from utils import TestCase
->>>>>>> 20200319 pytorch/nestedtensor import (#83)
 
 class TestTensorMask(TestCase):
     #

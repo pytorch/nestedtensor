@@ -5,25 +5,10 @@ import sys
 import torch
 import nestedtensor
 import unittest
-<<<<<<< HEAD
-<<<<<<< HEAD
 from utils import TestCase
 import random
 
 import utils
-=======
-from .utils import TestCase
-from .utils import nested_size_to_list
-import random
-
-from . import utils
->>>>>>> Set up ShipIt
-=======
-from utils import TestCase
-import random
-
-import utils
->>>>>>> 20200319 pytorch/nestedtensor import (#83)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -193,8 +178,6 @@ class TestNestedTensor(TestCase):
 
     def test_nested_size(self):
         for constructor in _iter_constructors():
-<<<<<<< HEAD
-<<<<<<< HEAD
             a = constructor([])
             self.assertEqual(len(a.nested_size()), 0)
             self.assertRaises(RuntimeError, lambda: a.nested_size()[0])
@@ -244,122 +227,25 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.nested_size(0), 2)
             self.assertEqual(a.nested_size(1), (1, 2))
             self.assertRaises(IndexError, lambda: a.nested_size(2))
-=======
-            a = constructor([torch.tensor(1)])
-            self.assertEqual(a.nested_size().unbind(), [[]])
-
-            a = constructor(
-                [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-            na = [[1, 2], [2, 3], [4, 5]]
-            self.assertEqual(nested_size_to_list(a.nested_size()), na)
-
-            a = constructor(
-                [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-            na = [[1, 2], [2, 3], [4, 5]]
-            self.assertEqual(nested_size_to_list(a.nested_size()), na)
-            values = [torch.rand(1, 2) for i in range(10)]
-            values = [values[1:i] for i in range(2, 10)]
-            nt = constructor(values)
-            nts = nt.nested_size(1).unbind()
-            lens = list(map(len, values))
-            self.assertEqual(nts, lens)
-
-            a = constructor(
-                [torch.rand(1, 2), torch.rand(2, 3), torch.rand(4, 5)])
-            na = [[1, 2], [2, 3], [4, 5]]
-            self.assertEqual(nested_size_to_list(a.nested_size()), na)
->>>>>>> Set up ShipIt
-=======
-            a = constructor([])
-            self.assertEqual(len(a.nested_size()), 0)
-            self.assertRaises(RuntimeError, lambda: a.nested_size()[0])
-
-            a = constructor([torch.tensor(1)])
-            self.assertEqual(len(a.nested_size()), 1)
-            self.assertEqual(a.nested_size()[0], torch.Size([]))
-            self.assertEqual(a.nested_size(0), 1)
-            self.assertRaises(IndexError, lambda: a.nested_size(1))
-
-            a = constructor([torch.randn(1)])
-            self.assertEqual(a.nested_size()[0], torch.Size([1]))
-            self.assertEqual(a.nested_size()[0][0], 1)
-            self.assertEqual(a.nested_size(0), 1)
-            self.assertEqual(a.nested_size(1), (1,))
-            self.assertRaises(IndexError, lambda: a.nested_size(2))
-
-            a = constructor([torch.randn(1, 2)])
-            self.assertEqual(a.nested_size()[0], torch.Size([1, 2]))
-            self.assertEqual(a.nested_size(0), 1)
-            self.assertEqual(a.nested_size(1), (1,))
-            self.assertEqual(a.nested_size(2), (2,))
-            self.assertRaises(IndexError, lambda: a.nested_size(3))
-
-            # Make sure object is not bound to life-time of NestedTensor instance
-            b = a.nested_size()
-            del a
-            self.assertEqual(len(b), 1)
-            self.assertEqual(b[0], torch.Size([1, 2]))
-            self.assertEqual(b[0][0], 1)
-            self.assertEqual(b[0][1], 2)
-
-            a = constructor([[torch.randn(1)], [torch.randn(2), torch.randn(1)]])
-            self.assertEqual(a.nested_size()[0][0], torch.Size([1]))
-            self.assertEqual(a.nested_size()[1][0], torch.Size([2]))
-            self.assertEqual(a.nested_size()[1][1], torch.Size([1]))
-            self.assertEqual(a.nested_size(0), 2)
-            self.assertEqual(a.nested_size(1), (1, 2))
-            self.assertEqual(a.nested_size(2), ((1,), (2, 1)))
-            self.assertRaises(IndexError, lambda: a.nested_size(3))
-
-            a = constructor([[torch.tensor(1)],
-                            [torch.tensor(2), torch.tensor(1)]])
-            self.assertEqual(a.nested_size()[0][0], torch.Size([]))
-            self.assertEqual(a.nested_size()[1][0], torch.Size([]))
-            self.assertEqual(a.nested_size()[1][1], torch.Size([]))
-            self.assertEqual(a.nested_size(0), 2)
-            self.assertEqual(a.nested_size(1), (1, 2))
-            self.assertRaises(IndexError, lambda: a.nested_size(2))
->>>>>>> pytorch/nestedtensor import
 
     def test_nested_stride(self):
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
             2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
         a = nestedtensor.as_nested_tensor(tensors)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> pytorch/nestedtensor import
         na = tuple(tuple(t.stride()) for t in tensors)
         ans = a.nested_stride()
         result = tuple(ans[i] for i in range(len(ans)))
         for r, s in zip(result, na):
             self.assertEqual(r, s)
-<<<<<<< HEAD
-=======
-        na = list(list(t.stride()) for t in tensors)
-        self.assertEqual(nested_size_to_list(a.nested_stride()), na)
->>>>>>> Set up ShipIt
-=======
->>>>>>> pytorch/nestedtensor import
 
         tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
             2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
         a = nestedtensor.nested_tensor(tensors)
         na = list(list(t.contiguous().stride()) for t in tensors)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> pytorch/nestedtensor import
         ans = a.nested_stride()
         result = tuple(ans[i] for i in range(len(ans)))
         for r, s in zip(result, na):
             self.assertEqual(r, s)
-<<<<<<< HEAD
-=======
-        self.assertEqual(nested_size_to_list(a.nested_stride()), na)
->>>>>>> Set up ShipIt
-=======
->>>>>>> pytorch/nestedtensor import
 
     def test_len(self):
         for constructor in _iter_constructors():
