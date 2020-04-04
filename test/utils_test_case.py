@@ -232,10 +232,15 @@ class TestCase(TestCaseBase):
 
             if x.nested_size() != y.nested_size():
 <<<<<<< HEAD
+<<<<<<< HEAD
                 print(x.nested_size())
                 print(y.nested_size())
 =======
 >>>>>>> Set up ShipIt
+=======
+                print(x.nested_size())
+                print(y.nested_size())
+>>>>>>> pytorch/nestedtensor import
                 self.fail("Nested tensors nested sizes don't match. {} != {}".format(x.nested_size(), y.nested_size()))
 
             # If you ignore contiguity you should also ignore the striding

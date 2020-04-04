@@ -6,6 +6,7 @@ namespace torch {
 namespace nested_tensor {
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
@@ -20,6 +21,8 @@ using IValueNode = NestedNode<c10::IValue>;
 using PythonNode = NestedNode<py::object>;
 
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
 using namespace torch::nested_tensor;
 namespace py = pybind11;
 
@@ -33,11 +36,17 @@ void add_thp_node(py::module m, std::string name) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 void add_thppython_node(py::module m, std::string name) {
 }
 
 =======
 >>>>>>> Set up ShipIt
+=======
+void add_thppython_node(py::module m, std::string name) {
+}
+
+>>>>>>> pytorch/nestedtensor import
 template <class C, class F>
 void add_thp_node(py::module m, std::string name, F eq_fn) {
   py::class_<C>(m, name.c_str())
@@ -62,6 +71,9 @@ THPPythonNode py_map(py::function fn, THPPythonNode node) {
 
 void register_python_nested_node(py::module m) {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
   py::class_<THPPythonNode>(m, "PythonNode")
       .def("__str__", &THPPythonNode::str)
       .def("unbind", &THPPythonNode::unbind)
@@ -74,6 +86,7 @@ void register_python_nested_node(py::module m) {
         if (!shape_matches(a, b)) {
           return false;
         }
+<<<<<<< HEAD
         auto fn = [](py::object a, py::object b) {
           return a.equal(b);
         };
@@ -82,6 +95,17 @@ void register_python_nested_node(py::module m) {
 =======
   add_thp_node<THPPythonNode>(m, "PythonNode");
 >>>>>>> Set up ShipIt
+=======
+        auto fn = [](py::object a, py::object b) -> bool {
+          // return a.equal(b);
+          int rv = PyObject_RichCompareBool(a.ptr(), b.ptr(), Py_EQ);
+          if (rv == -1)
+              throw py::error_already_set();
+          return rv == 1;
+        };
+        return all<decltype(fn)>(std::move(fn), a, b);
+      });
+>>>>>>> pytorch/nestedtensor import
 
   add_thp_node<THPSizeNode>(
       m, "SizeNode", [](THPSizeNode& a_, THPSizeNode& b_) {

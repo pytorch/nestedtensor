@@ -14,9 +14,13 @@ struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
 <<<<<<< HEAD
+<<<<<<< HEAD
   NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
 =======
 >>>>>>> Set up ShipIt
+=======
+  NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
+>>>>>>> pytorch/nestedtensor import
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
   c10::optional<at::Tensor>& get_buffer() {
     return _buffer;
@@ -24,6 +28,7 @@ struct NestedTensor {
   const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   std::vector<c10::optional<int64_t>> sizes() const;
@@ -58,6 +63,9 @@ struct NestedTensor {
   std::vector<c10::optional<int64_t>> size();
 =======
   std::vector<c10::optional<int64_t>> size() const;
+=======
+  std::vector<c10::optional<int64_t>> sizes() const;
+>>>>>>> pytorch/nestedtensor import
   caffe2::TypeMeta dtype() const {
     return _first_variable.dtype();
   }
@@ -65,7 +73,31 @@ struct NestedTensor {
   int64_t element_size() const {
     return _first_variable.element_size();
   }
+<<<<<<< HEAD
 >>>>>>> Set up ShipIt
+=======
+  // This is a C++ representation of a nested list of torch.Sizes
+  //
+  // It can never be a list of just numbers, because torch.Size
+  // is always a list and NestedTensors represent lists of torch.Tensors
+  //
+  // Noteworthy cases:
+  //
+  // This is an empty list of lists if we construct
+  // nested_tensor([])
+  // which is of nested_dim 1, dim 1 and tensor_dim 0
+  //
+  // This is a list of empty lists if we construct e.g.
+  // nested_tensor([torch.tensor(0), torch.tensor(1), ...])
+  // which is of nested_dim 1, dim 1 and tensor_dim 0
+  //
+  // This is a list of list of numbers if we construct e.g.
+  // nested_tensor([torch.tensor([1]), torch.tensor([2]), ...])
+  // which is of nested_dim 1, dim 2 and tensor_dim 1
+  //
+  // That means, if the list is not empty it is either a list of
+  // lists of numbers or a list of empty lists.
+>>>>>>> pytorch/nestedtensor import
   SizeNode nested_size() const {
     return _nested_size;
   }
@@ -181,12 +213,18 @@ struct NestedTensor {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
 // torch.Tensor methods
   NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
   NestedTensor squeeze_(c10::optional<int64_t> dim);
 
+<<<<<<< HEAD
 =======
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
  private:
   c10::optional<at::Tensor> _buffer;
   TensorNode _structure;
@@ -194,8 +232,12 @@ struct NestedTensor {
   SizeNode _nested_size;
 };
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> Set up ShipIt
+=======
+
+>>>>>>> pytorch/nestedtensor import
 } // namespace nested_tensor
 } // namespace torch

@@ -56,12 +56,18 @@ class NestedTensor(object):
 
     @property
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
     def shape(self):
         return self._impl.size()
 
     @property
+<<<<<<< HEAD
 =======
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
     def dtype(self):
         """
         The data type of ```self``` NestedTensor.
@@ -276,6 +282,9 @@ class NestedTensor(object):
         tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
 
     # Tensor methods
     def copy_(self, source, non_blocking=False):
@@ -286,5 +295,8 @@ class NestedTensor(object):
 
     def squeeze_(self, dim=None):
         return NestedTensor(self._impl.squeeze_(dim))
+<<<<<<< HEAD
 =======
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import

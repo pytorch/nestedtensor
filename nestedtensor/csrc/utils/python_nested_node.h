@@ -7,10 +7,15 @@ namespace torch {
 namespace nested_tensor {
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 using PythonNode = NestedNode<pybind11::object>;
 
 =======
 >>>>>>> Set up ShipIt
+=======
+using PythonNode = NestedNode<pybind11::object>;
+
+>>>>>>> pytorch/nestedtensor import
 template <typename T>
 struct THPNestedNode {
   THPNestedNode(NestedNode<T> size_node, std::string name)
@@ -79,6 +84,9 @@ struct THPNestedNode<py::object> {
     return pybind11::cast(result);
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
   pybind11::object operator[](size_t index) {
     TORCH_CHECK(index < _size_node.degree(), "Index out of range.");
     std::vector<pybind11::object> result;
@@ -89,8 +97,11 @@ struct THPNestedNode<py::object> {
       return pybind11::cast(THPNestedNode<pybind11::object>(child, _name));
     }
   }
+<<<<<<< HEAD
 =======
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
 
  private:
   NestedNode<pybind11::object> _size_node;
@@ -98,14 +109,20 @@ struct THPNestedNode<py::object> {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
 using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
 using THPTensorNode = THPNestedNode<at::Tensor>;
 using THPIValueNode = THPNestedNode<c10::IValue>;
 using THPPythonNode = THPNestedNode<py::object>;
 
+<<<<<<< HEAD
 =======
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
 void register_python_nested_node(pybind11::module m);
 
 } // namespace nested_tensor

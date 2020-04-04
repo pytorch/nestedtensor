@@ -16,6 +16,7 @@ from .utils_test_case import TestCase
 from utils_test_case import TestCase
 >>>>>>> 20200319 pytorch/nestedtensor import (#83)
 
+<<<<<<< HEAD
 
 def nested_size_to_list(ns):
     if isinstance(ns, list):
@@ -24,6 +25,8 @@ def nested_size_to_list(ns):
         return [nested_size_to_list(n) for n in ns.unbind()]
 >>>>>>> Set up ShipIt
 
+=======
+>>>>>>> pytorch/nestedtensor import
 def debug_on(*exceptions):
     if not exceptions:
         exceptions = (BaseException, )

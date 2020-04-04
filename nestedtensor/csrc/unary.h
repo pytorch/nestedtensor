@@ -1,7 +1,11 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 #pragma once
 =======
 >>>>>>> Set up ShipIt
+=======
+#pragma once
+>>>>>>> pytorch/nestedtensor import
 #include <creation.h>
 #include <python_nested_tensor.h>
 #include <torch/extension.h>

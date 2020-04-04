@@ -96,10 +96,14 @@ struct NestedNode {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
+<<<<<<< HEAD
 =======
 // This is a C++ representation of a nested list of torch.Sizes
 //
@@ -123,6 +127,8 @@ using IValueNode = NestedNode<c10::IValue>;
 // That means, if the list is not empty it is either a list of
 // lists of numbers or a list of empty lists.
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
 
 inline std::vector<std::string> split_str(
     std::string s,
@@ -220,9 +226,13 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
     return std::pair<int64_t, NestedNode<R>>(
         index + 1, NestedNode<R>(content[index]));
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> Set up ShipIt
+=======
+
+>>>>>>> pytorch/nestedtensor import
   } else {
     std::vector<NestedNode<R>> result;
     for (size_t i = 0; i < structure.degree(); i++) {

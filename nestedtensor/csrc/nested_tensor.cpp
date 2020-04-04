@@ -1,9 +1,13 @@
 #include <nested_tensor.h>
 #include <ATen/ATen.h>
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include <utils/nested_node_functions.h>
 =======
 >>>>>>> Set up ShipIt
+=======
+#include <utils/nested_node_functions.h>
+>>>>>>> pytorch/nestedtensor import
 
 namespace torch {
 namespace nested_tensor {
@@ -48,6 +52,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
 =======
 std::vector<c10::optional<int64_t>> NestedTensor::size() {
@@ -55,6 +60,9 @@ std::vector<c10::optional<int64_t>> NestedTensor::size() {
 =======
 std::vector<c10::optional<int64_t>> NestedTensor::size() const {
 >>>>>>> 20200319 pytorch/nestedtensor import (#83)
+=======
+std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
+>>>>>>> pytorch/nestedtensor import
   return construct_size(_nested_size);
 }
 
@@ -102,10 +110,14 @@ TensorNode build_structure(
   }
   TensorNode tmp = unflatten(nested_size, c10::List<at::Tensor>(buffers));
 <<<<<<< HEAD
+<<<<<<< HEAD
   TensorNode result = map(
 =======
   return map(
 >>>>>>> Set up ShipIt
+=======
+  TensorNode result = map(
+>>>>>>> pytorch/nestedtensor import
       [](at::Tensor buffer,
          c10::List<int64_t> size,
          c10::List<int64_t> stride) {
@@ -118,9 +130,13 @@ TensorNode build_structure(
       nested_size,
       nested_stride);
 <<<<<<< HEAD
+<<<<<<< HEAD
   return result;
 =======
 >>>>>>> Set up ShipIt
+=======
+  return result;
+>>>>>>> pytorch/nestedtensor import
 }
 
 TensorNode build_structure(
@@ -169,10 +185,14 @@ at::Tensor NestedTensor::to_tensor() {
   // TODO: Not necessarily a view because of stack and reshape.
   std::vector<int64_t> new_size;
 <<<<<<< HEAD
+<<<<<<< HEAD
   for (const auto& si : sizes()) {
 =======
   for (const auto& si : size()) {
 >>>>>>> Set up ShipIt
+=======
+  for (const auto& si : sizes()) {
+>>>>>>> pytorch/nestedtensor import
     if (!si) {
       // TODO: This assumes we'll extend to_tensor to also work with int64_t at
       // this level.
@@ -227,6 +247,9 @@ NestedTensor::NestedTensor(TensorNode&& structure)
       _nested_size(infer_nested_size(_structure)) {}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
 // NOTE: It is assumed that structure is a tree of views
 // of buffer.
 // TODO: Add an explicit test for debug purposes.
@@ -238,8 +261,11 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
 
+<<<<<<< HEAD
 =======
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
       _structure(build_structure(*_buffer, nested_size)),
@@ -249,6 +275,9 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
       _nested_size(nested_size) {}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> pytorch/nestedtensor import
 // torch.Tensor methods
 NestedTensor NestedTensor::copy_(
     const NestedTensor& source,
@@ -314,7 +343,10 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
   return *this;
 }
 
+<<<<<<< HEAD
 =======
 >>>>>>> Set up ShipIt
+=======
+>>>>>>> pytorch/nestedtensor import
 } // namespace nested_tensor
 } // namespace torch
