@@ -14,7 +14,7 @@ void add_functions(
   auto copy_fn = [](THPNestedTensor self,
                     THPNestedTensor source,
                     bool non_blocking = false) {
-    self.data().copy_(source.data());
+    return THPNestedTensor(self.data().copy_(source.data()));
   };
   c.def("copy_", copy_fn);
 
