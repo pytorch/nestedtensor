@@ -35,6 +35,8 @@ class NestedTensor(object):
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
     def __init__(self, impl):
+        if not isinstance(impl, nestedtensor._C.NestedTensor):
+            raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
     # --- impl forward ---
@@ -159,7 +161,7 @@ class NestedTensor(object):
         # TODO: Make contiguous by default? Heavy operation...
         # NOTE: Needs grad support, which nestedtensor.nested_tensor
         # constructor doesn't have.
-        return NestedTensor(nestedtensor.as_nested_tensor(new_tensors))
+        return nestedtensor.as_nested_tensor(new_tensors)
 
     def numel(self):
         return self._impl.numel()
