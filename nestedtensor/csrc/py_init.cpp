@@ -89,13 +89,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   add_unary_functions(m, c);
   add_functions(m, c);
 
-  add_relu(m, c, "relu");
-  add_dropout(m, c, "dropout");
-  add_conv2d(m, c, "conv2d");
-  add_max_pool2d(m, c, "max_pool2d");
-  add_batch_norm(m, c, "batch_norm");
-  add_cross_entropy(m, c, "cross_entropy");
-  add_interpolate(m, c, "interpolate");
+  add_relu(m, c);
+  add_dropout(m, c);
+  add_conv2d(m, c);
+  add_max_pool2d(m, c);
+  add_batch_norm(m, c);
+  add_cross_entropy(m, c);
+  add_interpolate(m, c);
 
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
