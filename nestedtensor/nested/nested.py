@@ -214,8 +214,16 @@ class NestedTensor(object):
         _local_func = None
         if func in NestedTensor.__C_functions:
             if 'interpolate' in str(func):
+                # size can be None, torch.Size, int or tuple of int
+                if kwargs['size'] is None:
+                    size = kwargs['size']
+                elif isinstance(kwargs['size'], tuple) or isinstance(kwargs['size'], torch.Size):
+                    size = kwargs['size']
+                else:
+                    size = (kwargs['size'], kwargs['size'])
+
                 return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl,
-                                                                                               kwargs['size'],
+                                                                                               size,
                                                                                                kwargs['scale_factor'],
                                                                                                kwargs['mode'],
                                                                                                kwargs['align_corners']))
