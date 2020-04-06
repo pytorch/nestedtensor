@@ -343,7 +343,6 @@ def monkey_patch(NestedTensor):
 
     # module.NestedTensor = NestedTensor
 
-
     NestedTensor._NestedTensor__function_dispatch = function_dispatch
     NestedTensor._NestedTensor__jit_function_dispatch = jit_function_dispatch
     NestedTensor._NestedTensor__C_functions = C_functions

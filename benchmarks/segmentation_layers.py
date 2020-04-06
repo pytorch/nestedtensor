@@ -258,7 +258,7 @@ def interpolate_tensor():
     a = torch.stack(inputs)
 
     def _interpolate_tensor():
-        torch.nn.functional.interpolate(a)
+        torch.nn.functional.interpolate(a, inputs[0].unsqueeze(0).shape[-2])
     return _interpolate_tensor
 
 def interpolate_nt():

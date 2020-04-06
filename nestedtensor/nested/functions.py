@@ -18,22 +18,6 @@ from nestedtensor import _C
 
 from numbers import Number
 
-orig_squeeze = torch.squeeze
-
-
-def squeeze(*args, **kwargs):
-    if utils.find_nested_tensor_dispatch_key(*args) is None:
-        return orig_squeeze(*args, **kwargs)
-    return utils.tensorwise(dim_args=[1, 'dim'], wrap_dim_args=False)(orig_squeeze)(*args, **kwargs)
-
-
-orig_unsqueeze = torch.squeeze
-def unsqueeze(*args, **kwargs):
-    if utils.find_nested_tensor_dispatch_key(*args) is None:
-        return orig_unsqueeze(*args, **kwargs)
-    return utils.tensorwise(dim_args=[1, 'dim'], wrap_dim_args=False)(orig_unsqueeze)(*args, **kwargs)
-
-
 orig_linear = torch.nn.functional.linear
 def linear(input, weight, bias=None):
     # TODO: what if bias is a NestedTensor?
@@ -186,14 +170,3 @@ def addmm(*args, **kwargs):
         return _addmm(1, args[0], 1, *args[1:], **kwargs)
     else:
         raise ValueError("Unrecognized signature for addmm")
-
-
-def validate_nt(input, ignore_dim4_check=False):
-    if not utils.is_nested_tensor(input):
-        raise RuntimeError("Expected NestedTensor as an input. Got: {}".format(type(input)))
-
-    if input.nested_dim() != 1:
-        raise RuntimeError("Only NestedTensor with nested dimension of 1 are currenlty supported. Current nested dimension: {}".format(input.nested_dim()))
-
-    if not ignore_dim4_check and input.dim() != 4:
-        raise RuntimeError("Only NestedTensor with dimension of 4 are currenlty supported. Current dimension: {}".format(input.dim()))

@@ -8,7 +8,6 @@ import unittest
 from utils import TestCase
 import random
 import utils
-import torchvision
 
 def _iter_constructors():
     yield nestedtensor.as_nested_tensor

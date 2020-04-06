@@ -59,15 +59,10 @@ class TestIntegration(TestCase):
         tr1 = torch.randn(2, 2, requires_grad=True)
         tr2 = torch.randn(2, 2, requires_grad=True)
        
-       
         nt_t1 = t1.detach().requires_grad_()
         nt_t2 = t2.detach().requires_grad_()
         nt_tr1 = tr1.detach().requires_grad_()
         nt_tr2 = tr2.detach().requires_grad_()
-        nt_t1.retain_grad()
-        nt_t2.retain_grad()
-        nt_tr1.retain_grad()
-        nt_tr2.retain_grad()
 
         model_name = 'fcn_resnet101'
         num_classes = 21

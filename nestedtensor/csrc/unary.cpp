@@ -61,7 +61,6 @@ void add_unary(
       (name + std::string("_")).c_str(), torch::nested_tensor::unary_(at_out));
 }
 
-
 void add_unary_functions(
     pybind11::module m,
     pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
