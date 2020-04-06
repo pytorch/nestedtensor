@@ -52,6 +52,7 @@ class ConfusionMatrix(object):
                 iu.mean().item() * 100)
 
 class TestIntegration(TestCase):
+    @unittest.skip("Disabled within fbcode due to dependency on the internet.")
     def test_segmentation_pretrained_test_only(self):
         t1 = torch.randn(3, 2, 2, requires_grad=True)
         t2 = torch.randn(3, 2, 2, requires_grad=True)

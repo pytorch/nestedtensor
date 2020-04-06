@@ -107,26 +107,6 @@ def embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
                                               per_sample_weights)
 
 
-def cross_entropy(input, target, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean'):
-    validate_nt(input)
-    validate_nt(target, ignore_dim4_check=True)
-
-    if weight is not None and not isinstance(weight, torch.Tensor):
-        raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
-    
-    res = []
-    for tensor, trg in zip(iter(input), iter(target)):
-        if tensor.dim() != 3:
-            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        tensor = tensor.unsqueeze(0)
-        trg = trg.unsqueeze(0)
-        tensor = torch.nn.functional.cross_entropy(tensor, trg, weight, size_average, ignore_index, reduce, reduction)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
-
-
 orig_nll_loss = torch.nn.functional.nll_loss
 # TODO: Return scalar?
 def nll_loss(input, target, *args, **kwargs):
@@ -191,13 +171,6 @@ def mm(*args, **kwargs):
             _C._BufferNestedTensor(buffer_, result_nested_size))
 
     tf = utils.tensorwise()(torch.Tensor.mm)
-    return tf(*args, **kwargs)
-
-
-def _addmm(*args, **kwargs):
-    import pdb
-    pdb.set_trace()
-    tf = utils.tensorwise()(torch.addmm)
     return tf(*args, **kwargs)
 
 

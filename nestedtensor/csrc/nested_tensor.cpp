@@ -1,5 +1,6 @@
 #include <nested_tensor.h>
 #include <ATen/ATen.h>
+#include <utils/nested_node_functions.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -42,7 +43,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<c10::optional<int64_t>> NestedTensor::size() const {
+std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
   return construct_size(_nested_size);
 }
 
@@ -89,7 +90,7 @@ TensorNode build_structure(
     }
   }
   TensorNode tmp = unflatten(nested_size, c10::List<at::Tensor>(buffers));
-  return map(
+  TensorNode result = map(
       [](at::Tensor buffer,
          c10::List<int64_t> size,
          c10::List<int64_t> stride) {
@@ -101,6 +102,7 @@ TensorNode build_structure(
       tmp,
       nested_size,
       nested_stride);
+  return result;
 }
 
 TensorNode build_structure(
@@ -148,7 +150,7 @@ at::Tensor _to_tensor(TensorNode node) {
 at::Tensor NestedTensor::to_tensor() {
   // TODO: Not necessarily a view because of stack and reshape.
   std::vector<int64_t> new_size;
-  for (const auto& si : size()) {
+  for (const auto& si : sizes()) {
     if (!si) {
       // TODO: This assumes we'll extend to_tensor to also work with int64_t at
       // this level.
@@ -202,6 +204,17 @@ NestedTensor::NestedTensor(TensorNode&& structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
 
+// NOTE: It is assumed that structure is a tree of views
+// of buffer.
+// TODO: Add an explicit test for debug purposes.
+NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
+    : _buffer(buffer),
+      _structure(structure),
+      _first_variable(
+          get_first_leaf(_structure) ? *get_first_leaf(_structure)
+                                     : at::ones({})),
+      _nested_size(infer_nested_size(_structure)) {}
+
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
       _structure(build_structure(*_buffer, nested_size)),
@@ -209,6 +222,71 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                      : at::ones({})),
       _nested_size(nested_size) {}
+
+// torch.Tensor methods
+NestedTensor NestedTensor::copy_(
+    const NestedTensor& source,
+    bool non_blocking) {
+  TORCH_CHECK(
+      shape_matches(nested_size(), source.nested_size()),
+      "self and source don't match in shape");
+  if (_buffer && source.get_buffer()) {
+    _buffer->copy_(*source.get_buffer());
+    return *this;
+  }
+  if (_buffer) {
+    NestedTensor cont_source = source.contiguous();
+    _buffer->copy_(*cont_source.get_buffer());
+    return *this;
+  }
+  auto result =
+      map([](at::Tensor self, at::Tensor source) { return self.copy_(source); },
+          _structure,
+          source.get_structure());
+  return *this;
+}
+
+inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
+  if (dim == 0) {
+    return structure.children(0);
+  }
+  return TensorNode(_squeeze_nested_dim(structure, dim - 1));
+}
+
+NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
+  if (!dim_) {
+    // TODO: First dimension is always ignored.
+    // We could decide to return a Tensor if the 0th
+    // dimension can be squeezed.
+    auto init_sizes = sizes();
+    for (int64_t i = 0; i < init_sizes.size() - 1; i++) {
+      int64_t index = init_sizes.size() - i - 1;
+      c10::optional<int64_t> s = init_sizes[index];
+      if (s && ((*s) == 1)) {
+        this->squeeze_(index);
+      }
+    }
+    return *this;
+  }
+  int64_t dim = at::maybe_wrap_dim(*dim_, this->dim());
+  TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
+  TORCH_CHECK(
+      ((sizes()[dim]) && ((*(sizes()[dim])) == 1)),
+      "Given dimension is either undefined or not a singleton.");
+  if (dim < this->nested_dim()) {
+    _structure = _squeeze_nested_dim(_structure, dim);
+  } else {
+    int64_t height = _structure.height();
+    _structure =
+        map([dim, height](
+                at::Tensor tensor) { return tensor.squeeze(dim - height); },
+            _structure);
+  }
+  _first_variable =
+      get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
+  _nested_size = infer_nested_size(_structure);
+  return *this;
+}
 
 } // namespace nested_tensor
 } // namespace torch

@@ -35,6 +35,8 @@ class NestedTensor(object):
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
     def __init__(self, impl):
+        if not isinstance(impl, nestedtensor._C.NestedTensor):
+            raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
     # --- impl forward ---
@@ -53,6 +55,10 @@ class NestedTensor(object):
         Returns true if the NestedTensor resides in pinned memory.
         """
         return self._impl.is_pinned()
+
+    @property
+    def shape(self):
+        return self._impl.size()
 
     @property
     def dtype(self):
@@ -155,7 +161,7 @@ class NestedTensor(object):
         # TODO: Make contiguous by default? Heavy operation...
         # NOTE: Needs grad support, which nestedtensor.nested_tensor
         # constructor doesn't have.
-        return NestedTensor(nestedtensor.as_nested_tensor(new_tensors))
+        return nestedtensor.as_nested_tensor(new_tensors)
 
     def numel(self):
         return self._impl.numel()
@@ -353,3 +359,13 @@ class NestedTensor(object):
     def to_padded_tensor(self, mask_dim=None, padding=-1):
         tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)
+
+    # Tensor methods
+    def copy_(self, source, non_blocking=False):
+        return NestedTensor(self._impl.copy_(source._impl, non_blocking))
+
+    def squeeze(self, dim=None):
+        return NestedTensor(self._impl.squeeze(dim))
+
+    def squeeze_(self, dim=None):
+        return NestedTensor(self._impl.squeeze_(dim))
