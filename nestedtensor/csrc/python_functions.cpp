@@ -55,7 +55,7 @@ void add_functions(
   m.def("relu", 
         [](THPNestedTensor input, 
            c10::optional<bool> inplace) {
-             return THPNestedTensor(relu(input.data(), inplace));
+             return THPNestedTensor(relu(input.data().contiguous(), inplace));
         },
         py::arg("input"),
         py::arg("inplace") = false);
@@ -73,7 +73,7 @@ void add_functions(
            c10::optional<double> p, 
            c10::optional<bool> training, 
            c10::optional<bool> inplace) {
-             return THPNestedTensor(dropout(input.data(), p, training, inplace));
+             return THPNestedTensor(dropout(input.data().contiguous(), p, training, inplace));
            },
         py::arg("input"),
         py::arg("p") = 0.5,
@@ -88,7 +88,7 @@ void add_functions(
            c10::optional<std::vector<int64_t>> padding,
            c10::optional<std::vector<int64_t>> dilation,
            c10::optional<int64_t> group) {
-             return THPNestedTensor(conv2d(input.data(), 
+             return THPNestedTensor(conv2d(input.data().contiguous(), 
                                            weight, 
                                            bias, 
                                            stride, 
@@ -112,7 +112,7 @@ void add_functions(
            c10::optional<std::vector<int64_t>> dilation,
            c10::optional<bool> return_indices,
            c10::optional<bool> ceil_mode) {
-             return THPNestedTensor(maxPool2d(input.data(), 
+             return THPNestedTensor(maxPool2d(input.data().contiguous(), 
                                               kernel_size, 
                                               stride, 
                                               padding, 
@@ -137,7 +137,7 @@ void add_functions(
            bool training, 
            double momentum,
            double eps){
-             return THPNestedTensor(batch_norm(input.data(), 
+             return THPNestedTensor(batch_norm(input.data().contiguous(), 
                                                running_mean, 
                                                running_var, 
                                                weight, 
@@ -163,8 +163,8 @@ void add_functions(
            c10::optional<int64_t> ignore_index,
            c10::optional<bool> reduce, // TODO: use
            c10::optional<std::string> reduction) {
-             return THPNestedTensor(cross_entropy(input.data(),
-                                                  target.data(),
+             return THPNestedTensor(cross_entropy(input.data().contiguous(),
+                                                  target.data().contiguous(),
                                                   weight,
                                                   size_average,
                                                   ignore_index,
@@ -185,7 +185,7 @@ void add_functions(
            c10::optional<std::vector<double>> scale_factor,
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners){
-             return THPNestedTensor(interpolate(input.data(), 
+             return THPNestedTensor(interpolate(input.data().contiguous(), 
                                                 size,
                                                 scale_factor, 
                                                 mode,
