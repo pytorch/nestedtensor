@@ -51,19 +51,51 @@ void add_functions(
         return self;
       },
       py::arg("dim") = nullptr);
-  
-  m.def("relu", relu);
-  m.def("relu_", relu_out);
+
+  m.def("relu", 
+        [](THPNestedTensor input, 
+           c10::optional<bool> inplace) {
+             return THPNestedTensor(relu(input.data(), inplace));
+        },
+        py::arg("input"),
+        py::arg("inplace") = false);
+
+  m.def(
+    "relu_",
+    [](THPNestedTensor& input) {
+      input = THPNestedTensor(relu_out(input.data()));
+      return input;
+    },
+    py::arg("input"));
 
   m.def("dropout", 
-        dropout,
+        [](THPNestedTensor input, 
+           c10::optional<double> p, 
+           c10::optional<bool> training, 
+           c10::optional<bool> inplace) {
+             return THPNestedTensor(dropout(input.data(), p, training, inplace));
+           },
         py::arg("input"),
         py::arg("p") = 0.5,
         py::arg("training") = true,
         py::arg("inplace") = false);
 
   m.def("conv2d", 
-        conv2d,
+        [](THPNestedTensor input, 
+           const at::Tensor weight, 
+           c10::optional<at::Tensor> bias, 
+           c10::optional<std::vector<int64_t>> stride,
+           c10::optional<std::vector<int64_t>> padding,
+           c10::optional<std::vector<int64_t>> dilation,
+           c10::optional<int64_t> group) {
+             return THPNestedTensor(conv2d(input.data(), 
+                                           weight, 
+                                           bias, 
+                                           stride, 
+                                           padding, 
+                                           dilation, 
+                                           group));
+           },
         py::arg("input"), 
         py::arg("weight"),
         py::arg("bias") = nullptr,
@@ -73,7 +105,21 @@ void add_functions(
         py::arg("groups") = 1);
 
   m.def("max_pool2d", 
-        maxPool2d,
+        [](THPNestedTensor input,
+           std::vector<int64_t> kernel_size,
+           c10::optional<std::vector<int64_t>> stride,
+           c10::optional<std::vector<int64_t>> padding,
+           c10::optional<std::vector<int64_t>> dilation,
+           c10::optional<bool> return_indices,
+           c10::optional<bool> ceil_mode) {
+             return THPNestedTensor(maxPool2d(input.data(), 
+                                              kernel_size, 
+                                              stride, 
+                                              padding, 
+                                              dilation, 
+                                              return_indices, 
+                                              ceil_mode));
+           },
         py::arg("input"), 
         py::arg("kernel_size") = std::vector<int64_t>({}),
         py::arg("stride") = std::vector<int64_t>({}),
@@ -83,7 +129,23 @@ void add_functions(
         py::arg("ceil_mode") = false);
 
   m.def("batch_norm", 
-        batch_norm,
+        [](THPNestedTensor input,
+           const at::Tensor running_mean,
+           const at::Tensor running_var,
+           c10::optional<at::Tensor> weight,
+           c10::optional<at::Tensor> bias,
+           bool training, 
+           double momentum,
+           double eps){
+             return THPNestedTensor(batch_norm(input.data(), 
+                                               running_mean, 
+                                               running_var, 
+                                               weight, 
+                                               bias, 
+                                               training, 
+                                               momentum,
+                                               eps));
+        },
         py::arg("input"),
         py::arg("running_mean"),
         py::arg("running_var"), 
@@ -94,7 +156,21 @@ void add_functions(
         py::arg("eps") = 1e-05);
 
   m.def("cross_entropy", 
-        cross_entropy,
+        [](THPNestedTensor input,
+           THPNestedTensor target,
+           c10::optional<at::Tensor> weight,
+           c10::optional<bool> size_average, // TODO: use
+           c10::optional<int64_t> ignore_index,
+           c10::optional<bool> reduce, // TODO: use
+           c10::optional<std::string> reduction) {
+             return THPNestedTensor(cross_entropy(input.data(),
+                                                  target.data(),
+                                                  weight,
+                                                  size_average,
+                                                  ignore_index,
+                                                  reduce,
+                                                  reduction));
+        },
         py::arg("input"),
         py::arg("target"),
         py::arg("weight") = nullptr,
@@ -104,7 +180,17 @@ void add_functions(
         py::arg("reduction") = "mean");
   
   m.def("interpolate", 
-        interpolate,
+        [](THPNestedTensor input,
+           c10::optional<std::vector<int64_t>> size,
+           c10::optional<std::vector<double>> scale_factor,
+           c10::optional<std::string> mode,
+           c10::optional<bool> align_corners){
+             return THPNestedTensor(interpolate(input.data(), 
+                                                size,
+                                                scale_factor, 
+                                                mode,
+                                                align_corners));
+        },
         py::arg("input"),
         py::arg("size") = nullptr,
         py::arg("scale_factor") = nullptr,

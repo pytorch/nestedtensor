@@ -63,31 +63,41 @@ NestedTensor squeeze(
   return NestedTensor(std::move(structure));
 }
 
-THPNestedTensor relu(const THPNestedTensor input, 
-                     bool inplace=false) {
-  Tensor res = torch::relu(*input.data().contiguous().get_buffer());
-  return THPNestedTensor(NestedTensor(std::move(res), input.data().nested_size()));
+NestedTensor relu(NestedTensor input, 
+                  c10::optional<bool> inplace) {
+  TensorNode input_structure = input.get_structure();
+  TensorNode res = map([&](at::Tensor t){
+      return torch::relu(t.unsqueeze(0)).squeeze(0);
+  }, input_structure);
+
+  return NestedTensor(std::move(res));
 }
 
-THPNestedTensor relu_out(THPNestedTensor& input) {
+NestedTensor relu_out(NestedTensor& input) {
   input = relu(input, true);
   return input;
 }
 
-THPNestedTensor dropout(const THPNestedTensor input, double p, bool training, bool inplace) {
-  Tensor res = torch::dropout(*input.data().contiguous().get_buffer(), p, training);
-  return THPNestedTensor(NestedTensor(std::move(res), input.data().nested_size()));
+NestedTensor dropout(NestedTensor input, 
+                     c10::optional<double> p, 
+                     c10::optional<bool> training, 
+                     c10::optional<bool> inplace) {
+  TensorNode input_structure = input.get_structure();
+  TensorNode res = map([&](at::Tensor t){
+      return torch::dropout(t, p.value(), training.value());
+  }, input_structure);
+
+  return NestedTensor(std::move(res));
 }
 
-THPNestedTensor conv2d(const THPNestedTensor input, 
-                       const at::Tensor weight, 
-                       c10::optional<at::Tensor> bias, 
-                       c10::optional<std::vector<int64_t>> stride,
-                       c10::optional<std::vector<int64_t>> padding,
-                       c10::optional<std::vector<int64_t>> dilation,
-                       c10::optional<int64_t> groups) {
-  NestedTensor nt = input.data().contiguous();
-  TensorNode structure = nt.get_structure();
+NestedTensor conv2d(const NestedTensor input, 
+                    const at::Tensor weight, 
+                    c10::optional<at::Tensor> bias, 
+                    c10::optional<std::vector<int64_t>> stride,
+                    c10::optional<std::vector<int64_t>> padding,
+                    c10::optional<std::vector<int64_t>> dilation,
+                    c10::optional<int64_t> groups) {
+  TensorNode structure = input.get_structure();
   auto options = F::Conv2dFuncOptions().stride(stride.value())
                                        .padding(padding.value())
                                        .dilation(dilation.value())
@@ -100,17 +110,17 @@ THPNestedTensor conv2d(const THPNestedTensor input,
       return F::conv2d(t.unsqueeze(0), weight, options).squeeze(0);
   }, structure);
 
-  return THPNestedTensor(NestedTensor(std::move(res)));
+  return NestedTensor(std::move(res));
 }
 
-THPNestedTensor maxPool2d(const THPNestedTensor input,
-                          std::vector<int64_t> kernel_size,
-                          c10::optional<std::vector<int64_t>> stride,
-                          c10::optional<std::vector<int64_t>> padding,
-                          c10::optional<std::vector<int64_t>> dilation,
-                          c10::optional<bool> return_indices, // TODO: enable this
-                          c10::optional<bool> ceil_mode) {
-  TensorNode structure = input.data().contiguous().get_structure();
+NestedTensor maxPool2d(NestedTensor input,
+                       std::vector<int64_t> kernel_size,
+                       c10::optional<std::vector<int64_t>> stride,
+                       c10::optional<std::vector<int64_t>> padding,
+                       c10::optional<std::vector<int64_t>> dilation,
+                       c10::optional<bool> return_indices, // TODO: enable this
+                       c10::optional<bool> ceil_mode) {
+  TensorNode structure = input.get_structure();
   F::MaxPool2dFuncOptions options = F::MaxPool2dFuncOptions(kernel_size).stride(stride.value())
                                                                         .padding(padding.value())
                                                                         .dilation(dilation.value())
@@ -121,18 +131,18 @@ THPNestedTensor maxPool2d(const THPNestedTensor input,
       return F::max_pool2d(t.unsqueeze(0), options).squeeze(0);
   }, structure);
 
-  return THPNestedTensor(NestedTensor(std::move(res)));
+  return NestedTensor(std::move(res));
 }
 
-THPNestedTensor batch_norm(const THPNestedTensor input,
-                           const at::Tensor running_mean,
-                           const at::Tensor running_var,
-                           c10::optional<at::Tensor> weight,
-                           c10::optional<at::Tensor> bias,
-                           bool training, 
-                           double momentum,
-                           double eps) {
-    TensorNode structure = input.data().contiguous().get_structure();
+NestedTensor batch_norm(NestedTensor input,
+                        const at::Tensor running_mean,
+                        const at::Tensor running_var,
+                        c10::optional<at::Tensor> weight,
+                        c10::optional<at::Tensor> bias,
+                        bool training, 
+                        double momentum,
+                        double eps) {
+    TensorNode structure = input.get_structure();
     auto options = F::BatchNormFuncOptions().weight(weight.value())
                                             .bias(bias.value())
                                             .momentum(momentum)
@@ -143,18 +153,18 @@ THPNestedTensor batch_norm(const THPNestedTensor input,
         return F::batch_norm(t.unsqueeze(0), running_mean, running_var, options).squeeze(0);
     }, structure);
 
-    return THPNestedTensor(NestedTensor(std::move(res)));
+    return NestedTensor(std::move(res));
 }
 
-THPNestedTensor cross_entropy(const THPNestedTensor input,
-                              const THPNestedTensor target,
-                              c10::optional<at::Tensor> weight,
-                              c10::optional<bool> size_average, // TODO: use
-                              c10::optional<int64_t> ignore_index,
-                              c10::optional<bool> reduce, // TODO: use
-                              c10::optional<std::string> reduction) {
-  TensorNode input_structure = input.data().contiguous().get_structure();
-  TensorNode target_structure = target.data().contiguous().get_structure();
+NestedTensor cross_entropy(NestedTensor input,
+                           NestedTensor target,
+                           c10::optional<at::Tensor> weight,
+                           c10::optional<bool> size_average, // TODO: use
+                           c10::optional<int64_t> ignore_index,
+                           c10::optional<bool> reduce, // TODO: use
+                           c10::optional<std::string> reduction) {
+  TensorNode input_structure = input.get_structure();
+  TensorNode target_structure = target.get_structure();
   F::CrossEntropyFuncOptions::reduction_t redct;
   if (reduction.value() == "mean" || reduction.value() == "none") {
       redct = torch::kMean;
@@ -175,16 +185,16 @@ THPNestedTensor cross_entropy(const THPNestedTensor input,
       return F::cross_entropy(input_tensor.unsqueeze(0), target_tensor.unsqueeze(0), options).squeeze(0);
   }, input_structure, target_structure);
 
-  return THPNestedTensor(NestedTensor(std::move(res)));
+  return NestedTensor(std::move(res));
 }
 
-THPNestedTensor interpolate(const THPNestedTensor input,
-                            c10::optional<std::vector<int64_t>> size,
-                            c10::optional<std::vector<double>> scale_factor,
-                            c10::optional<std::string> mode,
-                            c10::optional<bool> align_corners) {
-                            //bool recompute_scale_factor) { // TODO: use
-    TensorNode input_structure = input.data().contiguous().get_structure();
+NestedTensor interpolate(NestedTensor input,
+                         c10::optional<std::vector<int64_t>> size,
+                         c10::optional<std::vector<double>> scale_factor,
+                         c10::optional<std::string> mode,
+                         c10::optional<bool> align_corners) {
+                         //bool recompute_scale_factor) { // TODO: use
+    TensorNode input_structure = input.get_structure();
     F::InterpolateFuncOptions::mode_t int_mode;
     if (mode.value() == "nearest" || mode.value() == "none") {
         int_mode = torch::kNearest;
@@ -205,23 +215,23 @@ THPNestedTensor interpolate(const THPNestedTensor input,
     }
 
     auto options = F::InterpolateFuncOptions().mode(int_mode);
+    if (scale_factor.has_value()) {
+        options.scale_factor() = scale_factor.value();
+    }
+
+    if (align_corners.has_value()) {
+        options.align_corners() = align_corners.value();
+    }
+
+    if (size.has_value()) {
+        if (size.value().size() == 2) {
+            options.size() = size.value();
+        } else {
+            options.size() = std::vector<int64_t>({size.value()[0], size.value()[0]});
+        }
+    }
+
     TensorNode res = map([&, &options] (at::Tensor input_tensor) {
-        if (scale_factor.has_value()) {
-            options.scale_factor() = scale_factor.value();
-        }
-
-        if (align_corners.has_value()) {
-            options.align_corners() = align_corners.value();
-        }
-
-        if (size.has_value()) {
-            if (size.value().size() == 2) {
-                options.size() = size.value();
-            } else {
-                options.size() = std::vector<int64_t>({size.value()[0], size.value()[0]});
-            }
-        }
-
         // size or scale factor have to be defined
         if (!size.has_value() && !scale_factor.has_value()) {
             std::vector<int64_t> sizes;
@@ -233,7 +243,7 @@ THPNestedTensor interpolate(const THPNestedTensor input,
         return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
     }, input_structure);
 
-    return THPNestedTensor(NestedTensor(std::move(res)));
+    return NestedTensor(std::move(res));
 }
 
 }
