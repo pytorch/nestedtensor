@@ -51,26 +51,17 @@ void add_functions(
         return self;
       },
       py::arg("dim") = nullptr);
-}
-
-void add_relu(pybind11::module m,
-              pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
+  
   m.def("relu", relu);
   m.def("relu_", relu_out);
-}
 
-void add_dropout(pybind11::module m,
-                 pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
   m.def("dropout", 
         dropout,
         py::arg("input"),
         py::arg("p") = 0.5,
         py::arg("training") = true,
         py::arg("inplace") = false);
-}
 
-void add_conv2d(pybind11::module m,
-                pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
   m.def("conv2d", 
         conv2d,
         py::arg("input"), 
@@ -80,10 +71,7 @@ void add_conv2d(pybind11::module m,
         py::arg("padding") = std::vector<int64_t>({0, 0}),
         py::arg("dilation") = std::vector<int64_t>({1, 1}),
         py::arg("groups") = 1);
-}
 
-void add_max_pool2d(pybind11::module m,
-                    pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
   m.def("max_pool2d", 
         maxPool2d,
         py::arg("input"), 
@@ -93,10 +81,7 @@ void add_max_pool2d(pybind11::module m,
         py::arg("dilation") = std::vector<int64_t>({1, 1}),
         py::arg("return_indices") = false,
         py::arg("ceil_mode") = false);
-}
 
-void add_batch_norm(pybind11::module m,
-                    pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
   m.def("batch_norm", 
         batch_norm,
         py::arg("input"),
@@ -107,10 +92,7 @@ void add_batch_norm(pybind11::module m,
         py::arg("training") = false,
         py::arg("momentum") = 0.1,
         py::arg("eps") = 1e-05);
-}
 
-void add_cross_entropy(pybind11::module m,
-                       pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
   m.def("cross_entropy", 
         cross_entropy,
         py::arg("input"),
@@ -120,20 +102,14 @@ void add_cross_entropy(pybind11::module m,
         py::arg("ignore_index") = -100,
         py::arg("reduce") = true,
         py::arg("reduction") = "mean");
+  
+  m.def("interpolate", 
+        interpolate,
+        py::arg("input"),
+        py::arg("size") = nullptr,
+        py::arg("scale_factor") = nullptr,
+        py::arg("mode") = "nearest",
+        py::arg("align_corners") = false);
 }
-
-void add_interpolate(
-    pybind11::module m,
-    pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
-        m.def("interpolate", 
-              interpolate,
-              py::arg("input"),
-              py::arg("size") = nullptr,
-              py::arg("scale_factor") = nullptr,
-              py::arg("mode") = "nearest",
-              py::arg("align_corners") = false);
-              //py::arg("recompute_scale_factor") = false);
-}
-
 }
 } // namespace torch

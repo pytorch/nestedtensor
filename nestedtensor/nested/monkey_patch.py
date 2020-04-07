@@ -137,9 +137,6 @@ def monkey_patch(NestedTensor):
     
     # > NN functions supported by _C
     for function_name in codegen.get_nn_C_functions():
-        setattr(NestedTensor,
-                function_name,
-                _gen_fn(function_name))
         C_functions[getattr(torch.nn.functional, function_name)] = function_name
     # <
 

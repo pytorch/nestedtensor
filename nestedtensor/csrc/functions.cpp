@@ -88,16 +88,16 @@ THPNestedTensor conv2d(const THPNestedTensor input,
                        c10::optional<int64_t> groups) {
   NestedTensor nt = input.data().contiguous();
   TensorNode structure = nt.get_structure();
-  TensorNode res = map([&](at::Tensor t){
-      auto options = F::Conv2dFuncOptions().stride(stride.value())
-                                           .padding(padding.value())
-                                           .dilation(dilation.value())
-                                           .groups(groups.value());
-      if (bias.has_value()) {
-          return F::conv2d(t.unsqueeze(0), weight, options.bias(bias.value())).squeeze(0);
-      } else {
-          return F::conv2d(t.unsqueeze(0), weight, options).squeeze(0);
-      }
+  auto options = F::Conv2dFuncOptions().stride(stride.value())
+                                       .padding(padding.value())
+                                       .dilation(dilation.value())
+                                       .groups(groups.value());
+  if (bias.has_value()) {
+      options = options.bias(bias.value());
+  }
+
+  TensorNode res = map([&, options](at::Tensor t){
+      return F::conv2d(t.unsqueeze(0), weight, options).squeeze(0);
   }, structure);
 
   return THPNestedTensor(NestedTensor(std::move(res)));
@@ -204,8 +204,8 @@ THPNestedTensor interpolate(const THPNestedTensor input,
         throw error;
     }
 
-    TensorNode res = map([&, int_mode] (at::Tensor input_tensor) {
-        auto options = F::InterpolateFuncOptions().mode(int_mode);
+    auto options = F::InterpolateFuncOptions().mode(int_mode);
+    TensorNode res = map([&, &options] (at::Tensor input_tensor) {
         if (scale_factor.has_value()) {
             options.scale_factor() = scale_factor.value();
         }

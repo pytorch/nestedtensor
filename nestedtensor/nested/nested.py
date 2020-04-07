@@ -227,26 +227,17 @@ class NestedTensor(object):
                                                                                                kwargs['scale_factor'],
                                                                                                kwargs['mode'],
                                                                                                kwargs['align_corners']))
-                                                                                               #kwargs['recompute_scale_factor']))
 
             if 'cross_entropy' in str(func):
                 return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, 
                                                                                                args[1]._impl,
-                                                                                               kwargs['weight'],
-                                                                                               kwargs['size_average'],
-                                                                                               kwargs['ignore_index'],
-                                                                                               kwargs['reduce'],
-                                                                                               kwargs['reduction']))
+                                                                                               **kwargs))
 
             if 'batch_norm' in str(func):
                 return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, 
                                                                                                args[1],
                                                                                                args[2],
-                                                                                               kwargs['weight'],
-                                                                                               kwargs['bias'],
-                                                                                               kwargs['training'],
-                                                                                               kwargs['momentum'],
-                                                                                               kwargs['eps']))
+                                                                                               **kwargs))
 
             if 'max_pool2d' in str(func) or 'boolean_dispatch.<locals>' in str(func):
                 kernel_size = (args[1], args[1]) if type(args[1]) is not tuple else args[1]
@@ -263,45 +254,14 @@ class NestedTensor(object):
                                                                                                kwargs['ceil_mode']))
 
             if 'dropout' in str(func) or 'dropout_' in str(func):
-                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, 
-                                                                                               kwargs['p'],
-                                                                                               kwargs['training'],
-                                                                                               kwargs['inplace']))
+                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, **kwargs))
 
             if 'relu' in str(func):
                 return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, kwargs['inplace']))
 
             if 'conv2d' in str(func):
-                if len(args) == 2:
-                    return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, args[1]))
-                if len(args) == 3:
-                    return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, args[1], args[2]))
-                if len(args) == 4:
-                    return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, 
-                                                                                                   args[1], 
-                                                                                                   args[2], 
-                                                                                                   args[3]))
-                if len(args) == 5:
-                    return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, 
-                                                                                                   args[1], 
-                                                                                                   args[2], 
-                                                                                                   args[3],
-                                                                                                   args[4]))
-                if len(args) == 6:
-                    return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, 
-                                                                                                   args[1], 
-                                                                                                   args[2], 
-                                                                                                   args[3],
-                                                                                                   args[4],
-                                                                                                   args[5]))
-                if len(args) == 7:
-                    return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(args[0]._impl, 
-                                                                                                   args[1], 
-                                                                                                   args[2], 
-                                                                                                   args[3],
-                                                                                                   args[4],
-                                                                                                   args[5],
-                                                                                                   args[6]))
+                impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(*impl_args))
 
             assert len(args) == 1
             if kwargs is None:
