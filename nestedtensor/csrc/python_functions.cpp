@@ -112,8 +112,33 @@ void add_functions(
            c10::optional<std::vector<int64_t>> dilation,
            c10::optional<bool> return_indices,
            c10::optional<bool> ceil_mode) {
-             return THPNestedTensor(maxPool2d(input.data().contiguous(), 
-                                              kernel_size, 
+             return THPNestedTensor(max_pool2d(input.data().contiguous(), 
+                                               kernel_size, 
+                                               stride, 
+                                               padding, 
+                                               dilation, 
+                                               return_indices, 
+                                               ceil_mode));
+           },
+        py::arg("input"), 
+        py::arg("kernel_size"),
+        py::arg("stride") = std::vector<int64_t>({}),
+        py::arg("padding") = std::vector<int64_t>({0, 0}),
+        py::arg("dilation") = std::vector<int64_t>({1, 1}),
+        py::arg("return_indices") = false,
+        py::arg("ceil_mode") = false);
+
+  m.def("max_pool2d", 
+        [](THPNestedTensor input,
+           int64_t kernel_size,
+           c10::optional<std::vector<int64_t>> stride,
+           c10::optional<std::vector<int64_t>> padding,
+           c10::optional<std::vector<int64_t>> dilation,
+           c10::optional<bool> return_indices,
+           c10::optional<bool> ceil_mode) {
+             std::vector<int64_t> kernel_sizes {kernel_size, kernel_size};
+             return THPNestedTensor(max_pool2d(input.data().contiguous(), 
+                                              kernel_sizes, 
                                               stride, 
                                               padding, 
                                               dilation, 
@@ -121,7 +146,7 @@ void add_functions(
                                               ceil_mode));
            },
         py::arg("input"), 
-        py::arg("kernel_size") = std::vector<int64_t>({}),
+        py::arg("kernel_size"),
         py::arg("stride") = std::vector<int64_t>({}),
         py::arg("padding") = std::vector<int64_t>({0, 0}),
         py::arg("dilation") = std::vector<int64_t>({1, 1}),
@@ -181,12 +206,22 @@ void add_functions(
   
   m.def("interpolate", 
         [](THPNestedTensor input,
-           c10::optional<std::vector<int64_t>> size,
+           c10::optional<int64_t> size,
            c10::optional<std::vector<double>> scale_factor,
            c10::optional<std::string> mode,
-           c10::optional<bool> align_corners){
+           c10::optional<bool> align_corners,
+           c10::optional<bool> recompute_scale_factor) {
+             if (size.has_value()) {
+               std::vector<int64_t> sz {size.value(), size.value()};
+               return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                sz,
+                                                scale_factor, 
+                                                mode,
+                                                align_corners));
+             }
+
              return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                size,
+                                                c10::nullopt,
                                                 scale_factor, 
                                                 mode,
                                                 align_corners));
@@ -195,7 +230,36 @@ void add_functions(
         py::arg("size") = nullptr,
         py::arg("scale_factor") = nullptr,
         py::arg("mode") = "nearest",
-        py::arg("align_corners") = false);
+        py::arg("align_corners") = false,
+        py::arg("recompute_scale_factor") = false);
+
+  m.def("interpolate", 
+        [](THPNestedTensor input,
+           c10::optional<std::vector<int64_t>> size,
+           c10::optional<std::vector<double>> scale_factor,
+           c10::optional<std::string> mode,
+           c10::optional<bool> align_corners,
+           c10::optional<bool> recompute_scale_factor) {
+             if (size.has_value()) {
+               return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                  size.value(),
+                                                  scale_factor, 
+                                                  mode,
+                                                  align_corners));
+             }
+
+             return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                c10::nullopt,
+                                                scale_factor, 
+                                                mode,
+                                                align_corners));
+        },
+        py::arg("input"),
+        py::arg("size") = nullptr,
+        py::arg("scale_factor") = nullptr,
+        py::arg("mode") = "nearest",
+        py::arg("align_corners") = false,
+        py::arg("recompute_scale_factor") = false);
 }
 }
 } // namespace torch

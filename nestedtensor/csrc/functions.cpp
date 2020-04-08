@@ -113,13 +113,13 @@ NestedTensor conv2d(const NestedTensor input,
   return NestedTensor(std::move(res));
 }
 
-NestedTensor maxPool2d(NestedTensor input,
-                       std::vector<int64_t> kernel_size,
-                       c10::optional<std::vector<int64_t>> stride,
-                       c10::optional<std::vector<int64_t>> padding,
-                       c10::optional<std::vector<int64_t>> dilation,
-                       c10::optional<bool> return_indices, // TODO: enable this
-                       c10::optional<bool> ceil_mode) {
+NestedTensor max_pool2d(NestedTensor input,
+                        std::vector<int64_t> kernel_size,
+                        c10::optional<std::vector<int64_t>> stride,
+                        c10::optional<std::vector<int64_t>> padding,
+                        c10::optional<std::vector<int64_t>> dilation,
+                        c10::optional<bool> return_indices, // TODO: enable this
+                        c10::optional<bool> ceil_mode) {
   TensorNode structure = input.get_structure();
   F::MaxPool2dFuncOptions options = F::MaxPool2dFuncOptions(kernel_size).stride(stride.value())
                                                                         .padding(padding.value())

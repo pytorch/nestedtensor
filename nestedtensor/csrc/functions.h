@@ -22,13 +22,13 @@ NestedTensor conv2d(NestedTensor input,
                     c10::optional<std::vector<int64_t>> dilation,
                     c10::optional<int64_t> groups);
 
-NestedTensor maxPool2d(NestedTensor input,
-                       std::vector<int64_t> kernel_size,
-                       c10::optional<std::vector<int64_t>> stride,
-                       c10::optional<std::vector<int64_t>> padding,
-                       c10::optional<std::vector<int64_t>> dilation,
-                       c10::optional<bool> return_indices,
-                       c10::optional<bool> ceil_mode);
+NestedTensor max_pool2d(NestedTensor input,
+                        std::vector<int64_t> kernel_size,
+                        c10::optional<std::vector<int64_t>> stride,
+                        c10::optional<std::vector<int64_t>> padding,
+                        c10::optional<std::vector<int64_t>> dilation,
+                        c10::optional<bool> return_indices,
+                        c10::optional<bool> ceil_mode);
 
 NestedTensor batch_norm(NestedTensor input,
                         const at::Tensor running_mean,
