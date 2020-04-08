@@ -94,11 +94,9 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = batch_norm(nt)
-            print(nt_res)
-            print(nestedtensor.nested_tensor(tensor_res))
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def atest_nn_functional_batch_norm(self):
+    def test_nn_functional_batch_norm(self):
         inputs = [
             torch.tensor([[[-0.5000]], [[0.5000]]]),
             torch.tensor([[[-1.0000, 1.0000], [-0.2500, -0.5000]],
@@ -116,7 +114,7 @@ class TestFunctional(TestCase):
             nt_res = torch.nn.functional.batch_norm(nt, running_mean, running_var)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def test_max_pool2d(self):
+    def test_nn_max_pool2d(self):
         inputs = [
             torch.randn(3, 500, 600),
             torch.randn(3, 128, 128)
@@ -146,7 +144,40 @@ class TestFunctional(TestCase):
             nt_res = maxPool2d(nt)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def test_relu(self):
+    def test_nn_functional_max_pool2d(self):
+        inputs = [
+            torch.randn(3, 500, 600),
+            torch.randn(3, 128, 128)
+        ]
+        
+        # no optional params
+        tensor_res = []
+        for i in range(2):
+            t_res = torch.nn.functional.max_pool2d(inputs[i].unsqueeze(0).contiguous(), kernel_size=(3,3))
+            tensor_res.append(t_res.squeeze(0))
+
+        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
+            nt_res = torch.nn.functional.max_pool2d(nt, kernel_size=(3,3))
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+
+    def test_nn_relu(self):
+        inputs = [
+            torch.randn(3, 500, 600),
+            torch.randn(3, 128, 128)
+        ]
+        
+        relu = torch.nn.ReLU()
+
+        tensor_res = []
+        for i in range(2):
+            t_res = relu(inputs[i].unsqueeze(0).contiguous())
+            tensor_res.append(t_res.squeeze(0))
+
+        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
+            nt_res = relu(nt)
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+
+    def test_nn_functional_relu(self):
         inputs = [
             torch.randn(3, 500, 600),
             torch.randn(3, 128, 128)
@@ -161,7 +192,7 @@ class TestFunctional(TestCase):
             nt_res = torch.nn.functional.relu(nt)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def test_cross_entropy(self):
+    def test_nn_functional_cross_entropy(self):
         inputs = [
             torch.randn(3, 300, 300),
             torch.randn(3, 400, 400)
@@ -182,7 +213,23 @@ class TestFunctional(TestCase):
             nt_res = torch.nn.functional.cross_entropy(input_nt, target_nt)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def test_dropout(self):
+    def test_nn_dropout(self):
+        inputs = [
+            torch.randn(3, 128, 128),
+            torch.randn(3, 300, 400)
+        ]
+
+        dropout = torch.nn.Dropout(p=0.2)
+        tensor_res = []
+        for i in range(2):
+            t_res = dropout(inputs[i].unsqueeze(0).contiguous())
+            tensor_res.append(t_res.squeeze(0))
+        
+        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
+            nt_res = dropout(nt)
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res).size(), nt_res.size())
+
+    def test_nn_functional_dropout(self):
         inputs = [
             torch.randn(3, 128, 128),
             torch.randn(3, 300, 400)
@@ -198,7 +245,7 @@ class TestFunctional(TestCase):
             torch.nn.functional.dropout(nt, inplace=True)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res).size(), nt_res.size())
 
-    def test_interpolate(self):
+    def test_nn_functional_interpolate(self):
         inputs = [
             torch.randn(3, 200, 300),
             torch.randn(3, 300, 400)

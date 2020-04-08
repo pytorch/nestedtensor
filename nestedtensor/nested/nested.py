@@ -236,7 +236,12 @@ class NestedTensor(object):
 
             if 'max_pool2d' in str(func) or 'boolean_dispatch.<locals>' in str(func):
                 kernel_size = (args[1], args[1]) if type(args[1]) is not tuple else args[1]
-                stride = (kwargs['stride'], kwargs['stride']) if type(kwargs['stride']) is not tuple else kwargs['stride']
+                
+                if kwargs['stride'] is None: 
+                    stride = kernel_size
+                else:    
+                    stride = (kwargs['stride'], kwargs['stride']) if type(kwargs['stride']) is not tuple else kwargs['stride']
+                
                 padding = (kwargs['padding'], kwargs['padding']) if type(kwargs['padding']) is not tuple else kwargs['padding']
                 dilation = (kwargs['dilation'], kwargs['dilation']) if type(kwargs['dilation']) is not tuple else kwargs['dilation']
 
