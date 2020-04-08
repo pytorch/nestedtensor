@@ -77,7 +77,7 @@ class TestFunctional(TestCase):
             nt_res = [t for t in torch.nn.functional.conv2d(nt, weight, bias, (2, 2), (3, 3), (1, 1), 1).unbind()]
             self.assertEqual(nt_res, tensor_res)
 
-    def test_batch_norm(self):
+    def test_nn_batch_norm(self):
         inputs = [
             torch.tensor([[[-0.5000]], [[0.5000]]]),
             torch.tensor([[[-1.0000, 1.0000], [-0.2500, -0.5000]],
@@ -94,6 +94,26 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = batch_norm(nt)
+            print(nt_res)
+            print(nestedtensor.nested_tensor(tensor_res))
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+
+    def atest_nn_functional_batch_norm(self):
+        inputs = [
+            torch.tensor([[[-0.5000]], [[0.5000]]]),
+            torch.tensor([[[-1.0000, 1.0000], [-0.2500, -0.5000]],
+                          [[0.2500, 0.5000], [1.5000, -1.5000]]])
+        ]
+
+        tensor_res = []
+        running_mean = torch.rand(2)
+        running_var = torch.rand(2)
+        for i in range(2):
+            t_res = torch.nn.functional.batch_norm(inputs[i].unsqueeze(0).contiguous(), running_mean, running_var)
+            tensor_res.append(t_res.squeeze(0))
+
+        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
+            nt_res = torch.nn.functional.batch_norm(nt, running_mean, running_var)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
     def test_max_pool2d(self):
@@ -140,7 +160,7 @@ class TestFunctional(TestCase):
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = torch.nn.functional.relu(nt)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
-    
+
     def test_cross_entropy(self):
         inputs = [
             torch.randn(3, 300, 300),
@@ -161,7 +181,7 @@ class TestFunctional(TestCase):
                                     (nestedtensor.as_nested_tensor(inputs), nestedtensor.as_nested_tensor(targets))]:
             nt_res = torch.nn.functional.cross_entropy(input_nt, target_nt)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
-    
+
     def test_dropout(self):
         inputs = [
             torch.randn(3, 128, 128),

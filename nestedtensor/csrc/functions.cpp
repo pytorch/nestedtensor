@@ -143,11 +143,18 @@ NestedTensor batch_norm(NestedTensor input,
                         double momentum,
                         double eps) {
     TensorNode structure = input.get_structure();
-    auto options = F::BatchNormFuncOptions().weight(weight.value())
-                                            .bias(bias.value())
-                                            .momentum(momentum)
+    
+    auto options = F::BatchNormFuncOptions().momentum(momentum)
                                             .eps(eps)
                                             .training(training);
+
+    if (weight.has_value()) {
+        options = options.weight(weight.value());
+    }
+
+    if (bias.has_value()) {
+        options = options.bias(bias.value());
+    }
 
     TensorNode res = map([&, options](at::Tensor t){
         return F::batch_norm(t.unsqueeze(0), running_mean, running_var, options).squeeze(0);
