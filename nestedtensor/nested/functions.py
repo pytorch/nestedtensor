@@ -19,7 +19,6 @@ from nestedtensor import _C
 from numbers import Number
 
 orig_linear = torch.nn.functional.linear
-
 def linear(input, weight, bias=None):
     # TODO: what if bias is a NestedTensor?
     if utils.find_nested_tensor_dispatch_key(input, weight) is None:
@@ -37,42 +36,6 @@ def linear(input, weight, bias=None):
         return output
 
     return utils.tensorwise()(orig_linear)(input, weight, bias)
-
-
-def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
-    validate_nt(input)
-
-    if weight is not None and not torch.is_tensor(weight):
-        raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
-
-    if bias is not None and not torch.is_tensor(bias):
-        raise RuntimeError("Expected bias to be a Tensor. Got: {}".format(type(bias)))
-
-    res = []
-    for tensor in iter(input):
-        if tensor.dim() != 3:
-            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        tensor = tensor.unsqueeze(0)
-        tensor = torch.nn.functional.conv2d(tensor, weight, bias, stride, padding, dilation, groups)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
-
-
-def max_pool2d(input, *args, **kwargs):
-    validate_nt(input)
-
-    res = []
-    for tensor in iter(input):
-        if tensor.dim() != 3:
-            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        tensor = tensor.unsqueeze(0)
-        tensor = torch.nn.functional.max_pool2d(tensor, *args, **kwargs)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
 
 
 orig_embedding_bag = torch.nn.functional.embedding_bag
@@ -128,99 +91,6 @@ def embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
                                               per_sample_weights)
 
 
-def batch_norm(input, running_mean, running_var, weight=None, bias=None, training=False, momentum=0.1, eps=1e-05):
-    validate_nt(input)
-    if running_mean is not None and not torch.is_tensor(running_mean):
-        raise RuntimeError("Expected running_mean to be a Tensor. Got: {}".format(type(running_mean)))
-
-    if running_var is not None and not torch.is_tensor(running_var):
-        raise RuntimeError("Expected running_var to be a Tensor. Got: {}".format(type(running_var)))
-
-    if weight is not None and not torch.is_tensor(weight):
-        raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
-
-    res = []
-    for tensor in iter(input):
-        if tensor.dim() != 3:
-            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        tensor = tensor.unsqueeze(0)
-        tensor = torch.nn.functional.batch_norm(tensor, running_mean, running_var, weight, bias, training, momentum, eps)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
-    
-
-def relu(input, inplace=False):
-    validate_nt(input)
-
-    res = []
-    for tensor in iter(input):
-        if tensor.dim() != 3:
-            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        tensor = tensor.unsqueeze(0)
-        tensor = torch.nn.functional.relu(tensor, inplace)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
-
-
-def dropout(input, p=0.5, training=True, inplace=False):
-    validate_nt(input)
-
-    res = []
-    for tensor in iter(input):
-        if tensor.dim() != 3:
-            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        tensor = tensor.unsqueeze(0)
-        tensor = torch.nn.functional.dropout(tensor, p, training, inplace)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
-
-
-def cross_entropy(input, target, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean'):
-    validate_nt(input)
-    validate_nt(target, ignore_dim4_check=True)
-
-    if weight is not None and not torch.is_tensor(weight):
-        raise RuntimeError("Expected weight to be a Tensor. Got: {}".format(type(weight)))
-    
-    res = []
-    for tensor, trg in zip(iter(input), iter(target)):
-        if tensor.dim() != 3:
-            raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        tensor = tensor.unsqueeze(0)
-        trg = trg.unsqueeze(0)
-        tensor = torch.nn.functional.cross_entropy(tensor, trg, weight, size_average, ignore_index, reduce, reduction)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
-
-
-def interpolate(input, size=None, scale_factor=None, mode='nearest', align_corners=None, recompute_scale_factor=None):
-    validate_nt(input)
-
-    res = []
-
-    for tensor in iter(input):
-        if tensor.dim() != 3:
-           raise RuntimeError("Expected tensors of dimension 3, got: {}".format(tensor.dim()))
-
-        if size is None:
-            currSize = tensor.unsqueeze(0).shape[-2]
-        else: 
-            currSize = size
-
-        tensor = tensor.unsqueeze(0).contiguous()
-        tensor = torch.nn.functional.interpolate(tensor, currSize, scale_factor, mode, align_corners, recompute_scale_factor)
-        res.append(tensor.squeeze(0))
-
-    return nestedtensor.nested_tensor(res)
-
 orig_nll_loss = torch.nn.functional.nll_loss
 # TODO: Return scalar?
 def nll_loss(input, target, *args, **kwargs):
@@ -261,6 +131,7 @@ def lstm_forward(self, input, hx=None):
     hidden1 = torch.cat([h[1] for (o, h) in result], dim=1)
     return output, (hidden0, hidden1)
 
+
 def _set_size(nested_size, dim, size):
     if isinstance(nested_size, torch.Size):
         result = list(nested_size)
@@ -287,13 +158,6 @@ def mm(*args, **kwargs):
     return tf(*args, **kwargs)
 
 
-def _addmm(*args, **kwargs):
-    import pdb
-    pdb.set_trace()
-    tf = utils.tensorwise()(torch.addmm)
-    return tf(*args, **kwargs)
-
-
 def addmm(*args, **kwargs):
     TensorType = (torch.Tensor, nested.NestedTensor)
     if utils.match_type_signature_prefix((Number, TensorType, Number, TensorType, TensorType), args):
@@ -306,14 +170,3 @@ def addmm(*args, **kwargs):
         return _addmm(1, args[0], 1, *args[1:], **kwargs)
     else:
         raise ValueError("Unrecognized signature for addmm")
-
-
-def validate_nt(input, ignore_dim4_check=False):
-    if not utils.is_nested_tensor(input):
-        raise RuntimeError("Expected NestedTensor as an input. Got: {}".format(type(input)))
-
-    if input.nested_dim() != 1:
-        raise RuntimeError("Only NestedTensor with nested dimension of 1 are currenlty supported. Current nested dimension: {}".format(input.nested_dim()))
-
-    if not ignore_dim4_check and input.dim() != 4:
-        raise RuntimeError("Only NestedTensor with dimension of 4 are currenlty supported. Current dimension: {}".format(input.dim()))

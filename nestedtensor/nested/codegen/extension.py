@@ -8,6 +8,17 @@ from collections import namedtuple
 # to efficiently implement a pointwise unary function such as cos
 # and then generalize it using the list of unary functions.
 
+def get_nn_C_functions():
+    return [
+        "relu",
+        "relu_",
+        "dropout",
+        "conv2d",
+        "max_pool2d",
+        "batch_norm",
+        "cross_entropy",
+        "interpolate",
+    ]
 
 def get_unary_C_functions():
     return [
@@ -327,15 +338,15 @@ def get_functionals():
         "affine_grid",
         "alpha_dropout",
         "assert_int_or_pair",
-        "batch_norm",
+        #"batch_norm",
         "bilinear",
         "binary_cross_entropy",
         "binary_cross_entropy_with_logits",
         "celu",
         "cosine_embedding_loss",
-        "cross_entropy",
+        #"cross_entropy",
         "ctc_loss",
-        "dropout",
+        #"dropout",
         "dropout2d",
         "dropout3d",
         "elu",
@@ -354,7 +365,7 @@ def get_functionals():
         "hardtanh",
         "hinge_embedding_loss",
         "instance_norm",
-        "interpolate",
+        #"interpolate",
         "kl_div",
         "l1_loss",
         "layer_norm",
@@ -365,7 +376,7 @@ def get_functionals():
         "lp_pool1d",
         "lp_pool2d",
         "max_pool1d",
-        "max_pool2d",
+        #"max_pool2d",
         "max_pool3d",
         "margin_ranking_loss",
         "max_pool1d_with_indices",
@@ -385,8 +396,8 @@ def get_functionals():
         "pairwise_distance",
         "poisson_nll_loss",
         "prelu",
-        "relu",
-        "relu_",
+        #"relu",
+        #"relu_",
         "relu6",
         "rrelu",
         "selu",
