@@ -53,9 +53,11 @@ void add_unary(
     std::string name,
     F& at_out) {
   m.def(name.c_str(), torch::nested_tensor::unary(at_out));
-  m.def(name.c_str(), torch::nested_tensor::unary_out(at_out));
-  // py::arg("input"),
-  // py::arg("out") = c10::nullopt);
+  m.def(
+      name.c_str(),
+      torch::nested_tensor::unary_out(at_out),
+      py::arg("input"),
+      py::arg("out"));
   c.def(name.c_str(), torch::nested_tensor::unary(at_out));
   c.def(
       (name + std::string("_")).c_str(), torch::nested_tensor::unary_(at_out));

@@ -114,18 +114,16 @@ NestedTensor conv2d(const NestedTensor input,
 }
 
 NestedTensor max_pool2d(NestedTensor input,
-                        std::vector<int64_t> kernel_size,
-                        c10::optional<std::vector<int64_t>> stride,
-                        c10::optional<std::vector<int64_t>> padding,
-                        c10::optional<std::vector<int64_t>> dilation,
-                        c10::optional<bool> return_indices, // TODO: enable this
-                        c10::optional<bool> ceil_mode) {
+                        at::IntArrayRef kernel_size,
+                        at::IntArrayRef stride,
+                        at::IntArrayRef padding,
+                        at::IntArrayRef dilation,
+                        bool ceil_mode) {
   TensorNode structure = input.get_structure();
-  F::MaxPool2dFuncOptions options = F::MaxPool2dFuncOptions(kernel_size).stride(stride.value())
-                                                                        .padding(padding.value())
-                                                                        .dilation(dilation.value())
-                                                                        //.return_indices(return_indices.value()), // TODO: enable this
-                                                                        .ceil_mode(ceil_mode.value());
+  F::MaxPool2dFuncOptions options = F::MaxPool2dFuncOptions(kernel_size).stride(stride)
+                                                                        .padding(padding)
+                                                                        .dilation(dilation)
+                                                                        .ceil_mode(ceil_mode);
 
   TensorNode res = map([&, options](at::Tensor t){
       return F::max_pool2d(t.unsqueeze(0), options).squeeze(0);
@@ -238,17 +236,19 @@ NestedTensor interpolate(NestedTensor input,
         }
     }
 
-    TensorNode res = map([&, &options] (at::Tensor input_tensor) {
-        // size or scale factor have to be defined
-        if (!size.has_value() && !scale_factor.has_value()) {
+    TensorNode res = map(
+        [&options, &size, &scale_factor](at::Tensor input_tensor) {
+          // size or scale factor have to be defined
+          if (!size.has_value() && !scale_factor.has_value()) {
             std::vector<int64_t> sizes;
             sizes.push_back(input_tensor.unsqueeze(0).size(2));
             sizes.push_back(input_tensor.unsqueeze(0).size(2));
             options.size() = sizes;
-        }
+          }
 
-        return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
-    }, input_structure);
+          return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
+        },
+        input_structure);
 
     return NestedTensor(std::move(res));
 }
