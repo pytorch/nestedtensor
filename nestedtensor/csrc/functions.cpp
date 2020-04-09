@@ -238,17 +238,19 @@ NestedTensor interpolate(NestedTensor input,
         }
     }
 
-    TensorNode res = map([&, &options] (at::Tensor input_tensor) {
-        // size or scale factor have to be defined
-        if (!size.has_value() && !scale_factor.has_value()) {
+    TensorNode res = map(
+        [&options, &size, &scale_factor](at::Tensor input_tensor) {
+          // size or scale factor have to be defined
+          if (!size.has_value() && !scale_factor.has_value()) {
             std::vector<int64_t> sizes;
             sizes.push_back(input_tensor.unsqueeze(0).size(2));
             sizes.push_back(input_tensor.unsqueeze(0).size(2));
             options.size() = sizes;
-        }
+          }
 
-        return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
-    }, input_structure);
+          return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
+        },
+        input_structure);
 
     return NestedTensor(std::move(res));
 }

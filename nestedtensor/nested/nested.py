@@ -109,8 +109,7 @@ class NestedTensor(object):
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
         if gradient is None or isinstance(self._impl, gradient._impl):
-            self._impl.backward(
-                gradient._impl, retain_graph._impl, create_graph)
+            self._impl.backward(gradient._impl, retain_graph._impl, create_graph)
         else:
             # TODO: Test mixed case explicitly
             for t, g in zip(self.unbind(), gradient.unbind()):
@@ -187,8 +186,9 @@ class NestedTensor(object):
         Returns a tuple of views. Results might not be contiguous.
         """
         # TODO: Design choice: Return zip_longest or zip?
-        return tuple(t if torch.is_tensor(t) else NestedTensor(t)
-                     for t in self._impl.unbind(dim))
+        return tuple(
+            t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind(dim)
+        )
 
     def to_tensor(self, dim=0):
         """
@@ -211,34 +211,34 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
-        _local_func = None
-        if func in NestedTensor.__C_functions:
-            impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
-            if kwargs is None:
-                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(*impl_args))
-            if 'out' in kwargs:
-                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(*impl_args, kwargs['out']._impl))
-            else:
-                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(*impl_args, **kwargs))
+        def wrap_result(result):
+            return result if torch.is_tensor(result) else NestedTensor(result)
 
         if kwargs is None:
             kwargs = {}
-        if func in NestedTensor.__jit_function_dispatch:
-            _jit_local_func = NestedTensor.__jit_function_dispatch[func]
-            impl_args = [a._impl if isinstance(
-                a, NestedTensor) else a for a in args]
-            impl_kwargs = {k: v._impl if isinstance(
-                v, NestedTensor) else v for (k, v) in kwargs.items()}
-            return NestedTensor(_jit_local_func(*impl_args, **impl_kwargs))
         if func in NestedTensor.__function_dispatch:
-            _local_func = NestedTensor.__function_dispatch[func]
-            return _local_func(*args, **kwargs)
+            return wrap_result(NestedTensor.__function_dispatch[func](*args, **kwargs))
+        impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+        impl_kwargs = {
+            k: v._impl if isinstance(v, NestedTensor) else v
+            for (k, v) in kwargs.items()
+        }
+        if func in NestedTensor.__C_functions:
+            return wrap_result(
+                getattr(nestedtensor._C, NestedTensor.__C_functions[func])(
+                    *impl_args, **impl_kwargs
+                )
+            )
+        if func in NestedTensor.__jit_function_dispatch:
+            return wrap_result(
+                NestedTensor.__jit_function_dispatch[func](*impl_args, **impl_kwargs)
+            )
         raise NotImplementedError(
-            "NestedTensor doesn't support function {}".format(func))
+            "NestedTensor doesn't support function {}".format(func)
+        )
 
     def __bool__(self):
-        raise NotImplementedError(
-            "This has not been covered by NestedTensor 0.0.1")
+        raise NotImplementedError("This has not been covered by NestedTensor 0.0.1")
 
     def __getitem__(self, key):
         result = self._impl[key]

@@ -25,6 +25,13 @@ def debug_on(*exceptions):
         return wrapper
     return decorator
 
+def internet_on():
+    try:
+        urllib2.urlopen('http://www.google.com', timeout=1)
+        return True
+    except urllib2.URLError as err: 
+        return False
+
 
 def _shape_prod(shape_):
     shape = tuple(shape_)
