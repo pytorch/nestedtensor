@@ -121,7 +121,7 @@ class TestFunctional(TestCase):
         ]
         
         # with optional params
-        maxPool2d = torch.nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
+        maxPool2d = torch.nn.MaxPool2d(kernel_size=(3, 3), stride=2, padding=(1, 1), dilation=1, ceil_mode=False)
 
         tensor_res = []
         for i in range(2):

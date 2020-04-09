@@ -114,18 +114,16 @@ NestedTensor conv2d(const NestedTensor input,
 }
 
 NestedTensor max_pool2d(NestedTensor input,
-                        std::vector<int64_t> kernel_size,
-                        c10::optional<std::vector<int64_t>> stride,
-                        c10::optional<std::vector<int64_t>> padding,
-                        c10::optional<std::vector<int64_t>> dilation,
-                        c10::optional<bool> return_indices, // TODO: enable this
-                        c10::optional<bool> ceil_mode) {
+                        at::IntArrayRef kernel_size,
+                        at::IntArrayRef stride,
+                        at::IntArrayRef padding,
+                        at::IntArrayRef dilation,
+                        bool ceil_mode) {
   TensorNode structure = input.get_structure();
-  F::MaxPool2dFuncOptions options = F::MaxPool2dFuncOptions(kernel_size).stride(stride.value())
-                                                                        .padding(padding.value())
-                                                                        .dilation(dilation.value())
-                                                                        //.return_indices(return_indices.value()), // TODO: enable this
-                                                                        .ceil_mode(ceil_mode.value());
+  F::MaxPool2dFuncOptions options = F::MaxPool2dFuncOptions(kernel_size).stride(stride)
+                                                                        .padding(padding)
+                                                                        .dilation(dilation)
+                                                                        .ceil_mode(ceil_mode);
 
   TensorNode res = map([&, options](at::Tensor t){
       return F::max_pool2d(t.unsqueeze(0), options).squeeze(0);

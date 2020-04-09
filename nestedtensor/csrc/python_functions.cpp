@@ -1,5 +1,6 @@
 #include <functions.h>
 #include <pybind11/stl.h>
+#include <python_args.h>
 #include <python_functions.h>
 #include <torch/extension.h>
 
@@ -104,53 +105,63 @@ void add_functions(
         py::arg("dilation") = std::vector<int64_t>({1, 1}),
         py::arg("groups") = 1);
 
-  m.def("max_pool2d", 
-        [](THPNestedTensor input,
-           std::vector<int64_t> kernel_size,
-           c10::optional<std::vector<int64_t>> stride,
-           c10::optional<std::vector<int64_t>> padding,
-           c10::optional<std::vector<int64_t>> dilation,
-           c10::optional<bool> return_indices,
-           c10::optional<bool> ceil_mode) {
-             return THPNestedTensor(max_pool2d(input.data().contiguous(), 
-                                               kernel_size, 
-                                               stride, 
-                                               padding, 
-                                               dilation, 
-                                               return_indices, 
-                                               ceil_mode));
-           },
-        py::arg("input"), 
-        py::arg("kernel_size"),
-        py::arg("stride") = std::vector<int64_t>({}),
-        py::arg("padding") = std::vector<int64_t>({0, 0}),
-        py::arg("dilation") = std::vector<int64_t>({1, 1}),
-        py::arg("return_indices") = false,
-        py::arg("ceil_mode") = false);
+  m.def(
+      "max_pool2d",
+      [](THPNestedTensor input,
+         IAR kernel_size,
+         IAR stride,
+         IAR padding,
+         IAR dilation,
+         bool return_indices,
+         bool ceil_mode) {
+        if (return_indices) {
+          throw std::invalid_argument(
+              "max_pool2d currently doesn't support returning indices.");
+        }
+        return THPNestedTensor(max_pool2d(
+            input.data().contiguous(),
+            kernel_size.extract<2>(),
+            stride.extract<2>(),
+            padding.extract<2>(),
+            dilation.extract<2>(),
+            ceil_mode));
+      },
+      py::arg("input"),
+      py::arg("kernel_size"),
+      py::arg("stride") = std::vector<int64_t>({}),
+      py::arg("padding") = std::vector<int64_t>({0, 0}),
+      py::arg("dilation") = std::vector<int64_t>({1, 1}),
+      py::arg("return_indices") = false, // TODO Add overload and kernel
+      py::arg("ceil_mode") = false);
 
-  m.def("max_pool2d", 
-        [](THPNestedTensor input,
-           std::vector<int64_t>  kernel_size,
-           c10::optional<std::vector<int64_t>> stride,
-           c10::optional<std::vector<int64_t>> padding,
-           c10::optional<std::vector<int64_t>> dilation,
-           c10::optional<bool> return_indices,
-           c10::optional<bool> ceil_mode) {
-             return THPNestedTensor(max_pool2d(input.data().contiguous(), 
-                                              kernel_size, 
-                                              stride, 
-                                              padding, 
-                                              dilation, 
-                                              return_indices, 
-                                              ceil_mode));
-           },
-        py::arg("input"), 
-        py::arg("kernel_size"),
-        py::arg("stride") = std::vector<int64_t>({}),
-        py::arg("padding") = std::vector<int64_t>({0, 0}),
-        py::arg("dilation") = std::vector<int64_t>({1, 1}),
-        py::arg("return_indices") = false,
-        py::arg("ceil_mode") = false);
+  m.def(
+      "max_pool2d",
+      [](THPNestedTensor input,
+         IAR kernel_size,
+         IAR stride,
+         IAR padding,
+         IAR dilation,
+         bool return_indices,
+         bool ceil_mode) {
+        if (return_indices) {
+          throw std::invalid_argument(
+              "max_pool2d currently doesn't support returning indices.");
+        }
+        return THPNestedTensor(max_pool2d(
+            input.data().contiguous(),
+            kernel_size.extract<2>(),
+            stride.extract<2>(),
+            padding.extract<2>(),
+            dilation.extract<2>(),
+            ceil_mode));
+      },
+      py::arg("input"),
+      py::arg("kernel_size"),
+      py::arg("stride") = std::vector<int64_t>({}),
+      py::arg("padding") = std::vector<int64_t>({0, 0}),
+      py::arg("dilation") = std::vector<int64_t>({1, 1}),
+      py::arg("return_indices") = false,
+      py::arg("ceil_mode") = false);
 
   m.def("batch_norm", 
         [](THPNestedTensor input,

@@ -217,7 +217,7 @@ class NestedTensor(object):
         if kwargs is None:
             kwargs = {}
         if func in NestedTensor.__function_dispatch:
-            return wrap_result(NestedTensor.__function_dispatch[func](*args, **kwargs))
+            return NestedTensor.__function_dispatch[func](*args, **kwargs)
         impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
         impl_kwargs = {
             k: v._impl if isinstance(v, NestedTensor) else v
