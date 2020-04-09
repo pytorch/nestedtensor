@@ -120,20 +120,8 @@ class TestFunctional(TestCase):
             torch.randn(3, 128, 128)
         ]
         
-        # no optional params
-        maxPool2d = torch.nn.MaxPool2d(3)
-
-        tensor_res = []
-        for i in range(2):
-            t_res = maxPool2d(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = maxPool2d(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
-        
         # with optional params
-        maxPool2d = torch.nn.MaxPool2d(kernel_size=(3,3), stride=2, padding=(1, 1), dilation=1, ceil_mode=False)
+        maxPool2d = torch.nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
 
         tensor_res = []
         for i in range(2):
@@ -150,14 +138,13 @@ class TestFunctional(TestCase):
             torch.randn(3, 128, 128)
         ]
         
-        # no optional params
         tensor_res = []
         for i in range(2):
-            t_res = torch.nn.functional.max_pool2d(inputs[i].unsqueeze(0).contiguous(), kernel_size=(3,3))
+            t_res = torch.nn.functional.max_pool2d(inputs[i].unsqueeze(0).contiguous(), kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
             tensor_res.append(t_res.squeeze(0))
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = torch.nn.functional.max_pool2d(nt, kernel_size=(3,3))
+            nt_res = torch.nn.functional.max_pool2d(nt, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
     def test_nn_relu(self):

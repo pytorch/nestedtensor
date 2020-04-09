@@ -130,15 +130,14 @@ void add_functions(
 
   m.def("max_pool2d", 
         [](THPNestedTensor input,
-           int64_t kernel_size,
+           std::vector<int64_t>  kernel_size,
            c10::optional<std::vector<int64_t>> stride,
            c10::optional<std::vector<int64_t>> padding,
            c10::optional<std::vector<int64_t>> dilation,
            c10::optional<bool> return_indices,
            c10::optional<bool> ceil_mode) {
-             std::vector<int64_t> kernel_sizes {kernel_size, kernel_size};
              return THPNestedTensor(max_pool2d(input.data().contiguous(), 
-                                              kernel_sizes, 
+                                              kernel_size, 
                                               stride, 
                                               padding, 
                                               dilation, 

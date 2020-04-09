@@ -214,23 +214,23 @@ class NestedTensor(object):
         _local_func = None
         if func in NestedTensor.__C_functions:
             impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
-            if 'max_pool2d' in str(func) or 'boolean_dispatch.<locals>' in str(func):
-                kernel_size = (args[1], args[1]) if type(args[1]) is not tuple else args[1]
-                
-                if kwargs['stride'] is None: 
-                    stride = kernel_size
-                else:    
-                    stride = (kwargs['stride'], kwargs['stride']) if type(kwargs['stride']) is not tuple else kwargs['stride']
-                
-                padding = (kwargs['padding'], kwargs['padding']) if type(kwargs['padding']) is not tuple else kwargs['padding']
-                dilation = (kwargs['dilation'], kwargs['dilation']) if type(kwargs['dilation']) is not tuple else kwargs['dilation']
-
-                return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(*impl_args,
-                                                                                               stride,
-                                                                                               padding,
-                                                                                               dilation,
-                                                                                               kwargs['return_indices'],
-                                                                                               kwargs['ceil_mode']))
+            #if 'max_pool2d' in str(func) or 'boolean_dispatch.<locals>' in str(func):
+            #    kernel_size = (args[1], args[1]) if type(args[1]) is not tuple else args[1]
+            #    
+            #    if kwargs['stride'] is None: 
+            #        stride = kernel_size
+            #    else:    
+            #        stride = (kwargs['stride'], kwargs['stride']) if type(kwargs['stride']) is not tuple else kwargs['stride']
+            #    
+            #    padding = (kwargs['padding'], kwargs['padding']) if type(kwargs['padding']) is not tuple else kwargs['padding']
+            #    dilation = (kwargs['dilation'], kwargs['dilation']) if type(kwargs['dilation']) is not tuple else kwargs['dilation']
+#
+            #    return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(*impl_args,
+            #                                                                                   stride,
+            #                                                                                   padding,
+            #                                                                                   dilation,
+            #                                                                                   kwargs['return_indices'],
+            #                                                                                   kwargs['ceil_mode']))
 
             if kwargs is None:
                 return NestedTensor(getattr(nestedtensor._C, NestedTensor.__C_functions[func])(*impl_args))
