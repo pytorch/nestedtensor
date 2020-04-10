@@ -85,16 +85,16 @@ void add_functions(
         [](THPNestedTensor input, 
            const at::Tensor weight, 
            c10::optional<at::Tensor> bias, 
-           c10::optional<std::vector<int64_t>> stride,
-           c10::optional<std::vector<int64_t>> padding,
-           c10::optional<std::vector<int64_t>> dilation,
+           IAR stride,
+           IAR padding,
+           IAR dilation,
            c10::optional<int64_t> group) {
              return THPNestedTensor(conv2d(input.data().contiguous(), 
                                            weight, 
                                            bias, 
-                                           stride, 
-                                           padding, 
-                                           dilation, 
+                                           stride.extract<2>(), 
+                                           padding.extract<2>(),
+                                           dilation.extract<2>(),
                                            group));
            },
         py::arg("input"), 
@@ -132,35 +132,6 @@ void add_functions(
       py::arg("padding") = std::vector<int64_t>({0, 0}),
       py::arg("dilation") = std::vector<int64_t>({1, 1}),
       py::arg("return_indices") = false, // TODO Add overload and kernel
-      py::arg("ceil_mode") = false);
-
-  m.def(
-      "max_pool2d",
-      [](THPNestedTensor input,
-         IAR kernel_size,
-         IAR stride,
-         IAR padding,
-         IAR dilation,
-         bool return_indices,
-         bool ceil_mode) {
-        if (return_indices) {
-          throw std::invalid_argument(
-              "max_pool2d currently doesn't support returning indices.");
-        }
-        return THPNestedTensor(max_pool2d(
-            input.data().contiguous(),
-            kernel_size.extract<2>(),
-            stride.extract<2>(),
-            padding.extract<2>(),
-            dilation.extract<2>(),
-            ceil_mode));
-      },
-      py::arg("input"),
-      py::arg("kernel_size"),
-      py::arg("stride") = std::vector<int64_t>({}),
-      py::arg("padding") = std::vector<int64_t>({0, 0}),
-      py::arg("dilation") = std::vector<int64_t>({1, 1}),
-      py::arg("return_indices") = false,
       py::arg("ceil_mode") = false);
 
   m.def("batch_norm", 
@@ -214,7 +185,7 @@ void add_functions(
         py::arg("reduce") = true,
         py::arg("reduction") = "mean");
   
-  m.def("interpolate", 
+    m.def("interpolate", 
         [](THPNestedTensor input,
            c10::optional<int64_t> size,
            c10::optional<std::vector<double>> scale_factor,

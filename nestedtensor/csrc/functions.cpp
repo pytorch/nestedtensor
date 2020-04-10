@@ -93,14 +93,14 @@ NestedTensor dropout(NestedTensor input,
 NestedTensor conv2d(const NestedTensor input, 
                     const at::Tensor weight, 
                     c10::optional<at::Tensor> bias, 
-                    c10::optional<std::vector<int64_t>> stride,
-                    c10::optional<std::vector<int64_t>> padding,
-                    c10::optional<std::vector<int64_t>> dilation,
+                    at::IntArrayRef stride,
+                    at::IntArrayRef padding,
+                    at::IntArrayRef dilation,
                     c10::optional<int64_t> groups) {
   TensorNode structure = input.get_structure();
-  auto options = F::Conv2dFuncOptions().stride(stride.value())
-                                       .padding(padding.value())
-                                       .dilation(dilation.value())
+  auto options = F::Conv2dFuncOptions().stride(stride)
+                                       .padding(padding)
+                                       .dilation(dilation)
                                        .groups(groups.value());
   if (bias.has_value()) {
       options = options.bias(bias.value());
