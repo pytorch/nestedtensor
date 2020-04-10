@@ -85,9 +85,9 @@ void add_functions(
         [](THPNestedTensor input, 
            const at::Tensor weight, 
            c10::optional<at::Tensor> bias, 
-           IAR<int64_t> stride,
-           IAR<int64_t> padding,
-           IAR<int64_t> dilation,
+           THPArrayRef<int64_t> stride,
+           THPArrayRef<int64_t> padding,
+           THPArrayRef<int64_t> dilation,
            c10::optional<int64_t> group) {
              return THPNestedTensor(conv2d(input.data().contiguous(), 
                                            weight, 
@@ -108,10 +108,10 @@ void add_functions(
   m.def(
       "max_pool2d",
       [](THPNestedTensor input,
-         IAR<int64_t> kernel_size,
-         IAR<int64_t> stride,
-         IAR<int64_t> padding,
-         IAR<int64_t> dilation,
+         THPArrayRef<int64_t> kernel_size,
+         THPArrayRef<int64_t> stride,
+         THPArrayRef<int64_t> padding,
+         THPArrayRef<int64_t> dilation,
          bool return_indices,
          bool ceil_mode) {
         if (return_indices) {
@@ -187,8 +187,8 @@ void add_functions(
 
   m.def("interpolate", 
         [](THPNestedTensor input,
-           c10::optional<IAR<int64_t>> size,
-           c10::optional<IAR<double>> scale_factor,
+           c10::optional<THPArrayRef<int64_t>> size,
+           c10::optional<THPArrayRef<double>> scale_factor,
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners,
            c10::optional<bool> recompute_scale_factor) {
