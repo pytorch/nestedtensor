@@ -298,32 +298,12 @@ class SegLayersBenchMark(object):
 
         return _interpolate_nt
 
-
-
 def main(args):
-    b = SegLayersBenchMark(args)
-
-    print(utils.benchmark_fn(b.relu_tensor_iter(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.relu_tensor_pad(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.relu_nt(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.conv2d_tensor_iter(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.conv2d_tensor_pad(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.conv2d_nt(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.batch_norm_tensor_iter(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.batch_norm_tensor_pad(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.batch_norm_nt(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.max_pool2d_tensor_iter(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.max_pool2d_tensor_pad(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.max_pool2d_nt(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.cross_entropy_tensor_iter(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.cross_entropy_tensor_pad(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.cross_entropy_nt(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.dropout_tensor_iter(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.dropout_tensor_pad(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.dropout_nt(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.interpolate_tensor_iter(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.interpolate_tensor_pad(), warmup=b.warmup))
-    print(utils.benchmark_fn(b.interpolate_nt(), warmup=b.warmup))
+    assert len(args) == 7
+    name = args[0]
+    benchmark_obj = SegLayersBenchMark(args[1:])
+    benchmark = getattr(benchmark_obj, name)
+    print(utils.benchmark_fn(benchmark(), warmup=benchmark_obj.warmup))
 
 if __name__ == "__main__":
     main(sys.argv[1:])
