@@ -7,7 +7,7 @@ import random
 
 class SegLayersBenchMark(object):
     def __init__(self, args):
-        assert len(args) == 6
+        assert len(args) == 10
         print("Called with args: ")
         
         self.N = int(args[0])
@@ -22,11 +22,23 @@ class SegLayersBenchMark(object):
         self.W = int(args[3])
         print("W = ", self.W)
         
-        self.delta = float(args[4])
-        print("delta = ", self.W)
+        self.mu_h = int(args[4])
+        print("mu_h = ", self.mu_h)
 
-        self.warmup = float(args[5])
-        print("warmup = ", self.W)
+        self.var_h = int(args[5])
+        print("var_h = ", self.var_h)
+
+        self.mu_w = int(args[6])
+        print("mu_w = ", self.mu_w)
+
+        self.var_w = int(args[7])
+        print("var_w = ", self.var_w)
+        
+        self.seed = int(args[8])
+        print("seed = ", self.seed)
+
+        self.warmup = float(args[9])
+        print("warmup = ", self.warmup)
         
         self.conv2d = torch.nn.Conv2d(self.C, 3, kernel_size= (1, 1), bias=False)
         self.batch_norm = torch.nn.BatchNorm2d(self.C, 1e-05, 0.1)
@@ -78,11 +90,15 @@ class SegLayersBenchMark(object):
     def get_input(self, return_targets=False, pad=False):
         inputs = []
         targets = []
+        
+        torch.manual_seed(self.seed)
         for i in range(self.N):
-            h_change = random.randint(self.delta * 10 * (-self.H), self.delta * 10 * self.H) / 10
-            w_change = random.randint(self.delta * 10 * (-self.W), self.delta * 10 * self.W) / 10
-            inputs.append(torch.randn(self.C, self.H, self.W))
-            targets.append(torch.randint(1, (self.H, self.W), dtype=torch.int64))
+            h_delta = random.gauss(self.mu_h, self.var_h)
+            w_delta = random.gauss(self.mu_w, self.var_w)
+            h = int(self.H + h_delta)
+            w = int(self.W + w_delta)
+            inputs.append(torch.randn(self.C, h, w))
+            targets.append(torch.randint(1, (h, w), dtype=torch.int64))
 
         if pad:
             inputs = self.pad_tensors_to_max_shape(inputs)
@@ -299,7 +315,7 @@ class SegLayersBenchMark(object):
         return _interpolate_nt
 
 def main(args):
-    assert len(args) == 7
+    assert len(args) == 11
     name = args[0]
     benchmark_obj = SegLayersBenchMark(args[1:])
     benchmark = getattr(benchmark_obj, name)
