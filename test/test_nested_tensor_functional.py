@@ -241,11 +241,11 @@ class TestFunctional(TestCase):
         # no optional params
         tensor_res = []
         for i in range(2):
-            t_res = torch.nn.functional.interpolate(inputs[i].unsqueeze(0).contiguous(), inputs[i].unsqueeze(0).shape[-2])
+            t_res = torch.nn.functional.interpolate(inputs[i].unsqueeze(0).contiguous(), 200)
             tensor_res.append(t_res.squeeze(0))
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = torch.nn.functional.interpolate(nt)
+            nt_res = torch.nn.functional.interpolate(nt, 200)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
         # tuple/int size and optional mode
@@ -260,8 +260,8 @@ class TestFunctional(TestCase):
                 self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
         # scale_factor instead of a size
-        tensor_res = []
-        for scale_factor in [(2.2, 2.2)]:
+        for scale_factor in [(2.2, 2.2), 1.1]:
+            tensor_res = []
             for i in range(2):
                 t_res = torch.nn.functional.interpolate(inputs[i].unsqueeze(0).contiguous(), scale_factor=scale_factor)
                 tensor_res.append(t_res.squeeze(0))

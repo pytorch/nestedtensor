@@ -1,44 +1,50 @@
 #include <torch/extension.h>
 
+template <typename T>
 struct IAR {
-  std::vector<int64_t> val;
-  bool is_int;
+  std::vector<T> val;
+  bool not_list;
   template <int64_t repeat>
-  at::IntArrayRef extract() {
-    if (is_int && val.size() < repeat) {
-      for (int64_t i = val.size() ; i < repeat; i++) {
+  at::ArrayRef<T> extract() {
+    if (not_list && val.size() < repeat) {
+      for (T i = val.size(); i < repeat; i++) {
         val.push_back(val[0]);
       }
     }
-    return at::IntArrayRef(val);
+    return at::ArrayRef<T>(val);
   }
 };
 
 namespace pybind11 {
 namespace detail {
-template <>
-struct type_caster<IAR> {
+template <typename T>
+struct type_caster<IAR<T>> {
  public:
   /**
    * This macro establishes the name 'inty' in
    * function signatures and declares a local variable
    * 'value' of type inty
    */
-  PYBIND11_TYPE_CASTER(IAR, _("int[]"));
+  PYBIND11_TYPE_CASTER(IAR<T>, _("int[]"));
 
   /**
    * Conversion part 1 (Python->C++).
    */
   bool load(handle obj, bool) {
     /* Extract PyObject from handle */
-    if (py::isinstance<py::int_>(obj) || py::isinstance<py::float_>(obj)) {
+    if (py::isinstance<py::int_>(obj)) {
       value.val.push_back(py::cast<int64_t>(obj));
-      value.is_int = true;
+      value.not_list = true;
+      return true;
+    }
+    if (py::isinstance<py::float_>(obj)) {
+      value.val.push_back(py::cast<double>(obj));
+      value.not_list = true;
       return true;
     }
     if (py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj)) {
-      value.val = py::cast<std::vector<int64_t>>(obj);
-      value.is_int = false;
+      value.val = py::cast<std::vector<T>>(obj);
+      value.not_list = false;
       return true;
     }
     return false;
@@ -52,7 +58,7 @@ struct type_caster<IAR> {
    * ignored by implicit casters.
    */
   static handle cast(
-      IAR src,
+      IAR<T> src,
       return_value_policy /* policy */,
       handle /* parent */) {
     return py::cast(src.val.data());
