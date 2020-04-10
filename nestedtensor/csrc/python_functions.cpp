@@ -184,47 +184,18 @@ void add_functions(
         py::arg("ignore_index") = -100,
         py::arg("reduce") = true,
         py::arg("reduction") = "mean");
-  
-    m.def("interpolate", 
-        [](THPNestedTensor input,
-           c10::optional<int64_t> size,
-           c10::optional<std::vector<double>> scale_factor,
-           c10::optional<std::string> mode,
-           c10::optional<bool> align_corners,
-           c10::optional<bool> recompute_scale_factor) {
-             if (size.has_value()) {
-               std::vector<int64_t> sz {size.value(), size.value()};
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                sz,
-                                                scale_factor, 
-                                                mode,
-                                                align_corners));
-             }
-
-             return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                c10::nullopt,
-                                                scale_factor, 
-                                                mode,
-                                                align_corners));
-        },
-        py::arg("input"),
-        py::arg("size") = nullptr,
-        py::arg("scale_factor") = nullptr,
-        py::arg("mode") = "nearest",
-        py::arg("align_corners") = false,
-        py::arg("recompute_scale_factor") = false);
 
   m.def("interpolate", 
         [](THPNestedTensor input,
-           c10::optional<std::vector<int64_t>> size,
+           c10::optional<IAR> size,
            c10::optional<std::vector<double>> scale_factor,
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners,
            c10::optional<bool> recompute_scale_factor) {
              if (size.has_value()) {
                return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                  size.value(),
-                                                  scale_factor, 
+                                                  size.value().extract<2>(),
+                                                  c10::nullopt, 
                                                   mode,
                                                   align_corners));
              }

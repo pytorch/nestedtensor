@@ -194,7 +194,7 @@ NestedTensor cross_entropy(NestedTensor input,
 }
 
 NestedTensor interpolate(NestedTensor input,
-                         c10::optional<std::vector<int64_t>> size,
+                         c10::optional<at::IntArrayRef> size,
                          c10::optional<std::vector<double>> scale_factor,
                          c10::optional<std::string> mode,
                          c10::optional<bool> align_corners) {
@@ -221,7 +221,7 @@ NestedTensor interpolate(NestedTensor input,
 
     auto options = F::InterpolateFuncOptions().mode(int_mode);
     if (scale_factor.has_value()) {
-        options.scale_factor() = scale_factor.value();
+        options = options.scale_factor(scale_factor.value());
     }
 
     if (align_corners.has_value()) {
@@ -229,11 +229,7 @@ NestedTensor interpolate(NestedTensor input,
     }
 
     if (size.has_value()) {
-        if (size.value().size() == 2) {
-            options.size() = size.value();
-        } else {
-            options.size() = std::vector<int64_t>({size.value()[0], size.value()[0]});
-        }
+        options = options.size(size.value().vec());
     }
 
     TensorNode res = map(

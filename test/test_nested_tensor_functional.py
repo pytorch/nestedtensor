@@ -261,7 +261,7 @@ class TestFunctional(TestCase):
 
         # scale_factor instead of a size
         tensor_res = []
-        for scale_factor in [(2, 2)]:
+        for scale_factor in [(2.2, 2.2)]:
             for i in range(2):
                 t_res = torch.nn.functional.interpolate(inputs[i].unsqueeze(0).contiguous(), scale_factor=scale_factor)
                 tensor_res.append(t_res.squeeze(0))
