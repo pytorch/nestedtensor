@@ -32,12 +32,7 @@ struct type_caster<THPArrayRef<T>> {
    */
   bool load(handle obj, bool) {
     /* Extract PyObject from handle */
-    if (py::isinstance<py::int_>(obj)) {
-      value.val.push_back(py::cast<T>(obj));
-      value.is_list = false;
-      return true;
-    }
-    if (py::isinstance<py::float_>(obj)) {
+    if (py::isinstance<py::int_>(obj) || py::isinstance<py::float_>(obj)) {
       value.val.push_back(py::cast<T>(obj));
       value.is_list = false;
       return true;
