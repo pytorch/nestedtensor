@@ -7,7 +7,7 @@ import random
 
 class SegLayersBenchMark(object):
     def __init__(self, args):
-        assert len(args) == 10
+        assert len(args) == 8
         print("Called with args: ")
         
         self.N = int(args[0])
@@ -22,22 +22,16 @@ class SegLayersBenchMark(object):
         self.W = int(args[3])
         print("W = ", self.W)
         
-        self.mu_h = int(args[4])
-        print("mu_h = ", self.mu_h)
-
-        self.var_h = int(args[5])
+        self.var_h = int(args[4])
         print("var_h = ", self.var_h)
 
-        self.mu_w = int(args[6])
-        print("mu_w = ", self.mu_w)
-
-        self.var_w = int(args[7])
+        self.var_w = int(args[5])
         print("var_w = ", self.var_w)
         
-        self.seed = int(args[8])
+        self.seed = int(args[6])
         print("seed = ", self.seed)
 
-        self.warmup = float(args[9])
+        self.warmup = float(args[7])
         print("warmup = ", self.warmup)
         
         self.conv2d = torch.nn.Conv2d(self.C, 3, kernel_size= (1, 1), bias=False)
@@ -93,8 +87,8 @@ class SegLayersBenchMark(object):
         
         torch.manual_seed(self.seed)
         for i in range(self.N):
-            h_delta = random.gauss(self.mu_h, self.var_h)
-            w_delta = random.gauss(self.mu_w, self.var_w)
+            h_delta = random.gauss(self.H, self.var_h)
+            w_delta = random.gauss(self.H, self.var_w)
             h = int(self.H + h_delta)
             w = int(self.W + w_delta)
             inputs.append(torch.randn(self.C, h, w))
@@ -315,7 +309,7 @@ class SegLayersBenchMark(object):
         return _interpolate_nt
 
 def main(args):
-    assert len(args) == 11
+    assert len(args) == 9
     name = args[0]
     benchmark_obj = SegLayersBenchMark(args[1:])
     benchmark = getattr(benchmark_obj, name)
