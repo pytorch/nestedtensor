@@ -7,7 +7,7 @@ struct THPArrayRef {
   template <int64_t repeat>
   at::ArrayRef<T> extract() {
     if (!is_list && val.size() == 1) {
-      for (int64_t i = val.size(); i < repeat; i++) {
+      for (int64_t i = 1; i < repeat; i++) {
         val.push_back(val[0]);
       }
     }
