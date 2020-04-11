@@ -85,16 +85,16 @@ void add_functions(
         [](THPNestedTensor input, 
            const at::Tensor weight, 
            c10::optional<at::Tensor> bias, 
-           c10::optional<std::vector<int64_t>> stride,
-           c10::optional<std::vector<int64_t>> padding,
-           c10::optional<std::vector<int64_t>> dilation,
+           THPArrayRef<int64_t> stride,
+           THPArrayRef<int64_t> padding,
+           THPArrayRef<int64_t> dilation,
            c10::optional<int64_t> group) {
              return THPNestedTensor(conv2d(input.data().contiguous(), 
                                            weight, 
                                            bias, 
-                                           stride, 
-                                           padding, 
-                                           dilation, 
+                                           stride.extract<2>(), 
+                                           padding.extract<2>(),
+                                           dilation.extract<2>(),
                                            group));
            },
         py::arg("input"), 
@@ -108,10 +108,10 @@ void add_functions(
   m.def(
       "max_pool2d",
       [](THPNestedTensor input,
-         IAR kernel_size,
-         IAR stride,
-         IAR padding,
-         IAR dilation,
+         THPArrayRef<int64_t> kernel_size,
+         THPArrayRef<int64_t> stride,
+         THPArrayRef<int64_t> padding,
+         THPArrayRef<int64_t> dilation,
          bool return_indices,
          bool ceil_mode) {
         if (return_indices) {
@@ -132,35 +132,6 @@ void add_functions(
       py::arg("padding") = std::vector<int64_t>({0, 0}),
       py::arg("dilation") = std::vector<int64_t>({1, 1}),
       py::arg("return_indices") = false, // TODO Add overload and kernel
-      py::arg("ceil_mode") = false);
-
-  m.def(
-      "max_pool2d",
-      [](THPNestedTensor input,
-         IAR kernel_size,
-         IAR stride,
-         IAR padding,
-         IAR dilation,
-         bool return_indices,
-         bool ceil_mode) {
-        if (return_indices) {
-          throw std::invalid_argument(
-              "max_pool2d currently doesn't support returning indices.");
-        }
-        return THPNestedTensor(max_pool2d(
-            input.data().contiguous(),
-            kernel_size.extract<2>(),
-            stride.extract<2>(),
-            padding.extract<2>(),
-            dilation.extract<2>(),
-            ceil_mode));
-      },
-      py::arg("input"),
-      py::arg("kernel_size"),
-      py::arg("stride") = std::vector<int64_t>({}),
-      py::arg("padding") = std::vector<int64_t>({0, 0}),
-      py::arg("dilation") = std::vector<int64_t>({1, 1}),
-      py::arg("return_indices") = false,
       py::arg("ceil_mode") = false);
 
   m.def("batch_norm", 
@@ -213,56 +184,31 @@ void add_functions(
         py::arg("ignore_index") = -100,
         py::arg("reduce") = true,
         py::arg("reduction") = "mean");
-  
-  m.def("interpolate", 
-        [](THPNestedTensor input,
-           c10::optional<int64_t> size,
-           c10::optional<std::vector<double>> scale_factor,
-           c10::optional<std::string> mode,
-           c10::optional<bool> align_corners,
-           c10::optional<bool> recompute_scale_factor) {
-             if (size.has_value()) {
-               std::vector<int64_t> sz {size.value(), size.value()};
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                sz,
-                                                scale_factor, 
-                                                mode,
-                                                align_corners));
-             }
-
-             return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                c10::nullopt,
-                                                scale_factor, 
-                                                mode,
-                                                align_corners));
-        },
-        py::arg("input"),
-        py::arg("size") = nullptr,
-        py::arg("scale_factor") = nullptr,
-        py::arg("mode") = "nearest",
-        py::arg("align_corners") = false,
-        py::arg("recompute_scale_factor") = false);
 
   m.def("interpolate", 
         [](THPNestedTensor input,
-           c10::optional<std::vector<int64_t>> size,
-           c10::optional<std::vector<double>> scale_factor,
+           c10::optional<THPArrayRef<int64_t>> size,
+           c10::optional<THPArrayRef<double>> scale_factor,
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners,
            c10::optional<bool> recompute_scale_factor) {
              if (size.has_value()) {
                return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                  size.value(),
-                                                  scale_factor, 
+                                                  size.value().extract<2>(),
+                                                  c10::nullopt, 
                                                   mode,
                                                   align_corners));
              }
 
-             return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                c10::nullopt,
-                                                scale_factor, 
-                                                mode,
-                                                align_corners));
+             if (scale_factor.has_value()) {
+               return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                  c10::nullopt,
+                                                  scale_factor.value().extract<2>(), 
+                                                  mode,
+                                                  align_corners));
+             }
+
+             throw "Either size or scale factor have to be passed.";
         },
         py::arg("input"),
         py::arg("size") = nullptr,

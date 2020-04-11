@@ -9,17 +9,20 @@ NestedTensor squeeze(NestedTensor input, c10::optional<int64_t> dim,
         c10::optional<NestedTensor> out);
 
 NestedTensor relu(NestedTensor input, c10::optional<bool> inplace); 
+
 NestedTensor relu_out(NestedTensor& input);
+
 NestedTensor dropout(NestedTensor input, 
                      c10::optional<double> p, 
                      c10::optional<bool> training, 
                      c10::optional<bool> inplace);
+
 NestedTensor conv2d(NestedTensor input, 
                     const at::Tensor weight, 
                     c10::optional<at::Tensor> bias, 
-                    c10::optional<std::vector<int64_t>> stride,
-                    c10::optional<std::vector<int64_t>> padding,
-                    c10::optional<std::vector<int64_t>> dilation,
+                    at::IntArrayRef stride,
+                    at::IntArrayRef padding,
+                    at::IntArrayRef dilation,
                     c10::optional<int64_t> groups);
 
 NestedTensor max_pool2d(NestedTensor input,
@@ -47,8 +50,8 @@ NestedTensor cross_entropy(NestedTensor input,
                            c10::optional<std::string> reduction);
 
 NestedTensor interpolate(NestedTensor input,
-                         c10::optional<std::vector<int64_t>> size,
-                         c10::optional<std::vector<double>> scale_factor,
+                         c10::optional<at::IntArrayRef> size,
+                         c10::optional<at::ArrayRef<double>> scale_factor,
                          c10::optional<std::string> mode,
                          c10::optional<bool> align_corners);
 

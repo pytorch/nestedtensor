@@ -93,14 +93,14 @@ NestedTensor dropout(NestedTensor input,
 NestedTensor conv2d(const NestedTensor input, 
                     const at::Tensor weight, 
                     c10::optional<at::Tensor> bias, 
-                    c10::optional<std::vector<int64_t>> stride,
-                    c10::optional<std::vector<int64_t>> padding,
-                    c10::optional<std::vector<int64_t>> dilation,
+                    at::IntArrayRef stride,
+                    at::IntArrayRef padding,
+                    at::IntArrayRef dilation,
                     c10::optional<int64_t> groups) {
   TensorNode structure = input.get_structure();
-  auto options = F::Conv2dFuncOptions().stride(stride.value())
-                                       .padding(padding.value())
-                                       .dilation(dilation.value())
+  auto options = F::Conv2dFuncOptions().stride(stride)
+                                       .padding(padding)
+                                       .dilation(dilation)
                                        .groups(groups.value());
   if (bias.has_value()) {
       options = options.bias(bias.value());
@@ -194,8 +194,8 @@ NestedTensor cross_entropy(NestedTensor input,
 }
 
 NestedTensor interpolate(NestedTensor input,
-                         c10::optional<std::vector<int64_t>> size,
-                         c10::optional<std::vector<double>> scale_factor,
+                         c10::optional<at::IntArrayRef> size,
+                         c10::optional<at::ArrayRef<double>> scale_factor,
                          c10::optional<std::string> mode,
                          c10::optional<bool> align_corners) {
                          //bool recompute_scale_factor) { // TODO: use
@@ -220,32 +220,20 @@ NestedTensor interpolate(NestedTensor input,
     }
 
     auto options = F::InterpolateFuncOptions().mode(int_mode);
+    if (size.has_value()) {
+      options = options.size(size.value().vec());
+    }
+    
     if (scale_factor.has_value()) {
-        options.scale_factor() = scale_factor.value();
+      options = options.scale_factor(scale_factor.value().vec());
     }
 
     if (align_corners.has_value()) {
-        options.align_corners() = align_corners.value();
-    }
-
-    if (size.has_value()) {
-        if (size.value().size() == 2) {
-            options.size() = size.value();
-        } else {
-            options.size() = std::vector<int64_t>({size.value()[0], size.value()[0]});
-        }
+      options.align_corners() = align_corners.value();
     }
 
     TensorNode res = map(
-        [&options, &size, &scale_factor](at::Tensor input_tensor) {
-          // size or scale factor have to be defined
-          if (!size.has_value() && !scale_factor.has_value()) {
-            std::vector<int64_t> sizes;
-            sizes.push_back(input_tensor.unsqueeze(0).size(2));
-            sizes.push_back(input_tensor.unsqueeze(0).size(2));
-            options.size() = sizes;
-          }
-
+        [&options](at::Tensor input_tensor) {
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
         input_structure);
