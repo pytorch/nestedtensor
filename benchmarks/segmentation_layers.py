@@ -18,12 +18,13 @@ class SegLayersBenchMark(object):
         for h_var in self.args.HV:  
             for w_var in self.args.WV:
                 for seed in self.args.seed:
-                    print("\nHV: ", h_var, " WV: ", w_var, " Seed: ", seed)
                     for layer in self.args.layers:
                         benchmark = getattr(self, layer)
                         self.inputs, self.targets = self.get_input(h_var, w_var, seed)
-                        
-                        print(utils.benchmark_fn(benchmark(), warmup=self.args.warm))
+
+                        result = utils.benchmark_fn(benchmark(), warmup=self.args.warm)
+                        print(result['name'], ",", result['avg_us'], ",", result['std_us'], ",", result['runs'], ",", h_var, ",", w_var, ",", seed)
+
 
     def get_max_size(self, obj, res=None):
         if res is None:
