@@ -4,40 +4,26 @@ import utils
 import torch.nn.functional as F
 import sys 
 import random
+import argparse
 
 class SegLayersBenchMark(object):
     def __init__(self, args):
-        assert len(args) == 8
-        print("Called with args: ")
-        
-        self.N = int(args[0])
-        print("N = ", self.N)
-
-        self.C = int(args[1])
-        print("C = ", self.C)
-
-        self.H = int(args[2])
-        print("H = ", self.H)
-
-        self.W = int(args[3])
-        print("W = ", self.W)
-        
-        self.var_h = int(args[4])
-        print("var_h = ", self.var_h)
-
-        self.var_w = int(args[5])
-        print("var_w = ", self.var_w)
-        
-        self.seed = int(args[6])
-        print("seed = ", self.seed)
-
-        self.warmup = float(args[7])
-        print("warmup = ", self.warmup)
-        
-        self.conv2d = torch.nn.Conv2d(self.C, 3, kernel_size= (1, 1), bias=False)
-        self.batch_norm = torch.nn.BatchNorm2d(self.C, 1e-05, 0.1)
-        self.batch_norm.eval()
+        self.args = args
         self.max_pool2d = torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1))
+        self.conv2d = torch.nn.Conv2d(args.C, 3, kernel_size= (1, 1), bias=False)
+        self.batch_norm = torch.nn.BatchNorm2d(args.C, 1e-05, 0.1)
+        self.batch_norm.eval()
+
+    def run(self):
+        for h_var in self.args.HV:  
+            for w_var in self.args.WV:
+                for seed in self.args.seed:
+                    print("\nHV: ", h_var, " WV: ", w_var, " Seed: ", seed)
+                    for layer in self.args.layers:
+                        benchmark = getattr(self, layer)
+                        self.inputs, self.targets = self.get_input(h_var, w_var, seed)
+                        
+                        print(utils.benchmark_fn(benchmark(), warmup=self.args.warm))
 
     def get_max_size(self, obj, res=None):
         if res is None:
@@ -81,50 +67,41 @@ class SegLayersBenchMark(object):
         padded_inputs = [self.pad_tensor_to_shape(t, max_shape) for t in inputs]
         return padded_inputs
 
-    def get_input(self, return_targets=False, pad=False):
+    def get_input(self, h_var, w_var, seed):
         inputs = []
         targets = []
         
-        torch.manual_seed(self.seed)
-        for i in range(self.N):
-            h_delta = random.gauss(self.H, self.var_h)
-            w_delta = random.gauss(self.H, self.var_w)
-            h = int(self.H + h_delta)
-            w = int(self.W + w_delta)
-            inputs.append(torch.randn(self.C, h, w))
+        torch.manual_seed(seed)
+        for i in range(self.args.N):
+            h_delta = random.gauss(self.args.H, h_var)
+            w_delta = random.gauss(self.args.H, w_var)
+            h = int(self.args.H + h_delta)
+            w = int(self.args.W + w_delta)
+            inputs.append(torch.randn(self.args.C, h, w))
             targets.append(torch.randint(1, (h, w), dtype=torch.int64))
 
-        if pad:
-            inputs = self.pad_tensors_to_max_shape(inputs)
+        return inputs, targets
 
-        if return_targets:
-            return inputs, targets
-
-        return inputs
 
     #
     # relu
     #
     def relu_tensor_iter(self):
-        inputs = self.get_input()
-
         def _relu_tensor_iter():
-            for t in inputs:
+            for t in self.inputs:
                 torch.nn.functional.relu(t)
         return _relu_tensor_iter
 
     def relu_tensor_pad(self):
-        inputs = self.get_input(pad=True)
-        stack = torch.stack(inputs)
-
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        
         def _relu_tensor_pad():
-            torch.nn.functional.relu(stack)
+            torch.nn.functional.relu(inputs)
 
         return _relu_tensor_pad
 
     def relu_nt(self):
-        inputs = self.get_input()
-        nt = nestedtensor.nested_tensor(inputs)
+        nt = nestedtensor.nested_tensor(self.inputs)
         def _relu_nt():
             torch.nn.functional.relu(nt)
         
@@ -134,25 +111,21 @@ class SegLayersBenchMark(object):
     # conv2d
     #
     def conv2d_tensor_iter(self):
-        inputs = self.get_input()
-
         def _conv2d_tensor_iter():
-            for t in inputs:
+            for t in self.inputs:
                 self.conv2d(t.unsqueeze(0)).squeeze(0)
         return _conv2d_tensor_iter
 
     def conv2d_tensor_pad(self):
-        inputs = self.get_input(pad=True)
-        stack = torch.stack(inputs)
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
 
         def _conv2d_tensor_pad():
-            self.conv2d(stack)
+            self.conv2d(inputs)
 
         return _conv2d_tensor_pad
 
     def conv2d_nt(self):
-        inputs = self.get_input()
-        nt = nestedtensor.nested_tensor(inputs)
+        nt = nestedtensor.nested_tensor(self.inputs)
         def _conv2d_nt():
             self.conv2d(nt)
 
@@ -162,25 +135,21 @@ class SegLayersBenchMark(object):
     # batch_norm
     #
     def batch_norm_tensor_iter(self):
-        inputs = self.get_input()
-
         def _batch_norm_tensor_iter():
-            for t in inputs:
+            for t in self.inputs:
                 self.batch_norm(t.unsqueeze(0)).squeeze(0)
         return _batch_norm_tensor_iter
 
     def batch_norm_tensor_pad(self):
-        inputs = self.get_input(pad=True)
-        stack = torch.stack(inputs)
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
 
         def _batch_norm_tensor_pad():
-            self.batch_norm(stack)
+            self.batch_norm(inputs)
 
         return _batch_norm_tensor_pad
 
     def batch_norm_nt(self):
-        inputs = self.get_input()
-        nt = nestedtensor.nested_tensor(inputs)
+        nt = nestedtensor.nested_tensor(self.inputs)
         def _batch_norm_nt():
             self.batch_norm(nt)
 
@@ -190,25 +159,21 @@ class SegLayersBenchMark(object):
     # max_pool2d
     #
     def max_pool2d_tensor_iter(self):
-        inputs = self.get_input()
-
         def _max_pool2d_tensor_iter():
-            for t in inputs:
+            for t in self.inputs:
                 self.max_pool2d(t.unsqueeze(0)).squeeze(0)
         return _max_pool2d_tensor_iter
 
     def max_pool2d_tensor_pad(self):
-        inputs = self.get_input(pad=True)
-        stack = torch.stack(inputs)
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
 
         def _max_pool2d_tensor_pad():
-            self.max_pool2d(stack)
+            self.max_pool2d(inputs)
 
         return _max_pool2d_tensor_pad
 
     def max_pool2d_nt(self):
-        inputs = self.get_input()
-        nt = nestedtensor.nested_tensor(inputs)
+        nt = nestedtensor.nested_tensor(self.inputs)
         def _max_pool2d_nt():
             self.max_pool2d(nt)
 
@@ -218,29 +183,25 @@ class SegLayersBenchMark(object):
     # cross_entropy
     #
     def cross_entropy_tensor_iter(self):
-        inputs, targets = self.get_input(return_targets=True)
-
         def _cross_entropy_tensor_iter():
-            for a, b in zip(inputs, targets):
+            for a, b in zip(self.inputs, self.targets):
                 torch.nn.functional.cross_entropy(a.unsqueeze(0), b.unsqueeze(0)).squeeze(0)
         return _cross_entropy_tensor_iter
 
     def cross_entropy_tensor_pad(self):
-        inputs, targets = self.get_input(return_targets=True, pad=True)
-        i_stack = torch.stack(inputs)
-        t_stack = torch.stack(targets)
-
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        targets = torch.stack(self.targets)
+        
         def _cross_entropy_tensor_pad():
-            torch.nn.functional.cross_entropy(i_stack, t_stack)
+            torch.nn.functional.cross_entropy(inputs, targets)
 
         return _cross_entropy_tensor_pad
 
     def cross_entropy_nt(self):
-        inputs, targets = self.get_input(return_targets=True, pad=True)
-        i_nt = nestedtensor.nested_tensor(inputs)
-        t_nt = nestedtensor.nested_tensor(targets)
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        targets = torch.stack(self.targets)
         def _cross_entropy_nt():
-            torch.nn.functional.cross_entropy(i_nt, t_nt)
+            torch.nn.functional.cross_entropy(inputs, targets)
 
         return _cross_entropy_nt
 
@@ -249,71 +210,65 @@ class SegLayersBenchMark(object):
     # dropout
     #
     def dropout_tensor_iter(self):
-        inputs = self.get_input()
-
         def _dropout_tensor_iter():
-            for t in inputs:
+            for t in self.inputs:
                 torch.nn.functional.dropout(t.unsqueeze(0)).squeeze(0)
         return _dropout_tensor_iter
 
     def dropout_tensor_pad(self):
-        inputs = self.get_input(pad=True)
-        stack = torch.stack(inputs)
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
 
         def _dropout_tensor_pad():
-            torch.nn.functional.dropout(stack)
+            torch.nn.functional.dropout(inputs)
 
         return _dropout_tensor_pad
 
     def dropout_nt(self):
-        inputs = self.get_input()
-        nt = nestedtensor.nested_tensor(inputs)
+        nt = nestedtensor.nested_tensor(self.inputs)
         def _dropout_nt():
             torch.nn.functional.dropout(nt)
 
         return _dropout_nt
-        inputs = get_input_big_diff()
-        nt = nestedtensor.nested_tensor(inputs)
-
-        def _dropout_nt_big_diff():
-            dropout(nt)
-
-        return _dropout_nt_big_diff
 
     #
     # interpolate
     #
     def interpolate_tensor_iter(self):
-        inputs = self.get_input()
-
         def _interpolate_tensor_iter():
-            for t in inputs:
+            for t in self.inputs:
                 torch.nn.functional.interpolate(t,  t.unsqueeze(0).shape[-2])
         return _interpolate_tensor_iter
 
     def interpolate_tensor_pad(self):
-        inputs = self.get_input(pad=True)
-        stack = torch.stack(inputs)
-
+        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
         def _interpolate_tensor_pad():
-            torch.nn.functional.interpolate(stack, inputs[0].unsqueeze(0).shape[-2])
+            torch.nn.functional.interpolate(inputs, inputs[0].unsqueeze(0).shape[-2])
 
         return _interpolate_tensor_pad
 
     def interpolate_nt(self):
-        inputs = self.get_input()
-        nt = nestedtensor.nested_tensor(inputs)
+        nt = nestedtensor.nested_tensor(self.inputs)
         def _interpolate_nt():
             torch.nn.functional.interpolate(nt)
 
         return _interpolate_nt
 
 def main(args):
-    assert len(args) == 9
-    name = args[0]
-    benchmark_obj = SegLayersBenchMark(args[1:])
-    benchmark = getattr(benchmark_obj, name)
-    print(utils.benchmark_fn(benchmark(), warmup=benchmark_obj.warmup))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-L', dest='layers', type=str, nargs='+')
+    parser.add_argument('-N', dest='N', type=int)
+    parser.add_argument('-C', dest='C', type=int)
+    parser.add_argument('-H', dest='H', type=int)
+    parser.add_argument('-W', dest='W', type=int)
+    parser.add_argument('-HV', dest='HV', type=int, nargs='+')
+    parser.add_argument('-WV', dest='WV', type=int, nargs='+')
+    parser.add_argument('-S', dest='seed', type=int, nargs='+')
+    parser.add_argument('-WARM', dest='warm', type=float)
+    args = parser.parse_args()
+
+    print("called with: ", args)
+    benchmark_obj = SegLayersBenchMark(args)
+    benchmark_obj.run()
 
 if __name__ == "__main__":
     main(sys.argv[1:])
