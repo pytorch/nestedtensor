@@ -1,8 +1,8 @@
-#include <creation.h>
-#include <py_utils.h>
+#include <nestedtensor/csrc/creation.h>
+#include <nestedtensor/csrc/py_utils.h>
+#include <nestedtensor/csrc/utils/nested_node.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
 #include <torch/extension.h>
-#include <utils/nested_node.h>
 
 namespace py = pybind11;
 

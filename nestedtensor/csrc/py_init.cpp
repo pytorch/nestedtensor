@@ -1,10 +1,10 @@
-#include <creation.h>
-#include <jit_list_apply.h>
+#include <nestedtensor/csrc/creation.h>
+#include <nestedtensor/csrc/jit_list_apply.h>
+#include <nestedtensor/csrc/python_functions.h>
+#include <nestedtensor/csrc/unary.h>
+#include <nestedtensor/csrc/utils/nested_node_functions.h>
+#include <nestedtensor/csrc/utils/python_nested_node.h>
 #include <torch/extension.h>
-#include <unary.h>
-#include <utils/nested_node_functions.h>
-#include <utils/python_nested_node.h>
-#include <python_functions.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
