@@ -1,7 +1,7 @@
-#include <functions.h>
+#include <nestedtensor/csrc/functions.h>
+#include <nestedtensor/csrc/python_args.h>
+#include <nestedtensor/csrc/python_functions.h>
 #include <pybind11/stl.h>
-#include <python_args.h>
-#include <python_functions.h>
 #include <torch/extension.h>
 
 using namespace torch::nn;

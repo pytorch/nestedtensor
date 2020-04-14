@@ -1,5 +1,5 @@
-#include <functions.h>
-#include <utils/nested_node_functions.h>
+#include <nestedtensor/csrc/functions.h>
+#include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 
 using namespace torch::nn;

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <nested_tensor.h>
-#include <py_utils.h>
-#include <utils/python_nested_node.h>
+#include <nestedtensor/csrc/nested_tensor.h>
+#include <nestedtensor/csrc/py_utils.h>
+#include <nestedtensor/csrc/utils/python_nested_node.h>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile

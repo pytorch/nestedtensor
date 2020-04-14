@@ -108,7 +108,7 @@ def get_extensions():
         extension(
             'nestedtensor._C',
             sources,
-            include_dirs=include_dirs,
+            include_dirs=[this_dir], # include_dirs,
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
         )

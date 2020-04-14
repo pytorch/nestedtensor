@@ -1,7 +1,7 @@
 #pragma once
-#include <nested_node.h>
+#include <nestedtensor/csrc/utils/nested_node.h>
+#include <nestedtensor/csrc/py_utils.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
-#include <py_utils.h>
 
 namespace torch {
 namespace nested_tensor {
