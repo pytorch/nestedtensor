@@ -44,8 +44,11 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0):
         sortby = SortKey.CUMULATIVE
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
-    result = ""
-    result +=  "fn {:<15} avg(us): {:10.4f} std(us): {:10.4f} num_runs: {}".format(fn.__name__, times.mean().item(), times.std().item(), len(times))
+    result = {}
+    result['name'] = fn.__name__
+    result['avg_us'] = times.mean().item()
+    result['std_us'] = times.std().item()
+    result['runs'] = len(times)
     if use_cprofile:
-        result += s.getvalue()
+        result['cprofile'] = s.getvalue()
     return result
