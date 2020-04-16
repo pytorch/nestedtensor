@@ -15,7 +15,6 @@ class SegLayersBenchMark(object):
         self.batch_norm.eval()
         self.inter_size = 10
 
-
     def run(self):
         for h_var in self.args.HV:  
             for w_var in self.args.WV:
@@ -50,7 +49,7 @@ class SegLayersBenchMark(object):
 
                         func = settings_map[layer][2]
                         result = utils.benchmark_fn(func(settings_map[layer]), warmup=self.args.warm)
-                        print(result['name'], ": ", layer, ",", result['avg_us'], ",", result['std_us'], ",", result['runs'], ",", h_var, ",", w_var, ",", seed)
+                        print(layer, ",", result['avg_us'], ",", result['std_us'], ",", result['runs'], ",", h_var, ",", w_var, ",", seed)
 
     def get_max_size(self, obj, res=None):
         if res is None:
@@ -189,6 +188,7 @@ def main(args):
     print("called with: ", args)
     benchmark_obj = SegLayersBenchMark(args)
     benchmark_obj.run()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
