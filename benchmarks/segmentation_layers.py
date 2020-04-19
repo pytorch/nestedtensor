@@ -98,8 +98,8 @@ class SegLayersBenchMark(object):
         for i in range(self.args.N):
             h_delta = random.gauss(self.args.H, h_var)
             w_delta = random.gauss(self.args.H, w_var)
-            h = int(self.args.H + h_delta)
-            w = int(self.args.W + w_delta)
+            h = max(1, int(self.args.H + h_delta))
+            w = max(1, int(self.args.W + w_delta))
             inputs.append(torch.randn(self.args.C, h, w))
             targets.append(torch.randint(1, (h, w), dtype=torch.int64))
 
