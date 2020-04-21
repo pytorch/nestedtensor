@@ -25,49 +25,6 @@ class SegLayersBenchMark(object):
                         result = utils.benchmark_fn(benchmark(), warmup=self.args.warm)
                         print(result['name'], ",", result['avg_us'], ",", result['std_us'], ",", result['runs'], ",", h_var, ",", w_var, ",", seed)
 
-
-    def get_max_size(self, obj, res=None):
-        if res is None:
-            res = [1]
-
-        if isinstance(obj, list) or isinstance(obj, tuple):
-            for o in obj:
-                res = self.get_max_size(o, res)
-
-        if isinstance(obj, nestedtensor.nested.nested.NestedTensor):
-            tres = self.get_max_size(obj.unbind())
-            while len(tres) > len(res):
-                    res.append(0)
-
-            res = [max(i, j) for (i, j) in zip(res, tres)]
-
-        if isinstance(obj, torch.Tensor):
-            # scalar
-            if obj.dim() == 0 and obj.numel() == 1:
-                res = [1]
-            else:
-                while len(obj.size()) > len(res):
-                    res.append(0)
-
-                res = [max(i, j) for (i, j) in zip(res, obj.size())]
-
-        return res
-
-    def pad_tensor_to_shape(self, t, goal_shape):
-        padd = ()
-        tup = tuple(t.size())
-        assert(t.dim() == len(goal_shape))
-        for i in range(len(tup)):
-            padd = (0, goal_shape[i] - tup[i]) + padd
-        new_tensor = F.pad(t, padd)
-        new_tensor = new_tensor.reshape(goal_shape)
-        return new_tensor
-
-    def pad_tensors_to_max_shape(self, inputs):
-        max_shape = self.get_max_size(inputs)
-        padded_inputs = [self.pad_tensor_to_shape(t, max_shape) for t in inputs]
-        return padded_inputs
-
     def get_input(self, h_var, w_var, seed):
         inputs = []
         targets = []
@@ -76,13 +33,12 @@ class SegLayersBenchMark(object):
         for i in range(self.args.N):
             h_delta = random.gauss(self.args.H, h_var)
             w_delta = random.gauss(self.args.H, w_var)
-            h = int(self.args.H + h_delta)
-            w = int(self.args.W + w_delta)
+            h = max(1, int(self.args.H + h_delta))
+            w = max(1, int(self.args.W + w_delta))
             inputs.append(torch.randn(self.args.C, h, w))
             targets.append(torch.randint(1, (h, w), dtype=torch.int64))
 
         return inputs, targets
-
 
     #
     # relu
@@ -94,10 +50,10 @@ class SegLayersBenchMark(object):
         return _relu_tensor_iter
 
     def relu_tensor_pad(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
         
         def _relu_tensor_pad():
-            torch.nn.functional.relu(inputs)
+            torch.nn.functional.relu(tensor)
 
         return _relu_tensor_pad
 
@@ -118,10 +74,10 @@ class SegLayersBenchMark(object):
         return _conv2d_tensor_iter
 
     def conv2d_tensor_pad(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _conv2d_tensor_pad():
-            self.conv2d(inputs)
+            self.conv2d(tensor)
 
         return _conv2d_tensor_pad
 
@@ -142,10 +98,10 @@ class SegLayersBenchMark(object):
         return _batch_norm_tensor_iter
 
     def batch_norm_tensor_pad(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _batch_norm_tensor_pad():
-            self.batch_norm(inputs)
+            self.batch_norm(tensor)
 
         return _batch_norm_tensor_pad
 
@@ -166,10 +122,10 @@ class SegLayersBenchMark(object):
         return _max_pool2d_tensor_iter
 
     def max_pool2d_tensor_pad(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _max_pool2d_tensor_pad():
-            self.max_pool2d(inputs)
+            self.max_pool2d(tensor)
 
         return _max_pool2d_tensor_pad
 
@@ -190,19 +146,19 @@ class SegLayersBenchMark(object):
         return _cross_entropy_tensor_iter
 
     def cross_entropy_tensor_pad(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
         targets = torch.stack(self.targets)
         
         def _cross_entropy_tensor_pad():
-            torch.nn.functional.cross_entropy(inputs, targets)
+            torch.nn.functional.cross_entropy(tensor, targets)
 
         return _cross_entropy_tensor_pad
 
     def cross_entropy_nt(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
-        targets = torch.stack(self.targets)
+        nt_input = nestedtensor.nested_tensor(self.inputs)
+        nt_targets = nestedtensor.nested_tensor(self.targets)
         def _cross_entropy_nt():
-            torch.nn.functional.cross_entropy(inputs, targets)
+            torch.nn.functional.cross_entropy(nt_input, nt_targets)
 
         return _cross_entropy_nt
 
@@ -217,10 +173,10 @@ class SegLayersBenchMark(object):
         return _dropout_tensor_iter
 
     def dropout_tensor_pad(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _dropout_tensor_pad():
-            torch.nn.functional.dropout(inputs)
+            torch.nn.functional.dropout(tensor)
 
         return _dropout_tensor_pad
 
@@ -241,9 +197,9 @@ class SegLayersBenchMark(object):
         return _interpolate_tensor_iter
 
     def interpolate_tensor_pad(self):
-        inputs = torch.stack(self.pad_tensors_to_max_shape(self.inputs))
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
         def _interpolate_tensor_pad():
-            torch.nn.functional.interpolate(inputs, inputs[0].unsqueeze(0).shape[-2])
+            torch.nn.functional.interpolate(tensor, tensor[0].unsqueeze(0).shape[-2])
 
         return _interpolate_tensor_pad
 
