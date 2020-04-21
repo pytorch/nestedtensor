@@ -32,7 +32,7 @@ class SegLayersBenchMark(object):
         torch.manual_seed(seed)
         for i in range(self.args.N):
             h_delta = random.gauss(self.args.H, h_var)
-            w_delta = random.gauss(self.args.H, w_var)
+            w_delta = random.gauss(self.args.W, w_var)
             h = max(1, int(self.args.H + h_delta))
             w = max(1, int(self.args.W + w_delta))
             inputs.append(torch.randn(self.args.C, h, w))
