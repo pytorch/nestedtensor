@@ -23,7 +23,14 @@ class SegLayersBenchMark(object):
                         self.inputs, self.targets = self.get_input(h_var, w_var, seed)
 
                         result = utils.benchmark_fn(benchmark(), warmup=self.args.warm)
-                        print(result['name'], ",", result['avg_us'], ",", result['std_us'], ",", result['runs'], ",", h_var, ",", w_var, ",", seed)
+                        result['H'] = self.args.H
+                        result['W'] = self.args.W
+                        result['h_var'] = h_var
+                        result['w_var'] = w_var
+                        result['seed'] = seed
+                        result['avg_us'] = int(result['avg_us'])
+                        result['std_us'] = int(result['std_us'])
+                        print(','.join(str((str(n), result[n])) for n in sorted(result.keys())))
 
     def get_input(self, h_var, w_var, seed):
         inputs = []
@@ -220,10 +227,12 @@ def main(args):
     parser.add_argument('-HV', dest='HV', type=int, nargs='+')
     parser.add_argument('-WV', dest='WV', type=int, nargs='+')
     parser.add_argument('-S', dest='seed', type=int, nargs='+')
-    parser.add_argument('-WARM', dest='warm', type=float)
+    parser.add_argument('-WARM', dest='warm', type=float, default=2.0)
+    parser.add_argument('-verbose', dest='verbose', type=int, default=0)
     args = parser.parse_args()
 
-    print("called with: ", args)
+    if args.verbose > 0:
+        print("called with: ", args)
     benchmark_obj = SegLayersBenchMark(args)
     benchmark_obj.run()
 
