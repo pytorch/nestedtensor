@@ -50,7 +50,7 @@ class SegLayersBenchMark(object):
         return _relu_tensor_iter
 
     def relu_tensor_pad(self):
-        tensor, mask = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
         
         def _relu_tensor_pad():
             torch.nn.functional.relu(tensor)
@@ -74,7 +74,7 @@ class SegLayersBenchMark(object):
         return _conv2d_tensor_iter
 
     def conv2d_tensor_pad(self):
-        tensor, mask = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _conv2d_tensor_pad():
             self.conv2d(tensor)
@@ -98,7 +98,7 @@ class SegLayersBenchMark(object):
         return _batch_norm_tensor_iter
 
     def batch_norm_tensor_pad(self):
-        tensor, mask = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _batch_norm_tensor_pad():
             self.batch_norm(tensor)
@@ -122,7 +122,7 @@ class SegLayersBenchMark(object):
         return _max_pool2d_tensor_iter
 
     def max_pool2d_tensor_pad(self):
-        tensor, mask = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _max_pool2d_tensor_pad():
             self.max_pool2d(tensor)
@@ -146,7 +146,7 @@ class SegLayersBenchMark(object):
         return _cross_entropy_tensor_iter
 
     def cross_entropy_tensor_pad(self):
-        tensor, mask = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
         targets = torch.stack(self.targets)
         
         def _cross_entropy_tensor_pad():
@@ -173,7 +173,7 @@ class SegLayersBenchMark(object):
         return _dropout_tensor_iter
 
     def dropout_tensor_pad(self):
-        tensor, mask = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
         def _dropout_tensor_pad():
             torch.nn.functional.dropout(tensor)
@@ -197,7 +197,7 @@ class SegLayersBenchMark(object):
         return _interpolate_tensor_iter
 
     def interpolate_tensor_pad(self):
-        tensor, mask = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
         def _interpolate_tensor_pad():
             torch.nn.functional.interpolate(tensor, tensor[0].unsqueeze(0).shape[-2])
 
