@@ -269,7 +269,8 @@ class SegLayersBenchMark(object):
                 try:
                     benchmark = self.get_benchmark(c, layer)
                 except AttributeError:
-                    raise ValueError("Benchmark {} is not supported".format(layer))
+                    raise ValueError("Benchmark {} is not supported. Available benchmarks are {}.".format(layer,
+                        dir(Benchmarks)))
                 benchmarks.append(benchmark)
 
             for benchmark in benchmarks:
