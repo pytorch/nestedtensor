@@ -17,7 +17,9 @@ class SegLayersBenchMark(object):
         self.max_pool2d = torch.nn.MaxPool2d(
             kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
         )
-        self.conv2d = torch.nn.Conv2d(channels, 3, kernel_size=(1, 1), bias=False)
+        self.conv2d_1 = torch.nn.Conv2d(channels, 3, kernel_size=(1, 1), bias=False)
+        self.conv2d_3 = torch.nn.Conv2d(channels, 3, kernel_size=(3, 3), bias=False)
+        self.conv2d_7 = torch.nn.Conv2d(channels, 3, kernel_size=(7, 7), bias=False)
         self.batch_norm = torch.nn.BatchNorm2d(channels, 1e-05, 0.1)
         self.batch_norm.eval()
 
@@ -41,16 +43,17 @@ class SegLayersBenchMark(object):
                 benchmark = getattr(self, layer)
 
                 result = utils.benchmark_fn(benchmark(), warmup=self.args.warm)
-                result["N"] = n,
-                result["C"] = c,
-                result["H"] = h,
-                result["W"] = w,
+                result["N"] = n
+                result["C"] = c
+                result["H"] = h
+                result["W"] = w
                 result["h_var"] = h_var
                 result["w_var"] = w_var
                 result["seed"] = seed
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
-                print(",".join(str((str(n), result[n])) for n in sorted(result.keys())))
+
+                print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
 
     def get_input(self, n, c, h, w, h_var, w_var, seed):
         inputs = []
@@ -94,28 +97,74 @@ class SegLayersBenchMark(object):
     #
     # conv2d
     #
-    def conv2d_tensor_iter(self):
-        def _conv2d_tensor_iter():
+    def conv2d_iter_1(self):
+        def _conv2d_tensor_iter_1():
             for t in self.inputs:
-                self.conv2d(t.unsqueeze(0)).squeeze(0)
+                self.conv2d_1(t.unsqueeze(0)).squeeze(0)
 
-        return _conv2d_tensor_iter
+        return _conv2d_tensor_iter_1
 
-    def conv2d_tensor_pad(self):
+    def conv2d_iter_3(self):
+        def _conv2d_tensor_iter_3():
+            for t in self.inputs:
+                self.conv2d_3(t.unsqueeze(0)).squeeze(0)
+
+        return _conv2d_tensor_iter_3
+
+    def conv2d_iter_7(self):
+        def _conv2d_tensor_iter_7():
+            for t in self.inputs:
+                self.conv2d_7(t.unsqueeze(0)).squeeze(0)
+
+        return _conv2d_tensor_iter_7
+
+    def conv2d_pad_1(self):
         tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
-        def _conv2d_tensor_pad():
-            self.conv2d(tensor)
+        def _conv2d_tensor_pad_1():
+            self.conv2d_1(tensor)
 
-        return _conv2d_tensor_pad
+        return _conv2d_tensor_pad_1
 
-    def conv2d_nt(self):
+    def conv2d_pad_3(self):
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+
+        def _conv2d_tensor_pad_3():
+            self.conv2d_3(tensor)
+
+        return _conv2d_tensor_pad_3
+
+    def conv2d_pad_7(self):
+        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+
+        def _conv2d_tensor_pad_7():
+            self.conv2d_7(tensor)
+
+        return _conv2d_tensor_pad_7
+
+    def conv2d_nt_1(self):
         nt = nestedtensor.nested_tensor(self.inputs)
 
-        def _conv2d_nt():
-            self.conv2d(nt)
+        def _conv2d_nt_1():
+            self.conv2d_1(nt)
 
-        return _conv2d_nt
+        return _conv2d_nt_1
+
+    def conv2d_nt_3(self):
+        nt = nestedtensor.nested_tensor(self.inputs)
+
+        def _conv2d_nt_3():
+            self.conv2d_3(nt)
+
+        return _conv2d_nt_3
+
+    def conv2d_nt_7(self):
+        nt = nestedtensor.nested_tensor(self.inputs)
+
+        def _conv2d_nt_7():
+            self.conv2d_7(nt)
+
+        return _conv2d_nt_7
 
     #
     # batch_norm
