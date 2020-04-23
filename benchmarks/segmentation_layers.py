@@ -9,213 +9,217 @@ import itertools
 import re
 
 
-class Benchmarks(object):
-    #
-    # relu
-    #
-    @staticmethod
-    def relu_tensor_iter(self):
-        def _relu_tensor_iter():
-            for t in self.inputs:
-                torch.nn.functional.relu(t)
+Benchmarks = {}
 
-        return _relu_tensor_iter
+def register_benchmark(fn):
+    Benchmarks[fn.__name__] = fn
 
-    @staticmethod
-    def relu_tensor_pad(self):
-        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+#
+# relu
+#
+@register_benchmark
+def relu_tensor_iter(self):
+    def _relu_tensor_iter():
+        for t in self.inputs:
+            torch.nn.functional.relu(t)
 
-        def _relu_tensor_pad():
-            torch.nn.functional.relu(tensor)
+    return _relu_tensor_iter
 
-        return _relu_tensor_pad
+@register_benchmark
+def relu_tensor_pad(self):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
-    @staticmethod
-    def relu_nt(self):
-        nt = nestedtensor.nested_tensor(self.inputs)
+    def _relu_tensor_pad():
+        torch.nn.functional.relu(tensor)
 
-        def _relu_nt():
-            torch.nn.functional.relu(nt)
+    return _relu_tensor_pad
 
-        return _relu_nt
+@register_benchmark
+def relu_nt(self):
+    nt = nestedtensor.nested_tensor(self.inputs)
 
-    #
-    # conv2d
-    #
-    @staticmethod
-    def conv2d_iter(self, module):
-        def _conv2d_tensor_iter():
-            for t in self.inputs:
-                module(t.unsqueeze(0)).squeeze(0)
+    def _relu_nt():
+        torch.nn.functional.relu(nt)
 
-        return _conv2d_tensor_iter
+    return _relu_nt
 
-    @staticmethod
-    def conv2d_pad(self, module):
-        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+#
+# conv2d
+#
+@register_benchmark
+def conv2d_iter(self, module):
+    def _conv2d_tensor_iter():
+        for t in self.inputs:
+            module(t.unsqueeze(0)).squeeze(0)
 
-        def _conv2d_tensor():
-            module(tensor)
+    return _conv2d_tensor_iter
 
-        return _conv2d_tensor
+@register_benchmark
+def conv2d_pad(self, module):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
-    @staticmethod
-    def conv2d_nt(self, module):
-        nt = nestedtensor.nested_tensor(self.inputs)
+    def _conv2d_tensor():
+        module(tensor)
 
-        def _conv2d():
-            self.conv2d(nt)
+    return _conv2d_tensor
 
-        return _conv2d
+@register_benchmark
+def conv2d_nt(self, module):
+    nt = nestedtensor.nested_tensor(self.inputs)
 
-    #
-    # batch_norm
-    #
-    @staticmethod
-    def batch_norm_tensor_iter(self):
-        def _batch_norm_tensor_iter():
-            for t in self.inputs:
-                self.batch_norm(t.unsqueeze(0)).squeeze(0)
+    def _conv2d():
+        self.conv2d(nt)
 
-        return _batch_norm_tensor_iter
+    return _conv2d
 
-    @staticmethod
-    def batch_norm_tensor_pad(self):
-        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+#
+# batch_norm
+#
+@register_benchmark
+def batch_norm_tensor_iter(self):
+    def _batch_norm_tensor_iter():
+        for t in self.inputs:
+            self.batch_norm(t.unsqueeze(0)).squeeze(0)
 
-        def _batch_norm_tensor_pad():
-            self.batch_norm(tensor)
+    return _batch_norm_tensor_iter
 
-        return _batch_norm_tensor_pad
+@register_benchmark
+def batch_norm_tensor_pad(self):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
-    @staticmethod
-    def batch_norm_nt(self):
-        nt = nestedtensor.nested_tensor(self.inputs)
+    def _batch_norm_tensor_pad():
+        self.batch_norm(tensor)
 
-        def _batch_norm_nt():
-            self.batch_norm(nt)
+    return _batch_norm_tensor_pad
 
-        return _batch_norm_nt
+@register_benchmark
+def batch_norm_nt(self):
+    nt = nestedtensor.nested_tensor(self.inputs)
 
-    #
-    # max_pool2d
-    #
-    @staticmethod
-    def max_pool2d_tensor_iter(self):
-        def _max_pool2d_tensor_iter():
-            for t in self.inputs:
-                self.max_pool2d(t.unsqueeze(0)).squeeze(0)
+    def _batch_norm_nt():
+        self.batch_norm(nt)
 
-        return _max_pool2d_tensor_iter
+    return _batch_norm_nt
 
-    @staticmethod
-    def max_pool2d_tensor_pad(self):
-        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+#
+# max_pool2d
+#
+@register_benchmark
+def max_pool2d_tensor_iter(self):
+    def _max_pool2d_tensor_iter():
+        for t in self.inputs:
+            self.max_pool2d(t.unsqueeze(0)).squeeze(0)
 
-        def _max_pool2d_tensor_pad():
-            self.max_pool2d(tensor)
+    return _max_pool2d_tensor_iter
 
-        return _max_pool2d_tensor_pad
+@register_benchmark
+def max_pool2d_tensor_pad(self):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
-    @staticmethod
-    def max_pool2d_nt(self):
-        nt = nestedtensor.nested_tensor(self.inputs)
+    def _max_pool2d_tensor_pad():
+        self.max_pool2d(tensor)
 
-        def _max_pool2d_nt():
-            self.max_pool2d(nt)
+    return _max_pool2d_tensor_pad
 
-        return _max_pool2d_nt
+@register_benchmark
+def max_pool2d_nt(self):
+    nt = nestedtensor.nested_tensor(self.inputs)
 
-    #
-    # cross_entropy
-    #
-    @staticmethod
-    def cross_entropy_tensor_iter(self):
-        def _cross_entropy_tensor_iter():
-            for a, b in zip(self.inputs, self.targets):
-                torch.nn.functional.cross_entropy(
-                    a.unsqueeze(0), b.unsqueeze(0)
-                ).squeeze(0)
+    def _max_pool2d_nt():
+        self.max_pool2d(nt)
 
-        return _cross_entropy_tensor_iter
+    return _max_pool2d_nt
 
-    @staticmethod
-    def cross_entropy_tensor_pad(self):
-        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
-        targets = torch.stack(self.targets)
+#
+# cross_entropy
+#
+@register_benchmark
+def cross_entropy_tensor_iter(self):
+    def _cross_entropy_tensor_iter():
+        for a, b in zip(self.inputs, self.targets):
+            torch.nn.functional.cross_entropy(
+                a.unsqueeze(0), b.unsqueeze(0)
+            ).squeeze(0)
 
-        def _cross_entropy_tensor_pad():
-            torch.nn.functional.cross_entropy(tensor, targets)
+    return _cross_entropy_tensor_iter
 
-        return _cross_entropy_tensor_pad
+@register_benchmark
+def cross_entropy_tensor_pad(self):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+    targets = torch.stack(self.targets)
 
-    @staticmethod
-    def cross_entropy_nt(self):
-        nt_input = nestedtensor.nested_tensor(self.inputs)
-        nt_targets = nestedtensor.nested_tensor(self.targets)
+    def _cross_entropy_tensor_pad():
+        torch.nn.functional.cross_entropy(tensor, targets)
 
-        def _cross_entropy_nt():
-            torch.nn.functional.cross_entropy(nt_input, nt_targets)
+    return _cross_entropy_tensor_pad
 
-        return _cross_entropy_nt
+@register_benchmark
+def cross_entropy_nt(self):
+    nt_input = nestedtensor.nested_tensor(self.inputs)
+    nt_targets = nestedtensor.nested_tensor(self.targets)
 
-    #
-    # dropout
-    #
-    @staticmethod
-    def dropout_tensor_iter(self):
-        def _dropout_tensor_iter():
-            for t in self.inputs:
-                torch.nn.functional.dropout(t.unsqueeze(0)).squeeze(0)
+    def _cross_entropy_nt():
+        torch.nn.functional.cross_entropy(nt_input, nt_targets)
 
-        return _dropout_tensor_iter
+    return _cross_entropy_nt
 
-    @staticmethod
-    def dropout_tensor_pad(self):
-        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+#
+# dropout
+#
+@register_benchmark
+def dropout_tensor_iter(self):
+    def _dropout_tensor_iter():
+        for t in self.inputs:
+            torch.nn.functional.dropout(t.unsqueeze(0)).squeeze(0)
 
-        def _dropout_tensor_pad():
-            torch.nn.functional.dropout(tensor)
+    return _dropout_tensor_iter
 
-        return _dropout_tensor_pad
+@register_benchmark
+def dropout_tensor_pad(self):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
-    @staticmethod
-    def dropout_nt(self):
-        nt = nestedtensor.nested_tensor(self.inputs)
+    def _dropout_tensor_pad():
+        torch.nn.functional.dropout(tensor)
 
-        def _dropout_nt():
-            torch.nn.functional.dropout(nt)
+    return _dropout_tensor_pad
 
-        return _dropout_nt
+@register_benchmark
+def dropout_nt(self):
+    nt = nestedtensor.nested_tensor(self.inputs)
 
-    #
-    # interpolate
-    #
-    @staticmethod
-    def interpolate_tensor_iter(self):
-        def _interpolate_tensor_iter():
-            for t in self.inputs:
-                torch.nn.functional.interpolate(t, t.unsqueeze(0).shape[-2])
+    def _dropout_nt():
+        torch.nn.functional.dropout(nt)
 
-        return _interpolate_tensor_iter
+    return _dropout_nt
 
-    @staticmethod
-    def interpolate_tensor_pad(self):
-        tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+#
+# interpolate
+#
+@register_benchmark
+def interpolate_tensor_iter(self):
+    def _interpolate_tensor_iter():
+        for t in self.inputs:
+            torch.nn.functional.interpolate(t, t.unsqueeze(0).shape[-2])
 
-        def _interpolate_tensor_pad():
-            torch.nn.functional.interpolate(tensor, tensor[0].unsqueeze(0).shape[-2])
+    return _interpolate_tensor_iter
 
-        return _interpolate_tensor_pad
+@register_benchmark
+def interpolate_tensor_pad(self):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
-    @staticmethod
-    def interpolate_nt(self):
-        nt = nestedtensor.nested_tensor(self.inputs)
+    def _interpolate_tensor_pad():
+        torch.nn.functional.interpolate(tensor, tensor[0].unsqueeze(0).shape[-2])
 
-        def _interpolate_nt():
-            torch.nn.functional.interpolate(nt)
+    return _interpolate_tensor_pad
 
-        return _interpolate_nt
+@register_benchmark
+def interpolate_nt(self):
+    nt = nestedtensor.nested_tensor(self.inputs)
+
+    def _interpolate_nt():
+        torch.nn.functional.interpolate(nt)
+
+    return _interpolate_nt
 
 class SegLayersBenchMark(object):
     def __init__(self, args):
@@ -226,7 +230,7 @@ class SegLayersBenchMark(object):
         if name.startswith("conv2d"):
             m = re.match(r"conv2d_([a-z]+)_(\d+)x(\d+)", name)
             if m is None:
-                raise ValueError("Unsupported conv2d layer {}".format(name))
+                raise ValueError("Unsupported parameterization for conv2d layer {}".format(name))
             benchmark_kind = m.group(1)
             print(benchmark_kind)
             k0 = int(m.group(2))
@@ -269,8 +273,8 @@ class SegLayersBenchMark(object):
                 try:
                     benchmark = self.get_benchmark(c, layer)
                 except AttributeError:
-                    raise ValueError("Benchmark {} is not supported. Available benchmarks are {}.".format(layer,
-                        dir(Benchmarks)))
+                    raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
+                        "\n".join(Benchmarks.keys())))
                 benchmarks.append(benchmark)
 
             for benchmark in benchmarks:
