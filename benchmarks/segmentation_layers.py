@@ -76,28 +76,28 @@ def conv2d_nt(self, module):
 # batch_norm
 #
 @register_benchmark
-def batch_norm_tensor_iter(self):
+def batch_norm_tensor_iter(self, module):
     def _batch_norm_tensor_iter():
         for t in self.inputs:
-            self.batch_norm(t.unsqueeze(0)).squeeze(0)
+            module(t.unsqueeze(0)).squeeze(0)
 
     return _batch_norm_tensor_iter
 
 @register_benchmark
-def batch_norm_tensor_pad(self):
+def batch_norm_tensor_pad(self, module):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _batch_norm_tensor_pad():
-        self.batch_norm(tensor)
+        module(tensor)
 
     return _batch_norm_tensor_pad
 
 @register_benchmark
-def batch_norm_nt(self):
+def batch_norm_nt(self, module):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _batch_norm_nt():
-        self.batch_norm(nt)
+        module(nt)
 
     return _batch_norm_nt
 
@@ -105,28 +105,28 @@ def batch_norm_nt(self):
 # max_pool2d
 #
 @register_benchmark
-def max_pool2d_tensor_iter(self):
+def max_pool2d_tensor_iter(self, module):
     def _max_pool2d_tensor_iter():
         for t in self.inputs:
-            self.max_pool2d(t.unsqueeze(0)).squeeze(0)
+            module(t.unsqueeze(0)).squeeze(0)
 
     return _max_pool2d_tensor_iter
 
 @register_benchmark
-def max_pool2d_tensor_pad(self):
+def max_pool2d_tensor_pad(self, module):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _max_pool2d_tensor_pad():
-        self.max_pool2d(tensor)
+        module(tensor)
 
     return _max_pool2d_tensor_pad
 
 @register_benchmark
-def max_pool2d_nt(self):
+def max_pool2d_nt(self, module):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _max_pool2d_nt():
-        self.max_pool2d(nt)
+        module(nt)
 
     return _max_pool2d_nt
 
@@ -240,7 +240,7 @@ class SegLayersBenchMark(object):
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
-            layer = setdefault(
+            layer = self.layers.setdefault(
                 name, torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
             )
         if name.startswith("max_pool2d"):
@@ -252,9 +252,9 @@ class SegLayersBenchMark(object):
             )
         try:
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
-        except AttributeError:
+        except KeyError:
             raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
-                "\n".join(Benchmarks.keys())))
+                "\n".join(sorted(Benchmarks.keys()))))
 
     def run(self):
         for n, c, h, w, h_var, w_var, seed in itertools.product(
