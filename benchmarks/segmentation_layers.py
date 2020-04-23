@@ -264,11 +264,15 @@ class SegLayersBenchMark(object):
             # generate inputs before iterating layers to have the same imput per layer
             self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
 
+            benchmarks = []
             for layer in self.args.layers:
-                benchmark = self.get_benchmark(c, layer)
-                print('benchmark')
-                print(benchmark)
+                try:
+                    benchmark = self.get_benchmark(c, layer)
+                except AttributeError:
+                    raise ValueError("Benchmark {} is not supported".format(layer))
+                benchmarks.append(benchmark)
 
+            for benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, warmup=self.args.warm)
                 result["N"] = n
                 result["C"] = c
