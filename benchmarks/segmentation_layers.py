@@ -227,32 +227,34 @@ class SegLayersBenchMark(object):
         self.layers = {}
 
     def get_benchmark(self, channels, name):
+        layer = None
         if name.startswith("conv2d"):
             m = re.match(r"conv2d_([a-z]+)_(\d+)x(\d+)", name)
             if m is None:
                 raise ValueError("Unsupported parameterization for conv2d layer {}".format(name))
             benchmark_kind = m.group(1)
-            print(benchmark_kind)
             k0 = int(m.group(2))
             k1 = int(m.group(3))
             layer = self.layers.setdefault(
                 name, torch.nn.Conv2d(channels, 3, kernel_size=(k0, k1), bias=False)
             )
-            return getattr(Benchmarks, "conv2d_" + benchmark_kind)(self, layer)
+            name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
-            return self.layers.setdefault(
+            layer = setdefault(
                 name, torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
             )
-            return getattr(Benchmarks, name)(self)
         if name.startswith("max_pool2d"):
-            return self.layers.setdefault(
+            layer = self.layers.setdefault(
                 name,
                 torch.nn.MaxPool2d(
                     kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
                 ),
             )
-            return getattr(Benchmarks, name)(self)
-        return getattr(Benchmarks, name)(self)
+        try:
+            return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
+        except AttributeError:
+            raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
+                "\n".join(Benchmarks.keys())))
 
     def run(self):
         for n, c, h, w, h_var, w_var, seed in itertools.product(
@@ -268,16 +270,9 @@ class SegLayersBenchMark(object):
             # generate inputs before iterating layers to have the same imput per layer
             self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
 
-            benchmarks = []
-            for layer in self.args.layers:
-                try:
-                    benchmark = self.get_benchmark(c, layer)
-                except AttributeError:
-                    raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
-                        "\n".join(Benchmarks.keys())))
-                benchmarks.append(benchmark)
+            benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
 
-            for benchmark in benchmarks:
+            for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, warmup=self.args.warm)
                 result["N"] = n
                 result["C"] = c
@@ -288,6 +283,7 @@ class SegLayersBenchMark(object):
                 result["seed"] = seed
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
+                result["name"] = layer
 
                 print(
                     ",".join(
