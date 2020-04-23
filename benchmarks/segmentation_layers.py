@@ -68,7 +68,7 @@ def conv2d_nt(self, module):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _conv2d():
-        self.conv2d(nt)
+        module(nt)
 
     return _conv2d
 
