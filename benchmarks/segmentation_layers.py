@@ -6,41 +6,53 @@ import sys
 import random
 import argparse
 import itertools
+import re
 
 
 class SegLayersBenchMark(object):
     def __init__(self, args):
         self.args = args
-        
+        self.layers = {}
 
-    def init_layers(self, channels):
-        self.max_pool2d = torch.nn.MaxPool2d(
-            kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
-        )
-        self.conv2d_1 = torch.nn.Conv2d(channels, 3, kernel_size=(1, 1), bias=False)
-        self.conv2d_3 = torch.nn.Conv2d(channels, 3, kernel_size=(3, 3), bias=False)
-        self.conv2d_7 = torch.nn.Conv2d(channels, 3, kernel_size=(7, 7), bias=False)
-        self.batch_norm = torch.nn.BatchNorm2d(channels, 1e-05, 0.1)
-        self.batch_norm.eval()
+    def get_layer(self, channels, name):
+        if name.startswith("conv2d"):
+            m = re.match(r"conv2d_(\d+)x(\d+)", name)
+            if m is None:
+                raise ValueError("Unsupported conv2d layer {}".format(name))
+            k0 = int(group(1))
+            k1 = int(group(2))
+            return self.layers.setdefault(
+                name, torch.nn.Conv2d(channels, 3, kernel_size=(k0, k1), bias=False)
+            )
+        if name == "batch_norm":
+            return self.layers.setdefault(
+                name, torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
+            )
+        if name == "max_pool2d":
+            return self.layers.setdefault(
+                name,
+                torch.nn.MaxPool2d(
+                    kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
+                ),
+            )
+        raise ValueError("Unrecognized layer name {}".format(name))
 
     def run(self):
         for n, c, h, w, h_var, w_var, seed in itertools.product(
-                self.args.N, 
-                self.args.C,
-                self.args.H,
-                self.args.W,
-                self.args.HV, 
-                self.args.WV, 
-                self.args.seed
+            self.args.N,
+            self.args.C,
+            self.args.H,
+            self.args.W,
+            self.args.HV,
+            self.args.WV,
+            self.args.seed,
         ):
-            self.init_layers(c)
 
             # generate inputs before iterating layers to have the same imput per layer
             self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
-            
 
             for layer in self.args.layers:
-                benchmark = getattr(self, layer)
+                benchmark = self.get_layer(c, layer)
 
                 result = utils.benchmark_fn(benchmark(), warmup=self.args.warm)
                 result["N"] = n
@@ -53,7 +65,11 @@ class SegLayersBenchMark(object):
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
 
-                print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
+                print(
+                    ",".join(
+                        str((str(key), result[key])) for key in sorted(result.keys())
+                    )
+                )
 
     def get_input(self, n, c, h, w, h_var, w_var, seed):
         inputs = []
@@ -323,4 +339,3 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
