@@ -1,5 +1,6 @@
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/jit_list_apply.h>
+#include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/python_functions.h>
 #include <nestedtensor/csrc/unary.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
@@ -92,4 +93,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
+
+  m.def(
+      "make_nested_tensor_impl", [](std::vector<at::Tensor> tensors) {
+        std::vector<TensorNode> tensor_nodes;
+        for (size_t i = 0; i < tensors.size(); i++) {
+          tensor_nodes.push_back(TensorNode(std::move(tensors[i])));
+        }
+        return at::detail::make_tensor<at::NestedTensorImpl>(
+            NestedTensor(TensorNode(std::move(tensor_nodes))));
+      });
 }
