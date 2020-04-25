@@ -136,7 +136,7 @@ class NestedTensor(object):
         """
         The number of entries in the list ```self``` represents.
         """
-        return self._impl.__len__()
+        return nestedtensor._C.len(self._impl)
 
     def element_size(self):
         """

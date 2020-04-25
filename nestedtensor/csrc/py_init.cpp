@@ -177,6 +177,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         ->_data.sizes();
   });
 
+  m.def("len", [](at::Tensor self) {
+    if (!self.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+      throw std::runtime_error("Function requires NestedTensorImpl");
+    }
+    auto nt =
+        static_cast<at::NestedTensorImpl*>(self.unsafeGetTensorImpl())->_data;
+    return nt.get_structure().degree();
+  });
+
   m.def("make_nested_tensor_impl", [](std::vector<at::Tensor> tensors) {
     std::vector<TensorNode> tensor_nodes;
     for (size_t i = 0; i < tensors.size(); i++) {
