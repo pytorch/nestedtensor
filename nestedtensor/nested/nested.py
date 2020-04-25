@@ -35,8 +35,10 @@ class NestedTensor(object):
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
     def __init__(self, impl):
-        if not isinstance(impl, nestedtensor._C.NestedTensor):
+        if not nestedtensor._C.is_nested_tensor_impl(impl):
             raise TypeError("Got unexpected type " + str(type(impl)))
+        # if not isinstance(impl, nestedtensor._C.NestedTensor):
+        #     raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
     # --- impl forward ---
@@ -121,7 +123,7 @@ class NestedTensor(object):
         The nested dimension is defined as the level of indexing required
         to reach a Tensor constiuent.
         """
-        return self._impl.nested_dim()
+        return nestedtensor._C.nested_dim(self._impl)
 
     def tensor_dim(self):
         """

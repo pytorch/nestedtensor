@@ -35,10 +35,37 @@ IntArrayRef NestedTensorImpl::sizes() const {
   return IntArrayRef(sizes);
 }
 
-static auto registry = torch::RegisterOperators()
-  .op(torch::RegisterOperators::options()
-      .schema("aten::conv2d(Tensor input, Tensor weight, Tensor? bias=None, int[2] stride=1, int[2] padding=0, int[2] dilation=1, int groups=1) -> Tensor")
-      .impl_unboxedOnlyKernel<Tensor (const Tensor&, const Tensor&, const Tensor&, IntArrayRef, IntArrayRef, IntArrayRef, int64_t), &NestedTensor_conv2d>(NestedTensorKey))
-  ;
+Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
+  if (self.is_contiguous(memory_format)) {
+    return self;
+  }
+  TORCH_CHECK(
+      memory_format != MemoryFormat::Preserve,
+      "preserve memory format is unsupported by the contiguous operator");
+  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
+  auto nt = self_impl->_data.contiguous();
+  return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
+}
 
+static auto registry =
+    torch::RegisterOperators()
+        .op(torch::RegisterOperators::options()
+                .schema(
+                    "aten::conv2d(Tensor input, Tensor weight, Tensor? bias=None, int[2] stride=1, int[2] padding=0, int[2] dilation=1, int groups=1) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(
+                        const Tensor&,
+                        const Tensor&,
+                        const Tensor&,
+                        IntArrayRef,
+                        IntArrayRef,
+                        IntArrayRef,
+                        int64_t),
+                    &NestedTensor_conv2d>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema(
+                    "aten::contiguous(Tensor self, *, MemoryFormat memory_format=contiguous_format) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(const Tensor&, MemoryFormat memory_format),
+                    &NestedTensor_contiguous>(NestedTensorKey));
 }

@@ -94,6 +94,16 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
   m.def("as_nested_tensor_impl", &torch::nested_tensor::as_nested_tensor_impl);
+  m.def("is_nested_tensor_impl", [](at::Tensor tensor) {
+    return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+  });
+  m.def("nested_dim", [](at::Tensor tensor) {
+    if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+      throw std::runtime_error("Function requires NestedTensorImpl");
+    }
+    return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl())
+        ->_data.nested_dim();
+  });
 
   m.def(
       "make_nested_tensor_impl", [](std::vector<at::Tensor> tensors) {

@@ -21,6 +21,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   int64_t numel() const override {
     return _data.numel();
   }
+  bool is_contiguous(
+      at::MemoryFormat memory_format) const override {
+    return _data.is_contiguous();
+  }
 
   IntArrayRef sizes() const override;
 
