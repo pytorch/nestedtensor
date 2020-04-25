@@ -1,4 +1,5 @@
 #include <nestedtensor/csrc/creation.h>
+#include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/py_utils.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
@@ -182,7 +183,7 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   }
 }
 
-THPNestedTensor as_nested_tensor(py::sequence list) {
+NestedTensor _as_nested_tensor(py::sequence list) {
   NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
   bool all_same =
@@ -197,7 +198,16 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
       _verify_variables(*first, structure, true);
     }
   }
-  return THPNestedTensor(NestedTensor(std::move(structure)));
+  return NestedTensor(std::move(structure));
+}
+
+THPNestedTensor as_nested_tensor(py::sequence list) {
+  return THPNestedTensor(std::move(_as_nested_tensor(list)));
+}
+
+at::Tensor as_nested_tensor_impl(py::sequence list) {
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::move(_as_nested_tensor(list)));
 }
 
 } // namespace nested_tensor

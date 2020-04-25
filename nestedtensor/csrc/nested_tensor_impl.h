@@ -5,39 +5,31 @@
 
 namespace at {
 
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutogradTensorId;
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& rep)
+  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
       : TensorImpl(
             c10::DispatchKeySet(NestedTensorKey),
-            rep.dtype(),
-            rep.device()),
-        rep_(std::move(rep)) {}
+            data.dtype(),
+            data.device()),
+        _data(std::move(data)) {}
 
-  int64_t dim() const {
-    return rep_.dim();
+  int64_t dim() const override {
+    return _data.dim();
+  }
+  int64_t numel() const override {
+    return _data.numel();
   }
 
-  IntArrayRef sizes() const {
-    std::vector<c10::optional<int64_t>> size = rep_.sizes();
-    std::vector<int64_t> sizes;
-    for (auto opt_int : size) {
-      if (opt_int) {
-        sizes.push_back(*opt_int);
-      } else {
-        sizes.push_back(-1);
-      }
-    }
-    return IntArrayRef(sizes);
-  }
+  IntArrayRef sizes() const override;
 
-  torch::nested_tensor::NestedTensor rep_;
+  torch::nested_tensor::NestedTensor _data;
 
 };
 
 inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
-  auto node = batch_tensor.rep_.get_structure();
+  auto node = batch_tensor._data.get_structure();
   out << "NESTED_TENSOR";
   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
   out << std::endl;

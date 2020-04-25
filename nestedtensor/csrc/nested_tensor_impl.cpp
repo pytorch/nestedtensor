@@ -17,9 +17,22 @@ Tensor NestedTensor_conv2d(const Tensor& input, const Tensor& weight,
   auto input_impl = static_cast<NestedTensorImpl*>(input.unsafeGetTensorImpl());
   std::cout << "HERE : "  << *input_impl << std::endl;
   auto nt = torch::nested_tensor::conv2d(
-      input_impl->rep_, weight, bias, stride, padding, dilation, groups);
+      input_impl->_data, weight, bias, stride, padding, dilation, groups);
   std::cout << "MADE" << std::endl;
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
+}
+
+IntArrayRef NestedTensorImpl::sizes() const {
+  std::vector<c10::optional<int64_t>> size = _data.sizes();
+  std::vector<int64_t> sizes;
+  for (auto opt_int : size) {
+    if (opt_int) {
+      sizes.push_back(*opt_int);
+    } else {
+      throw std::runtime_error("NestedTensor size is not Tensor shape compliant.");
+    }
+  }
+  return IntArrayRef(sizes);
 }
 
 static auto registry = torch::RegisterOperators()
