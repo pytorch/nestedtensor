@@ -110,6 +110,50 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
   return result;
 }
 
+//TODO: CONTINUE HERE!
+Tensor select(const Tensor& self, int64_t dim, int64_t index) {
+  int64_t ndim = self.dim();
+  if (ndim == 0) {
+    TORCH_CHECK_INDEX(false, "select() cannot be applied to a 0-dim tensor.");
+  }
+  dim = maybe_wrap_dim(dim, ndim);
+  auto size = self.size(dim);
+  if (index < -size || index >= size) {
+    if (self.has_names() && self.names()[dim] != Dimname::wildcard()) {
+      TORCH_CHECK_INDEX(
+          false,
+          "select(): index ",
+          index,
+          " out of range for tensor of size ",
+          self.sizes(),
+          " at dimension ",
+          self.names()[dim]);
+    }
+    TORCH_CHECK_INDEX(
+        false,
+        "select(): index ",
+        index,
+        " out of range for tensor of size ",
+        self.sizes(),
+        " at dimension ",
+        dim);
+  }
+  if (index < 0) {
+    index += size;
+  }
+  if (self.is_sparse()) {
+    return select_sparse(self, dim, index);
+  }
+  auto sizes = self.sizes().vec();
+  auto strides = self.strides().vec();
+  auto storage_offset = self.storage_offset() + index * strides[dim];
+  sizes.erase(sizes.begin() + dim);
+  strides.erase(strides.begin() + dim);
+  auto result = self.as_strided(sizes, strides, storage_offset);
+  namedinference::propagate_names_except(result, self, {dim});
+  return result;
+}
+
 static auto registry =
     torch::RegisterOperators()
         .op(torch::RegisterOperators::options()
