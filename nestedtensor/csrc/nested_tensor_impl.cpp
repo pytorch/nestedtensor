@@ -72,21 +72,15 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
         int64_t dim_size = child.payload().size(dim - 1);
         dim_max_size = dim_max_size > dim_size ? dim_max_size : dim_size;
       }
-      std::vector<std::vector<TensorNode>> unbound;
-      unbound.resize(dim_max_size);
-      for (const auto& child : node.unbind()) {
-        std::vector<at::Tensor> unbound_tensors =
-            at::unbind(child.payload(), dim - 1);
-        for (size_t i = 0; i < unbound_tensors.size(); i++) {
-          unbound[i].push_back(TensorNode(std::move(unbound_tensors[i])));
-        }
-      }
       std::vector<at::Tensor> result;
-      for (size_t i = 0; i < unbound.size(); i++) {
-        TensorNode tmp = TensorNode(std::move(unbound[i]));
-        at::Tensor tmp_tensor = at::detail::make_tensor<NestedTensorImpl>(
-            NestedTensor(std::move(tmp)));
-        result.push_back(tmp_tensor);
+      result.resize(dim_max_size);
+      for (const auto& child : node.unbind()) {
+        std::vector<TensorNode> tensor_nodes;
+        for (at::Tensor tensor : at::unbind(child.payload(), dim - 1)) {
+          tensor_nodes.push_back(TensorNode(std::move(tensor)));
+        }
+        result.push_back(at::detail::make_tensor<NestedTensorImpl>(
+            NestedTensor(std::move(tensor_nodes))));
       }
       return result;
     }

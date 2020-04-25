@@ -189,7 +189,10 @@ class NestedTensor(object):
         """
         # TODO: Design choice: Return zip_longest or zip?
         return tuple(
-            t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind(dim)
+            NestedTensor(t)
+            if nestedtensor._C.is_nested_tensor_impl(t)
+            else t
+            for t in self._impl.unbind(dim)
         )
 
     def to_tensor(self, dim=0):
