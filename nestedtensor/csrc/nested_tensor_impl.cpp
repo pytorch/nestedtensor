@@ -47,6 +47,12 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
+bool NestedTensor_is_pinned(const Tensor& self) {
+  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
+  std::cout << "DDD" << std::endl;
+  return self_impl->_data.is_pinned();
+}
+
 static auto registry =
     torch::RegisterOperators()
         .op(torch::RegisterOperators::options()
@@ -67,5 +73,10 @@ static auto registry =
                     "aten::contiguous(Tensor self, *, MemoryFormat memory_format=contiguous_format) -> Tensor")
                 .impl_unboxedOnlyKernel<
                     Tensor(const Tensor&, MemoryFormat memory_format),
-                    &NestedTensor_contiguous>(NestedTensorKey));
+                    &NestedTensor_contiguous>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema("aten::is_pinned(Tensor self) -> bool")
+                .impl_unboxedOnlyKernel<
+                    bool(const Tensor&),
+                    &NestedTensor_is_pinned>(NestedTensorKey));
 }

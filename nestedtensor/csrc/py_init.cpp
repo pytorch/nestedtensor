@@ -2,9 +2,11 @@
 #include <nestedtensor/csrc/jit_list_apply.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/python_functions.h>
+#include <nestedtensor/csrc/python_nested_tensor.h>
 #include <nestedtensor/csrc/unary.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <nestedtensor/csrc/utils/python_nested_node.h>
+#include <torch/csrc/Size.h>
 #include <torch/extension.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
@@ -25,6 +27,28 @@
 namespace py = pybind11;
 
 using namespace torch::nested_tensor;
+
+py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
+  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
+    if (dim == 0) {
+      return py::cast(s.degree());
+    }
+    // List of Tensors
+    if (s.height() == 1) {
+      std::vector<int64_t> result;
+      for (const auto& child : s.unbind()) {
+        result.push_back(child.payload().get(dim - 1));
+      }
+      return py::tuple(py::cast(result));
+    }
+    std::vector<py::object> result;
+    for (const auto& child : s.unbind()) {
+      result.emplace_back(self(self, child, dim - 1));
+    }
+    return py::tuple(py::cast(result));
+  };
+  return fn(fn, size_node, *index);
+}
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   register_python_nested_node(m);
@@ -105,13 +129,60 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         ->_data.nested_dim();
   });
 
-  m.def(
-      "make_nested_tensor_impl", [](std::vector<at::Tensor> tensors) {
-        std::vector<TensorNode> tensor_nodes;
-        for (size_t i = 0; i < tensors.size(); i++) {
-          tensor_nodes.push_back(TensorNode(std::move(tensors[i])));
-        }
-        return at::detail::make_tensor<at::NestedTensorImpl>(
-            NestedTensor(TensorNode(std::move(tensor_nodes))));
-      });
+  m.def("nested_size", [](at::Tensor self, c10::optional<int64_t> index_) {
+    if (!self.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+      throw std::runtime_error("Function requires NestedTensorImpl");
+    }
+    auto nt =
+        static_cast<at::NestedTensorImpl*>(self.unsafeGetTensorImpl())->_data;
+    if (!index_) {
+      return py::cast(THPPythonNode(
+          map(
+              [](c10::List<int64_t> e) {
+                std::vector<int64_t> e_vec = e.vec();
+                return py::reinterpret_steal<py::object>(
+                    THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
+              },
+              nt.nested_size()),
+          "NestedSize"));
+    }
+    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
+    SizeNode size_node = nt.nested_size();
+    return _nested_helper(index, std::move(size_node));
+  });
+
+  m.def("nested_stride", [](at::Tensor self, c10::optional<int64_t> index_) {
+    if (!self.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+      throw std::runtime_error("Function requires NestedTensorImpl");
+    }
+    auto nt =
+        static_cast<at::NestedTensorImpl*>(self.unsafeGetTensorImpl())->_data;
+    if (!index_) {
+      return py::cast(THPPythonNode(
+          map([](c10::List<int64_t> e)
+                  -> py::object { return py::tuple(py::cast(e.vec())); },
+              nt.nested_stride()),
+          "NestedStride"));
+    }
+    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
+    SizeNode size_node = nt.nested_stride();
+    return _nested_helper(index, std::move(size_node));
+  });
+
+  m.def("sizes", [](at::Tensor tensor) {
+    if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+      throw std::runtime_error("Function requires NestedTensorImpl");
+    }
+    return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl())
+        ->_data.sizes();
+  });
+
+  m.def("make_nested_tensor_impl", [](std::vector<at::Tensor> tensors) {
+    std::vector<TensorNode> tensor_nodes;
+    for (size_t i = 0; i < tensors.size(); i++) {
+      tensor_nodes.push_back(TensorNode(std::move(tensors[i])));
+    }
+    return at::detail::make_tensor<at::NestedTensorImpl>(
+        NestedTensor(TensorNode(std::move(tensor_nodes))));
+  });
 }

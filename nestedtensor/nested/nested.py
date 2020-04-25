@@ -154,7 +154,7 @@ class NestedTensor(object):
     def size(self, dim=None):
         if dim is not None:
             return self.size()[dim]
-        return tuple(self._impl.size())
+        return tuple(nestedtensor._C.sizes(self._impl))
 
     def to(self, *args, **kwargs):
         # TODO: to is currently not supported by impls due to argparsing.
@@ -205,10 +205,10 @@ class NestedTensor(object):
         return self.__str__()
 
     def nested_size(self, dim=None):
-        return self._impl.nested_size(dim)
+        return nestedtensor._C.nested_size(self._impl, dim)
 
     def nested_stride(self, dim=None):
-        return self._impl.nested_stride(dim)
+        return nestedtensor._C.nested_stride(self._impl, dim)
 
     # --- dependent on impl ends ---
 
