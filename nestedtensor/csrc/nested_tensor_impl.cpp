@@ -53,6 +53,69 @@ bool NestedTensor_is_pinned(const Tensor& self) {
   return self_impl->_data.is_pinned();
 }
 
+std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
+  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
+  auto _data = self_impl->_data;
+  dim = at::maybe_wrap_dim(dim, _data.dim());
+  auto node = _data.get_structure();
+  auto nested_dim = _data.nested_dim();
+  if (nested_dim == 1) {
+    if (dim == 0) {
+      std::vector<at::Tensor> result;
+      for (const auto& child : node.unbind()) {
+        result.push_back(child.payload());
+      }
+      return result;
+    } else {
+      int64_t dim_max_size = 0;
+      for (const auto& child : node.unbind()) {
+        int64_t dim_size = child.payload().size(dim - 1);
+        dim_max_size = dim_max_size > dim_size ? dim_max_size : dim_size;
+      }
+      std::vector<std::vector<TensorNode>> unbound;
+      unbound.resize(dim_max_size);
+      for (const auto& child : node.unbind()) {
+        std::vector<at::Tensor> unbound_tensors =
+            at::unbind(child.payload(), dim - 1);
+        for (size_t i = 0; i < unbound_tensors.size(); i++) {
+          unbound[i].push_back(TensorNode(std::move(unbound_tensors[i])));
+        }
+      }
+      std::vector<at::Tensor> result;
+      for (size_t i = 0; i < unbound.size(); i++) {
+        TensorNode tmp = TensorNode(std::move(unbound[i]));
+        at::Tensor tmp_tensor = at::detail::make_tensor<NestedTensorImpl>(
+            NestedTensor(std::move(tmp)));
+        result.push_back(tmp_tensor);
+      }
+      return result;
+    }
+  }
+  std::vector<at::Tensor> unbound_thp;
+  for (auto child : node.unbind()) {
+    unbound_thp.push_back(at::detail::make_tensor<NestedTensorImpl>(NestedTensor(std::move(child))));
+  }
+  if (dim == 0) {
+    return unbound_thp;
+  }
+  std::vector<std::vector<TensorNode>> unbound;
+  for (size_t i = 0; i < unbound_thp.size(); i++) {
+    std::vector<at::Tensor> tmp = unbound_thp[i].unbind(dim - 1);
+    for (size_t j = 0; j < tmp.size(); j++) {
+      if (unbound.size() >= j) {
+        unbound.resize(j + 1);
+      }
+      unbound[j].push_back(TensorNode(std::move(tmp[j])));
+    }
+  }
+  std::vector<at::Tensor> result;
+  for (size_t i = 0; i < unbound.size(); i++) {
+    result.push_back(at::detail::make_tensor<NestedTensorImpl>(
+        NestedTensor(TensorNode(std::move(unbound[i])))));
+  }
+  return result;
+}
+
 static auto registry =
     torch::RegisterOperators()
         .op(torch::RegisterOperators::options()
@@ -78,5 +141,12 @@ static auto registry =
                 .schema("aten::is_pinned(Tensor self) -> bool")
                 .impl_unboxedOnlyKernel<
                     bool(const Tensor&),
-                    &NestedTensor_is_pinned>(NestedTensorKey));
+                    &NestedTensor_is_pinned>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema("aten::unbind.int(Tensor(a) self, int dim=0) -> Tensor(a)[]")
+                .impl_unboxedOnlyKernel<
+                    std::vector<Tensor>(const Tensor&, int64_t),
+                    &NestedTensor_unbind>(NestedTensorKey));
+
+;
 }
