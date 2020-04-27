@@ -594,14 +594,22 @@ class TestNestedTensor(TestCase):
 
 
 class TestContiguous(TestCase):
+    # TODO: Write a test for assertEqual
     def test_contiguous(self):
-        for _ in range(1, 10):
+        for i in range(1, 10):
+            print("i0: " + str(i))
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
+            print("i1: " + str(i))
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
+            print("i2: " + str(i))
             nt = nestedtensor.nested_tensor(data)
+            print("i3: " + str(i))
             self.assertTrue(nt.is_contiguous())
+            print("i4: " + str(i))
             # buf = nt.flatten()
+            print("i5: " + str(i))
             self.assertEqual(nt, nt)
+            print("i6: " + str(i))
             a = nt + nt
         nt.cos_()
         nt.cos()
