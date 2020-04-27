@@ -5,7 +5,7 @@
 
 namespace at {
 
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutogradTensorId;
+constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)

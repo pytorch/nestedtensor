@@ -111,47 +111,17 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
 }
 
 //TODO: CONTINUE HERE!
-Tensor select(const Tensor& self, int64_t dim, int64_t index) {
+Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   int64_t ndim = self.dim();
-  if (ndim == 0) {
-    TORCH_CHECK_INDEX(false, "select() cannot be applied to a 0-dim tensor.");
-  }
   dim = maybe_wrap_dim(dim, ndim);
-  auto size = self.size(dim);
-  if (index < -size || index >= size) {
-    if (self.has_names() && self.names()[dim] != Dimname::wildcard()) {
-      TORCH_CHECK_INDEX(
-          false,
-          "select(): index ",
-          index,
-          " out of range for tensor of size ",
-          self.sizes(),
-          " at dimension ",
-          self.names()[dim]);
-    }
-    TORCH_CHECK_INDEX(
-        false,
-        "select(): index ",
-        index,
-        " out of range for tensor of size ",
-        self.sizes(),
-        " at dimension ",
-        dim);
+  if (dim == 0) {
+    TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
-  if (index < 0) {
-    index += size;
-  }
-  if (self.is_sparse()) {
-    return select_sparse(self, dim, index);
-  }
-  auto sizes = self.sizes().vec();
-  auto strides = self.strides().vec();
-  auto storage_offset = self.storage_offset() + index * strides[dim];
-  sizes.erase(sizes.begin() + dim);
-  strides.erase(strides.begin() + dim);
-  auto result = self.as_strided(sizes, strides, storage_offset);
-  namedinference::propagate_names_except(result, self, {dim});
-  return result;
+  auto input_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
+  TensorNode tn = input_impl->_data.get_structure().unbind()[index];
+  torch::nested_tensor::NestedTensor nt = torch::nested_tensor::NestedTensor(
+      std::move(tn));
+  return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
 static auto registry =
@@ -181,10 +151,17 @@ static auto registry =
                     bool(const Tensor&),
                     &NestedTensor_is_pinned>(NestedTensorKey))
         .op(torch::RegisterOperators::options()
-                .schema("aten::unbind.int(Tensor(a) self, int dim=0) -> Tensor(a)[]")
+                .schema(
+                    "aten::unbind.int(Tensor(a) self, int dim=0) -> Tensor(a)[]")
                 .impl_unboxedOnlyKernel<
                     std::vector<Tensor>(const Tensor&, int64_t),
-                    &NestedTensor_unbind>(NestedTensorKey));
+                    &NestedTensor_unbind>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema(
+                    "aten::select.int(Tensor(a) self, int dim, int index) -> Tensor(a)")
+                .impl_unboxedOnlyKernel<
+                    Tensor(const Tensor&, int64_t, int64_t),
+                    &NestedTensor_select>(NestedTensorKey));
 
 ;
 }
