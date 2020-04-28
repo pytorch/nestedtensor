@@ -236,7 +236,7 @@ class SegLayersBenchMark(object):
             k0 = int(m.group(2))
             k1 = int(m.group(3))
             layer = self.layers.setdefault(
-                name, torch.nn.Conv2d(channels, 3, kernel_size=(k0, k1), dilation=2, bias=False)
+                name, torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
@@ -305,7 +305,6 @@ class SegLayersBenchMark(object):
         for i in range(n):
             h_res = max(1, int(random.gauss(h, h_var)))
             w_res = max(1, int(random.gauss(w, w_var)))
-            print((h_res, w_res))
             inputs.append(torch.randn(c, h_res, w_res))
             targets.append(torch.randint(1, (h_res, w_res), dtype=torch.int64))
 
