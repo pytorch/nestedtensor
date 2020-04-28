@@ -239,16 +239,16 @@ class SegLayersBenchMark(object):
             # Parameters chosen based on dominant settings in
             # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
+                (name, channels, cuda), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
             layer = self.layers.setdefault(
-                name, torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
+                (name, cuda), torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
             )
         if name.startswith("max_pool2d"):
             layer = self.layers.setdefault(
-                name,
+                (name, cuda),
                 torch.nn.MaxPool2d(
                     kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
                 ),
