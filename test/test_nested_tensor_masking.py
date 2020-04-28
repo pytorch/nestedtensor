@@ -1011,15 +1011,15 @@ class TestTensorMask(TestCase):
             nt.nested_tensor([
                 nt.nested_tensor([
                     torch.tensor([[1, 2, 3, 4],
-                                  [5, 6, 7, 8]], dtype=torch.float32, requires_grad=False)
+                                  [5, 6, 7, 8]], dtype=torch.float16, requires_grad=False)
                 ]),
                 nt.nested_tensor([
                     torch.tensor([[1, 2, 3, 4],
-                                  [5, 6, 7, 8]], dtype=torch.float32, requires_grad=False)
+                                  [5, 6, 7, 8]], dtype=torch.float16, requires_grad=False)
                 ]),
                 nt.nested_tensor([
                     torch.tensor([[1, 2, 3, 4],
-                                  [5, 6, 7, 8]], dtype=torch.float32, requires_grad=False)
+                                  [5, 6, 7, 8]], dtype=torch.float16, requires_grad=False)
                 ]),
             ])
         ])
