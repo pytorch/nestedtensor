@@ -58,7 +58,6 @@ def conv2d_iter(self, module):
 @register_benchmark
 def conv2d_pad(self, module):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
-    tensor = tensor.contiguous()
 
     def _conv2d_tensor():
         module(tensor)

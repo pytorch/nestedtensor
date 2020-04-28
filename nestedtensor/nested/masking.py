@@ -178,6 +178,9 @@ def merge_tensor_mask(tensor_mask, mask_dim):
 
     if mask_dim is not None and mask_dim != mask.dim():
         raise RuntimeError("Mask dimension is too small to represent data tensor.")
+    # This is expected to be a no-op, except in rare cases.
+    tensor = tensor.contiguous()
+    mask = mask.contiguous()
     return TensorMask(tensor=tensor, mask=mask)
 
 
