@@ -227,7 +227,7 @@ class SegLayersBenchMark(object):
         self.args = args
         self.layers = {}
 
-    def get_benchmark(self, channels, name):
+    def get_benchmark(self, channels, name, cuda):
         layer = None
         if name.startswith("conv2d"):
             m = re.match(r"conv2d_([a-z]+)_(\d+)x(\d+)", name)
@@ -254,7 +254,7 @@ class SegLayersBenchMark(object):
                 ),
             )
         try:
-            if self.args.cuda:
+            if cuda:
                 layer.cuda()
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
         except KeyError:
@@ -263,6 +263,7 @@ class SegLayersBenchMark(object):
 
     def run(self):
         params = itertools.product(
+            self.args.cuda,
             self.args.N,
             self.args.C,
             self.args.H,
@@ -278,11 +279,11 @@ class SegLayersBenchMark(object):
             
         writer = None
         i = 0
-        for n, c, h, w, seed, h_var, w_var in params:
+        for cuda, n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
-            self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
+            self.inputs, self.targets = self.get_input(cuda, n, c, h, w, h_var, w_var, seed)
 
-            benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
+            benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
 
             for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
@@ -297,6 +298,7 @@ class SegLayersBenchMark(object):
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
                 result["name"] = layer
+                result["cuda"] = cuda
                 if writer is None and self.args.csv_log:
                     writer = csv.DictWriter(open(self.args.csv_log, 'w'), fieldnames=result.keys())
                     writer.writeheader()
@@ -305,21 +307,21 @@ class SegLayersBenchMark(object):
                 print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
                 i += 1
 
-    def get_input(self, n, c, h, w, h_var, w_var, seed):
+    def get_input(self, cuda, n, c, h, w, h_var, w_var, seed):
         inputs = []
         targets = []
 
         torch.manual_seed(seed)
-        if self.args.cuda:
+        if cuda:
             torch.cuda.init()
         for i in range(n):
             h_res = max(1, int(random.gauss(h, h_var)))
             w_res = max(1, int(random.gauss(w, w_var)))
             input_i = torch.randn(c, h_res, w_res)
             target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64)
-            inputs.append(input_i.cuda() if self.args.cuda else input_i)
-            targets.append(target_i.cuda() if self.args.cuda else target_i)
-        if self.args.cuda:
+            inputs.append(input_i.cuda() if cuda else input_i)
+            targets.append(target_i.cuda() if cuda else target_i)
+        if cuda:
             # Synchronize copy operations so they don't influence the benchmark
             torch.cuda.synchronize()
 
@@ -342,7 +344,7 @@ def main(args):
     parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
     parser.add_argument("--verbose", dest="verbose", type=int, default=0)
     parser.add_argument("--csv-log", dest="csv_log", type=str)
-    parser.add_argument("--cuda", dest="cuda", type=bool, default=False)
+    parser.add_argument("--cuda", dest="cuda", type=bool, nargs="+", default=[False])
     args = parser.parse_args()
 
     if args.V is not None:
