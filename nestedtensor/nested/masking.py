@@ -106,8 +106,6 @@ def get_max_size(obj, res=None):
 
 def get_tensor_mask(nt, shape):
     def pad_nt(nt, shape):
-        res_tensor = []
-        res_mask = []
 
         if isinstance(nt, torch.Tensor):
             if nt.numel() == 0:
@@ -115,26 +113,27 @@ def get_tensor_mask(nt, shape):
 
             # Dont pad in case of a scalar
             if nt.dim() == 0:
-                return nt.item(), nt.item()
+                return nt, torch.tensor(True)
 
-            tensor = pad_tensor_to_shape(nt, shape).tolist()
-            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True), shape).tolist()
+            tensor = pad_tensor_to_shape(nt.detach().clone(), shape)
+            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True, dtype=torch.bool), shape)
             return tensor, mask
-        else:
-            if len(nt) == 0:
-                return [0], [0]
-            else:
-                for entry in nt:
-                    tensor, mask = pad_nt(entry, shape)
-                    res_tensor.append(tensor)
-                    res_mask.append(mask)
 
-        return res_tensor, res_mask
+        res_tensor = []
+        res_mask = []
+        if len(nt) == 0:
+            return torch.tensor([0]), torch.tensor([False], dtype=torch.bool)
+        else:
+            for entry in nt:
+                tensor, mask = pad_nt(entry, shape)
+                res_tensor.append(tensor)
+                res_mask.append(mask)
+
+        return torch.stack(res_tensor), torch.stack(res_mask)
 
     t, m = pad_nt(nt, shape)
-    tensor = torch.tensor(t, dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
-    mask = torch.tensor(m, dtype=torch.bool, device=nt.device)
-    return tensor, mask
+    t.requires_grad_(nt.requires_grad)
+    return t, m
 
 
 # Return a tuple of a tensor and a mask that represent the given tensor list

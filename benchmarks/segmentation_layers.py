@@ -7,6 +7,7 @@ import random
 import argparse
 import itertools
 import re
+import csv
 
 
 Benchmarks = {}
@@ -235,8 +236,10 @@ class SegLayersBenchMark(object):
             benchmark_kind = m.group(1)
             k0 = int(m.group(2))
             k1 = int(m.group(3))
+            # Parameters chosen based on dominant settings in
+            # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                name, torch.nn.Conv2d(channels, 3, kernel_size=(k0, k1), bias=False)
+                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
@@ -257,23 +260,31 @@ class SegLayersBenchMark(object):
                 "\n".join(sorted(Benchmarks.keys()))))
 
     def run(self):
-        for n, c, h, w, h_var, w_var, seed in itertools.product(
+        params = itertools.product(
             self.args.N,
             self.args.C,
             self.args.H,
             self.args.W,
-            self.args.HV,
-            self.args.WV,
             self.args.seed,
-        ):
-
+        )
+        if self.args.V:
+            var_params = [(v, v) for v in self.args.V]
+        else:
+            var_params = itertools.product(args.HV, args.WV)
+        params = [[p + v for v in var_params] for p in params]
+        params = sum(params, [])
+            
+        writer = None
+        i = 0
+        for n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
             self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
 
             benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
 
             for layer, benchmark in benchmarks:
-                result = utils.benchmark_fn(benchmark, warmup=self.args.warm)
+                result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
+                result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
                 result["N"] = n
                 result["C"] = c
                 result["H"] = h
@@ -284,12 +295,12 @@ class SegLayersBenchMark(object):
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
                 result["name"] = layer
-
-                print(
-                    ",".join(
-                        str((str(key), result[key])) for key in sorted(result.keys())
-                    )
-                )
+                if writer is None and self.args.csv_log:
+                    writer = csv.DictWriter(open(self.args.csv_log, 'w'), fieldnames=result.keys())
+                    writer.writeheader()
+                writer.writerow(result)
+                print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
+                i += 1
 
     def get_input(self, n, c, h, w, h_var, w_var, seed):
         inputs = []
@@ -297,8 +308,8 @@ class SegLayersBenchMark(object):
 
         torch.manual_seed(seed)
         for i in range(n):
-            h_res = max(1, int(h + random.gauss(h, h_var)))
-            w_res = max(1, int(w + random.gauss(w, w_var)))
+            h_res = max(1, int(random.gauss(h, h_var)))
+            w_res = max(1, int(random.gauss(w, w_var)))
             inputs.append(torch.randn(c, h_res, w_res))
             targets.append(torch.randint(1, (h_res, w_res), dtype=torch.int64))
 
@@ -313,12 +324,21 @@ def main(args):
     parser.add_argument("-C", dest="C", type=int, nargs="+")
     parser.add_argument("-H", dest="H", type=int, nargs="+")
     parser.add_argument("-W", dest="W", type=int, nargs="+")
-    parser.add_argument("-HV", dest="HV", type=int, nargs="+")
-    parser.add_argument("-WV", dest="WV", type=int, nargs="+")
+    parser.add_argument("-HV", dest="HV", type=float, nargs="+")
+    parser.add_argument("-WV", dest="WV", type=float, nargs="+")
+    parser.add_argument("-V", dest="V", type=float, nargs="+")
     parser.add_argument("-S", dest="seed", type=int, nargs="+")
-    parser.add_argument("-WARM", dest="warm", type=float, default=2.0)
-    parser.add_argument("-verbose", dest="verbose", type=int, default=0)
+    parser.add_argument("--warmup", dest="warmup", type=float, default=2.0)
+    parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
+    parser.add_argument("--verbose", dest="verbose", type=int, default=0)
+    parser.add_argument("--csv-log", dest="csv_log", type=str)
     args = parser.parse_args()
+
+    if args.V is not None:
+        if (args.HV is not None or args.WV is not None):
+            raise ValueError("If specifying variance for both H and W, arguments HV and WV must not be set.")
+        args.HV = args.V
+        args.WV = args.V
 
     if args.verbose > 0:
         print("called with: ", args)
