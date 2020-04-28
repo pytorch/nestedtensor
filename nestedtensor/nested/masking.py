@@ -122,7 +122,7 @@ def get_tensor_mask(nt, shape):
         res_tensor = []
         res_mask = []
         if len(nt) == 0:
-            return torch.tensor([0]), torch.tensor([0])
+            return torch.tensor([0]), torch.tensor([True], dtype=torch.bool)
         else:
             for entry in nt:
                 tensor, mask = pad_nt(entry, shape)
