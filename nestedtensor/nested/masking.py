@@ -116,8 +116,8 @@ def get_tensor_mask(nt, shape):
             if nt.dim() == 0:
                 return nt, torch.tensor(True)
 
-            tensor = pad_tensor_to_shape(nt, shape)
-            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True), shape)
+            tensor = pad_tensor_to_shape(nt.detach().clone(), shape)
+            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True, dtype=torch.bool), shape)
             return tensor, mask
 
         res_tensor = []
@@ -132,7 +132,9 @@ def get_tensor_mask(nt, shape):
 
         return torch.stack(res_tensor), torch.stack(res_mask)
 
-    return pad_nt(nt, shape)
+    t, m = pad_nt(nt, shape)
+    t.requires_grad_(nt.requires_grad)
+    return t, m
 
 
 # Return a tuple of a tensor and a mask that represent the given tensor list
