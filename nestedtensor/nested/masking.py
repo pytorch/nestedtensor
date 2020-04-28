@@ -106,35 +106,33 @@ def get_max_size(obj, res=None):
 
 def get_tensor_mask(nt, shape):
     def pad_nt(nt, shape):
-        res_tensor = []
-        res_mask = []
 
         if isinstance(nt, torch.Tensor):
+            # import pdb; pdb.set_trace()
             if nt.numel() == 0:
                 raise RuntimeError("Empty tensors are not yet supported.")
 
             # Dont pad in case of a scalar
             if nt.dim() == 0:
-                return nt.item(), nt.item()
+                return nt, torch.tensor(True)
 
-            tensor = pad_tensor_to_shape(nt, shape).tolist()
-            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True), shape).tolist()
+            tensor = pad_tensor_to_shape(nt, shape)
+            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True), shape)
             return tensor, mask
+
+        res_tensor = []
+        res_mask = []
+        if len(nt) == 0:
+            return torch.tensor([0]), torch.tensor([0])
         else:
-            if len(nt) == 0:
-                return [0], [0]
-            else:
-                for entry in nt:
-                    tensor, mask = pad_nt(entry, shape)
-                    res_tensor.append(tensor)
-                    res_mask.append(mask)
+            for entry in nt:
+                tensor, mask = pad_nt(entry, shape)
+                res_tensor.append(tensor)
+                res_mask.append(mask)
 
-        return res_tensor, res_mask
+        return torch.stack(res_tensor), torch.stack(res_mask)
 
-    t, m = pad_nt(nt, shape)
-    tensor = torch.tensor(t, dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
-    mask = torch.tensor(m, dtype=torch.bool, device=nt.device)
-    return tensor, mask
+    return pad_nt(nt, shape)
 
 
 # Return a tuple of a tensor and a mask that represent the given tensor list
@@ -152,9 +150,16 @@ def to_tensor_mask(nt, mask_dim):
         mask = torch.tensor(True) if mask_dim == 0 or mask_dim == None else torch.tensor([True])
         return res_scalar, mask
 
+    # import time
+    # t0 = time.monotonic()
     max_size = get_max_size(nt)
+    # print("str1: " + str(time.monotonic() - t0))
+    # t0 = time.monotonic()
     res_tensor, res_mask = get_tensor_mask(nt, max_size)
+    # print("str2: " + str(time.monotonic() - t0))
+    # t0 = time.monotonic()
     tensor_mask_tuple = merge_tensor_mask(TensorMask(res_tensor, res_mask), mask_dim)
+    # print("str3: " + str(time.monotonic() - t0))
 
     return tensor_mask_tuple.tensor, tensor_mask_tuple.mask
 
