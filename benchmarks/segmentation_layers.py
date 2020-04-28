@@ -239,7 +239,7 @@ class SegLayersBenchMark(object):
             # Parameters chosen based on dominant settings in
             # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
+                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=1, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
@@ -275,6 +275,7 @@ class SegLayersBenchMark(object):
         params = sum(params, [])
             
         writer = None
+        i = 0
         for n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
             self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
@@ -283,6 +284,7 @@ class SegLayersBenchMark(object):
 
             for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
+                result["#"] = "(" + str(i) + "/" + str(len(benchmarks) * len(params)) + ")"
                 result["N"] = n
                 result["C"] = c
                 result["H"] = h
@@ -298,6 +300,7 @@ class SegLayersBenchMark(object):
                     writer.writeheader()
                 writer.writerow(result)
                 print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
+                i += 1
 
     def get_input(self, n, c, h, w, h_var, w_var, seed):
         inputs = []
@@ -321,9 +324,9 @@ def main(args):
     parser.add_argument("-C", dest="C", type=int, nargs="+")
     parser.add_argument("-H", dest="H", type=int, nargs="+")
     parser.add_argument("-W", dest="W", type=int, nargs="+")
-    parser.add_argument("-HV", dest="HV", type=int, nargs="+")
-    parser.add_argument("-WV", dest="WV", type=int, nargs="+")
-    parser.add_argument("-V", dest="V", type=int, nargs="+")
+    parser.add_argument("-HV", dest="HV", type=float, nargs="+")
+    parser.add_argument("-WV", dest="WV", type=float, nargs="+")
+    parser.add_argument("-V", dest="V", type=float, nargs="+")
     parser.add_argument("-S", dest="seed", type=int, nargs="+")
     parser.add_argument("--warmup", dest="warmup", type=float, default=2.0)
     parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
