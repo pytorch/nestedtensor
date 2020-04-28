@@ -41,7 +41,6 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0):
                 t = 0
             continue
         times.append(ti)
-        break
     times = torch.tensor(times) * 1e6
     if use_cprofile:
         s = io.StringIO()

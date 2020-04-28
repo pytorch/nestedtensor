@@ -49,16 +49,16 @@ def relu_nt(self):
 #
 @register_benchmark
 def conv2d_iter(self, module):
-    tensors = [i.clone() for i in self.inputs]
     def _conv2d_tensor_iter():
-        for t in tensors:
+        for t in self.inputs:
             module(t.unsqueeze(0)).squeeze(0)
 
     return _conv2d_tensor_iter
 
 @register_benchmark
 def conv2d_pad(self, module):
-    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask().contiguous()
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+    tensor = tensor.contiguous()
 
     def _conv2d_tensor():
         module(tensor)
@@ -237,11 +237,10 @@ class SegLayersBenchMark(object):
             benchmark_kind = m.group(1)
             k0 = int(m.group(2))
             k1 = int(m.group(3))
-            print((k0, k1))
             # Parameters chosen based on dominant settings in
             # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=1, bias=False)
+                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
@@ -287,10 +286,6 @@ class SegLayersBenchMark(object):
             benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
 
             for layer, benchmark in benchmarks:
-                # import time
-                # print("Sleeping1")
-                # time.sleep(1.0)
-                # print("Sleeping2")
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
                 result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
                 result["N"] = n
