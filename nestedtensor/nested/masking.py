@@ -108,7 +108,6 @@ def get_tensor_mask(nt, shape):
     def pad_nt(nt, shape):
 
         if isinstance(nt, torch.Tensor):
-            # import pdb; pdb.set_trace()
             if nt.numel() == 0:
                 raise RuntimeError("Empty tensors are not yet supported.")
 
@@ -152,16 +151,9 @@ def to_tensor_mask(nt, mask_dim):
         mask = torch.tensor(True) if mask_dim == 0 or mask_dim == None else torch.tensor([True])
         return res_scalar, mask
 
-    # import time
-    # t0 = time.monotonic()
     max_size = get_max_size(nt)
-    # print("str1: " + str(time.monotonic() - t0))
-    # t0 = time.monotonic()
     res_tensor, res_mask = get_tensor_mask(nt, max_size)
-    # print("str2: " + str(time.monotonic() - t0))
-    # t0 = time.monotonic()
     tensor_mask_tuple = merge_tensor_mask(TensorMask(res_tensor, res_mask), mask_dim)
-    # print("str3: " + str(time.monotonic() - t0))
 
     return tensor_mask_tuple.tensor, tensor_mask_tuple.mask
 
