@@ -268,9 +268,8 @@ class SegLayersBenchMark(object):
             var_params = [(v, v) for v in self.args.V]
         else:
             var_params = itertools.product(args.HV, args.WV)
-        params = [p + v for v in var_params for p in params]
-        for p in params:
-            print(p)
+        params = [[p + v for v in var_params] for p in params]
+        params = sum(params, [])
             
         for n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
