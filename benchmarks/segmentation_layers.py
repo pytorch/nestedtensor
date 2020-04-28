@@ -7,6 +7,7 @@ import random
 import argparse
 import itertools
 import re
+import csv
 
 
 Benchmarks = {}
@@ -238,7 +239,7 @@ class SegLayersBenchMark(object):
             # Parameters chosen based on dominant settings in
             # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                name, torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
+                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
@@ -273,6 +274,7 @@ class SegLayersBenchMark(object):
         params = [[p + v for v in var_params] for p in params]
         params = sum(params, [])
             
+        writer = None
         for n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
             self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
@@ -291,12 +293,11 @@ class SegLayersBenchMark(object):
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
                 result["name"] = layer
-
-                print(
-                    ",".join(
-                        str((str(key), result[key])) for key in sorted(result.keys())
-                    )
-                )
+                if writer is None and self.args.csv_log:
+                    writer = csv.DictWriter(open(self.args.csv_log, 'w'), fieldnames=result.keys())
+                    writer.writeheader()
+                writer.writerow(result)
+                print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
 
     def get_input(self, n, c, h, w, h_var, w_var, seed):
         inputs = []
@@ -326,7 +327,8 @@ def main(args):
     parser.add_argument("-S", dest="seed", type=int, nargs="+")
     parser.add_argument("--warmup", dest="warmup", type=float, default=2.0)
     parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
-    parser.add_argument("-verbose", dest="verbose", type=int, default=0)
+    parser.add_argument("--verbose", dest="verbose", type=int, default=0)
+    parser.add_argument("--csv-log", dest="csv_log", type=str)
     args = parser.parse_args()
 
     if args.V is not None:
