@@ -236,7 +236,7 @@ class SegLayersBenchMark(object):
             k0 = int(m.group(2))
             k1 = int(m.group(3))
             layer = self.layers.setdefault(
-                name, torch.nn.Conv2d(channels, 3, kernel_size=(k0, k1), bias=False)
+                name, torch.nn.Conv2d(channels, 3, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
@@ -257,16 +257,22 @@ class SegLayersBenchMark(object):
                 "\n".join(sorted(Benchmarks.keys()))))
 
     def run(self):
-        for n, c, h, w, h_var, w_var, seed in itertools.product(
+        params = itertools.product(
             self.args.N,
             self.args.C,
             self.args.H,
             self.args.W,
-            self.args.HV,
-            self.args.WV,
             self.args.seed,
-        ):
-
+        )
+        if self.args.V:
+            var_params = [(v, v) for v in self.args.V]
+        else:
+            var_params = itertools.product(args.HV, args.WV)
+        params = [p + v for v in var_params for p in params]
+        for p in params:
+            print(p)
+            
+        for n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
             self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
 
@@ -297,8 +303,9 @@ class SegLayersBenchMark(object):
 
         torch.manual_seed(seed)
         for i in range(n):
-            h_res = max(1, int(h + random.gauss(h, h_var)))
-            w_res = max(1, int(w + random.gauss(w, w_var)))
+            h_res = max(1, int(random.gauss(h, h_var)))
+            w_res = max(1, int(random.gauss(w, w_var)))
+            print((h_res, w_res))
             inputs.append(torch.randn(c, h_res, w_res))
             targets.append(torch.randint(1, (h_res, w_res), dtype=torch.int64))
 
@@ -315,10 +322,17 @@ def main(args):
     parser.add_argument("-W", dest="W", type=int, nargs="+")
     parser.add_argument("-HV", dest="HV", type=int, nargs="+")
     parser.add_argument("-WV", dest="WV", type=int, nargs="+")
+    parser.add_argument("-V", dest="V", type=int, nargs="+")
     parser.add_argument("-S", dest="seed", type=int, nargs="+")
     parser.add_argument("-WARM", dest="warm", type=float, default=2.0)
     parser.add_argument("-verbose", dest="verbose", type=int, default=0)
     args = parser.parse_args()
+
+    if args.V is not None:
+        if (args.HV is not None or args.WV is not None):
+            raise ValueError("If specifying variance for both H and W, arguments HV and WV must not be set.")
+        args.HV = args.V
+        args.WV = args.V
 
     if args.verbose > 0:
         print("called with: ", args)
