@@ -235,6 +235,8 @@ class SegLayersBenchMark(object):
             benchmark_kind = m.group(1)
             k0 = int(m.group(2))
             k1 = int(m.group(3))
+            # Parameters chosen based on dominant settings in
+            # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
                 name, torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
@@ -278,7 +280,7 @@ class SegLayersBenchMark(object):
             benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
 
             for layer, benchmark in benchmarks:
-                result = utils.benchmark_fn(benchmark, warmup=self.args.warm)
+                result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
                 result["N"] = n
                 result["C"] = c
                 result["H"] = h
@@ -322,7 +324,8 @@ def main(args):
     parser.add_argument("-WV", dest="WV", type=int, nargs="+")
     parser.add_argument("-V", dest="V", type=int, nargs="+")
     parser.add_argument("-S", dest="seed", type=int, nargs="+")
-    parser.add_argument("-WARM", dest="warm", type=float, default=2.0)
+    parser.add_argument("--warmup", dest="warmup", type=float, default=2.0)
+    parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
     parser.add_argument("-verbose", dest="verbose", type=int, default=0)
     args = parser.parse_args()
 
