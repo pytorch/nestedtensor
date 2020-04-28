@@ -49,15 +49,16 @@ def relu_nt(self):
 #
 @register_benchmark
 def conv2d_iter(self, module):
+    tensors = [i.clone() for i in self.inputs]
     def _conv2d_tensor_iter():
-        for t in self.inputs:
+        for t in tensors:
             module(t.unsqueeze(0)).squeeze(0)
 
     return _conv2d_tensor_iter
 
 @register_benchmark
 def conv2d_pad(self, module):
-    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask().contiguous()
 
     def _conv2d_tensor():
         module(tensor)
@@ -236,10 +237,11 @@ class SegLayersBenchMark(object):
             benchmark_kind = m.group(1)
             k0 = int(m.group(2))
             k1 = int(m.group(3))
+            print((k0, k1))
             # Parameters chosen based on dominant settings in
             # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
+                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=1, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
@@ -254,6 +256,8 @@ class SegLayersBenchMark(object):
                 ),
             )
         try:
+            if self.args.cuda:
+                layer.cuda()
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
         except KeyError:
             raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
@@ -283,6 +287,10 @@ class SegLayersBenchMark(object):
             benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
 
             for layer, benchmark in benchmarks:
+                # import time
+                # print("Sleeping1")
+                # time.sleep(1.0)
+                # print("Sleeping2")
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
                 result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
                 result["N"] = n
@@ -298,7 +306,8 @@ class SegLayersBenchMark(object):
                 if writer is None and self.args.csv_log:
                     writer = csv.DictWriter(open(self.args.csv_log, 'w'), fieldnames=result.keys())
                     writer.writeheader()
-                writer.writerow(result)
+                if writer is not None:
+                    writer.writerow(result)
                 print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
                 i += 1
 
@@ -307,11 +316,18 @@ class SegLayersBenchMark(object):
         targets = []
 
         torch.manual_seed(seed)
+        if self.args.cuda:
+            torch.cuda.init()
         for i in range(n):
             h_res = max(1, int(random.gauss(h, h_var)))
             w_res = max(1, int(random.gauss(w, w_var)))
-            inputs.append(torch.randn(c, h_res, w_res))
-            targets.append(torch.randint(1, (h_res, w_res), dtype=torch.int64))
+            input_i = torch.randn(c, h_res, w_res)
+            target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64)
+            inputs.append(input_i.cuda() if self.args.cuda else input_i)
+            targets.append(target_i.cuda() if self.args.cuda else target_i)
+        if self.args.cuda:
+            # Synchronize copy operations so they don't influence the benchmark
+            torch.cuda.synchronize()
 
         return inputs, targets
 
@@ -332,6 +348,7 @@ def main(args):
     parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
     parser.add_argument("--verbose", dest="verbose", type=int, default=0)
     parser.add_argument("--csv-log", dest="csv_log", type=str)
+    parser.add_argument("--cuda", dest="cuda", type=bool, default=False)
     args = parser.parse_args()
 
     if args.V is not None:

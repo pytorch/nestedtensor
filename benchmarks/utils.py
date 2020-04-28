@@ -22,7 +22,10 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0):
     pr = cProfile.Profile()
     cuda_avail = torch.cuda.is_available()
     while (t < run_time):
-        ti = time.time()
+        if cuda_avail:
+            torch.cuda.synchronize()
+            torch.cuda.synchronize()
+        ti = time.monotonic()
         if use_cprofile:
             pr.enable()
         fn()
@@ -30,7 +33,7 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0):
             torch.cuda.synchronize()
         if use_cprofile:
             pr.disable()
-        ti = time.time() - ti
+        ti = time.monotonic() - ti
         t += ti
         if warmup is not None:
             if t > warmup:
@@ -38,6 +41,7 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0):
                 t = 0
             continue
         times.append(ti)
+        break
     times = torch.tensor(times) * 1e6
     if use_cprofile:
         s = io.StringIO()
