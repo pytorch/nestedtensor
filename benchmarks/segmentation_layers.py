@@ -284,7 +284,7 @@ class SegLayersBenchMark(object):
 
             for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
-                result["#"] = "(" + str(i) + "/" + str(len(benchmarks) * len(params)) + ")"
+                result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
                 result["N"] = n
                 result["C"] = c
                 result["H"] = h
