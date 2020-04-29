@@ -344,8 +344,12 @@ def main(args):
     parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
     parser.add_argument("--verbose", dest="verbose", type=int, default=0)
     parser.add_argument("--csv-log", dest="csv_log", type=str)
-    parser.add_argument("--cuda", dest="cuda", type=bool, nargs="+", default=[False])
+    parser.add_argument("--cuda", dest="cuda", type=str, nargs="+", default=["False"])
     args = parser.parse_args()
+    for v in args.cuda:
+        if v not in ["False", "True"]:
+            raise ValueError("Argument --cuda may only be passed a list of True or False. Got {} instead.".format(args.cuda))
+    args.cuda = [True if c == "True" else False for c in args.cuda]
 
     if args.V is not None:
         if (args.HV is not None or args.WV is not None):
