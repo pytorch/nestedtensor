@@ -65,6 +65,9 @@ NestedTensor squeeze(
 
 NestedTensor relu(NestedTensor input, 
                   c10::optional<bool> inplace) {
+  if (input.is_contiguous()) {
+    return NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
+  }
   TensorNode input_structure = input.get_structure();
   TensorNode res = map([&](at::Tensor t){
       return torch::relu(t.unsqueeze(0)).squeeze(0);

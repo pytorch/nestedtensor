@@ -273,7 +273,7 @@ class SegLayersBenchMark(object):
         if self.args.V:
             var_params = [(v, v) for v in self.args.V]
         else:
-            var_params = itertools.product(args.HV, args.WV)
+            var_params = itertools.product(self.args.HV, self.args.WV)
         params = [[p + v for v in var_params] for p in params]
         params = sum(params, [])
             
