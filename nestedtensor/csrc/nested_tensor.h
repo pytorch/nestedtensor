@@ -117,6 +117,9 @@ struct NestedTensor {
   at::ScalarType scalar_type() const {
     return _first_variable.scalar_type();
   }
+  at::Layout layout() const {
+    return _first_variable.layout();
+  }
   at::Backend backend() const {
     return options().backend();
   }

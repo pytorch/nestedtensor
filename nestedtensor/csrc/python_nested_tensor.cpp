@@ -38,7 +38,7 @@ py::object THPNestedTensor::nested_size(c10::optional<int64_t> index_) {
   if (!index_) {
     return py::cast(THPPythonNode(
         map([](c10::List<int64_t> e)
-          { 
+          {
           std::vector<int64_t> e_vec = e.vec();
           return py::reinterpret_steal<py::object>(
               THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
@@ -87,12 +87,12 @@ std::string THPNestedTensor::str() {
 
 py::object THPNestedTensor::getDtype() {
   return py::reinterpret_steal<py::object>(
-      torch::autograd::utils::wrap(torch::getDtype(_data.scalar_type())));
+      torch::autograd::utils::wrap(torch::getTHPDtype(_data.scalar_type())));
 }
 
 py::object THPNestedTensor::getLayout() {
   return py::reinterpret_steal<py::object>(
-      torch::autograd::utils::wrap(torch::getLayout(_data.backend())));
+      torch::autograd::utils::wrap(torch::getTHPLayout(_data.layout())));
 }
 
 py::object THPNestedTensor::getDevice() {
