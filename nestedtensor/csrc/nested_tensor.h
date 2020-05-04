@@ -120,6 +120,9 @@ struct NestedTensor {
   at::Backend backend() const {
     return options().backend();
   }
+  at::Layout layout() const {
+    return _first_variable.layout();
+  }
   at::Device device() const {
     return _first_variable.device();
   }

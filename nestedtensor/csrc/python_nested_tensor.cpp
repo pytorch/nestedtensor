@@ -87,12 +87,12 @@ std::string THPNestedTensor::str() {
 
 py::object THPNestedTensor::getDtype() {
   return py::reinterpret_steal<py::object>(
-      torch::autograd::utils::wrap(torch::getDtype(_data.scalar_type())));
+      torch::autograd::utils::wrap(torch::getTHPDtype(_data.scalar_type())));
 }
 
 py::object THPNestedTensor::getLayout() {
   return py::reinterpret_steal<py::object>(
-      torch::autograd::utils::wrap(torch::getLayout(_data.backend())));
+      torch::autograd::utils::wrap(torch::getTHPLayout(_data.layout())));
 }
 
 py::object THPNestedTensor::getDevice() {
