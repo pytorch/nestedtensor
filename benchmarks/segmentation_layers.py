@@ -227,7 +227,7 @@ class SegLayersBenchMark(object):
         self.args = args
         self.layers = {}
 
-    def get_benchmark(self, channels, name):
+    def get_benchmark(self, channels, name, cuda):
         layer = None
         if name.startswith("conv2d"):
             m = re.match(r"conv2d_([a-z]+)_(\d+)x(\d+)", name)
@@ -239,21 +239,23 @@ class SegLayersBenchMark(object):
             # Parameters chosen based on dominant settings in
             # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                (name, channels), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
+                (name, channels, cuda), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
             layer = self.layers.setdefault(
-                name, torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
+                (name, cuda), torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
             )
         if name.startswith("max_pool2d"):
             layer = self.layers.setdefault(
-                name,
+                (name, cuda),
                 torch.nn.MaxPool2d(
                     kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
                 ),
             )
         try:
+            if cuda:
+                layer.cuda()
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
         except KeyError:
             raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
@@ -261,6 +263,7 @@ class SegLayersBenchMark(object):
 
     def run(self):
         params = itertools.product(
+            self.args.cuda,
             self.args.N,
             self.args.C,
             self.args.H,
@@ -270,17 +273,17 @@ class SegLayersBenchMark(object):
         if self.args.V:
             var_params = [(v, v) for v in self.args.V]
         else:
-            var_params = itertools.product(args.HV, args.WV)
+            var_params = itertools.product(self.args.HV, self.args.WV)
         params = [[p + v for v in var_params] for p in params]
         params = sum(params, [])
             
         writer = None
         i = 0
-        for n, c, h, w, seed, h_var, w_var in params:
+        for cuda, n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
-            self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
+            self.inputs, self.targets = self.get_input(cuda, n, c, h, w, h_var, w_var, seed)
 
-            benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
+            benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
 
             for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
@@ -295,23 +298,32 @@ class SegLayersBenchMark(object):
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
                 result["name"] = layer
+                result["cuda"] = cuda
                 if writer is None and self.args.csv_log:
                     writer = csv.DictWriter(open(self.args.csv_log, 'w'), fieldnames=result.keys())
                     writer.writeheader()
-                writer.writerow(result)
+                if writer is not None:
+                    writer.writerow(result)
                 print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
                 i += 1
 
-    def get_input(self, n, c, h, w, h_var, w_var, seed):
+    def get_input(self, cuda, n, c, h, w, h_var, w_var, seed):
         inputs = []
         targets = []
 
         torch.manual_seed(seed)
+        if cuda:
+            torch.cuda.init()
         for i in range(n):
             h_res = max(1, int(random.gauss(h, h_var)))
             w_res = max(1, int(random.gauss(w, w_var)))
-            inputs.append(torch.randn(c, h_res, w_res))
-            targets.append(torch.randint(1, (h_res, w_res), dtype=torch.int64))
+            input_i = torch.randn(c, h_res, w_res)
+            target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64)
+            inputs.append(input_i.cuda() if cuda else input_i)
+            targets.append(target_i.cuda() if cuda else target_i)
+        if cuda:
+            # Synchronize copy operations so they don't influence the benchmark
+            torch.cuda.synchronize()
 
         return inputs, targets
 
@@ -332,7 +344,12 @@ def main(args):
     parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
     parser.add_argument("--verbose", dest="verbose", type=int, default=0)
     parser.add_argument("--csv-log", dest="csv_log", type=str)
+    parser.add_argument("--cuda", dest="cuda", type=str, nargs="+", default=["False"])
     args = parser.parse_args()
+    for v in args.cuda:
+        if v not in ["False", "True"]:
+            raise ValueError("Argument --cuda may only be passed a list of True or False. Got {} instead.".format(args.cuda))
+    args.cuda = [True if c == "True" else False for c in args.cuda]
 
     if args.V is not None:
         if (args.HV is not None or args.WV is not None):
