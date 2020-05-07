@@ -7,6 +7,7 @@ import random
 import argparse
 import itertools
 import re
+import csv
 
 
 Benchmarks = {}
@@ -226,7 +227,7 @@ class SegLayersBenchMark(object):
         self.args = args
         self.layers = {}
 
-    def get_benchmark(self, channels, name):
+    def get_benchmark(self, channels, name, cuda):
         layer = None
         if name.startswith("conv2d"):
             m = re.match(r"conv2d_([a-z]+)_(\d+)x(\d+)", name)
@@ -235,45 +236,58 @@ class SegLayersBenchMark(object):
             benchmark_kind = m.group(1)
             k0 = int(m.group(2))
             k1 = int(m.group(3))
+            # Parameters chosen based on dominant settings in
+            # https://github.com/pytorch/vision/blob/master/torchvision/models/segmentation/segmentation.py#L19
             layer = self.layers.setdefault(
-                name, torch.nn.Conv2d(channels, 3, kernel_size=(k0, k1), bias=False)
+                (name, channels, cuda), torch.nn.Conv2d(channels, channels, kernel_size=(k0, k1), dilation=2, bias=False)
             )
             name = "conv2d_" + benchmark_kind
         if name.startswith("batch_norm"):
             layer = self.layers.setdefault(
-                name, torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
+                (name, cuda), torch.nn.BatchNorm2d(channels, 1e-05, 0.1).eval()
             )
         if name.startswith("max_pool2d"):
             layer = self.layers.setdefault(
-                name,
+                (name, cuda),
                 torch.nn.MaxPool2d(
                     kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
                 ),
             )
         try:
+            if cuda:
+                layer.cuda()
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
         except KeyError:
             raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
                 "\n".join(sorted(Benchmarks.keys()))))
 
     def run(self):
-        for n, c, h, w, h_var, w_var, seed in itertools.product(
+        params = itertools.product(
+            self.args.cuda,
             self.args.N,
             self.args.C,
             self.args.H,
             self.args.W,
-            self.args.HV,
-            self.args.WV,
             self.args.seed,
-        ):
-
+        )
+        if self.args.V:
+            var_params = [(v, v) for v in self.args.V]
+        else:
+            var_params = itertools.product(self.args.HV, self.args.WV)
+        params = [[p + v for v in var_params] for p in params]
+        params = sum(params, [])
+            
+        writer = None
+        i = 0
+        for cuda, n, c, h, w, seed, h_var, w_var in params:
             # generate inputs before iterating layers to have the same imput per layer
-            self.inputs, self.targets = self.get_input(n, c, h, w, h_var, w_var, seed)
+            self.inputs, self.targets = self.get_input(cuda, n, c, h, w, h_var, w_var, seed)
 
-            benchmarks = [(layer, self.get_benchmark(c, layer)) for layer in self.args.layers]
+            benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
 
             for layer, benchmark in benchmarks:
-                result = utils.benchmark_fn(benchmark, warmup=self.args.warm)
+                result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
+                result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
                 result["N"] = n
                 result["C"] = c
                 result["H"] = h
@@ -284,23 +298,32 @@ class SegLayersBenchMark(object):
                 result["avg_us"] = int(result["avg_us"])
                 result["std_us"] = int(result["std_us"])
                 result["name"] = layer
+                result["cuda"] = cuda
+                if writer is None and self.args.csv_log:
+                    writer = csv.DictWriter(open(self.args.csv_log, 'w'), fieldnames=result.keys())
+                    writer.writeheader()
+                if writer is not None:
+                    writer.writerow(result)
+                print(",".join(str((str(key), result[key])) for key in sorted(result.keys())))
+                i += 1
 
-                print(
-                    ",".join(
-                        str((str(key), result[key])) for key in sorted(result.keys())
-                    )
-                )
-
-    def get_input(self, n, c, h, w, h_var, w_var, seed):
+    def get_input(self, cuda, n, c, h, w, h_var, w_var, seed):
         inputs = []
         targets = []
 
         torch.manual_seed(seed)
+        if cuda:
+            torch.cuda.init()
         for i in range(n):
-            h_res = max(1, int(h + random.gauss(h, h_var)))
-            w_res = max(1, int(w + random.gauss(w, w_var)))
-            inputs.append(torch.randn(c, h_res, w_res))
-            targets.append(torch.randint(1, (h_res, w_res), dtype=torch.int64))
+            h_res = max(1, int(random.gauss(h, h_var)))
+            w_res = max(1, int(random.gauss(w, w_var)))
+            input_i = torch.randn(c, h_res, w_res)
+            target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64)
+            inputs.append(input_i.cuda() if cuda else input_i)
+            targets.append(target_i.cuda() if cuda else target_i)
+        if cuda:
+            # Synchronize copy operations so they don't influence the benchmark
+            torch.cuda.synchronize()
 
         return inputs, targets
 
@@ -313,12 +336,26 @@ def main(args):
     parser.add_argument("-C", dest="C", type=int, nargs="+")
     parser.add_argument("-H", dest="H", type=int, nargs="+")
     parser.add_argument("-W", dest="W", type=int, nargs="+")
-    parser.add_argument("-HV", dest="HV", type=int, nargs="+")
-    parser.add_argument("-WV", dest="WV", type=int, nargs="+")
+    parser.add_argument("-HV", dest="HV", type=float, nargs="+")
+    parser.add_argument("-WV", dest="WV", type=float, nargs="+")
+    parser.add_argument("-V", dest="V", type=float, nargs="+")
     parser.add_argument("-S", dest="seed", type=int, nargs="+")
-    parser.add_argument("-WARM", dest="warm", type=float, default=2.0)
-    parser.add_argument("-verbose", dest="verbose", type=int, default=0)
+    parser.add_argument("--warmup", dest="warmup", type=float, default=2.0)
+    parser.add_argument("--run-time", dest="run_time", type=float, default=5.0)
+    parser.add_argument("--verbose", dest="verbose", type=int, default=0)
+    parser.add_argument("--csv-log", dest="csv_log", type=str)
+    parser.add_argument("--cuda", dest="cuda", type=str, nargs="+", default=["False"])
     args = parser.parse_args()
+    for v in args.cuda:
+        if v not in ["False", "True"]:
+            raise ValueError("Argument --cuda may only be passed a list of True or False. Got {} instead.".format(args.cuda))
+    args.cuda = [True if c == "True" else False for c in args.cuda]
+
+    if args.V is not None:
+        if (args.HV is not None or args.WV is not None):
+            raise ValueError("If specifying variance for both H and W, arguments HV and WV must not be set.")
+        args.HV = args.V
+        args.WV = args.V
 
     if args.verbose > 0:
         print("called with: ", args)
