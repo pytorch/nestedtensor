@@ -90,6 +90,7 @@ bool NestedTensor_is_pinned(const Tensor& self) {
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
+  std::cout << "unbind with dim: " << dim << std::endl;
   auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
   auto _data = self_impl->_data;
   dim = at::maybe_wrap_dim(dim, _data.dim());
@@ -103,16 +104,20 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
       }
       return result;
     } else {
+      std::cout << "REE1" << std::endl;
       int64_t dim_max_size = 0;
       for (const auto& child : node.unbind()) {
         int64_t dim_size = child.payload().size(dim - 1);
         dim_max_size = dim_max_size > dim_size ? dim_max_size : dim_size;
       }
+      std::cout << "dim_max_size: " << dim_max_size << std::endl;
       std::vector<at::Tensor> result;
       result.resize(dim_max_size);
       for (const auto& child : node.unbind()) {
         std::vector<TensorNode> tensor_nodes;
+        std::cout << "HEEEEEEEEEE" << std::endl;
         for (at::Tensor tensor : at::unbind(child.payload(), dim - 1)) {
+        std::cout << "HEEEEEEEEEE2 tensor:" << tensor << std::endl;
           tensor_nodes.push_back(TensorNode(std::move(tensor)));
         }
         result.push_back(at::detail::make_tensor<NestedTensorImpl>(

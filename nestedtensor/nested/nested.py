@@ -196,7 +196,13 @@ class NestedTensor(object):
         """
         # TODO: Design choice: Return zip_longest or zip?
         print('self._impl.unbind(dim)')
-        for i, t in enumerate(self._impl.unbind(dim)):
+        print('dim')
+        print(dim)
+        print('self.nested_size()')
+        print(self.nested_size())
+        unbound = self._impl.unbind(dim)
+        print("DONE")
+        for i, t in enumerate(unbound):
             print(i)
             print(t)
         return tuple(
