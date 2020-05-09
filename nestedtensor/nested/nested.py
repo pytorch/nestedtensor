@@ -2,7 +2,6 @@ import torch
 import numbers
 from functools import wraps
 from . import masking
-from . import monkey_patch
 import collections
 import os
 
@@ -189,9 +188,7 @@ class NestedTensor(object):
         """
         # TODO: Design choice: Return zip_longest or zip?
         return tuple(
-            NestedTensor(t)
-            if nestedtensor._C.is_nested_tensor_impl(t)
-            else t
+            NestedTensor(t) if nestedtensor._C.is_nested_tensor_impl(t) else t
             for t in self._impl.unbind(dim)
         )
 
@@ -216,6 +213,8 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
+        print('func')
+        print(func)
         def wrap_result(result):
             return result if torch.is_tensor(result) else NestedTensor(result)
 
@@ -246,11 +245,7 @@ class NestedTensor(object):
         raise NotImplementedError("This has not been covered by NestedTensor 0.0.1")
 
     def __getitem__(self, key):
-        result = self._impl[key]
-        if torch.is_tensor(result):
-            return result
-        else:
-            return NestedTensor(result)
+        return nestedtensor._C.get_item(self._impl, key)
 
     def __iter__(self):
         return iter(self.unbind())
@@ -291,3 +286,13 @@ class NestedTensor(object):
 
     def squeeze_(self, dim=None):
         return NestedTensor(self._impl.squeeze_(dim))
+
+    def __add__(self, other):
+        return NestedTensor(self._impl + other._impl)
+
+    def cos_(self):
+        self._impl.cos_()
+        return self
+
+    def cos(self):
+        return NestedTensor(self._impl.cos())

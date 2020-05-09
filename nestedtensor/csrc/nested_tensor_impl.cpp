@@ -8,6 +8,13 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
+at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
+  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+    throw std::runtime_error("Function requires NestedTensorImpl");
+  }
+  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
+}
+
 // TODO: The dispatcher has trouble with this so we register an unboxed kernel.
 Tensor NestedTensor_conv2d(const Tensor& input, const Tensor& weight,
                             const Tensor& bias, IntArrayRef stride,
@@ -124,6 +131,34 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
+// TODO: Could have a NestedTensorIterator that does binary ops
+Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
+  auto self_impl = get_nested_tensor_impl(self);
+  auto other_impl = get_nested_tensor_impl(other);
+  TensorNode result_tensor_node =
+      map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
+          self_impl->_data.get_structure(),
+          other_impl->_data.get_structure());
+  return at::detail::make_tensor<NestedTensorImpl>(
+      NestedTensor(std::move(result_tensor_node)));
+}
+
+// NOTE: Can't reuse dispatch from cos_ to cos_out either, because it requries
+// support for empty through unary_op_impl
+Tensor& NestedTensor_cos_(Tensor& self) {
+  auto self_impl = get_nested_tensor_impl(self);
+  auto f = [](at::Tensor tensor) { tensor.cos_(); };
+  apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
+  return self;
+}
+
+Tensor NestedTensor_cos(const Tensor& self) {
+  auto self_impl = get_nested_tensor_impl(self);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      map([](at::Tensor tensor) { return tensor.cos(); },
+          self_impl->_data.get_structure()));
+}
+
 static auto registry =
     torch::RegisterOperators()
         .op(torch::RegisterOperators::options()
@@ -156,6 +191,25 @@ static auto registry =
                 .impl_unboxedOnlyKernel<
                     std::vector<Tensor>(const Tensor&, int64_t),
                     &NestedTensor_unbind>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema(
+                    "aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(
+                        const Tensor& self,
+                        const Tensor& other,
+                        Scalar alpha),
+                    &NestedTensor_add>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema("aten::cos_(Tensor(a!) self) -> Tensor(a!)")
+                .impl_unboxedOnlyKernel<
+                    Tensor&(Tensor& self),
+                    &NestedTensor_cos_>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema("aten::cos(Tensor self) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(const Tensor& self),
+                    &NestedTensor_cos>(NestedTensorKey))
         .op(torch::RegisterOperators::options()
                 .schema(
                     "aten::select.int(Tensor(a) self, int dim, int index) -> Tensor(a)")

@@ -50,6 +50,13 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   return fn(fn, size_node, *index);
 }
 
+at::NestedTensorImpl* get_nested_tensor_impl(at::Tensor tensor) {
+  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+    throw std::runtime_error("Function requires NestedTensorImpl");
+  }
+  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   register_python_nested_node(m);
 
@@ -128,6 +135,25 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl())
         ->_data.nested_dim();
   });
+  // Need to overwrite because
+  // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
+  // requires sizes() for non Tensor-shape compliant NestedTensors
+  // and can't be overwritten since it's not a native function.
+  // TODO: Not covered by 0.0.2 or 0.0.1!
+  // NOTE: Returns a view
+  // TODO: Advanced indexing
+  // TODO: Tensor-wise select
+  // TODO: Tuple support
+  m.def("get_item", [](at::Tensor tensor, int64_t key) {
+    auto impl = get_nested_tensor_impl(tensor);
+    return at::unbind(tensor, 0)[key];
+  });
+#if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
+  m.def("get_item", [](at::Tensor tensor, py::slice key) {
+    py::list unbound = py::cast(at::unbind(tensor, 0));
+    return unbound[key];
+  });
+#endif
 
   m.def("nested_size", [](at::Tensor self, c10::optional<int64_t> index_) {
     if (!self.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {

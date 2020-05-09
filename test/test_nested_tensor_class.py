@@ -603,12 +603,10 @@ class TestContiguous(TestCase):
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
             print("i2: " + str(i))
             nt = nestedtensor.nested_tensor(data)
-            print("i3: " + str(i))
-            self.assertTrue(nt.is_contiguous())
-            print("i4: " + str(i))
-            # buf = nt.flatten()
-            print("i5: " + str(i))
-            self.assertEqual(nt, nt)
+            # print("i3: " + str(i))
+            # self.assertTrue(nt.is_contiguous())
+            # print("i4: " + str(i))
+            # self.assertEqual(nt, nt)
             print("i6: " + str(i))
             a = nt + nt
         nt.cos_()
