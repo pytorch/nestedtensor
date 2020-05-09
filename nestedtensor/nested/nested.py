@@ -15,6 +15,14 @@ import itertools
 DEBUG = int(os.getenv("DEBUG", 1))
 
 
+def _wrap_result(result):
+    return (
+        NestedTensor(result)
+        if nestedtensor._C.is_nested_tensor_impl(result)
+        else result
+    )
+
+
 # -------------------------NestedTensor core---------------------------
 class NestedTensor(object):
     # The attributes must match across all constiuents
@@ -187,6 +195,10 @@ class NestedTensor(object):
         Returns a tuple of views. Results might not be contiguous.
         """
         # TODO: Design choice: Return zip_longest or zip?
+        print('self._impl.unbind(dim)')
+        for i, t in enumerate(self._impl.unbind(dim)):
+            print(i)
+            print(t)
         return tuple(
             NestedTensor(t) if nestedtensor._C.is_nested_tensor_impl(t) else t
             for t in self._impl.unbind(dim)
@@ -196,8 +208,7 @@ class NestedTensor(object):
         """
         Not necessarily a view.
         """
-        result = self._impl.to_tensor(dim)
-        return result if torch.is_tensor(result) else NestedTensor(result)
+        return _wrap_result(nestedtensor._C.to_tensor(self._impl, dim))
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
@@ -213,8 +224,9 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
-        print('func')
+        print("func")
         print(func)
+
         def wrap_result(result):
             return result if torch.is_tensor(result) else NestedTensor(result)
 
@@ -251,7 +263,7 @@ class NestedTensor(object):
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
-        return NestedTensor(self._impl.to_nested_tensor(dim))
+        return _wrap_result(nestedtensor._C.to_nested_tensor(self._impl, dim))
 
     def to_list(self):
         return self._impl.to_list()

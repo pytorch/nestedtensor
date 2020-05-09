@@ -358,17 +358,19 @@ class TestNestedTensor(TestCase):
         # Unbinding across nested dimensions or tensors dimensions
         # is akin splitting up the tree across a level.
 
-        nt = nestedtensor.nested_tensor([])
-        self.assertEqual(nt.unbind(0), ())
-        self.assertRaises(IndexError, lambda: nt.unbind(1))
+        # nt = nestedtensor.nested_tensor([])
+        # self.assertEqual(nt.unbind(0), ())
+        # self.assertRaises(IndexError, lambda: nt.unbind(1))
 
         a = torch.rand(3, 2)
         nt = nestedtensor.nested_tensor([a])
-        self.assertEqual(nt.unbind(0), (a,))
-        result = (
-            nestedtensor.nested_tensor([a.unbind(0)[0]]),
-            nestedtensor.nested_tensor([a.unbind(0)[1]]),
-            nestedtensor.nested_tensor([a.unbind(0)[2]]))
+        # self.assertEqual(nt.unbind(0), (a,))
+        # result = (
+        #     nestedtensor.nested_tensor([a.unbind(0)[0]]),
+        #     nestedtensor.nested_tensor([a.unbind(0)[1]]),
+        #     nestedtensor.nested_tensor([a.unbind(0)[2]]))
+        print('nt.unbind(1)')
+        print(nt.unbind(1))
         for x, y in zip(nt.unbind(1), result):
             self.assertEqual(x, y, ignore_contiguity=True)
         result = (

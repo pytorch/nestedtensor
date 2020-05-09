@@ -54,6 +54,35 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
+// TODO: Can't have mixed return types in C++
+// for different input values.
+Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
+  auto impl_data = get_nested_tensor_impl(tensor)->_data;
+  if (!dim_) {
+    return impl_data.to_tensor();
+  }
+  int64_t dim = maybe_wrap_dim((*dim_), impl_data.dim());
+  if (dim == 0) {
+    return impl_data.to_tensor();
+  }
+  // If dim is bigger than nested_dim the NestedTensor is already
+  // of Tensor for dimensions bigger than the given.
+  if (impl_data.nested_dim() == 1) {
+    return tensor;
+  }
+  // At this point nested_dim is at least 2. That means any unbind
+  // operation of a child must yield NestedTensors.
+  // If dim is 1 then we'll apply to_tensor(0) to the children and must expect
+  // Tensors.
+  std::vector<at::Tensor> unbound = at::unbind(tensor, 0);
+  std::vector<TensorNode> result;
+  for (Tensor child : unbound) {
+    result.push_back(TensorNode(NestedTensor_to_tensor(child, dim - 1)));
+  }
+  return at::detail::make_tensor<at::NestedTensorImpl>(
+      NestedTensor(TensorNode(std::move(result))));
+}
+
 bool NestedTensor_is_pinned(const Tensor& self) {
   auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
   std::cout << "DDD" << std::endl;

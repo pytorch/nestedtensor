@@ -32,6 +32,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
 };
 
+Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
+
 inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
   auto node = batch_tensor._data.get_structure();
   out << "NESTED_TENSOR";

@@ -50,7 +50,7 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   return fn(fn, size_node, *index);
 }
 
-at::NestedTensorImpl* get_nested_tensor_impl(at::Tensor tensor) {
+at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
     throw std::runtime_error("Function requires NestedTensorImpl");
   }
@@ -129,12 +129,22 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
   });
   m.def("nested_dim", [](at::Tensor tensor) {
-    if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      throw std::runtime_error("Function requires NestedTensorImpl");
-    }
-    return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl())
-        ->_data.nested_dim();
+    return get_nested_tensor_impl(tensor)->_data.nested_dim();
   });
+  m.def(
+      "to_nested_tensor",
+      torch::wrap_pybind_function(
+          [](at::Tensor tensor, c10::optional<int64_t> dim) {
+            auto impl_data = get_nested_tensor_impl(tensor)->_data;
+            auto nt = impl_data.to_nested_tensor(dim);
+            return at::detail::make_tensor<at::NestedTensorImpl>(std::move(nt));
+          }));
+  m.def(
+      "to_tensor",
+      torch::wrap_pybind_function(
+          [](at::Tensor tensor, c10::optional<int64_t> dim) {
+            return at::NestedTensor_to_tensor(tensor, dim);
+          }));
   // Need to overwrite because
   // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
   // requires sizes() for non Tensor-shape compliant NestedTensors
