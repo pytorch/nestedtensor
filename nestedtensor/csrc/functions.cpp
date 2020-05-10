@@ -239,27 +239,32 @@ NestedTensor interpolate(NestedTensor input,
       return input + 1;
     };
     auto leaves_count = reduce<decltype(fn), int64_t, at::Tensor>(input.get_structure(), fn, 0);
-    
+
     if (size.has_value()) {
+      // There can be either 1 size for all tensor or an individual size value per tensor
       if (size.value().size() != 1 && size.value().size() != leaves_count) {
         throw std::runtime_error( "Interpolate has to take either 1 size tuple or same amount as leaves in Nested Tensor.");
       }
 
-      int size_i = 0;
-      TensorNode res = map(
-          [&options, &size_i, &size](at::Tensor input_tensor) {
-            if(size.value().size() == 1) {
-              options = options.size(size.value()[0]);
-            } else {
-              options = options.size(size.value()[size_i]);
-              size_i++;
-            }
-
+      if (size.value().size() == 1) {
+        TensorNode res = map(
+          [&options, &size](at::Tensor input_tensor) {
+            options = options.size(size.value()[0]);
             return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
           },
           input_structure);
-
-      return NestedTensor(std::move(res));
+        return NestedTensor(std::move(res));
+      } else {
+        int size_i = 0;
+        TensorNode res = map(
+            [&options, &size_i, &size](at::Tensor input_tensor) {
+              options = options.size(size.value()[size_i]);
+              size_i++;
+              return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
+            },
+            input_structure);
+        return NestedTensor(std::move(res));
+      }
     }
 
     throw std::runtime_error("Either size or scale_factor should be defined.");
