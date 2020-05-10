@@ -179,9 +179,7 @@ NestedTensor cross_entropy(NestedTensor input,
   } else if (reduction.value() == "sum") {
       redct = torch::kSum;
   } else {
-      std::stringstream error;
-      error << "Unexpected mode for reduction: " << reduction.value() << std::endl;
-      throw error;
+      throw std::runtime_error("Unexpected mode for reduction: " + reduction.value());
   }
 
   auto options = F::CrossEntropyFuncOptions().reduction(redct);
@@ -216,9 +214,7 @@ NestedTensor interpolate(NestedTensor input,
     } else if (mode.value()== "bilinear") {
         int_mode = torch::kBilinear;
     }  else {
-        std::stringstream error;
-        error << "Unexpected mode for interpolate: " << mode.value() << std::endl;
-        throw error;
+        throw std::runtime_error("Unexpected mode for interpolate: " + mode.value());
     }
 
     TensorNode input_structure = input.get_structure();
@@ -246,9 +242,7 @@ NestedTensor interpolate(NestedTensor input,
     
     if (size.has_value()) {
       if (size.value().size() != 1 && size.value().size() != leaves_count) {
-        std::stringstream error;
-        error << "Interpolate has to take either 1 size tuple or same amount as leaves in Nested Tensor." << std::endl;
-        throw error;
+        throw std::runtime_error( "Interpolate has to take either 1 size tuple or same amount as leaves in Nested Tensor.");
       }
 
       int size_i = 0;
@@ -268,9 +262,7 @@ NestedTensor interpolate(NestedTensor input,
       return NestedTensor(std::move(res));
     }
 
-    std::stringstream error;
-    error << "Either size or scale_factor should be defined." << std::endl;
-    throw error;
+    throw std::runtime_error("Either size or scale_factor should be defined.");
 }
 }
 }
