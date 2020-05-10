@@ -260,7 +260,7 @@ class TestFunctional(TestCase):
                 self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
         # special NT case - list of sizes
-        size = ((100, 100), (200, 250))
+        size = ((100, 100), (200, 250), )
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = torch.nn.functional.interpolate(nt, size, mode='bilinear', align_corners=True)
             self.assertEqual(nt_res.nested_size(2), (100, 200))
@@ -276,6 +276,10 @@ class TestFunctional(TestCase):
             for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
                 nt_res = torch.nn.functional.interpolate(nt, scale_factor=scale_factor)
                 self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+
+        # check errors
+        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
+            self.assertRaises(RuntimeError, lambda: torch.nn.functional.interpolate(nt, size=(100, 100), scale_factor=(1, 1)))
 
     def test_copy_(self):
         for constructor in _iter_constructors():

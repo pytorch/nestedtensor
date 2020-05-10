@@ -192,6 +192,10 @@ void add_functions(
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners,
            c10::optional<bool> recompute_scale_factor) {
+             if (scale_factor.has_value() && size.has_value()) {
+               throw std::runtime_error("only one of size or scale_factor should be defined");
+             }
+
              if (size.has_value()) {
                return THPNestedTensor(interpolate(input.data().contiguous(), 
                                                   size.value(),
@@ -224,6 +228,10 @@ void add_functions(
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners,
            c10::optional<bool> recompute_scale_factor) {
+             if (scale_factor.has_value() && size.has_value()) {
+               throw std::runtime_error("only one of size or scale_factor should be defined");
+             }
+
              if (size.has_value()) {
                std::vector<std::vector<int64_t>> sizes {size.value()};
                return THPNestedTensor(interpolate(input.data().contiguous(), 
@@ -257,6 +265,10 @@ void add_functions(
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners,
            c10::optional<bool> recompute_scale_factor) {
+             if (scale_factor.has_value() && size.has_value()) {
+               throw std::runtime_error("only one of size or scale_factor should be defined");
+             }
+
              if (size.has_value()) {
                std::vector<std::vector<int64_t>> sizes { std::vector<int64_t> {size.value(), size.value()} };
 
