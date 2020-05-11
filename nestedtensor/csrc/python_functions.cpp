@@ -187,14 +187,93 @@ void add_functions(
 
   m.def("interpolate", 
         [](THPNestedTensor input,
-           c10::optional<THPArrayRef<int64_t>> size,
+           c10::optional<std::vector<std::vector<int64_t>>> size,
            c10::optional<THPArrayRef<double>> scale_factor,
            c10::optional<std::string> mode,
            c10::optional<bool> align_corners,
            c10::optional<bool> recompute_scale_factor) {
+             if (scale_factor.has_value() && size.has_value()) {
+               throw std::runtime_error("only one of size or scale_factor should be defined");
+             }
+
              if (size.has_value()) {
                return THPNestedTensor(interpolate(input.data().contiguous(), 
-                                                  size.value().extract<2>(),
+                                                  size.value(),
+                                                  c10::nullopt, 
+                                                  mode,
+                                                  align_corners));
+             }
+
+             if (scale_factor.has_value()) {
+               return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                  c10::nullopt,
+                                                  scale_factor.value().extract<2>(), 
+                                                  mode,
+                                                  align_corners));
+             }
+
+             throw "Either size or scale factor have to be passed.";
+        },
+        py::arg("input"),
+        py::arg("size") = nullptr,
+        py::arg("scale_factor") = nullptr,
+        py::arg("mode") = "nearest",
+        py::arg("align_corners") = false,
+        py::arg("recompute_scale_factor") = false);
+
+  m.def("interpolate", 
+        [](THPNestedTensor input,
+           c10::optional<std::vector<int64_t>> size,
+           c10::optional<THPArrayRef<double>> scale_factor,
+           c10::optional<std::string> mode,
+           c10::optional<bool> align_corners,
+           c10::optional<bool> recompute_scale_factor) {
+             if (scale_factor.has_value() && size.has_value()) {
+               throw std::runtime_error("only one of size or scale_factor should be defined");
+             }
+
+             if (size.has_value()) {
+               std::vector<std::vector<int64_t>> sizes {size.value()};
+               return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                  sizes,
+                                                  c10::nullopt, 
+                                                  mode,
+                                                  align_corners));
+             }
+
+             if (scale_factor.has_value()) {
+               return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                  c10::nullopt,
+                                                  scale_factor.value().extract<2>(), 
+                                                  mode,
+                                                  align_corners));
+             }
+
+             throw "Either size or scale factor have to be passed.";
+        },
+        py::arg("input"),
+        py::arg("size") = nullptr,
+        py::arg("scale_factor") = nullptr,
+        py::arg("mode") = "nearest",
+        py::arg("align_corners") = false,
+        py::arg("recompute_scale_factor") = false);
+
+  m.def("interpolate", 
+        [](THPNestedTensor input,
+           c10::optional<int64_t> size,
+           c10::optional<THPArrayRef<double>> scale_factor,
+           c10::optional<std::string> mode,
+           c10::optional<bool> align_corners,
+           c10::optional<bool> recompute_scale_factor) {
+             if (scale_factor.has_value() && size.has_value()) {
+               throw std::runtime_error("only one of size or scale_factor should be defined");
+             }
+
+             if (size.has_value()) {
+               std::vector<std::vector<int64_t>> sizes { std::vector<int64_t> {size.value(), size.value()} };
+
+               return THPNestedTensor(interpolate(input.data().contiguous(), 
+                                                  sizes,
                                                   c10::nullopt, 
                                                   mode,
                                                   align_corners));

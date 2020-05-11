@@ -50,7 +50,7 @@ NestedTensor cross_entropy(NestedTensor input,
                            c10::optional<std::string> reduction);
 
 NestedTensor interpolate(NestedTensor input,
-                         c10::optional<at::IntArrayRef> size,
+                         c10::optional<std::vector<std::vector<int64_t>>> size,
                          c10::optional<at::ArrayRef<double>> scale_factor,
                          c10::optional<std::string> mode,
                          c10::optional<bool> align_corners);
