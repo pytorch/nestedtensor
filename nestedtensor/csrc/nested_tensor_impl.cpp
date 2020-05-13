@@ -90,7 +90,7 @@ bool NestedTensor_is_pinned(const Tensor& self) {
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
-  std::cout << "unbind with dim: " << dim << std::endl;
+  // std::cout << "unbind with dim: " << dim << std::endl;
   auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
   auto _data = self_impl->_data;
   dim = at::maybe_wrap_dim(dim, _data.dim());
@@ -104,27 +104,31 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
       }
       return result;
     } else {
-      std::cout << "REE1" << std::endl;
+      // std::cout << "REE1" << std::endl;
       int64_t dim_max_size = 0;
       for (const auto& child : node.unbind()) {
         int64_t dim_size = child.payload().size(dim - 1);
         dim_max_size = dim_max_size > dim_size ? dim_max_size : dim_size;
       }
-      std::cout << "dim_max_size: " << dim_max_size << std::endl;
+      // std::cout << "dim_max_size: " << dim_max_size << std::endl;
       std::vector<at::Tensor> result;
-      result.resize(dim_max_size);
+      // result.resize(dim_max_size);
       for (const auto& child : node.unbind()) {
-        std::cout << "child.degree(): " << child.degree() << std::endl;
+        // std::cout << "child.degree(): " << child.degree() << std::endl;
         std::vector<at::Tensor> unbound_child = at::unbind(child.payload(), dim - 1);
-        std::cout << "HEEEEEEEEEE" << std::endl;
+        // std::cout << "HEEEEEEEEEE" << std::endl;
         std::vector<TensorNode> tensor_nodes;
+        int64_t i = 0;
         for (at::Tensor tensor : unbound_child) {
+          // std::cout << "i: " << i << std::endl;
+          // std::cout << "tensor: " << tensor << std::endl;
           tensor_nodes.push_back(TensorNode(std::move(tensor)));
+          i++;
         }
         result.emplace_back(at::detail::make_tensor<NestedTensorImpl>(
             NestedTensor(std::move(tensor_nodes))));
       }
-      std::cout << "DLDLDL" << std::endl;
+      // std::cout << "DLDLDL" << std::endl;
       return result;
     }
   }
