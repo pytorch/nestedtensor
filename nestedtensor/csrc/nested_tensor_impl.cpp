@@ -57,28 +57,38 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   auto impl_data = get_nested_tensor_impl(tensor)->_data;
   if (!dim_) {
+  // std::cout << "LLL00" << std::endl;
     return impl_data.to_tensor();
   }
   int64_t dim = maybe_wrap_dim((*dim_), impl_data.dim());
   if (dim == 0) {
+  // std::cout << "LLL11" << std::endl;
     return impl_data.to_tensor();
   }
   // If dim is bigger than nested_dim the NestedTensor is already
   // of Tensor for dimensions bigger than the given.
   if (impl_data.nested_dim() == 1) {
+  // std::cout << "LLL22" << std::endl;
     return tensor;
   }
   // At this point nested_dim is at least 2. That means any unbind
   // operation of a child must yield NestedTensors.
   // If dim is 1 then we'll apply to_tensor(0) to the children and must expect
   // Tensors.
-  std::cout << "LLL" << std::endl;
+  // std::cout << "LLL" << std::endl;
   std::vector<at::Tensor> unbound = at::unbind(tensor, 0);
   std::vector<TensorNode> result;
   for (Tensor child : unbound) {
     auto ci = NestedTensor_to_tensor(child, dim - 1);
-    std::cout << "ci: " << ci << std::endl;
-    result.push_back(TensorNode(std::move(ci)));
+    if (ci.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+      auto ci_impl = static_cast<NestedTensorImpl*>(ci.unsafeGetTensorImpl());
+      auto s = ci_impl->_data.get_structure();
+      result.push_back(TensorNode(std::move(s)));
+    } else {
+      // std::cout << "ci: " << ci << std::endl;
+      // TODO: If it's a NestedTensor instance get the structure
+      result.push_back(TensorNode(std::move(ci)));
+    }
   }
   return at::detail::make_tensor<at::NestedTensorImpl>(
       NestedTensor(TensorNode(std::move(result))));
