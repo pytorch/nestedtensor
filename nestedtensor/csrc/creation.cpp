@@ -201,10 +201,6 @@ NestedTensor _as_nested_tensor(py::sequence list) {
   return NestedTensor(std::move(structure));
 }
 
-THPNestedTensor as_nested_tensor(py::sequence list) {
-  return THPNestedTensor(_as_nested_tensor(list));
-}
-
 at::Tensor as_nested_tensor_impl(py::sequence list) {
   return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list));
 }

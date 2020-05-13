@@ -259,7 +259,7 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
     // We could decide to return a Tensor if the 0th
     // dimension can be squeezed.
     auto init_sizes = sizes();
-    for (int64_t i = 0; i < init_sizes.size() - 1; i++) {
+    for (size_t i = 0; i < init_sizes.size() - 1; i++) {
       int64_t index = init_sizes.size() - i - 1;
       c10::optional<int64_t> s = init_sizes[index];
       if (s && ((*s) == 1)) {
