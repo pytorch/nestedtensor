@@ -53,6 +53,9 @@ class NestedTensor(object):
     def __eq__(self, other):
         return _wrap_result(self._impl.__eq__(other._impl))
 
+    def __ne__(self, other):
+        return _wrap_result(self._impl.__ne__(other._impl))
+
     # --- impl forward ---
 
     def dim(self):
@@ -266,12 +269,7 @@ class NestedTensor(object):
 
     # Might require nonzero
     def __bool__(self):
-        print("a")
-        print('self._impl.numel()')
-        print(self._impl.numel())
-        import pdb; pdb.set_trace()
-        t = self._impl.__bool__()
-        return self._impl.__bool__()
+        raise NotImplementedError("NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
         return nestedtensor._C.get_item(self._impl, key)
@@ -328,3 +326,6 @@ class NestedTensor(object):
 
     def all(self):
         return self._impl.all()
+
+    def any(self):
+        return self._impl.any()

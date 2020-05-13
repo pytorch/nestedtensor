@@ -278,6 +278,12 @@ class TestNestedTensor(TestCase):
             print("t1")
             self.assertTrue((a1 == a2).all())
             print("t2")
+            c0 = (a1 != a3)
+            print("t21")
+            c1 = c0.all()
+            print("t22")
+            self.assertTrue(c1)
+            print("t23")
             self.assertTrue((a1 != a3).all())
             print("t3")
             # TODO: CONTINUE HERE
@@ -457,8 +463,12 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.to_tensor(0), result)
             self.assertEqual(a.to_tensor(1), nestedtensor.as_nested_tensor(
                 [torch.stack([t_a, t_b])]))
-            self.assertEqual(a.to_tensor(
-                2), nestedtensor.as_nested_tensor([[t_a, t_b]]))
+            print("OOO")
+            b = a.to_tensor(2)
+            print(b.nested_size())
+            print("OOO1")
+            self.assertEqual(b, nestedtensor.as_nested_tensor([[t_a, t_b]]))
+            print("OOO2")
             self.assertEqual(a.to_tensor(
                 3), nestedtensor.as_nested_tensor([[t_a, t_b]]))
             self.assertRaises(IndexError, lambda: a.to_tensor(4))

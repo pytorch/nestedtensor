@@ -72,10 +72,13 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   // operation of a child must yield NestedTensors.
   // If dim is 1 then we'll apply to_tensor(0) to the children and must expect
   // Tensors.
+  std::cout << "LLL" << std::endl;
   std::vector<at::Tensor> unbound = at::unbind(tensor, 0);
   std::vector<TensorNode> result;
   for (Tensor child : unbound) {
-    result.push_back(TensorNode(NestedTensor_to_tensor(child, dim - 1)));
+    auto ci = NestedTensor_to_tensor(child, dim - 1);
+    std::cout << "ci: " << ci << std::endl;
+    result.push_back(TensorNode(std::move(ci)));
   }
   return at::detail::make_tensor<at::NestedTensorImpl>(
       NestedTensor(TensorNode(std::move(result))));
@@ -202,7 +205,8 @@ Tensor NestedTensor_all(const Tensor& self) {
   auto map_all = flatten(map(
         [](at::Tensor tensor) { return tensor.all(); },
           self_impl.get_structure()));
-  at::Tensor gathered = at::empty({map_all.size()}, at::kBool); //, self.options());
+  at::Tensor gathered = at::empty(
+      {static_cast<int64_t>(map_all.size())}, at::kBool); //, self.options());
   for (size_t i = 0; i < map_all.size(); i++) {
     // std::cout << "map_all[" << i << "]: " << map_all[i] << std::endl;
     gathered[i] = map_all[i];
@@ -211,12 +215,49 @@ Tensor NestedTensor_all(const Tensor& self) {
   return gathered.all();
 }
 
+Tensor NestedTensor_any(const Tensor& self) {
+  std::cout << "HEEE any " << std::endl;
+  auto self_impl = get_nested_tensor_impl(self)->_data;
+  if (self_impl.numel() == 0) {
+    // XXX: self.options doesn't work here because
+    // we don't want a Tensor backed by a NestedTensor
+    Tensor result = at::empty({0}, at::kBool); //, self.options());
+    result.fill_(1);
+    return result;
+  }
+  auto map_any = flatten(map(
+        [](at::Tensor tensor) { return tensor.any(); },
+          self_impl.get_structure()));
+  at::Tensor gathered = at::empty(
+      {static_cast<int64_t>(map_any.size())}, at::kBool); //, self.options());
+  for (size_t i = 0; i < map_any.size(); i++) {
+    // std::cout << "map_any[" << i << "]: " << map_any[i] << std::endl;
+    gathered[i] = map_any[i];
+  }
+  // std::cout << "gathered.any(): " << gathered.any() << std::endl;
+  return gathered.any();
+}
+
 Tensor NestedTensor_eq(const Tensor& self, const Tensor& other) {
   auto self_impl = get_nested_tensor_impl(self);
   auto other_impl = get_nested_tensor_impl(other);
   return at::detail::make_tensor<NestedTensorImpl>(
   map([](const Tensor a, const Tensor b) {
       auto c = at::eq(a, b);
+      // std::cout << "c: " << c << std::endl;
+      return c;
+      }, 
+      self_impl->_data.get_structure(),
+      other_impl->_data.get_structure()));
+}
+
+Tensor NestedTensor_ne(const Tensor& self, const Tensor& other) {
+  std::cout << "NE" << std::endl;
+  auto self_impl = get_nested_tensor_impl(self);
+  auto other_impl = get_nested_tensor_impl(other);
+  return at::detail::make_tensor<NestedTensorImpl>(
+  map([](const Tensor a, const Tensor b) {
+      auto c = at::ne(a, b);
       // std::cout << "c: " << c << std::endl;
       return c;
       }, 
@@ -245,6 +286,12 @@ static auto registry =
                 .impl_unboxedOnlyKernel<
                     Tensor(const Tensor&, const Tensor&),
                     &NestedTensor_eq>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema(
+                    "aten::ne.Tensor(Tensor self, Tensor other) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(const Tensor&, const Tensor&),
+                    &NestedTensor_ne>(NestedTensorKey))
         .op(torch::RegisterOperators::options()
                 .schema(
                     "aten::contiguous(Tensor self, *, MemoryFormat memory_format=contiguous_format) -> Tensor")
@@ -286,6 +333,11 @@ static auto registry =
                 .impl_unboxedOnlyKernel<
                     Tensor(const Tensor& self),
                     &NestedTensor_all>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema("aten::any(Tensor self) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(const Tensor& self),
+                    &NestedTensor_any>(NestedTensorKey))
         .op(torch::RegisterOperators::options()
                 .schema(
                     "aten::select.int(Tensor(a) self, int dim, int index) -> Tensor(a)")
