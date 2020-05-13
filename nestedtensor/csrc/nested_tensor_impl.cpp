@@ -8,13 +8,6 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
-  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-    throw std::runtime_error("Function requires NestedTensorImpl");
-  }
-  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
-}
-
 // TODO: The dispatcher has trouble with this so we register an unboxed kernel.
 Tensor NestedTensor_conv2d(const Tensor& input, const Tensor& weight,
                             const Tensor& bias, IntArrayRef stride,

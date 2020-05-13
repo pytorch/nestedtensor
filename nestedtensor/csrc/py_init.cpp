@@ -46,13 +46,6 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   return fn(fn, size_node, *index);
 }
 
-at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
-  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-    throw std::runtime_error("Function requires NestedTensorImpl");
-  }
-  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
-}
-
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   register_python_nested_node(m);
 

@@ -1,3 +1,4 @@
+#include <ATen/core/op_registration/op_registration.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 
 namespace at {

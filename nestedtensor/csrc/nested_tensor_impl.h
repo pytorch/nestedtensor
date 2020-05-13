@@ -32,6 +32,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
 };
 
+inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
+  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+    throw std::runtime_error("Function requires NestedTensorImpl");
+  }
+  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
+}
+
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
 inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
