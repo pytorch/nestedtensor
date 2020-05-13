@@ -48,6 +48,11 @@ class NestedTensor(object):
         #     raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
+    # --- magic methods ---
+
+    def __eq__(self, other):
+        return _wrap_result(self._impl.__eq__(other._impl))
+
     # --- impl forward ---
 
     def dim(self):
@@ -259,8 +264,14 @@ class NestedTensor(object):
             "NestedTensor doesn't support function {}".format(func)
         )
 
+    # Might require nonzero
     def __bool__(self):
-        raise NotImplementedError("This has not been covered by NestedTensor 0.0.1")
+        print("a")
+        print('self._impl.numel()')
+        print(self._impl.numel())
+        import pdb; pdb.set_trace()
+        t = self._impl.__bool__()
+        return self._impl.__bool__()
 
     def __getitem__(self, key):
         return nestedtensor._C.get_item(self._impl, key)
@@ -314,3 +325,6 @@ class NestedTensor(object):
 
     def cos(self):
         return NestedTensor(self._impl.cos())
+
+    def all(self):
+        return self._impl.all()

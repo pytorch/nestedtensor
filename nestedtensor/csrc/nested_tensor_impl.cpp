@@ -189,6 +189,41 @@ Tensor NestedTensor_cos(const Tensor& self) {
           self_impl->_data.get_structure()));
 }
 
+Tensor NestedTensor_all(const Tensor& self) {
+  std::cout << "HEEE ALL " << std::endl;
+  auto self_impl = get_nested_tensor_impl(self)->_data;
+  if (self_impl.numel() == 0) {
+    // XXX: self.options doesn't work here because
+    // we don't want a Tensor backed by a NestedTensor
+    Tensor result = at::empty({0}, at::kBool); //, self.options());
+    result.fill_(1);
+    return result;
+  }
+  auto map_all = flatten(map(
+        [](at::Tensor tensor) { return tensor.all(); },
+          self_impl.get_structure()));
+  at::Tensor gathered = at::empty({map_all.size()}, at::kBool); //, self.options());
+  for (size_t i = 0; i < map_all.size(); i++) {
+    // std::cout << "map_all[" << i << "]: " << map_all[i] << std::endl;
+    gathered[i] = map_all[i];
+  }
+  // std::cout << "gathered.all(): " << gathered.all() << std::endl;
+  return gathered.all();
+}
+
+Tensor NestedTensor_eq(const Tensor& self, const Tensor& other) {
+  auto self_impl = get_nested_tensor_impl(self);
+  auto other_impl = get_nested_tensor_impl(other);
+  return at::detail::make_tensor<NestedTensorImpl>(
+  map([](const Tensor a, const Tensor b) {
+      auto c = at::eq(a, b);
+      // std::cout << "c: " << c << std::endl;
+      return c;
+      }, 
+      self_impl->_data.get_structure(),
+      other_impl->_data.get_structure()));
+}
+
 static auto registry =
     torch::RegisterOperators()
         .op(torch::RegisterOperators::options()
@@ -204,6 +239,12 @@ static auto registry =
                         IntArrayRef,
                         int64_t),
                     &NestedTensor_conv2d>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema(
+                    "aten::eq.Tensor(Tensor self, Tensor other) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(const Tensor&, const Tensor&),
+                    &NestedTensor_eq>(NestedTensorKey))
         .op(torch::RegisterOperators::options()
                 .schema(
                     "aten::contiguous(Tensor self, *, MemoryFormat memory_format=contiguous_format) -> Tensor")
@@ -240,6 +281,11 @@ static auto registry =
                 .impl_unboxedOnlyKernel<
                     Tensor(const Tensor& self),
                     &NestedTensor_cos>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema("aten::all(Tensor self) -> Tensor")
+                .impl_unboxedOnlyKernel<
+                    Tensor(const Tensor& self),
+                    &NestedTensor_all>(NestedTensorKey))
         .op(torch::RegisterOperators::options()
                 .schema(
                     "aten::select.int(Tensor(a) self, int dim, int index) -> Tensor(a)")
