@@ -186,7 +186,7 @@ class NestedTensor(object):
         return NestedTensor(self._impl.pin_memory())
 
     def __str__(self):
-        return self._impl.__str__()
+        return nestedtensor._C.str(self._impl)
 
     # --- impl forward ends ---
 

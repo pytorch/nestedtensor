@@ -76,6 +76,27 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             auto nt = impl_data.to_nested_tensor(dim);
             return at::detail::make_tensor<at::NestedTensorImpl>(std::move(nt));
           }));
+  m.def("str", [](at::Tensor tensor) {
+    auto impl_data = get_nested_tensor_impl(tensor)->_data;
+    auto node = impl_data.get_structure();
+    return NestedNode___str__(
+        node,
+        "nested_tensor",
+        [](c10::IValue payload, const std::string& tabs) {
+          std::vector<std::string> tokens = split_str(
+              THPUtils_unpackString(
+                  PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
+              "\n");
+          std::string result;
+          for (size_t i = 0; i < tokens.size(); i++) {
+            result = result + tabs + tokens[i];
+            if (i < tokens.size() - 1) {
+              result = result + "\n";
+            }
+          }
+          return result;
+        });
+  });
   m.def(
       "to_tensor",
       torch::wrap_pybind_function(
