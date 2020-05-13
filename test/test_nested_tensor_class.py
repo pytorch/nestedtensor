@@ -358,9 +358,9 @@ class TestNestedTensor(TestCase):
         # Unbinding across nested dimensions or tensors dimensions
         # is akin splitting up the tree across a level.
 
-        # nt = nestedtensor.nested_tensor([])
-        # self.assertEqual(nt.unbind(0), ())
-        # self.assertRaises(IndexError, lambda: nt.unbind(1))
+        nt = nestedtensor.nested_tensor([])
+        self.assertEqual(nt.unbind(0), ())
+        self.assertRaises(IndexError, lambda: nt.unbind(1))
 
         a = torch.rand(3, 2)
         nt = nestedtensor.nested_tensor([a])
@@ -369,13 +369,7 @@ class TestNestedTensor(TestCase):
             nestedtensor.nested_tensor([a.unbind(0)[0]]),
             nestedtensor.nested_tensor([a.unbind(0)[1]]),
             nestedtensor.nested_tensor([a.unbind(0)[2]]))
-        # print('nt.unbind(1)')
-        # print(nt.unbind(1))
         for x, y in zip(nt.unbind(1), result):
-            # print('x.nested_size()')
-            # print(x.nested_size())
-            # print('y.nested_size()')
-            # print(y.nested_size())
             self.assertEqual(x, y, ignore_contiguity=True)
         result = (
             nestedtensor.nested_tensor([a.unbind(1)[0]]),
@@ -600,20 +594,14 @@ class TestNestedTensor(TestCase):
 
 
 class TestContiguous(TestCase):
-    # TODO: Write a test for assertEqual
     def test_contiguous(self):
-        for i in range(1, 10):
-            print("i0: " + str(i))
+        for _ in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
-            print("i1: " + str(i))
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
-            print("i2: " + str(i))
             nt = nestedtensor.nested_tensor(data)
-            # print("i3: " + str(i))
-            # self.assertTrue(nt.is_contiguous())
-            # print("i4: " + str(i))
-            # self.assertEqual(nt, nt)
-            print("i6: " + str(i))
+            self.assertTrue(nt.is_contiguous())
+            # buf = nt.flatten()
+            self.assertEqual(nt, nt)
             a = nt + nt
         nt.cos_()
         nt.cos()
