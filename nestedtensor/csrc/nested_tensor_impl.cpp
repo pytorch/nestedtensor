@@ -22,10 +22,8 @@ Tensor NestedTensor_conv2d(const Tensor& input, const Tensor& weight,
                             int64_t groups) {
   // auto nt = NestedTensor(at::ones({2, 3, 2, 1}));
   auto input_impl = static_cast<NestedTensorImpl*>(input.unsafeGetTensorImpl());
-  std::cout << "HERE : "  << *input_impl << std::endl;
   auto nt = torch::nested_tensor::conv2d(
       input_impl->_data, weight, bias, stride, padding, dilation, groups);
-  std::cout << "MADE" << std::endl;
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
@@ -85,12 +83,10 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
 
 bool NestedTensor_is_pinned(const Tensor& self) {
   auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  std::cout << "DDD" << std::endl;
   return self_impl->_data.is_pinned();
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
-  // std::cout << "unbind with dim: " << dim << std::endl;
   auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
   auto _data = self_impl->_data;
   dim = at::maybe_wrap_dim(dim, _data.dim());
@@ -104,31 +100,25 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
       }
       return result;
     } else {
-      // std::cout << "REE1" << std::endl;
       int64_t dim_max_size = 0;
       for (const auto& child : node.unbind()) {
         int64_t dim_size = child.payload().size(dim - 1);
         dim_max_size = dim_max_size > dim_size ? dim_max_size : dim_size;
       }
-      // std::cout << "dim_max_size: " << dim_max_size << std::endl;
-      std::vector<at::Tensor> result;
-      // result.resize(dim_max_size);
+      std::vector<std::vector<TensorNode>> unbound;
+      unbound.resize(dim_max_size);
       for (const auto& child : node.unbind()) {
-        // std::cout << "child.degree(): " << child.degree() << std::endl;
-        std::vector<at::Tensor> unbound_child = at::unbind(child.payload(), dim - 1);
-        // std::cout << "HEEEEEEEEEE" << std::endl;
-        std::vector<TensorNode> tensor_nodes;
-        int64_t i = 0;
-        for (at::Tensor tensor : unbound_child) {
-          // std::cout << "i: " << i << std::endl;
-          // std::cout << "tensor: " << tensor << std::endl;
-          tensor_nodes.push_back(TensorNode(std::move(tensor)));
-          i++;
+        std::vector<at::Tensor> unbound_tensors =
+            at::unbind(child.payload(), dim - 1);
+        for (size_t i = 0; i < unbound_tensors.size(); i++) {
+          unbound[i].push_back(TensorNode(std::move(unbound_tensors[i])));
         }
-        result.emplace_back(at::detail::make_tensor<NestedTensorImpl>(
-            NestedTensor(std::move(tensor_nodes))));
       }
-      // std::cout << "DLDLDL" << std::endl;
+      std::vector<at::Tensor> result;
+      for (size_t i = 0; i < unbound.size(); i++) {
+        TensorNode tmp = TensorNode(std::move(unbound[i]));
+        result.push_back(at::detail::make_tensor<NestedTensorImpl>(NestedTensor(std::move(tmp))));
+      }
       return result;
     }
   }
