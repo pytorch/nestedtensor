@@ -114,15 +114,17 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
       std::vector<at::Tensor> result;
       result.resize(dim_max_size);
       for (const auto& child : node.unbind()) {
-        std::vector<TensorNode> tensor_nodes;
+        std::cout << "child.degree(): " << child.degree() << std::endl;
+        std::vector<at::Tensor> unbound_child = at::unbind(child.payload(), dim - 1);
         std::cout << "HEEEEEEEEEE" << std::endl;
-        for (at::Tensor tensor : at::unbind(child.payload(), dim - 1)) {
-        std::cout << "HEEEEEEEEEE2 tensor:" << tensor << std::endl;
+        std::vector<TensorNode> tensor_nodes;
+        for (at::Tensor tensor : unbound_child) {
           tensor_nodes.push_back(TensorNode(std::move(tensor)));
         }
-        result.push_back(at::detail::make_tensor<NestedTensorImpl>(
+        result.emplace_back(at::detail::make_tensor<NestedTensorImpl>(
             NestedTensor(std::move(tensor_nodes))));
       }
+      std::cout << "DLDLDL" << std::endl;
       return result;
     }
   }

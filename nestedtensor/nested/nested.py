@@ -200,11 +200,12 @@ class NestedTensor(object):
         print(dim)
         print('self.nested_size()')
         print(self.nested_size())
+        print("START")
         unbound = self._impl.unbind(dim)
         print("DONE")
         for i, t in enumerate(unbound):
             print(i)
-            print(t)
+            print(t.shape)
         return tuple(
             NestedTensor(t) if nestedtensor._C.is_nested_tensor_impl(t) else t
             for t in self._impl.unbind(dim)
