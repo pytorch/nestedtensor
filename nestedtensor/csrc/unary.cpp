@@ -1,5 +1,6 @@
 #include <ATen/core/op_registration/op_registration.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
+#include <torch/library.h>
 
 namespace at {
 
@@ -31,23 +32,31 @@ Tensor& NestedTensor_cos_out(Tensor& result, const Tensor& self) {
   return result;
 }
 
-static auto registry =
-    torch::RegisterOperators()
-        .op(torch::RegisterOperators::options()
-                .schema("aten::cos_(Tensor(a!) self) -> Tensor(a!)")
-                .impl_unboxedOnlyKernel<
-                    Tensor&(Tensor& self),
-                    &NestedTensor_cos_>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema("aten::cos(Tensor self) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(const Tensor& self),
-                    &NestedTensor_cos>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema("aten::cos.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)")
-                .impl_unboxedOnlyKernel<
-                    Tensor&(Tensor&, const Tensor& self),
-                    &NestedTensor_cos_out>(NestedTensorKey))
-    ;
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  m.impl_UNBOXED("cos_", NestedTensor_cos_);
+  m.impl_UNBOXED("cos", NestedTensor_cos);
+  m.impl_UNBOXED("cos.out", NestedTensor_cos_out);
+}
 
 }
+
+// static auto registry =
+//     torch::RegisterOperators()
+//         .op(torch::RegisterOperators::options()
+//                 .schema("aten::cos_(Tensor(a!) self) -> Tensor(a!)")
+//                 .impl_unboxedOnlyKernel<
+//                     Tensor&(Tensor& self),
+//                     &NestedTensor_cos_>(NestedTensorKey))
+//         .op(torch::RegisterOperators::options()
+//                 .schema("aten::cos(Tensor self) -> Tensor")
+//                 .impl_unboxedOnlyKernel<
+//                     Tensor(const Tensor& self),
+//                     &NestedTensor_cos>(NestedTensorKey))
+//         .op(torch::RegisterOperators::options()
+//                 .schema("aten::cos.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)")
+//                 .impl_unboxedOnlyKernel<
+//                     Tensor&(Tensor&, const Tensor& self),
+//                     &NestedTensor_cos_out>(NestedTensorKey))
+//     ;
+// 
+// }
