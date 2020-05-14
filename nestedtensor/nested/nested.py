@@ -238,34 +238,14 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
-        print("func")
-        print(func)
-
-        def wrap_result(result):
-            return result if torch.is_tensor(result) else NestedTensor(result)
-
         if kwargs is None:
             kwargs = {}
-        if func in NestedTensor.__function_dispatch:
-            return NestedTensor.__function_dispatch[func](*args, **kwargs)
         impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
         impl_kwargs = {
             k: v._impl if isinstance(v, NestedTensor) else v
             for (k, v) in kwargs.items()
         }
-        if func in NestedTensor.__C_functions:
-            return wrap_result(
-                getattr(nestedtensor._C, NestedTensor.__C_functions[func])(
-                    *impl_args, **impl_kwargs
-                )
-            )
-        if func in NestedTensor.__jit_function_dispatch:
-            return wrap_result(
-                NestedTensor.__jit_function_dispatch[func](*impl_args, **impl_kwargs)
-            )
-        raise NotImplementedError(
-            "NestedTensor doesn't support function {}".format(func)
-        )
+        return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero
     def __bool__(self):

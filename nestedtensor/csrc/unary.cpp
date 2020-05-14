@@ -21,6 +21,16 @@ Tensor NestedTensor_cos(const Tensor& self) {
           self_impl->_data.get_structure()));
 }
 
+Tensor& NestedTensor_cos_out(Tensor& result, const Tensor& self) {
+  auto result_impl = get_nested_tensor_impl(result);
+  auto self_impl = get_nested_tensor_impl(self);
+  apply([](at::Tensor& result, const at::Tensor tensor)
+          { return at::cos_out(result, tensor); },
+      result_impl->_data.get_structure(),
+      self_impl->_data.get_structure());
+  return result;
+}
+
 static auto registry =
     torch::RegisterOperators()
         .op(torch::RegisterOperators::options()
@@ -33,6 +43,11 @@ static auto registry =
                 .impl_unboxedOnlyKernel<
                     Tensor(const Tensor& self),
                     &NestedTensor_cos>(NestedTensorKey))
+        .op(torch::RegisterOperators::options()
+                .schema("aten::cos.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)")
+                .impl_unboxedOnlyKernel<
+                    Tensor&(Tensor&, const Tensor& self),
+                    &NestedTensor_cos_out>(NestedTensorKey))
     ;
 
 }
