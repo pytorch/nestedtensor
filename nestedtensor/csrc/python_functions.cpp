@@ -56,7 +56,7 @@ void add_functions(
   m.def("relu", 
         [](THPNestedTensor input, 
            c10::optional<bool> inplace) {
-             return THPNestedTensor(relu(input.data().contiguous(), inplace));
+             return THPNestedTensor(relu(input.data(), inplace));
         },
         py::arg("input"),
         py::arg("inplace") = false);
@@ -74,7 +74,7 @@ void add_functions(
            c10::optional<double> p, 
            c10::optional<bool> training, 
            c10::optional<bool> inplace) {
-             return THPNestedTensor(dropout(input.data().contiguous(), p, training, inplace));
+             return THPNestedTensor(dropout(input.data(), p, training, inplace));
            },
         py::arg("input"),
         py::arg("p") = 0.5,
@@ -89,7 +89,7 @@ void add_functions(
            THPArrayRef<int64_t> padding,
            THPArrayRef<int64_t> dilation,
            c10::optional<int64_t> group) {
-             return THPNestedTensor(conv2d(input.data().contiguous(), 
+             return THPNestedTensor(conv2d(input.data(), 
                                            weight, 
                                            bias, 
                                            stride.extract<2>(), 
@@ -119,7 +119,7 @@ void add_functions(
               "max_pool2d currently doesn't support returning indices.");
         }
         return THPNestedTensor(max_pool2d(
-            input.data().contiguous(),
+            input.data(),
             kernel_size.extract<2>(),
             stride.extract<2>(),
             padding.extract<2>(),
@@ -143,7 +143,7 @@ void add_functions(
            bool training, 
            double momentum,
            double eps){
-             return THPNestedTensor(batch_norm(input.data().contiguous(), 
+             return THPNestedTensor(batch_norm(input.data(), 
                                                running_mean, 
                                                running_var, 
                                                weight, 
@@ -169,8 +169,8 @@ void add_functions(
            c10::optional<int64_t> ignore_index,
            c10::optional<bool> reduce, // TODO: use
            c10::optional<std::string> reduction) {
-             return THPNestedTensor(cross_entropy(input.data().contiguous(),
-                                                  target.data().contiguous(),
+             return THPNestedTensor(cross_entropy(input.data(),
+                                                  target.data(),
                                                   weight,
                                                   size_average,
                                                   ignore_index,
@@ -197,7 +197,7 @@ void add_functions(
              }
 
              if (size.has_value()) {
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
+               return THPNestedTensor(interpolate(input.data(), 
                                                   size.value(),
                                                   c10::nullopt, 
                                                   mode,
@@ -205,7 +205,7 @@ void add_functions(
              }
 
              if (scale_factor.has_value()) {
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
+               return THPNestedTensor(interpolate(input.data(), 
                                                   c10::nullopt,
                                                   scale_factor.value().extract<2>(), 
                                                   mode,
@@ -234,7 +234,7 @@ void add_functions(
 
              if (size.has_value()) {
                std::vector<std::vector<int64_t>> sizes {size.value()};
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
+               return THPNestedTensor(interpolate(input.data(), 
                                                   sizes,
                                                   c10::nullopt, 
                                                   mode,
@@ -242,7 +242,7 @@ void add_functions(
              }
 
              if (scale_factor.has_value()) {
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
+               return THPNestedTensor(interpolate(input.data(), 
                                                   c10::nullopt,
                                                   scale_factor.value().extract<2>(), 
                                                   mode,
@@ -272,7 +272,7 @@ void add_functions(
              if (size.has_value()) {
                std::vector<std::vector<int64_t>> sizes { std::vector<int64_t> {size.value(), size.value()} };
 
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
+               return THPNestedTensor(interpolate(input.data(), 
                                                   sizes,
                                                   c10::nullopt, 
                                                   mode,
@@ -280,7 +280,7 @@ void add_functions(
              }
 
              if (scale_factor.has_value()) {
-               return THPNestedTensor(interpolate(input.data().contiguous(), 
+               return THPNestedTensor(interpolate(input.data(), 
                                                   c10::nullopt,
                                                   scale_factor.value().extract<2>(), 
                                                   mode,
