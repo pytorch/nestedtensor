@@ -204,16 +204,6 @@ class NestedTensor(object):
         Returns a tuple of views. Results might not be contiguous.
         """
         # TODO: Design choice: Return zip_longest or zip?
-        # print('self._impl.unbind(dim)')
-        # print('dim')
-        # print(dim)
-        # print('self.nested_size()')
-        # print(self.nested_size())
-        # print("START")
-        # unbound = self._impl.unbind(dim)
-        # print("DONE")
-        # for i, t in enumerate(unbound):
-        #     print(i)
         return tuple(
             NestedTensor(t) if nestedtensor._C.is_nested_tensor_impl(t) else t
             for t in self._impl.unbind(dim)

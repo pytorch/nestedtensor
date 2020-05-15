@@ -3,6 +3,7 @@
 #include <nestedtensor/csrc/functions.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <torch/csrc/jit/runtime/operator.h>
+#include <torch/library.h>
 
 namespace at {
 
@@ -50,25 +51,21 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   auto impl_data = get_nested_tensor_impl(tensor)->_data;
   if (!dim_) {
-  // std::cout << "LLL00" << std::endl;
     return impl_data.to_tensor();
   }
   int64_t dim = maybe_wrap_dim((*dim_), impl_data.dim());
   if (dim == 0) {
-  // std::cout << "LLL11" << std::endl;
     return impl_data.to_tensor();
   }
   // If dim is bigger than nested_dim the NestedTensor is already
   // of Tensor for dimensions bigger than the given.
   if (impl_data.nested_dim() == 1) {
-  // std::cout << "LLL22" << std::endl;
     return tensor;
   }
   // At this point nested_dim is at least 2. That means any unbind
   // operation of a child must yield NestedTensors.
   // If dim is 1 then we'll apply to_tensor(0) to the children and must expect
   // Tensors.
-  // std::cout << "LLL" << std::endl;
   std::vector<at::Tensor> unbound = at::unbind(tensor, 0);
   std::vector<TensorNode> result;
   for (Tensor child : unbound) {
@@ -78,7 +75,6 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
       auto s = ci_impl->_data.get_structure();
       result.push_back(TensorNode(std::move(s)));
     } else {
-      // std::cout << "ci: " << ci << std::endl;
       // TODO: If it's a NestedTensor instance get the structure
       result.push_back(TensorNode(std::move(ci)));
     }
@@ -180,7 +176,6 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
 }
 
 Tensor NestedTensor_all(const Tensor& self) {
-  std::cout << "HEEE ALL " << std::endl;
   auto self_impl = get_nested_tensor_impl(self)->_data;
   if (self_impl.numel() == 0) {
     // XXX: self.options doesn't work here because
@@ -195,15 +190,12 @@ Tensor NestedTensor_all(const Tensor& self) {
   at::Tensor gathered = at::empty(
       {static_cast<int64_t>(map_all.size())}, at::kBool); //, self.options());
   for (size_t i = 0; i < map_all.size(); i++) {
-    // std::cout << "map_all[" << i << "]: " << map_all[i] << std::endl;
     gathered[i] = map_all[i];
   }
-  // std::cout << "gathered.all(): " << gathered.all() << std::endl;
   return gathered.all();
 }
 
 Tensor NestedTensor_any(const Tensor& self) {
-  std::cout << "HEEE any " << std::endl;
   auto self_impl = get_nested_tensor_impl(self)->_data;
   if (self_impl.numel() == 0) {
     // XXX: self.options doesn't work here because
@@ -218,10 +210,8 @@ Tensor NestedTensor_any(const Tensor& self) {
   at::Tensor gathered = at::empty(
       {static_cast<int64_t>(map_any.size())}, at::kBool); //, self.options());
   for (size_t i = 0; i < map_any.size(); i++) {
-    // std::cout << "map_any[" << i << "]: " << map_any[i] << std::endl;
     gathered[i] = map_any[i];
   }
-  // std::cout << "gathered.any(): " << gathered.any() << std::endl;
   return gathered.any();
 }
 
@@ -230,97 +220,34 @@ Tensor NestedTensor_eq(const Tensor& self, const Tensor& other) {
   auto other_impl = get_nested_tensor_impl(other);
   return at::detail::make_tensor<NestedTensorImpl>(
   map([](const Tensor a, const Tensor b) {
-      auto c = at::eq(a, b);
-      // std::cout << "c: " << c << std::endl;
-      return c;
+      return at::eq(a, b);
       }, 
       self_impl->_data.get_structure(),
       other_impl->_data.get_structure()));
 }
 
 Tensor NestedTensor_ne(const Tensor& self, const Tensor& other) {
-  std::cout << "NE" << std::endl;
   auto self_impl = get_nested_tensor_impl(self);
   auto other_impl = get_nested_tensor_impl(other);
   return at::detail::make_tensor<NestedTensorImpl>(
   map([](const Tensor a, const Tensor b) {
-      auto c = at::ne(a, b);
-      // std::cout << "c: " << c << std::endl;
-      return c;
+      return at::ne(a, b);
       }, 
       self_impl->_data.get_structure(),
       other_impl->_data.get_structure()));
 }
 
-static auto registry =
-    torch::RegisterOperators()
-        .op(torch::RegisterOperators::options()
-                .schema(
-                    "aten::conv2d(Tensor input, Tensor weight, Tensor? bias=None, int[2] stride=1, int[2] padding=0, int[2] dilation=1, int groups=1) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(
-                        const Tensor&,
-                        const Tensor&,
-                        const Tensor&,
-                        IntArrayRef,
-                        IntArrayRef,
-                        IntArrayRef,
-                        int64_t),
-                    &NestedTensor_conv2d>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema(
-                    "aten::eq.Tensor(Tensor self, Tensor other) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(const Tensor&, const Tensor&),
-                    &NestedTensor_eq>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema(
-                    "aten::ne.Tensor(Tensor self, Tensor other) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(const Tensor&, const Tensor&),
-                    &NestedTensor_ne>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema(
-                    "aten::contiguous(Tensor self, *, MemoryFormat memory_format=contiguous_format) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(const Tensor&, MemoryFormat memory_format),
-                    &NestedTensor_contiguous>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema("aten::is_pinned(Tensor self) -> bool")
-                .impl_unboxedOnlyKernel<
-                    bool(const Tensor&),
-                    &NestedTensor_is_pinned>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema(
-                    "aten::unbind.int(Tensor(a) self, int dim=0) -> Tensor(a)[]")
-                .impl_unboxedOnlyKernel<
-                    std::vector<Tensor>(const Tensor&, int64_t),
-                    &NestedTensor_unbind>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema(
-                    "aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(
-                        const Tensor& self,
-                        const Tensor& other,
-                        Scalar alpha),
-                    &NestedTensor_add>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema("aten::all(Tensor self) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(const Tensor& self),
-                    &NestedTensor_all>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema("aten::any(Tensor self) -> Tensor")
-                .impl_unboxedOnlyKernel<
-                    Tensor(const Tensor& self),
-                    &NestedTensor_any>(NestedTensorKey))
-        .op(torch::RegisterOperators::options()
-                .schema(
-                    "aten::select.int(Tensor(a) self, int dim, int index) -> Tensor(a)")
-                .impl_unboxedOnlyKernel<
-                    Tensor(const Tensor&, int64_t, int64_t),
-                    &NestedTensor_select>(NestedTensorKey));
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
+  m.impl_UNBOXED("any", NestedTensor_any);
+  m.impl_UNBOXED("all", NestedTensor_all);
+  m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
+  m.impl_UNBOXED("ne.Tensor", NestedTensor_ne);
+  m.impl_UNBOXED("add.Tensor", NestedTensor_add);
+  m.impl_UNBOXED("contiguous", NestedTensor_contiguous);
+  m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
+  m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
+  m.impl_UNBOXED("select.int", NestedTensor_select);
+}
 
-;
 }

@@ -268,19 +268,8 @@ class TestNestedTensor(TestCase):
                               torch.tensor([7, 8])])
             a3 = constructor([torch.tensor([3, 4]),
                               torch.tensor([5, 6])])
-            # Just exercising them until we have __bool__, all() etc.
-
-            # c0 = (a1 == a2)
-            # c1 = c0.all()
-            # self.assertTrue(c1)
-            # self.assertTrue((a1 == a2).all())
-            # import pdb; pdb.set_trace()
-            print("t1")
             self.assertTrue((a1 == a2).all())
-            print("t2")
             self.assertTrue((a1 != a3).all())
-            print("t3")
-            # TODO: CONTINUE HERE
             self.assertTrue(not (a1 != a2).any())
             self.assertTrue(not (a1 == a3).any())
 
