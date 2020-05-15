@@ -65,11 +65,8 @@ NestedTensor squeeze(
 
 NestedTensor relu(NestedTensor& input, 
                   c10::optional<bool> inplace) {
-  //std::cout << "relu" << std::endl;
   if (input.is_contiguous()) {
-    //std::cout << "cont" << std::endl;
     if (inplace.has_value() && inplace.value()) {
-      //std::cout << "inpl" << std::endl;
       input = NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
       return input;
     }
@@ -90,8 +87,6 @@ NestedTensor relu(NestedTensor& input,
 }
 
 NestedTensor relu_out(NestedTensor& input) {
-  //std::cout << "relu_out" << std::endl;
-  //input = relu(input, true);
   relu(input, true);
   return input;
 }
