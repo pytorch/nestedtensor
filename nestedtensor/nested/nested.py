@@ -7,6 +7,7 @@ import os
 
 from . import utils
 from . import creation
+from . import codegen
 
 import nestedtensor
 import itertools
@@ -297,15 +298,27 @@ class NestedTensor(object):
     def __add__(self, other):
         return NestedTensor(self._impl + other._impl)
 
-    def cos_(self):
-        self._impl.cos_()
-        return self
+    # def cos_(self):
+    #     self._impl.cos_()
+    #     return self
 
-    def cos(self):
-        return NestedTensor(self._impl.cos())
+    # def cos(self):
+    #     return NestedTensor(self._impl.cos())
 
     def all(self):
         return self._impl.all()
 
     def any(self):
         return self._impl.any()
+
+
+for func in codegen.extension.get_unary_functions():
+
+    def _gen_func(func):
+        def tmp(self, *args, **kwargs):
+            return NestedTensor(getattr(self._impl, func)(*args, **kwargs))
+
+        return tmp
+
+    setattr(NestedTensor, func, _gen_func(func))
+    setattr(NestedTensor, func + "_", _gen_func(func + "_"))

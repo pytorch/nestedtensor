@@ -11,7 +11,7 @@ using namespace torch::nested_tensor;
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self);
-  auto f = [](at::Tensor tensor) { func(tensor); };
+  auto f = [](at::Tensor& tensor) { func(tensor); };
   apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
   return self;
 }
@@ -35,57 +35,52 @@ Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
   return result;
 }
 
-#define UNARY_OP(NAME) \
-  m.impl_UNBOXED(#NAME, NestedTensor_unary_<decltype(&at:: #NAME), at::cos>); 
-
-//  m.impl_UNBOXED(#NAME_, NestedTensor_unary_<decltype(&at::#NAME_), at::#NAME_>); \
-//  m.impl_UNBOXED(#NAME.out, NestedTensor_unary_<decltype(&at::#NAME_out), at::#NAME>_out); 
+#define UNARY_OP(NAME)                                                      \
+  m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
+  m.impl_UNBOXED(                                                           \
+      #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>); \
+  m.impl_UNBOXED(                                                           \
+      #NAME ".out",                                                         \
+      NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-
-
-  // m.impl_UNBOXED("cos_", NestedTensor_unary_<decltype(&at::cos_), at::cos_>);
-  // m.impl_UNBOXED("cos", NestedTensor_unary<decltype(&at::cos), at::cos>);
-  // m.impl_UNBOXED("cos.out", NestedTensor_unary_out<decltype(&at::cos_out), at::cos_out>);
-
-  UNARY_OP("cos")
-  // m.impl_UNBOXED("abs", NestedTensor_unary<decltype(&at::abs), at::abs>);
-  m.impl_UNBOXED("acos", NestedTensor_unary<decltype(&at::acos), at::acos>);
-  m.impl_UNBOXED("asin", NestedTensor_unary<decltype(&at::asin), at::asin>);
-  m.impl_UNBOXED("atan", NestedTensor_unary<decltype(&at::atan), at::atan>);
-  m.impl_UNBOXED("ceil", NestedTensor_unary<decltype(&at::ceil), at::ceil>);
-  // m.impl_UNBOXED("clamp", NestedTensor_unary<decltype(&at::clamp), at::clamp>);
-  // m.impl_UNBOXED("clamp_min", NestedTensor_unary<decltype(&at::clamp_min), at::clamp_min>);
-  // m.impl_UNBOXED("clamp_max", NestedTensor_unary<decltype(&at::clamp_max), at::clamp_max>);
-  // m.impl_UNBOXED("cos", NestedTensor_unary<decltype(&at::cos), at::cos>);
-  m.impl_UNBOXED("cosh", NestedTensor_unary<decltype(&at::cosh), at::cosh>);
-  // m.impl_UNBOXED("digamma", NestedTensor_unary<decltype(&at::digamma), at::digamma>);
-  m.impl_UNBOXED("erf", NestedTensor_unary<decltype(&at::erf), at::erf>);
-  m.impl_UNBOXED("erfc", NestedTensor_unary<decltype(&at::erfc), at::erfc>);
-  m.impl_UNBOXED("erfinv", NestedTensor_unary<decltype(&at::erfinv), at::erfinv>);
-  m.impl_UNBOXED("exp", NestedTensor_unary<decltype(&at::exp), at::exp>);
-  m.impl_UNBOXED("expm1", NestedTensor_unary<decltype(&at::expm1), at::expm1>);
-  m.impl_UNBOXED("floor", NestedTensor_unary<decltype(&at::floor), at::floor>);
-  // m.impl_UNBOXED("fill", NestedTensor_unary<decltype(&at::fill), at::fill>);
-  m.impl_UNBOXED("frac", NestedTensor_unary<decltype(&at::frac), at::frac>);
-  m.impl_UNBOXED("lgamma", NestedTensor_unary<decltype(&at::lgamma), at::lgamma>);
-  m.impl_UNBOXED("log", NestedTensor_unary<decltype(&at::log), at::log>);
-  m.impl_UNBOXED("log10", NestedTensor_unary<decltype(&at::log10), at::log10>);
-  m.impl_UNBOXED("log1p", NestedTensor_unary<decltype(&at::log1p), at::log1p>);
-  m.impl_UNBOXED("log2", NestedTensor_unary<decltype(&at::log2), at::log2>);
-  // m.impl_UNBOXED("mvlgamma", NestedTensor_unary<decltype(&at::mvlgamma), at::mvlgamma>);
-  m.impl_UNBOXED("neg", NestedTensor_unary<decltype(&at::neg), at::neg>);
-  m.impl_UNBOXED("reciprocal", NestedTensor_unary<decltype(&at::reciprocal), at::reciprocal>);
-  m.impl_UNBOXED("round", NestedTensor_unary<decltype(&at::round), at::round>);
-  m.impl_UNBOXED("rsqrt", NestedTensor_unary<decltype(&at::rsqrt), at::rsqrt>);
-  m.impl_UNBOXED("sigmoid", NestedTensor_unary<decltype(&at::sigmoid), at::sigmoid>);
-  m.impl_UNBOXED("sign", NestedTensor_unary<decltype(&at::sign), at::sign>);
-  m.impl_UNBOXED("sin", NestedTensor_unary<decltype(&at::sin), at::sin>);
-  m.impl_UNBOXED("sinh", NestedTensor_unary<decltype(&at::sinh), at::sinh>);
-  m.impl_UNBOXED("sqrt", NestedTensor_unary<decltype(&at::sqrt), at::sqrt>);
-  m.impl_UNBOXED("tan", NestedTensor_unary<decltype(&at::tan), at::tan>);
-  m.impl_UNBOXED("tanh", NestedTensor_unary<decltype(&at::tanh), at::tanh>);
-  m.impl_UNBOXED("trunc", NestedTensor_unary<decltype(&at::trunc), at::trunc>);
+  UNARY_OP(abs);
+  UNARY_OP(acos);
+  UNARY_OP(asin);
+  UNARY_OP(atan);
+  UNARY_OP(ceil);
+  // UNARY_OP(clamp);
+  // UNARY_OP(clamp_min);
+  // UNARY_OP(clamp_max);
+  UNARY_OP(cos);
+  UNARY_OP(cosh);
+  // UNARY_OP(digamma);
+  UNARY_OP(erf);
+  UNARY_OP(erfc);
+  // UNARY_OP(erfinv);
+  UNARY_OP(exp);
+  UNARY_OP(expm1);
+  UNARY_OP(floor);
+  // UNARY_OP(fill);
+  UNARY_OP(frac);
+  // UNARY_OP(lgamma);
+  UNARY_OP(log);
+  UNARY_OP(log10);
+  UNARY_OP(log1p);
+  UNARY_OP(log2);
+  // UNARY_OP(mvlgamma);
+  UNARY_OP(neg);
+  UNARY_OP(reciprocal);
+  UNARY_OP(round);
+  UNARY_OP(rsqrt);
+  UNARY_OP(sigmoid);
+  // UNARY_OP(sign);
+  UNARY_OP(sin);
+  UNARY_OP(sinh);
+  UNARY_OP(sqrt);
+  UNARY_OP(tan);
+  UNARY_OP(tanh);
+  UNARY_OP(trunc);
 
 }
 
