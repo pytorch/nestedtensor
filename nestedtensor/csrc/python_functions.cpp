@@ -54,7 +54,7 @@ void add_functions(
       py::arg("dim") = nullptr);
 
   m.def("relu", 
-        [](THPNestedTensor input, 
+        [](THPNestedTensor& input, 
            c10::optional<bool> inplace) {
              return THPNestedTensor(relu(input.data(), inplace));
         },
@@ -64,7 +64,7 @@ void add_functions(
   m.def(
     "relu_",
     [](THPNestedTensor& input) {
-      input = THPNestedTensor(relu_out(input.data()));
+      relu_out(input.data());
       return input;
     },
     py::arg("input"));

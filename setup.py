@@ -168,7 +168,7 @@ setuptools.setup(
     cmdclass={
         "clean": clean,
         "build_ext": BuildExtension.with_options(
-            use_ninja=os.environ.get("NT_USE_NINJA", False)
+            use_ninja=os.environ.get("NT_USE_NINJA", True)
         ),
     },
     install_requires=requirements,
