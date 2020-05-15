@@ -34,6 +34,10 @@ IntArrayRef NestedTensorImpl::sizes() const {
   return IntArrayRef(sizes);
 }
 
+IntArrayRef NestedTensorImpl::strides() const {
+  throw std::runtime_error("NestedTensor stride is not implemented.");
+}
+
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   if (self.is_contiguous(memory_format)) {
     return self;
@@ -237,8 +241,18 @@ Tensor NestedTensor_ne(const Tensor& self, const Tensor& other) {
       other_impl->_data.get_structure()));
 }
 
+Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> optional_memory_format) {
+  auto self_impl = get_nested_tensor_impl(src);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      map([&optional_memory_format](Tensor a) {
+          return at::clone(a, optional_memory_format);
+          }, 
+          self_impl->_data.get_structure()));
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
+  m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
   m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
