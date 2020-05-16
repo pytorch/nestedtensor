@@ -17,143 +17,6 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   return TensorNode(_squeeze_nested_dim(structure, dim - 1));
 }
 
-// TODO: If size(0) is 1 and we squeeze should this turn into a Tensor?
-// Squeeze doens't touch the underlying data and is effectively a meta-data
-// operation
-NestedTensor squeeze(
-    NestedTensor input,
-    c10::optional<int64_t> dim_,
-    c10::optional<NestedTensor> out) {
-  if (out) {
-    return out->copy_(squeeze(input, dim_, c10::nullopt));
-  }
-  auto sizes = input.sizes();
-  if (!dim_) {
-    // TODO: First dimension is always ignored.
-    // We could decide to return a Tensor if the 0th
-    // dimension can be squeezed.
-    NestedTensor result = input;
-    for (size_t i = 0; i < sizes.size() - 1; i++) {
-      size_t index = sizes.size() - i - 1;
-      c10::optional<int64_t> s = sizes[index];
-      if (s && ((*s) == 1)) {
-        result = squeeze(result, index, c10::nullopt);
-      }
-    }
-    return result;
-  }
-  int64_t dim = at::maybe_wrap_dim(*dim_, input.dim());
-  TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
-  TORCH_CHECK(
-      ((sizes[dim]) && ((*(sizes[dim])) == 1)),
-      "Given dimension is either undefined or not a singleton.");
-  TensorNode structure = input.get_structure();
-  int64_t nested_dim = input.nested_dim();
-  if (dim < nested_dim) {
-    structure = _squeeze_nested_dim(structure, dim);
-  } else {
-    int64_t height = structure.height();
-    structure =
-        map([dim, height](
-                at::Tensor tensor) { return tensor.squeeze(dim - height); },
-            structure);
-  }
-  if (input.get_buffer()) {
-    at::Tensor buffer = *input.get_buffer();
-    return NestedTensor(std::move(buffer), std::move(structure));
-  }
-  return NestedTensor(std::move(structure));
-}
-
-NestedTensor relu(NestedTensor& input, 
-                  c10::optional<bool> inplace) {
-  if (input.is_contiguous()) {
-    if (inplace.has_value() && inplace.value()) {
-      input = NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
-      return input;
-    }
-    return NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
-  }
-
-  TensorNode input_structure = input.get_structure();
-  TensorNode res = map([&](at::Tensor t){
-      return torch::relu(t.unsqueeze(0)).squeeze(0);
-  }, input_structure);
-
-  if  (inplace.has_value() && inplace.value()) {
-    input = NestedTensor(std::move(res));
-    return input;
-  }
-
-  return NestedTensor(std::move(res));
-}
-
-NestedTensor relu_out(NestedTensor& input) {
-  relu(input, true);
-  return input;
-}
-
-NestedTensor dropout(NestedTensor& input, 
-                     c10::optional<double> p, 
-                     c10::optional<bool> training, 
-                     c10::optional<bool> inplace) {
-  TensorNode input_structure = input.get_structure();
-  TensorNode res = map([&](at::Tensor t){
-      return torch::dropout(t, p.value(), training.value());
-  }, input_structure);
-
-  return NestedTensor(std::move(res));
-}
-
-NestedTensor max_pool2d(NestedTensor& input,
-                        at::IntArrayRef kernel_size,
-                        at::IntArrayRef stride,
-                        at::IntArrayRef padding,
-                        at::IntArrayRef dilation,
-                        bool ceil_mode) {
-  TensorNode structure = input.get_structure();
-  F::MaxPool2dFuncOptions options = F::MaxPool2dFuncOptions(kernel_size).stride(stride)
-                                                                        .padding(padding)
-                                                                        .dilation(dilation)
-                                                                        .ceil_mode(ceil_mode);
-
-  TensorNode res = map([&, options](at::Tensor t){
-      return F::max_pool2d(t.unsqueeze(0), options).squeeze(0);
-  }, structure);
-
-  return NestedTensor(std::move(res));
-}
-
-
-NestedTensor batch_norm(NestedTensor& input,
-                        const at::Tensor& running_mean,
-                        const at::Tensor& running_var,
-                        c10::optional<at::Tensor>& weight,
-                        c10::optional<at::Tensor>& bias,
-                        bool training, 
-                        double momentum,
-                        double eps) {
-    TensorNode structure = input.get_structure();
-    
-    auto options = F::BatchNormFuncOptions().momentum(momentum)
-                                            .eps(eps)
-                                            .training(training);
-
-    if (weight.has_value()) {
-        options = options.weight(weight.value());
-    }
-
-    if (bias.has_value()) {
-        options = options.bias(bias.value());
-    }
-
-    TensorNode res = map([&, options](at::Tensor t){
-        return F::batch_norm(t.unsqueeze(0), running_mean, running_var, options).squeeze(0);
-    }, structure);
-
-    return NestedTensor(std::move(res));
-}
-
 NestedTensor cross_entropy(NestedTensor& input,
                            NestedTensor& target,
                            c10::optional<at::Tensor>& weight,
@@ -264,6 +127,32 @@ NestedTensor interpolate(NestedTensor& input,
 
 namespace at {
 
+Tensor NestedTensor_batch_norm(
+    const Tensor& input, const Tensor& weight /* optional */, const Tensor& bias /* optional */,
+    const Tensor& running_mean /* optional */, const Tensor& running_var /* optional */,
+    bool training, double momentum, double eps, bool cudnn_enabled) {
+  auto input_impl = get_nested_tensor_impl(input);
+  auto input_data = input_impl->_data;
+  auto structure = input_data.get_structure();
+  auto res = map(
+      [&](at::Tensor t) {
+        return at::batch_norm(
+                   t.unsqueeze(0),
+                   weight,
+                   bias,
+                   running_mean,
+                   running_var,
+                   training,
+                   momentum,
+                   eps,
+                   cudnn_enabled)
+            .squeeze(0);
+      },
+      structure);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)));
+}
+
 Tensor NestedTensor_conv2d(
     const Tensor& input,
     const Tensor& weight,
@@ -279,15 +168,16 @@ Tensor NestedTensor_conv2d(
   auto res = map(
       [&weight, &bias, &stride, &padding, &dilation, groups](at::Tensor t) {
         return at::convolution(
-            t,
-            weight,
-            bias,
-            stride,
-            padding,
-            dilation,
-            false,
-            {{0, 0}},
-            groups);
+                   t.unsqueeze(0),
+                   weight,
+                   bias,
+                   stride,
+                   padding,
+                   dilation,
+                   false,
+                   {{0, 0}},
+                   groups)
+            .squeeze(0);
       },
       structure);
 
@@ -295,23 +185,86 @@ Tensor NestedTensor_conv2d(
       torch::nested_tensor::NestedTensor(std::move(res)));
 }
 
-Tensor NestedTensor_relu(const Tensor & self) {
+Tensor NestedTensor_max_pool2d(
+    const Tensor& self,
+    IntArrayRef kernel_size,
+    IntArrayRef stride,
+    IntArrayRef padding,
+    IntArrayRef dilation,
+    bool ceil_mode) {
   auto self_impl = get_nested_tensor_impl(self);
   auto self_data = self_impl->_data;
+  auto structure = self_data.get_structure();
+  auto res = map(
+      [&](at::Tensor t) {
+        return at::max_pool2d(
+                   t.unsqueeze(0),
+                   kernel_size,
+                   stride,
+                   padding,
+                   dilation,
+                   ceil_mode)
+            .squeeze(0);
+      },
+      structure);
+
   return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::relu(self_data, false));
+      torch::nested_tensor::NestedTensor(std::move(res)));
+}
+
+Tensor NestedTensor_relu(const Tensor& self) {
+  auto self_impl = get_nested_tensor_impl(self);
+  auto self_data = self_impl->_data;
+  if (self_data.is_contiguous()) {
+    auto res = torch::nested_tensor::NestedTensor(
+        at::relu(*self_data.get_buffer()), self_data.nested_size());
+    return at::detail::make_tensor<NestedTensorImpl>(std::move(res));
+  }
+  auto structure = self_data.get_structure();
+  auto res =
+      map([&](at::Tensor t) { return at::relu(t.unsqueeze(0)).squeeze(0); },
+          structure);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)));
 }
 
 Tensor & NestedTensor_relu_(Tensor & self) {
   auto self_impl = get_nested_tensor_impl(self);
   auto self_data = self_impl->_data;
-  torch::nested_tensor::relu(self_data, true);
+  if (self_data.is_contiguous()) {
+    at::relu_(*self_data.get_buffer());
+    return self;
+  }
+  auto structure = self_data.get_structure();
+  apply([](at::Tensor& t) { at::relu_(t); }, structure);
   return self;
+}
+
+Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
+  auto self_impl = get_nested_tensor_impl(input);
+  auto self_data = self_impl->_data;
+  auto structure = self_data.get_structure();
+  auto res =
+      map([&](const at::Tensor t) { return at::dropout(t, p, train); }, structure);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)));
+}
+
+Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
+  auto self_impl = get_nested_tensor_impl(input);
+  auto self_data = self_impl->_data;
+  auto structure = self_data.get_structure();
+  apply([&](at::Tensor& t) { return at::dropout_(t, p, train); }, structure);
+  return input;
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
+  m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
+  m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
   m.impl_UNBOXED("relu", NestedTensor_relu);
   m.impl_UNBOXED("relu_", NestedTensor_relu_);
+  m.impl_UNBOXED("dropout", NestedTensor_dropout);
+  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
 }
 }
