@@ -189,6 +189,9 @@ class NestedTensor(object):
     def __str__(self):
         return nestedtensor._C.str(self._impl)
 
+    def __repr__(self):
+        return nestedtensor._C.str(self._impl)
+
     # --- impl forward ends ---
 
     # --- dependent on impl ---
@@ -229,6 +232,8 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
+        print('func')
+        print(func)
         if kwargs is None:
             kwargs = {}
         impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
@@ -236,6 +241,10 @@ class NestedTensor(object):
             k: v._impl if isinstance(v, NestedTensor) else v
             for (k, v) in kwargs.items()
         }
+        if func is torch.nn.functional.interpolate:
+            # res = nestedtensor._C.my_interpolate(self._impl, *args, **kwargs)
+            res = nestedtensor._C.my_interpolate(*impl_args, **impl_kwargs)
+            return _wrap_result(res)
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero

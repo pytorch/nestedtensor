@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <nestedtensor/csrc/utils/python_nested_node.h>
+#include <nestedtensor/csrc/python_functions.h>
 #include <torch/csrc/Size.h>
 #include <torch/extension.h>
 
@@ -180,4 +181,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return at::detail::make_tensor<at::NestedTensorImpl>(
         NestedTensor(TensorNode(std::move(tensor_nodes))));
   });
+
+  add_functions(m);
 }
