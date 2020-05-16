@@ -1,6 +1,7 @@
 #include <nestedtensor/csrc/functions.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
+#include <torch/library.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -244,5 +245,23 @@ NestedTensor interpolate(NestedTensor input,
     return NestedTensor(std::move(res));
 }
 
+}
+}
+
+namespace at {
+
+Tensor NestedTensor_relu(const Tensor & self) {
+  std::cout << "EEEE0" << std::endl;
+  return at::threshold(self, 0, 0);
+}
+
+Tensor & NestedTensor_relu_(Tensor & self) {
+  std::cout << "EEEE1" << std::endl;
+  return at::threshold_(self, 0, 0);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  m.impl_UNBOXED("relu", NestedTensor_relu);
+  m.impl_UNBOXED("relu_", NestedTensor_relu_);
 }
 }
