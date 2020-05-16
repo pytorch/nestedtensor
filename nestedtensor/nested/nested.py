@@ -280,9 +280,13 @@ class NestedTensor(object):
         return NestedTensor(self._impl.copy_(source._impl, non_blocking))
 
     def squeeze(self, dim=None):
+        if dim is None:
+            return NestedTensor(self._impl.squeeze())
         return NestedTensor(self._impl.squeeze(dim))
 
     def squeeze_(self, dim=None):
+        if dim is None:
+            return NestedTensor(self._impl.squeeze_())
         return NestedTensor(self._impl.squeeze_(dim))
 
     def __add__(self, other):

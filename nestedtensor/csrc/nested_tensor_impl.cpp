@@ -257,15 +257,26 @@ Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
   return self;
 }
 
-Tensor& NestedTensor_squeeze_(Tensor& self, int64_t dim) {
+Tensor& NestedTensor_squeeze_(Tensor& self) {
+  auto self_impl = get_nested_tensor_impl(self);
+  self_impl->_data.squeeze_(c10::nullopt);
+  return self;
+}
+
+Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
   auto self_impl = get_nested_tensor_impl(self);
   self_impl->_data.squeeze_(dim);
   return self;
 }
 
-Tensor NestedTensor_squeeze(const Tensor& self, int64_t dim) {
+Tensor NestedTensor_squeeze(const Tensor& self) {
   auto new_tensor = NestedTensor_clone(self, c10::nullopt);
-  return NestedTensor_squeeze_(new_tensor, dim);
+  return NestedTensor_squeeze_(new_tensor);
+}
+
+Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
+  auto new_tensor = NestedTensor_clone(self, c10::nullopt);
+  return NestedTensor_squeeze__dim(new_tensor, dim);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
@@ -273,7 +284,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
+  m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
   m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
+  m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
   m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
