@@ -273,6 +273,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
+  m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
   m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
