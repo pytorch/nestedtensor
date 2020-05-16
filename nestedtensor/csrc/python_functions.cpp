@@ -16,7 +16,6 @@ NestedTensor interpolate(NestedTensor& input,
                          c10::optional<at::ArrayRef<double>> scale_factor,
                          c10::optional<std::string> mode,
                          c10::optional<bool> align_corners) {
-                         //bool recompute_scale_factor) { // TODO: use
     F::InterpolateFuncOptions::mode_t int_mode;
     if (mode.value() == "nearest" || mode.value() == "none") {
         int_mode = torch::kNearest;
@@ -89,19 +88,16 @@ NestedTensor interpolate(NestedTensor& input,
 
 namespace py = pybind11;
 
-void add_functions(	
-    pybind11::module m) {
+void add_functions(pybind11::module m) {
   m.def(
-      "my_interpolate",
-      [](at::Tensor input,
+      "interpolate",
+      [](at::Tensor input_,
          c10::optional<std::vector<std::vector<int64_t>>> size,
          c10::optional<THPArrayRef<double>> scale_factor,
          c10::optional<std::string> mode,
          c10::optional<bool> align_corners,
          c10::optional<bool> recompute_scale_factor) {
-      std::cout << "010101" << std::endl;
-        auto input_impl = get_nested_tensor_impl(input);
-        auto input_data = input_impl->_data;
+        auto input = get_nested_tensor_impl(input_)->_data;
         if (scale_factor.has_value() && size.has_value()) {
           throw std::runtime_error(
               "only one of size or scale_factor should be defined");
@@ -109,12 +105,12 @@ void add_functions(
 
         if (size.has_value()) {
           return at::detail::make_tensor<NestedTensorImpl>(interpolate(
-              input_data, size.value(), c10::nullopt, mode, align_corners));
+              input, size.value(), c10::nullopt, mode, align_corners));
         }
 
         if (scale_factor.has_value()) {
           return at::detail::make_tensor<NestedTensorImpl>(interpolate(
-              input_data,
+              input,
               c10::nullopt,
               scale_factor.value().extract<2>(),
               mode,
@@ -122,7 +118,84 @@ void add_functions(
         }
 
         throw "Either size or scale factor have to be passed.";
-        // return at::ones({0});
+      },
+      py::arg("input"),
+      py::arg("size") = nullptr,
+      py::arg("scale_factor") = nullptr,
+      py::arg("mode") = "nearest",
+      py::arg("align_corners") = false,
+      py::arg("recompute_scale_factor") = false);
+
+  m.def(
+      "interpolate",
+      [](at::Tensor input_,
+         c10::optional<std::vector<int64_t>> size,
+         c10::optional<THPArrayRef<double>> scale_factor,
+         c10::optional<std::string> mode,
+         c10::optional<bool> align_corners,
+         c10::optional<bool> recompute_scale_factor) {
+        auto input = get_nested_tensor_impl(input_)->_data;
+        if (scale_factor.has_value() && size.has_value()) {
+          throw std::runtime_error(
+              "only one of size or scale_factor should be defined");
+        }
+
+        if (size.has_value()) {
+          std::vector<std::vector<int64_t>> sizes{size.value()};
+          return at::detail::make_tensor<NestedTensorImpl>(interpolate(
+              input, sizes, c10::nullopt, mode, align_corners));
+        }
+
+        if (scale_factor.has_value()) {
+          return at::detail::make_tensor<NestedTensorImpl>(interpolate(
+              input,
+              c10::nullopt,
+              scale_factor.value().extract<2>(),
+              mode,
+              align_corners));
+        }
+
+        throw "Either size or scale factor have to be passed.";
+      },
+      py::arg("input"),
+      py::arg("size") = nullptr,
+      py::arg("scale_factor") = nullptr,
+      py::arg("mode") = "nearest",
+      py::arg("align_corners") = false,
+      py::arg("recompute_scale_factor") = false);
+
+  m.def(
+      "interpolate",
+      [](at::Tensor input_,
+         c10::optional<int64_t> size,
+         c10::optional<THPArrayRef<double>> scale_factor,
+         c10::optional<std::string> mode,
+         c10::optional<bool> align_corners,
+         c10::optional<bool> recompute_scale_factor) {
+        auto input = get_nested_tensor_impl(input_)->_data;
+        if (scale_factor.has_value() && size.has_value()) {
+          throw std::runtime_error(
+              "only one of size or scale_factor should be defined");
+        }
+
+        if (size.has_value()) {
+          std::vector<std::vector<int64_t>> sizes{
+              std::vector<int64_t>{size.value(), size.value()}};
+
+          return at::detail::make_tensor<NestedTensorImpl>(interpolate(
+              input, sizes, c10::nullopt, mode, align_corners));
+        }
+
+        if (scale_factor.has_value()) {
+          return at::detail::make_tensor<NestedTensorImpl>(interpolate(
+              input,
+              c10::nullopt,
+              scale_factor.value().extract<2>(),
+              mode,
+              align_corners));
+        }
+
+        throw "Either size or scale factor have to be passed.";
       },
       py::arg("input"),
       py::arg("size") = nullptr,
@@ -131,5 +204,5 @@ void add_functions(
       py::arg("align_corners") = false,
       py::arg("recompute_scale_factor") = false);
 }
-} // namespace nested_tensor
-} // namespace torch
+}
+}
