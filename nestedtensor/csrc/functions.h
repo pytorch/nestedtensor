@@ -16,14 +16,6 @@ NestedTensor dropout(NestedTensor& input,
                      c10::optional<bool> training, 
                      c10::optional<bool> inplace);
 
-NestedTensor conv2d(NestedTensor& input, 
-                    const at::Tensor& weight, 
-                    c10::optional<at::Tensor>& bias, 
-                    at::IntArrayRef stride,
-                    at::IntArrayRef padding,
-                    at::IntArrayRef dilation,
-                    c10::optional<int64_t> groups);
-
 NestedTensor max_pool2d(NestedTensor& input,
                         at::IntArrayRef kernel_size,
                         at::IntArrayRef stride,

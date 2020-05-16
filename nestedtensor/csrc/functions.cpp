@@ -1,4 +1,5 @@
 #include <nestedtensor/csrc/functions.h>
+#include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
@@ -68,10 +69,10 @@ NestedTensor relu(NestedTensor& input,
                   c10::optional<bool> inplace) {
   if (input.is_contiguous()) {
     if (inplace.has_value() && inplace.value()) {
-      input = NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
+      input = NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
       return input;
     }
-    return NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
+    return NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
   }
 
   TensorNode input_structure = input.get_structure();
@@ -104,29 +105,6 @@ NestedTensor dropout(NestedTensor& input,
   return NestedTensor(std::move(res));
 }
 
-NestedTensor conv2d(NestedTensor& input, 
-                    const at::Tensor& weight, 
-                    c10::optional<at::Tensor>& bias, 
-                    at::IntArrayRef stride,
-                    at::IntArrayRef padding,
-                    at::IntArrayRef dilation,
-                    c10::optional<int64_t> groups) {
-  TensorNode structure = input.get_structure();
-  auto options = F::Conv2dFuncOptions().stride(stride)
-                                       .padding(padding)
-                                       .dilation(dilation)
-                                       .groups(groups.value());
-  if (bias.has_value()) {
-      options = options.bias(bias.value());
-  }
-
-  TensorNode res = map([&, options](at::Tensor t){
-      return F::conv2d(t.unsqueeze(0), weight, options).squeeze(0);
-  }, structure);
-
-  return NestedTensor(std::move(res));
-}
-
 NestedTensor max_pool2d(NestedTensor& input,
                         at::IntArrayRef kernel_size,
                         at::IntArrayRef stride,
@@ -145,6 +123,7 @@ NestedTensor max_pool2d(NestedTensor& input,
 
   return NestedTensor(std::move(res));
 }
+
 
 NestedTensor batch_norm(NestedTensor& input,
                         const at::Tensor& running_mean,
@@ -285,17 +264,53 @@ NestedTensor interpolate(NestedTensor& input,
 
 namespace at {
 
+Tensor NestedTensor_conv2d(
+    const Tensor& input,
+    const Tensor& weight,
+    const Tensor& bias,
+    IntArrayRef stride,
+    IntArrayRef padding,
+    IntArrayRef dilation,
+    int64_t groups) {
+  auto input_impl = get_nested_tensor_impl(input);
+  auto input_data = input_impl->_data;
+  auto structure = input_data.get_structure();
+
+  auto res = map(
+      [&weight, &bias, &stride, &padding, &dilation, groups](at::Tensor t) {
+        return at::convolution(
+            t,
+            weight,
+            bias,
+            stride,
+            padding,
+            dilation,
+            false,
+            {{0, 0}},
+            groups);
+      },
+      structure);
+
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)));
+}
+
 Tensor NestedTensor_relu(const Tensor & self) {
-  std::cout << "EEEE0" << std::endl;
-  return at::threshold(self, 0, 0);
+  auto self_impl = get_nested_tensor_impl(self);
+  auto self_data = self_impl->_data;
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::relu(self_data, false));
 }
 
 Tensor & NestedTensor_relu_(Tensor & self) {
-  std::cout << "EEEE1" << std::endl;
-  return at::threshold_(self, 0, 0);
+  auto self_impl = get_nested_tensor_impl(self);
+  auto self_data = self_impl->_data;
+  torch::nested_tensor::relu(self_data, true);
+  return self;
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("relu", NestedTensor_relu);
   m.impl_UNBOXED("relu_", NestedTensor_relu_);
 }

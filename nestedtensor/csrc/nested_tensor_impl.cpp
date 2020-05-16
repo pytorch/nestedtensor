@@ -9,18 +9,6 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-// TODO: The dispatcher has trouble with this so we register an unboxed kernel.
-Tensor NestedTensor_conv2d(const Tensor& input, const Tensor& weight,
-                            const Tensor& bias, IntArrayRef stride,
-                            IntArrayRef padding, IntArrayRef dilation,
-                            int64_t groups) {
-  // auto nt = NestedTensor(at::ones({2, 3, 2, 1}));
-  auto input_impl = static_cast<NestedTensorImpl*>(input.unsafeGetTensorImpl());
-  auto nt = torch::nested_tensor::conv2d(
-      input_impl->_data, weight, bias, stride, padding, dilation, groups);
-  return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
-}
-
 IntArrayRef NestedTensorImpl::sizes() const {
   std::vector<c10::optional<int64_t>> size = _data.sizes();
   std::vector<int64_t> sizes;
@@ -280,7 +268,6 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
