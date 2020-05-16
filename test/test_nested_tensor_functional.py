@@ -24,6 +24,24 @@ class TestFunctional(TestCase):
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)]
         )
 
+    def test_contiguousity(self):
+        initial_t = torch.rand(2, 5, 10, 15)
+        self.assertEqual(True, initial_t.is_contiguous())
+
+        non_contiguous_1 = initial_t.select(1, 0)
+        non_contiguous_2 = initial_t.select(1, 0)
+        self.assertEqual(False, non_contiguous_1.is_contiguous())
+
+        relu = torch.nn.ReLU()
+        t_cont = relu(non_contiguous_1)
+        self.assertEqual(True, t_cont.is_contiguous())
+
+        nt = nestedtensor.nested_tensor([non_contiguous_1, non_contiguous_2])
+        self.assertEqual(True, nt.is_contiguous())
+
+        nt_cont = relu(nt)
+        self.assertEqual(True, nt_cont.is_contiguous())
+
     def test_nn_conv2d(self):
         inputs = [
             torch.randn(3, 500, 600),
