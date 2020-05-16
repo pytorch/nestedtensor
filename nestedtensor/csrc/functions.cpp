@@ -64,25 +64,35 @@ NestedTensor squeeze(
   return NestedTensor(std::move(structure));
 }
 
-NestedTensor relu(NestedTensor input, 
+NestedTensor relu(NestedTensor& input, 
                   c10::optional<bool> inplace) {
   if (input.is_contiguous()) {
-    return NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
+    if (inplace.has_value() && inplace.value()) {
+      input = NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
+      return input;
+    }
+    return NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
   }
+
   TensorNode input_structure = input.get_structure();
   TensorNode res = map([&](at::Tensor t){
       return torch::relu(t.unsqueeze(0)).squeeze(0);
   }, input_structure);
 
+  if  (inplace.has_value() && inplace.value()) {
+    input = NestedTensor(std::move(res));
+    return input;
+  }
+
   return NestedTensor(std::move(res));
 }
 
 NestedTensor relu_out(NestedTensor& input) {
-  input = relu(input, true);
+  relu(input, true);
   return input;
 }
 
-NestedTensor dropout(NestedTensor input, 
+NestedTensor dropout(NestedTensor& input, 
                      c10::optional<double> p, 
                      c10::optional<bool> training, 
                      c10::optional<bool> inplace) {
@@ -94,9 +104,9 @@ NestedTensor dropout(NestedTensor input,
   return NestedTensor(std::move(res));
 }
 
-NestedTensor conv2d(const NestedTensor input, 
-                    const at::Tensor weight, 
-                    c10::optional<at::Tensor> bias, 
+NestedTensor conv2d(NestedTensor& input, 
+                    const at::Tensor& weight, 
+                    c10::optional<at::Tensor>& bias, 
                     at::IntArrayRef stride,
                     at::IntArrayRef padding,
                     at::IntArrayRef dilation,
@@ -117,7 +127,7 @@ NestedTensor conv2d(const NestedTensor input,
   return NestedTensor(std::move(res));
 }
 
-NestedTensor max_pool2d(NestedTensor input,
+NestedTensor max_pool2d(NestedTensor& input,
                         at::IntArrayRef kernel_size,
                         at::IntArrayRef stride,
                         at::IntArrayRef padding,
@@ -136,11 +146,11 @@ NestedTensor max_pool2d(NestedTensor input,
   return NestedTensor(std::move(res));
 }
 
-NestedTensor batch_norm(NestedTensor input,
-                        const at::Tensor running_mean,
-                        const at::Tensor running_var,
-                        c10::optional<at::Tensor> weight,
-                        c10::optional<at::Tensor> bias,
+NestedTensor batch_norm(NestedTensor& input,
+                        const at::Tensor& running_mean,
+                        const at::Tensor& running_var,
+                        c10::optional<at::Tensor>& weight,
+                        c10::optional<at::Tensor>& bias,
                         bool training, 
                         double momentum,
                         double eps) {
@@ -165,13 +175,13 @@ NestedTensor batch_norm(NestedTensor input,
     return NestedTensor(std::move(res));
 }
 
-NestedTensor cross_entropy(NestedTensor input,
-                           NestedTensor target,
-                           c10::optional<at::Tensor> weight,
-                           c10::optional<bool> size_average, // TODO: use
-                           c10::optional<int64_t> ignore_index,
-                           c10::optional<bool> reduce, // TODO: use
-                           c10::optional<std::string> reduction) {
+NestedTensor cross_entropy(NestedTensor& input,
+                           NestedTensor& target,
+                           c10::optional<at::Tensor>& weight,
+                           c10::optional<bool>& size_average, // TODO: use
+                           c10::optional<int64_t>& ignore_index,
+                           c10::optional<bool>& reduce, // TODO: use
+                           c10::optional<std::string>& reduction) {
   TensorNode input_structure = input.get_structure();
   TensorNode target_structure = target.get_structure();
   F::CrossEntropyFuncOptions::reduction_t redct;
@@ -180,9 +190,7 @@ NestedTensor cross_entropy(NestedTensor input,
   } else if (reduction.value() == "sum") {
       redct = torch::kSum;
   } else {
-      std::stringstream error;
-      error << "Unexpected mode for reduction: " << reduction.value() << std::endl;
-      throw error;
+      throw std::runtime_error("Unexpected mode for reduction: " + reduction.value());
   }
 
   auto options = F::CrossEntropyFuncOptions().reduction(redct);
@@ -197,13 +205,12 @@ NestedTensor cross_entropy(NestedTensor input,
   return NestedTensor(std::move(res));
 }
 
-NestedTensor interpolate(NestedTensor input,
-                         c10::optional<at::IntArrayRef> size,
+NestedTensor interpolate(NestedTensor& input,
+                         c10::optional<std::vector<std::vector<int64_t>>> size,
                          c10::optional<at::ArrayRef<double>> scale_factor,
                          c10::optional<std::string> mode,
                          c10::optional<bool> align_corners) {
                          //bool recompute_scale_factor) { // TODO: use
-    TensorNode input_structure = input.get_structure();
     F::InterpolateFuncOptions::mode_t int_mode;
     if (mode.value() == "nearest" || mode.value() == "none") {
         int_mode = torch::kNearest;
@@ -218,33 +225,61 @@ NestedTensor interpolate(NestedTensor input,
     } else if (mode.value()== "bilinear") {
         int_mode = torch::kBilinear;
     }  else {
-        std::stringstream error;
-        error << "Unexpected mode for interpolate: " << mode.value() << std::endl;
-        throw error;
+        throw std::runtime_error("Unexpected mode for interpolate: " + mode.value());
     }
 
+    TensorNode input_structure = input.get_structure();
     auto options = F::InterpolateFuncOptions().mode(int_mode);
-    if (size.has_value()) {
-      options = options.size(size.value().vec());
-    }
-    
-    if (scale_factor.has_value()) {
-      options = options.scale_factor(scale_factor.value().vec());
-    }
-
     if (align_corners.has_value()) {
       options.align_corners() = align_corners.value();
     }
 
-    TensorNode res = map(
+    // Either scale factor or size can be passed
+    if (scale_factor.has_value()) {
+      options = options.scale_factor(scale_factor.value().vec());
+      TensorNode res = map(
         [&options](at::Tensor input_tensor) {
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
         input_structure);
+      return NestedTensor(std::move(res));
+    }
 
-    return NestedTensor(std::move(res));
+    // Get input leaves count
+    auto fn = [](at::Tensor leaf, int64_t input) {
+      return input + 1;
+    };
+    auto leaves_count = reduce<decltype(fn), int64_t, at::Tensor>(input.get_structure(), fn, 0);
+
+    if (size.has_value()) {
+      // There can be either 1 size for all tensor or an individual size value per tensor
+      if (size.value().size() != 1 && size.value().size() != leaves_count) {
+        throw std::runtime_error( "Interpolate has to take either 1 size tuple or same amount as leaves in Nested Tensor.");
+      }
+
+      if (size.value().size() == 1) {
+        TensorNode res = map(
+          [&options, &size](at::Tensor input_tensor) {
+            options = options.size(size.value()[0]);
+            return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
+          },
+          input_structure);
+        return NestedTensor(std::move(res));
+      } else {
+        int size_i = 0;
+        TensorNode res = map(
+            [&options, &size_i, &size](at::Tensor input_tensor) {
+              options = options.size(size.value()[size_i]);
+              size_i++;
+              return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
+            },
+            input_structure);
+        return NestedTensor(std::move(res));
+      }
+    }
+
+    throw std::runtime_error("Either size or scale_factor should be defined.");
 }
-
 }
 }
 
