@@ -239,6 +239,7 @@ class NestedTensor(object):
             k: v._impl if isinstance(v, NestedTensor) else v
             for (k, v) in kwargs.items()
         }
+        # Need a specialized implementation to support lists of lists of sizes.
         if func is torch.nn.functional.interpolate:
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         return _wrap_result(func(*impl_args, **impl_kwargs))
