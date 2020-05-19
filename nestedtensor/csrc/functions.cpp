@@ -67,7 +67,7 @@ NestedTensor relu(NestedTensor& input,
                   c10::optional<bool> inplace) {
   if (input.is_contiguous()) {
     if (inplace.has_value() && inplace.value()) {
-      input = NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
+      at::relu_(*input.get_buffer());
       return input;
     }
     return NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
