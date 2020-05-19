@@ -70,20 +70,22 @@ NestedTensor relu(NestedTensor& input,
       at::relu_(*input.get_buffer());
       return input;
     }
-    return NestedTensor(std::move(torch::relu(*input.get_buffer())), input.nested_size());
+    return NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
   }
-
-  TensorNode input_structure = input.get_structure();
-  TensorNode res = map([&](at::Tensor t){
-      return torch::relu(t.unsqueeze(0)).squeeze(0);
-  }, input_structure);
 
   if  (inplace.has_value() && inplace.value()) {
-    input = NestedTensor(std::move(res));
+    TensorNode& input_structure = input.get_structure();
+    apply([](at::Tensor& t) { at::relu_(t); }, input_structure);
     return input;
-  }
+  } else {
+    TensorNode& input_structure = input.get_structure();
+    TensorNode res = map([&](at::Tensor t){
+        return torch::relu(t.unsqueeze(0)).squeeze(0);
+    }, input_structure);
 
-  return NestedTensor(std::move(res));
+    return NestedTensor(std::move(res));
+  }
+  
 }
 
 NestedTensor relu_out(NestedTensor& input) {
