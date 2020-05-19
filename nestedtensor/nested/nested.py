@@ -242,6 +242,8 @@ class NestedTensor(object):
         # Need a specialized implementation to support lists of lists of sizes.
         if func is torch.nn.functional.interpolate:
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
+        if func is torch.nn.functional.cross_entropy:
+            return _wrap_result(nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs))
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero

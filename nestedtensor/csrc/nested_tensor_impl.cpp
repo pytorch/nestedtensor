@@ -22,6 +22,14 @@ IntArrayRef NestedTensorImpl::sizes() const {
   return IntArrayRef(sizes);
 }
 
+int64_t NestedTensorImpl::size(int64_t dim) const {
+  std::vector<c10::optional<int64_t>> size = _data.sizes();
+  if (size[dim]) {
+    return *(size[dim]);
+  }
+  throw std::runtime_error("NestedTensor size at dim is not Tensor shape compliant.");
+}
+
 IntArrayRef NestedTensorImpl::strides() const {
   throw std::runtime_error("NestedTensor stride is not implemented.");
 }
@@ -238,6 +246,15 @@ Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> op
           self_impl->_data.get_structure()));
 }
 
+Tensor NestedTensor__log_softmax(const Tensor& input_, const int64_t dim_, const bool half_to_float) {
+  auto self_impl = get_nested_tensor_impl(input_);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      map([&](Tensor a) {
+          return at::_log_softmax(a, dim_, half_to_float);
+          }, 
+          self_impl->_data.get_structure()));
+}
+
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
   auto self_impl = get_nested_tensor_impl(self);
   auto src_impl = get_nested_tensor_impl(src);
@@ -269,6 +286,7 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
+  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
   m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);

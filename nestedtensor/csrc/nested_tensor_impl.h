@@ -27,6 +27,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
 
   IntArrayRef sizes() const override;
+  int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
   torch::nested_tensor::NestedTensor _data;

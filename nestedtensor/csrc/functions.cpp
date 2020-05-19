@@ -7,49 +7,6 @@
 using namespace torch::nn;
 namespace F = torch::nn::functional;
 
-namespace torch {
-namespace nested_tensor {
-
-inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
-  if (dim == 0) {
-    return structure.children(0);
-  }
-  return TensorNode(_squeeze_nested_dim(structure, dim - 1));
-}
-
-NestedTensor cross_entropy(NestedTensor& input,
-                           NestedTensor& target,
-                           c10::optional<at::Tensor>& weight,
-                           c10::optional<bool>& size_average, // TODO: use
-                           c10::optional<int64_t>& ignore_index,
-                           c10::optional<bool>& reduce, // TODO: use
-                           c10::optional<std::string>& reduction) {
-  TensorNode input_structure = input.get_structure();
-  TensorNode target_structure = target.get_structure();
-  F::CrossEntropyFuncOptions::reduction_t redct;
-  if (reduction.value() == "mean" || reduction.value() == "none") {
-      redct = torch::kMean;
-  } else if (reduction.value() == "sum") {
-      redct = torch::kSum;
-  } else {
-      throw std::runtime_error("Unexpected mode for reduction: " + reduction.value());
-  }
-
-  auto options = F::CrossEntropyFuncOptions().reduction(redct);
-  if (ignore_index.has_value()) {
-      options = options.ignore_index(ignore_index.value());
-  }
-
-  TensorNode res = map([&, options] (at::Tensor input_tensor, at::Tensor target_tensor){
-      return F::cross_entropy(input_tensor.unsqueeze(0), target_tensor.unsqueeze(0), options).squeeze(0);
-  }, input_structure, target_structure);
-
-  return NestedTensor(std::move(res));
-}
-
-}
-}
-
 namespace at {
 
 Tensor NestedTensor_batch_norm(
