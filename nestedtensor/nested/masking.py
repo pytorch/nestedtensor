@@ -4,7 +4,6 @@ import numbers
 import collections
 
 from . import creation
-from . import utils
 import nestedtensor
 
 TensorMask = collections.namedtuple('TensorMask', 'tensor mask')

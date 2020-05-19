@@ -1,8 +1,5 @@
 import torch
 
-# from .nested.utils import tensorwise
-from .nested.utils import is_nested_tensor
-
 from .nested.creation import as_nested_tensor
 from .nested.creation import nested_tensor
 

@@ -2,7 +2,6 @@ import torch
 import numbers
 
 from . import nested
-from . import utils
 from nestedtensor import _C
 
 def as_nested_tensor(data, dtype=None, device=None):

@@ -5,7 +5,6 @@ from . import masking
 import collections
 import os
 
-from . import utils
 from . import creation
 from . import codegen
 
