@@ -313,6 +313,9 @@ class NestedTensor(object):
     def any(self):
         return self._impl.any()
 
+    def sum(self, *args, **kwargs):
+        return self._impl.sum(*args, **kwargs)
+
 
 for func in codegen.extension.get_unary_functions():
 

@@ -41,6 +41,11 @@ inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
 }
 
+inline at::Tensor wrap_nested_tensor(
+    torch::nested_tensor::NestedTensor&& result) {
+  return at::detail::make_tensor<NestedTensorImpl>(std::move(result));
+}
+
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
 inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {

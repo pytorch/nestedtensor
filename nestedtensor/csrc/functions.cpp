@@ -31,8 +31,7 @@ Tensor NestedTensor_batch_norm(
             .squeeze(0);
       },
       structure);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
+  return wrap_nested_tensor(std::move(res));
 }
 
 Tensor NestedTensor_conv2d(
@@ -140,6 +139,22 @@ Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
   return input;
 }
 
+Tensor NestedTensor_sum(const Tensor &self_, c10::optional<ScalarType> dtype) {
+  auto self = get_nested_tensor_impl(self_)->_data;
+  auto flat_structure =
+      map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
+          self.get_structure());
+  auto tensors = flatten(flat_structure).vec();
+  if (tensors.size() == 0) {
+    if (dtype) {
+      return at::ones({0}, *dtype);
+    }
+    return at::ones({0});
+  }
+  auto all_tensor = at::stack(tensors);
+  return at::sum(all_tensor, dtype);
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -148,5 +163,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("relu_", NestedTensor_relu_);
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
+  m.impl_UNBOXED("sum", NestedTensor_sum);
 }
 }
