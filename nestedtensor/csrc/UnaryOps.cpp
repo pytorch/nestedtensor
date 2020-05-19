@@ -7,7 +7,7 @@ namespace at {
 using namespace torch::nested_tensor;
 
 // NOTE: Can't reuse dispatch from cos_ to cos_out either, because it requries
-// support for empty through unary_op_impl
+// support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self);

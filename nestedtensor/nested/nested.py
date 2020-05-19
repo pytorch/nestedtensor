@@ -24,6 +24,16 @@ def _wrap_result(result):
     )
 
 
+def _filter_impl(args, kwargs):
+    if kwargs is None:
+        kwargs = {}
+    impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+    impl_kwargs = {
+        k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()
+    }
+    return impl_args, impl_kwargs
+
+
 # -------------------------NestedTensor core---------------------------
 class NestedTensor(object):
     # The attributes must match across all constiuents
@@ -232,18 +242,14 @@ class NestedTensor(object):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
-        if kwargs is None:
-            kwargs = {}
-        impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
-        impl_kwargs = {
-            k: v._impl if isinstance(v, NestedTensor) else v
-            for (k, v) in kwargs.items()
-        }
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
         if func is torch.nn.functional.interpolate:
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.cross_entropy:
-            return _wrap_result(nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs))
+            return _wrap_result(
+                nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs)
+            )
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero
@@ -317,13 +323,18 @@ class NestedTensor(object):
         return self._impl.sum(*args, **kwargs)
 
 
+def _gen_func(func):
+    def tmp(*args, **kwargs):
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
+        return _wrap_result(getattr(impl_args[0], func)(*impl_args[1:], **impl_kwargs))
+
+    return tmp
+
+
 for func in codegen.extension.get_unary_functions():
+    setattr(NestedTensor, func, _gen_func(func))
+    setattr(NestedTensor, func + "_", _gen_func(func + "_"))
 
-    def _gen_func(func):
-        def tmp(self, *args, **kwargs):
-            return NestedTensor(getattr(self._impl, func)(*args, **kwargs))
-
-        return tmp
-
+for func in codegen.extension.get_binary_functions():
     setattr(NestedTensor, func, _gen_func(func))
     setattr(NestedTensor, func + "_", _gen_func(func + "_"))

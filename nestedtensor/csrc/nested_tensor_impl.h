@@ -46,6 +46,12 @@ inline at::Tensor wrap_nested_tensor(
   return at::detail::make_tensor<NestedTensorImpl>(std::move(result));
 }
 
+inline at::Tensor wrap_tensor_node(
+    torch::nested_tensor::TensorNode&& result) {
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(result)));
+}
+
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
 inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
