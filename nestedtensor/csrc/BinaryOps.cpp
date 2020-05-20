@@ -136,6 +136,13 @@ Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
   return result;
 }
 
+Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
+  auto base_structure = get_nested_tensor_impl(base)->_data.get_structure();
+  return wrap_tensor_node(
+      map([exp](const at::Tensor base) { return at::native::pow(base, exp); },
+          base_structure));
+}
+
 Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
   auto result_structure = get_nested_tensor_impl(result)->_data.get_structure();
   auto exp_structure = get_nested_tensor_impl(exp)->_data.get_structure();
@@ -148,7 +155,6 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
       exp_structure);
   return result;
 }
-
 
 #define BINARY_OP(NAME)                                                        \
   m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::native::NAME>);              \
@@ -172,6 +178,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_pow_1);
   m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
   m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
+  m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
   m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
 }
 }

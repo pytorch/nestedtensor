@@ -308,6 +308,10 @@ class NestedTensor(object):
     def sum(self, *args, **kwargs):
         return self._impl.sum(*args, **kwargs)
 
+    def __pow__(self, *args, **kwargs):
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
+        return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
+
 
 def _gen_func(func):
     def tmp(*args, **kwargs):
