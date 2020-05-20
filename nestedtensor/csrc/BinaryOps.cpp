@@ -173,12 +173,5 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
   m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
   m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
-
-  // BINARY_OP(sub)
-  // m.impl_UNBOXED(
-  //     "div.Tensor", NestedTensor_binary<decltype(&at::div), at::div>);
-  // m.impl_UNBOXED("div.Tensor", NestedTensor_binary<at::div>);
-  // m.impl_UNBOXED("div_.Tensor", NestedTensor_binary_<at::native::div_>);
-  // m.impl_UNBOXED("div.out", NestedTensor_binary_out<at::native::div_out>);
 }
 }

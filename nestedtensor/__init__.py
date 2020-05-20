@@ -8,10 +8,6 @@ from .nested.masking import nested_tensor_from_padded_tensor
 
 from .nested.nested import NestedTensor
 
-# from .nested.monkey_patch import monkey_patch
-
 from . import nested
 
 from . import _C
-
-# nested.monkey_patch.monkey_patch(NestedTensor)

@@ -175,7 +175,6 @@ bool _verify_variables(
 
 NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   if (THPVariable_Check(py_obj.ptr())) {
-    // std::cout << "IS TENSOR" << std::endl;
     at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
     if (tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
       auto tensor_impl = static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
@@ -185,47 +184,32 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
     }
   }
   if (py::isinstance<py::sequence>(py_obj)) {
-    // std::cout << "a0" << std::endl;
     std::vector<NestedNode<c10::IValue>> result;
-    // std::cout << "a1" << std::endl;
     auto py_seq = py::sequence(py_obj);
-    // std::cout << "a2" << std::endl;
     for (size_t i = 0; i < py_seq.size(); i++) {
-      // std::cout << "a2 i: " << i << std::endl;
       result.emplace_back(py_to_nested_tensor(py_seq[i]));
     }
-    // std::cout << "a3" << std::endl;
     return NestedNode<c10::IValue>(std::move(result));
   } else {
-    // std::cout << "a4" << std::endl;
     return NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj));
   }
 }
 
 NestedTensor _as_nested_tensor(py::sequence list) {
-    // std::cout << "b0" << std::endl;
   NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
-    // std::cout << "b1" << std::endl;
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
-    // std::cout << "b2" << std::endl;
   bool all_same =
       reduce<decltype(fn), bool, c10::IValue>(ivalue_structure, fn, true);
-    // std::cout << "b3" << std::endl;
   TORCH_CHECK(
       all_same,
       "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
-    // std::cout << "b4" << std::endl;
   TensorNode structure =
       map([](c10::IValue a) { return a.toTensor(); }, ivalue_structure);
-    // std::cout << "b5" << std::endl;
   if (auto first = get_first_leaf(structure)) {
-    // std::cout << "b6" << std::endl;
     if (!_verify_variables(*first, structure)) {
-    // std::cout << "b7" << std::endl;
       _verify_variables(*first, structure, true);
     }
   }
-    // std::cout << "b8" << std::endl;
   return NestedTensor(std::move(structure));
 }
 

@@ -46,8 +46,6 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
-// TODO: Can't have mixed return types in C++
-// for different input values.
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   auto impl_data = get_nested_tensor_impl(tensor)->_data;
   if (!dim_) {
@@ -149,7 +147,6 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
   return result;
 }
 
-//TODO: CONTINUE HERE!
 Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   int64_t ndim = self.dim();
   dim = maybe_wrap_dim(dim, ndim);

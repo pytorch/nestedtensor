@@ -54,8 +54,6 @@ class NestedTensor(object):
     def __init__(self, impl):
         if not nestedtensor._C.is_nested_tensor_impl(impl):
             raise TypeError("Got unexpected type " + str(type(impl)))
-        # if not isinstance(impl, nestedtensor._C.NestedTensor):
-        #     raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
     # --- magic methods ---
@@ -240,6 +238,7 @@ class NestedTensor(object):
         # Need a specialized implementation to support lists of lists of sizes.
         if func is torch.nn.functional.interpolate:
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
+        # Need a specialized implementation to dodge call to view in nll_loss
         if func is torch.nn.functional.cross_entropy:
             return _wrap_result(
                 nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs)
@@ -299,13 +298,6 @@ class NestedTensor(object):
 
     def __add__(self, other):
         return NestedTensor(self._impl + other._impl)
-
-    # def cos_(self):
-    #     self._impl.cos_()
-    #     return self
-
-    # def cos(self):
-    #     return NestedTensor(self._impl.cos())
 
     def all(self):
         return self._impl.all()

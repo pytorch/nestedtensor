@@ -6,12 +6,6 @@
 #include <torch/csrc/Size.h>
 #include <torch/extension.h>
 
-// TODO: Add a field such as is_empty to _NestedNode?
-// TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
-// TODO: Abstract the common recursive patterns.
-// TODO: NestedSize C++ object
-// TODO: Align NestedTensor and Tensor C++ API
-
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because
 // tensor([]) is of dimension 1, but it is also
@@ -55,7 +49,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // since you can expect transparent changes to the constiuents
   // via unbind.
 
-  // NOTE: This is a private function until it is feature complete
   m.def("as_nested_tensor_impl", &torch::nested_tensor::as_nested_tensor_impl);
   m.def("is_nested_tensor_impl", [](Tensor tensor) {
     return tensor.unsafeGetTensorImpl()->key_set().has(NestedTensorKey);
@@ -124,8 +117,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
   // requires sizes() for non Tensor-shape compliant NestedTensors
   // and can't be overwritten since it's not a native function.
-  // TODO: Not covered by 0.0.2 or 0.0.1!
-  // NOTE: Returns a view
   // TODO: Advanced indexing
   // TODO: Tensor-wise select
   // TODO: Tuple support

@@ -1,5 +1,4 @@
 #pragma once	
-// #include <nestedtensor/csrc/python_nested_tensor.h>
 
 namespace torch {
 namespace nested_tensor {
