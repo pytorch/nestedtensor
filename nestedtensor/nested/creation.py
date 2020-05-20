@@ -10,7 +10,7 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
     """
     Arguments match torch.tensor
     """
-    result = as_nested_tensor(data).contiguous()
+    result = _C.nested_tensor(data)
 
     if dtype is not None or device is not None:
         result = result.to(dtype=dtype, device=device)

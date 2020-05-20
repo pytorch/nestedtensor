@@ -197,7 +197,7 @@ THPNestedTensor nested_tensor(py::sequence list) {
       _verify_variables(*first, structure, true);
     }
   }
-  return THPNestedTensor(NestedTensor(std::move(structure))).contiguous();
+  return THPNestedTensor(NestedTensor(std::move(structure)).contiguous());
 }
 
 } // namespace nested_tensor
