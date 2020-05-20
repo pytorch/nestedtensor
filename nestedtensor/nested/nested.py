@@ -123,7 +123,7 @@ class NestedTensor(object):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        return NestedTensor(self._impl.grad)
+        return wrap_nested_tensor(nestedtensor._C.grad(self._impl))
 
     def requires_grad_(self, requires_grad=True):
         """
@@ -135,12 +135,8 @@ class NestedTensor(object):
         return NestedTensor(self._impl.detach(gradient, retain_graph, create_graph))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        if gradient is None or isinstance(self._impl, gradient._impl):
-            self._impl.backward(gradient._impl, retain_graph._impl, create_graph)
-        else:
-            # TODO: Test mixed case explicitly
-            for t, g in zip(self.unbind(), gradient.unbind()):
-                t.backward(g, retain_graph, create_graph)
+        # nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
+        return wrap_nested_tensor(self_impl.backward(gradient, retain_graph, create_graph))
 
     def nested_dim(self):
         """

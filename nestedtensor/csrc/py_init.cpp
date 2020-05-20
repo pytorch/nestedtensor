@@ -24,6 +24,7 @@
 namespace py = pybind11;
 
 using namespace torch::nested_tensor;
+using namespace at;
 
 py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
@@ -56,21 +57,33 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   // NOTE: This is a private function until it is feature complete
   m.def("as_nested_tensor_impl", &torch::nested_tensor::as_nested_tensor_impl);
-  m.def("is_nested_tensor_impl", [](at::Tensor tensor) {
-    return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+  m.def("is_nested_tensor_impl", [](Tensor tensor) {
+    return tensor.unsafeGetTensorImpl()->key_set().has(NestedTensorKey);
   });
-  m.def("nested_dim", [](at::Tensor tensor) {
+  m.def("nested_dim", [](Tensor tensor) {
     return get_nested_tensor_impl(tensor)->_data.nested_dim();
   });
   m.def(
       "to_nested_tensor",
       torch::wrap_pybind_function(
-          [](at::Tensor tensor, c10::optional<int64_t> dim) {
-            auto impl_data = get_nested_tensor_impl(tensor)->_data;
-            auto nt = impl_data.to_nested_tensor(dim);
-            return at::detail::make_tensor<at::NestedTensorImpl>(std::move(nt));
+          [](Tensor tensor, c10::optional<int64_t> dim) {
+            auto nt = get_nested_tensor(tensor);
+            return wrap_nested_tensor(nt.to_nested_tensor(dim));
           }));
-  m.def("str", [](at::Tensor tensor) {
+  m.def("grad", torch::wrap_pybind_function([](Tensor tensor) {
+          auto nt = get_nested_tensor(tensor);
+          return wrap_nested_tensor(nt.grad());
+        }));
+  // m.def(
+  //     "backward",
+  //     torch::wrap_pybind_function([](Tensor tensor,
+  //                                    Tensor gradient,
+  //                                    bool retain_graph,
+  //                                    bool create_graph) {
+  //       auto nt = get_nested_tensor(tensor);
+  //       nt.backward(gradient, retain_graph, create_graph);
+  //     }));
+  m.def("str", [](Tensor tensor) {
     auto impl_data = get_nested_tensor_impl(tensor)->_data;
     auto node = impl_data.get_structure();
     return NestedNode___str__(
@@ -94,8 +107,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def(
       "to_tensor",
       torch::wrap_pybind_function(
-          [](at::Tensor tensor, c10::optional<int64_t> dim) {
-            return at::NestedTensor_to_tensor(tensor, dim);
+          [](Tensor tensor, c10::optional<int64_t> dim) {
+            return NestedTensor_to_tensor(tensor, dim);
           }));
   // Need to overwrite because
   // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
@@ -106,22 +119,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // TODO: Advanced indexing
   // TODO: Tensor-wise select
   // TODO: Tuple support
-  m.def("get_item", [](at::Tensor tensor, int64_t key) {
-    return at::unbind(tensor, 0)[key];
+  m.def("get_item", [](Tensor tensor, int64_t key) {
+    return unbind(tensor, 0)[key];
   });
 #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
-  m.def("get_item", [](at::Tensor tensor, py::slice key) {
-    py::list unbound = py::cast(at::unbind(tensor, 0));
+  m.def("get_item", [](Tensor tensor, py::slice key) {
+    py::list unbound = py::cast(unbind(tensor, 0));
     return unbound[key];
   });
 #endif
 
-  m.def("nested_size", [](at::Tensor self, c10::optional<int64_t> index_) {
-    if (!self.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      throw std::runtime_error("Function requires NestedTensorImpl");
-    }
-    auto nt =
-        static_cast<at::NestedTensorImpl*>(self.unsafeGetTensorImpl())->_data;
+  m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
+    auto nt = get_nested_tensor(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map(
@@ -138,12 +147,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
-  m.def("nested_stride", [](at::Tensor self, c10::optional<int64_t> index_) {
-    if (!self.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      throw std::runtime_error("Function requires NestedTensorImpl");
-    }
-    auto nt =
-        static_cast<at::NestedTensorImpl*>(self.unsafeGetTensorImpl())->_data;
+  m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
+    auto nt = get_nested_tensor(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map([](c10::List<int64_t> e)
@@ -156,30 +161,20 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
-  m.def("sizes", [](at::Tensor tensor) {
-    if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      throw std::runtime_error("Function requires NestedTensorImpl");
-    }
-    return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl())
-        ->_data.sizes();
+  m.def("sizes", [](Tensor tensor) {
+    return get_nested_tensor(tensor).sizes();
   });
 
-  m.def("len", [](at::Tensor self) {
-    if (!self.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      throw std::runtime_error("Function requires NestedTensorImpl");
-    }
-    auto nt =
-        static_cast<at::NestedTensorImpl*>(self.unsafeGetTensorImpl())->_data;
-    return nt.get_structure().degree();
+  m.def("len", [](Tensor self) {
+    return get_nested_tensor(self).get_structure().degree();
   });
 
-  m.def("make_nested_tensor_impl", [](std::vector<at::Tensor> tensors) {
+  m.def("make_nested_tensor_impl", [](std::vector<Tensor> tensors) {
     std::vector<TensorNode> tensor_nodes;
     for (size_t i = 0; i < tensors.size(); i++) {
       tensor_nodes.push_back(TensorNode(std::move(tensors[i])));
     }
-    return at::detail::make_tensor<at::NestedTensorImpl>(
-        NestedTensor(TensorNode(std::move(tensor_nodes))));
+    return wrap_tensor_node(std::move(tensor_nodes));
   });
 
   add_functions(m);

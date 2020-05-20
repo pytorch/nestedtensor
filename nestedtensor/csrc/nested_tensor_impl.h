@@ -34,6 +34,16 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
 };
 
+inline torch::nested_tensor::NestedTensor get_nested_tensor(
+    const at::Tensor tensor) {
+  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+    throw std::runtime_error("Function requires NestedTensorImpl");
+  }
+  auto nt_impl =
+      static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
+  return nt_impl->_data;
+}
+
 inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
     throw std::runtime_error("Function requires NestedTensorImpl");
