@@ -19,6 +19,32 @@ def register_benchmark(fn):
 # relu
 #
 @register_benchmark
+def relu__tensor_iter(self):
+    def _relu_tensor_iter():
+        for t in self.inputs:
+            torch.nn.functional.relu_(t)
+
+    return _relu_tensor_iter
+
+@register_benchmark
+def relu__tensor_pad(self):
+    tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
+
+    def _relu_tensor_pad():
+        torch.nn.functional.relu_(tensor)
+
+    return _relu_tensor_pad
+
+@register_benchmark
+def relu__nt(self):
+    nt = nestedtensor.nested_tensor(self.inputs)
+
+    def _relu_nt():
+        torch.nn.functional.relu_(nt)
+
+    return _relu_nt
+
+@register_benchmark
 def relu_tensor_iter(self):
     def _relu_tensor_iter():
         for t in self.inputs:

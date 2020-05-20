@@ -67,28 +67,28 @@ NestedTensor relu(NestedTensor& input,
                   c10::optional<bool> inplace) {
   if (input.is_contiguous()) {
     if (inplace.has_value() && inplace.value()) {
-      input = NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
+      at::relu_(*input.get_buffer());
       return input;
     }
     return NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
   }
 
-  TensorNode input_structure = input.get_structure();
-  TensorNode res = map([&](at::Tensor t){
-      return torch::relu(t.unsqueeze(0)).squeeze(0);
-  }, input_structure);
-
-  if  (inplace.has_value() && inplace.value()) {
-    input = NestedTensor(std::move(res));
+  if (inplace.has_value() && inplace.value()) {
+    TensorNode& input_structure = input.get_structure();
+    apply([](at::Tensor& t) { at::relu_(t); }, input_structure);
     return input;
-  }
+  } else {
+    TensorNode& input_structure = input.get_structure();
+    TensorNode res = map([&](at::Tensor t){
+        return torch::relu(t);
+    }, input_structure);
 
-  return NestedTensor(std::move(res));
+    return NestedTensor(std::move(res));
+  }
 }
 
-NestedTensor relu_out(NestedTensor& input) {
+void relu_out(NestedTensor& input) {
   relu(input, true);
-  return input;
 }
 
 NestedTensor dropout(NestedTensor& input, 
@@ -153,7 +153,7 @@ NestedTensor batch_norm(NestedTensor& input,
                         bool training, 
                         double momentum,
                         double eps) {
-    TensorNode structure = input.get_structure();
+    TensorNode& structure = input.get_structure();
     
     auto options = F::BatchNormFuncOptions().momentum(momentum)
                                             .eps(eps)

@@ -165,6 +165,27 @@ class TestFunctional(TestCase):
             nt_res = torch.nn.functional.max_pool2d(nt, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
+    def test_functional_relu_(self):
+        orig_t1 = torch.tensor([-2, -1, 0, 1, 2])
+        expected_t = torch.tensor([0, 0, 0, 1, 2])
+        expected_nt = nestedtensor.nested_tensor([expected_t])
+
+        t_clone = orig_t1.clone()
+        torch.nn.functional.relu_(t_clone)
+        self.assertEqual(t_clone, expected_t)
+
+        t_clone = orig_t1.clone()
+        nt1 = nestedtensor.nested_tensor([t_clone])
+        torch.nn.functional.relu_(nt1)
+        self.assertEqual(nt1, expected_nt)
+        self.assertEqual(t_clone, orig_t1)
+
+        t_clone = orig_t1.clone()
+        nt1 = nestedtensor.as_nested_tensor([t_clone])
+        torch.nn.functional.relu_(nt1)
+        self.assertEqual(nt1, expected_nt)
+        self.assertEqual(t_clone, expected_t)
+
     def test_nn_relu(self):
         inputs = [
             torch.randn(3, 500, 600),
