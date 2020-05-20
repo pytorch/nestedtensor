@@ -153,7 +153,7 @@ NestedTensor batch_norm(NestedTensor& input,
                         bool training, 
                         double momentum,
                         double eps) {
-    TensorNode structure = input.get_structure();
+    TensorNode& structure = input.get_structure();
     
     auto options = F::BatchNormFuncOptions().momentum(momentum)
                                             .eps(eps)
