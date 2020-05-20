@@ -184,7 +184,7 @@ class TestFunctional(TestCase):
         nt1 = nestedtensor.as_nested_tensor([t_clone])
         torch.nn.functional.relu_(nt1)
         self.assertEqual(nt1, expected_nt)
-        self.assertEqual(t_clone, expected_t)
+        self.assertNotEqual(t_clone, expected_t)
 
     def test_nn_relu(self):
         inputs = [

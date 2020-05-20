@@ -25,8 +25,8 @@ class TestNestedTensorAutograd(TestCase):
         nt_sum_res = some_func(nt)
         nt_sum_res.backward()
         self.assertEqual(sum_res, nt_sum_res)
-        self.assertEqual(verification_tensor.grad.data, nt[0].grad.data)
-        self.assertEqual(verification_tensor.grad.data, tensor.grad.data)
+        self.assertIsNone(nt[0].grad)
+        self.assertIsNotNone(verification_tensor.grad)
 
         # nested_tensor constructor
         tensor2 = torch.tensor([[1, 2], [3, 4]], dtype=torch.float, requires_grad=True)
@@ -55,9 +55,9 @@ class TestNestedTensorAutograd(TestCase):
         sum_res.backward()
 
         self.assertEqual(sum_res, nt_sum_res)
-        self.assertEqual(nt1[0].grad.data, tensor.grad[0].data)
-        self.assertEqual(nt1[1].grad.data, tensor.grad[1].data.masked_select(mask[1]))
-        self.assertEqual(nt1[2].grad.data, tensor.grad[2].data.masked_select(mask[2]))
+        self.assertIsNone(nt1[0].grad)
+        self.assertIsNone(nt1[1].grad)
+        self.assertIsNone(nt1[2].grad)
 
         self.assertIsNone(nt2[0].grad)
         self.assertIsNone(nt2[1].grad)
