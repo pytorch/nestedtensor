@@ -57,7 +57,7 @@ class TestNestedTensor(TestCase):
             self.assertNotEqual(tensors[i].storage().data_ptr(
             ), nested_tensor.unbind()[i].storage().data_ptr())
 
-    def test_mutation(self):
+    def test_as_nested_tensor(self):
         tensors = []
         num_tensors = 16
         for i in range(num_tensors):
@@ -76,6 +76,11 @@ class TestNestedTensor(TestCase):
             tensors[i].mul_(i + 2)
         for i in range(num_tensors):
             self.assertNotEqual(tensors[i], nested_tensor.unbind()[i])
+
+        nested_tensor1 = nestedtensor.as_nested_tensor(nested_tensor)
+        self.assertTrue(nested_tensor1 is nested_tensor)
+        nested_tensor2 = nestedtensor.as_nested_tensor(nested_tensor, dtype=torch.int64)
+        self.assertTrue(nested_tensor2 is not nested_tensor)
 
     def test_constructor(self):
         for constructor in _iter_constructors():
