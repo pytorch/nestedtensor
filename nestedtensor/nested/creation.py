@@ -9,13 +9,9 @@ def as_nested_tensor(data, dtype=None, device=None):
     # Simple wrapper around a nested list of Tensors.
     # Shares memory with original objects.
     # # TODO: Needs tests to check failure cases
-    ret_impl = _C.as_nested_tensor(data)
-    ret = nested.NestedTensor(ret_impl)
-    if dtype is not None:
-        ret = ret.to(dtype)
-    if device is not None:
-        ret = ret.to(device)
-    return ret
+    if utils.is_nested_tensor(data):
+        return data
+    return nested_tensor(data, dtype, device)
 
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     """
