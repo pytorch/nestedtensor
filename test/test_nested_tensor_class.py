@@ -53,8 +53,8 @@ class TestNestedTensor(TestCase):
         for i in range(num_tensors):
             tensors[i].mul_(i + 2)
         for i in range(num_tensors):
-            self.assertEqual(tensors[i], nested_tensor.unbind()[i])
-            self.assertEqual(tensors[i].storage().data_ptr(
+            self.assertNotEqual(tensors[i], nested_tensor.unbind()[i])
+            self.assertNotEqual(tensors[i].storage().data_ptr(
             ), nested_tensor.unbind()[i].storage().data_ptr())
 
     def test_mutation(self):
@@ -63,12 +63,12 @@ class TestNestedTensor(TestCase):
         for i in range(num_tensors):
             tensors.append(utils.gen_float_tensor(i, (i + 1, 128, 128)))
 
-        # This should create references
+        # This should NOT create references
         nested_tensor = nestedtensor.as_nested_tensor(tensors)
         for i in range(num_tensors):
             tensors[i].mul_(i + 2)
         for i in range(num_tensors):
-            self.assertEqual(tensors[i], nested_tensor.unbind()[i])
+            self.assertNotEqual(tensors[i], nested_tensor.unbind()[i])
 
         # This should NOT create references
         nested_tensor = nestedtensor.nested_tensor(tensors)
@@ -229,23 +229,15 @@ class TestNestedTensor(TestCase):
             self.assertRaises(IndexError, lambda: a.nested_size(2))
 
     def test_nested_stride(self):
-        tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
-            2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
-        a = nestedtensor.as_nested_tensor(tensors)
-        na = tuple(tuple(t.stride()) for t in tensors)
-        ans = a.nested_stride()
-        result = tuple(ans[i] for i in range(len(ans)))
-        for r, s in zip(result, na):
-            self.assertEqual(r, s)
-
-        tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
-            2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
-        a = nestedtensor.nested_tensor(tensors)
-        na = list(list(t.contiguous().stride()) for t in tensors)
-        ans = a.nested_stride()
-        result = tuple(ans[i] for i in range(len(ans)))
-        for r, s in zip(result, na):
-            self.assertEqual(r, s)
+        for constructor in _iter_constructors():
+            tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
+                2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
+            a = constructor(tensors)
+            na = list(list(t.contiguous().stride()) for t in tensors)
+            ans = a.nested_stride()
+            result = tuple(ans[i] for i in range(len(ans)))
+            for r, s in zip(result, na):
+                self.assertEqual(r, s)
 
     def test_len(self):
         for constructor in _iter_constructors():
@@ -310,19 +302,19 @@ class TestNestedTensor(TestCase):
         # TODO: contiguous nestedtensors should return tuples of contiguous nestedtensors on dimension 0
 
         def _test(a, b, c, d, e):
-            nt = nestedtensor.as_nested_tensor([a, b])
+            nt = nestedtensor.nested_tensor([a, b])
             a1, b1 = nt.unbind()
-            self.assertTrue(a is a1)
-            self.assertTrue(b is b1)
+            self.assertTrue(a is not a1)
+            self.assertTrue(b is not b1)
 
-            nt1 = nestedtensor.as_nested_tensor([[c, d], [e]])
+            nt1 = nestedtensor.nested_tensor([[c, d], [e]])
             nt11, nt12 = nt1.unbind()
             c1, d1 = nt11.unbind()
             e1 = nt12.unbind()[0]
 
-            self.assertTrue(c is c1)
-            self.assertTrue(d is d1)
-            self.assertTrue(e is e1)
+            self.assertTrue(c is not c1)
+            self.assertTrue(d is not d1)
+            self.assertTrue(e is not e1)
 
             nt = nestedtensor.nested_tensor([a, b])
             a1, b1 = nt.unbind()
@@ -610,7 +602,7 @@ class TestContiguous(TestCase):
                                            torch.tensor([3, 4]),
                                            torch.tensor([5, 6]),
                                            torch.tensor([7, 8])])
-        self.assertTrue(not a.is_contiguous())
+        self.assertTrue(a.is_contiguous())
 
 
 if __name__ == "__main__":
