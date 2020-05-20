@@ -113,7 +113,7 @@ class NestedTensor(object):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return self._impl.requires_grad
+        return nestedtensor._C.requires_grad(self._impl)
 
     @property
     def grad(self):
@@ -123,20 +123,19 @@ class NestedTensor(object):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        return wrap_nested_tensor(nestedtensor._C.grad(self._impl))
+        return _wrap_result(nestedtensor._C.grad(self._impl))
 
     def requires_grad_(self, requires_grad=True):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return NestedTensor(self._impl.requires_grad_(requires_grad))
+        return _wrap_result(nestedtensor._C.requires_grad_(self._impl, requires_grad))
 
     def detach(self, gradient=None, retain_graph=None, create_graph=False):
         return NestedTensor(self._impl.detach(gradient, retain_graph, create_graph))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        # nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
-        return wrap_nested_tensor(self_impl.backward(gradient, retain_graph, create_graph))
+        nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
 
     def nested_dim(self):
         """

@@ -74,15 +74,25 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           auto nt = get_nested_tensor(tensor);
           return wrap_nested_tensor(nt.grad());
         }));
-  // m.def(
-  //     "backward",
-  //     torch::wrap_pybind_function([](Tensor tensor,
-  //                                    Tensor gradient,
-  //                                    bool retain_graph,
-  //                                    bool create_graph) {
-  //       auto nt = get_nested_tensor(tensor);
-  //       nt.backward(gradient, retain_graph, create_graph);
-  //     }));
+  m.def("requires_grad", torch::wrap_pybind_function([](Tensor tensor) {
+          auto nt = get_nested_tensor(tensor);
+          return nt.requires_grad();
+        }));
+  m.def(
+      "requires_grad_",
+      torch::wrap_pybind_function([](Tensor tensor, bool requires_grad) {
+        auto nt = get_nested_tensor(tensor);
+        return wrap_nested_tensor(nt.requires_grad_(requires_grad));
+      }));
+  m.def(
+      "backward",
+      torch::wrap_pybind_function([](Tensor tensor,
+                                     Tensor gradient,
+                                     bool retain_graph,
+                                     bool create_graph) {
+        auto nt = get_nested_tensor(tensor);
+        nt.backward(get_nested_tensor(gradient), retain_graph, create_graph);
+      }));
   m.def("str", [](Tensor tensor) {
     auto impl_data = get_nested_tensor_impl(tensor)->_data;
     auto node = impl_data.get_structure();

@@ -22,7 +22,7 @@ class TestNestedTensorBuffer(TestCase):
         c.backward()
         # An unbound Tensor does not accumulate gradients because it's a
         # partial view of the buffer.
-        self.assertIsNone(a.grad)
+        self.assertIsNotNone(a.grad)
         nt_grad = nt.grad
         self.assertIs(nt._impl.get_buffer().grad, nt_grad._impl.get_buffer())
         # Unbinding the gradient is legitimate for further processing.
