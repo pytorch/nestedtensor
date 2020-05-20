@@ -16,7 +16,7 @@ namespace nested_tensor {
 struct THPNestedTensor {
   THPNestedTensor() = delete;
   // TODO: Move constructor
-  THPNestedTensor(NestedTensor data) : _data(data) {}
+  THPNestedTensor(NestedTensor&& data) : _data(std::move(data)) {}
   at::Tensor get_buffer() {
     return (*_data.get_buffer());
   }
