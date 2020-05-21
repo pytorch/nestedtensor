@@ -91,34 +91,6 @@ Tensor NestedTensor_max_pool2d(
 
   return at::detail::make_tensor<NestedTensorImpl>(
       torch::nested_tensor::NestedTensor(std::move(res)));
-=======
-NestedTensor relu(NestedTensor& input, 
-                  c10::optional<bool> inplace) {
-  if (input.is_contiguous()) {
-    if (inplace.has_value() && inplace.value()) {
-      at::relu_(*input.get_buffer());
-      return input;
-    }
-    return NestedTensor(torch::relu(*input.get_buffer()), input.nested_size());
-  }
-
-  if (inplace.has_value() && inplace.value()) {
-    TensorNode& input_structure = input.get_structure();
-    apply([](at::Tensor& t) { at::relu_(t); }, input_structure);
-    return input;
-  } else {
-    TensorNode& input_structure = input.get_structure();
-    TensorNode res = map([&](at::Tensor t){
-        return torch::relu(t);
-    }, input_structure);
-
-    return NestedTensor(std::move(res));
-  }
-}
-
-void relu_out(NestedTensor& input) {
-  relu(input, true);
->>>>>>> master
 }
 
 Tensor NestedTensor_relu(const Tensor& self) {
@@ -157,36 +129,6 @@ Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
       map([&](const at::Tensor t) { return at::dropout(t, p, train); }, structure);
   return at::detail::make_tensor<NestedTensorImpl>(
       torch::nested_tensor::NestedTensor(std::move(res)));
-}
-
-NestedTensor batch_norm(NestedTensor& input,
-                        const at::Tensor& running_mean,
-                        const at::Tensor& running_var,
-                        c10::optional<at::Tensor>& weight,
-                        c10::optional<at::Tensor>& bias,
-                        bool training, 
-                        double momentum,
-                        double eps) {
-    TensorNode& structure = input.get_structure();
-    
-    auto options = F::BatchNormFuncOptions().momentum(momentum)
-                                            .eps(eps)
-                                            .training(training);
-
-    if (weight.has_value()) {
-        options = options.weight(weight.value());
-    }
-
-    if (bias.has_value()) {
-        options = options.bias(bias.value());
-    }
-
-    TensorNode res = map([&, options](at::Tensor t){
-        return F::batch_norm(t.unsqueeze(0), running_mean, running_var, options).squeeze(0);
-    }, structure);
-
-    return NestedTensor(std::move(res));
->>>>>>> master
 }
 
 Tensor NestedTensor_sum(const Tensor &self_, c10::optional<ScalarType> dtype) {
