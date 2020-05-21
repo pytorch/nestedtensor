@@ -1,4 +1,3 @@
-#include <nestedtensor/csrc/functions.h>	
 #include <nestedtensor/csrc/python_args.h>	
 #include <nestedtensor/csrc/python_functions.h>	
 #include <nestedtensor/csrc/nested_tensor_impl.h>

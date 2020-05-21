@@ -1,6 +1,5 @@
 #include <ATen/WrapDimUtils.h>
 #include <ATen/core/op_registration/op_registration.h>
-#include <nestedtensor/csrc/functions.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>

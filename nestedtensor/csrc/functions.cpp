@@ -1,4 +1,3 @@
-#include <nestedtensor/csrc/functions.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
