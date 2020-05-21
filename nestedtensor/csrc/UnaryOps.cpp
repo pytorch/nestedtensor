@@ -10,37 +10,52 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self);
+  auto self_impl = get_nested_tensor(self);
+  if (self_impl.is_contiguous()){
+    func(*self_impl.get_buffer());
+    return self;
+  }
   auto f = [](at::Tensor& tensor) { func(tensor); };
-  apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
+  apply<decltype(f)>(std::move(f), self_impl.get_structure());
   return self;
 }
 
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self);
+  auto self_impl = get_nested_tensor(self);
+  if (self_impl.is_contiguous()){
+    ((*self_impl.get_buffer()).*func)();
+    return self;
+  }
   auto f = [](at::Tensor& tensor) { (tensor.*func)(); };
-  apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
+  apply<decltype(f)>(std::move(f), self_impl.get_structure());
   return self;
 }
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self);
-  return at::detail::make_tensor<NestedTensorImpl>(
+  auto self_impl = get_nested_tensor(self);
+  if (self_impl.is_contiguous()) {
+    return wrap_nested_tensor(NestedTensor(func(*self_impl.get_buffer()), self_impl.nested_size()));
+  }
+  return wrap_tensor_node(
       map([](at::Tensor tensor) { return func(tensor); },
-          self_impl->_data.get_structure()));
+          self_impl.get_structure()));
 }
 
 template <class F, F func>
 Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
-  auto result_impl = get_nested_tensor_impl(result);
-  auto self_impl = get_nested_tensor_impl(self);
+  auto result_impl = get_nested_tensor(result);
+  auto self_impl = get_nested_tensor(self);
+  if (result_impl.is_contiguous() && self_impl.is_contiguous()) {
+    func(*result_impl.get_buffer(), *self_impl.get_buffer());
+    return result;
+  }
   apply([](at::Tensor& result, const at::Tensor tensor)
           { return func(result, tensor); },
-      result_impl->_data.get_structure(),
-      self_impl->_data.get_structure());
+      result_impl.get_structure(),
+      self_impl.get_structure());
   return result;
 }
 
