@@ -9,7 +9,7 @@ NestedTensor squeeze(NestedTensor input, c10::optional<int64_t> dim,
 
 NestedTensor relu(NestedTensor& input, c10::optional<bool> inplace); 
 
-NestedTensor relu_out(NestedTensor& input);
+void relu_out(NestedTensor& input);
 
 NestedTensor dropout(NestedTensor& input, 
                      c10::optional<double> p, 
