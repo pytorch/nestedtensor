@@ -9,31 +9,6 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-Tensor NestedTensor_batch_norm(
-    const Tensor& input, const Tensor& weight /* optional */, const Tensor& bias /* optional */,
-    const Tensor& running_mean /* optional */, const Tensor& running_var /* optional */,
-    bool training, double momentum, double eps, bool cudnn_enabled) {
-  auto input_impl = get_nested_tensor_impl(input);
-  auto input_data = input_impl->_data;
-  auto structure = input_data.get_structure();
-  auto res = map(
-      [&](at::Tensor t) {
-        return at::batch_norm(
-                   t.unsqueeze(0),
-                   weight,
-                   bias,
-                   running_mean,
-                   running_var,
-                   training,
-                   momentum,
-                   eps,
-                   cudnn_enabled)
-            .squeeze(0);
-      },
-      structure);
-  return wrap_nested_tensor(std::move(res));
-}
-
 Tensor NestedTensor_conv2d(
     const Tensor& input,
     const Tensor& weight,
@@ -119,6 +94,31 @@ Tensor & NestedTensor_relu_(Tensor & self) {
   auto structure = self_data.get_structure();
   apply([](at::Tensor& t) { at::relu_(t); }, structure);
   return self;
+}
+
+Tensor NestedTensor_batch_norm(
+    const Tensor& input, const Tensor& weight /* optional */, const Tensor& bias /* optional */,
+    const Tensor& running_mean /* optional */, const Tensor& running_var /* optional */,
+    bool training, double momentum, double eps, bool cudnn_enabled) {
+  auto input_impl = get_nested_tensor_impl(input);
+  auto input_data = input_impl->_data;
+  auto structure = input_data.get_structure();
+  auto res = map(
+      [&](at::Tensor t) {
+        return at::batch_norm(
+                   t.unsqueeze(0),
+                   weight,
+                   bias,
+                   running_mean,
+                   running_var,
+                   training,
+                   momentum,
+                   eps,
+                   cudnn_enabled)
+            .squeeze(0);
+      },
+      structure);
+  return wrap_nested_tensor(std::move(res));
 }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
