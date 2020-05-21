@@ -8,7 +8,7 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
     """
     Arguments match torch.tensor
     """
-    result = nested.NestedTensor(_C.nested_tensor(data))
+    result = nested.NestedTensor(_C.nested_tensor_impl(data))
 
     if dtype is not None or device is not None:
         result = result.to(dtype=dtype, device=device)
@@ -21,7 +21,7 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
 
 def as_nested_tensor(data, dtype=None, device=None):
     # TODO: Needs tests to check failure cases
-    if not utils.is_nested_tensor(data):
+    if not isinstance(data, nested.NestedTensor):
         data = nested_tensor(data, dtype, device)
     if dtype is not None or device is not None:
         return data.to(dtype=dtype, device=device)

@@ -49,7 +49,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // since you can expect transparent changes to the constiuents
   // via unbind.
 
-  m.def("as_nested_tensor_impl", &torch::nested_tensor::as_nested_tensor_impl);
+  m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
   m.def("is_nested_tensor_impl", [](Tensor tensor) {
     return tensor.unsafeGetTensorImpl()->key_set().has(NestedTensorKey);
   });
