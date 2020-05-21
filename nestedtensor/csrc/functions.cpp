@@ -9,6 +9,53 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
+Tensor NestedTensor_relu(const Tensor& self) {
+  auto self_impl = get_nested_tensor_impl(self);
+  auto self_data = self_impl->_data;
+  if (self_data.is_contiguous()) {
+    auto res = torch::nested_tensor::NestedTensor(
+        at::relu(*self_data.get_buffer()), self_data.nested_size());
+    return at::detail::make_tensor<NestedTensorImpl>(std::move(res));
+  }
+  auto structure = self_data.get_structure();
+  auto res =
+      map([&](at::Tensor t) { return at::relu(t.unsqueeze(0)).squeeze(0); },
+          structure);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)));
+}
+
+Tensor & NestedTensor_relu_(Tensor & self) {
+  auto self_impl = get_nested_tensor_impl(self);
+  auto self_data = self_impl->_data;
+  if (self_data.is_contiguous()) {
+    at::relu_(*self_data.get_buffer());
+    return self;
+  }
+  auto structure = self_data.get_structure();
+  apply([](at::Tensor& t) { at::relu_(t); }, structure);
+  return self;
+}
+
+Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
+  auto self_impl = get_nested_tensor_impl(input);
+  auto self_data = self_impl->_data;
+  auto structure = self_data.get_structure();
+  auto res =
+      map([&](const at::Tensor t) { return at::dropout(t, p, train); }, structure);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)));
+}
+
+Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
+  auto self_impl = get_nested_tensor_impl(input);
+  auto self_data = self_impl->_data;
+  auto structure = self_data.get_structure();
+  apply(
+      [&](at::Tensor& t) { return at::dropout_(t, p, train); }, structure);
+  return input;
+}
+
 Tensor NestedTensor_conv2d(
     const Tensor& input,
     const Tensor& weight,
@@ -68,52 +115,7 @@ Tensor NestedTensor_max_pool2d(
       torch::nested_tensor::NestedTensor(std::move(res)));
 }
 
-Tensor NestedTensor_relu(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto self_data = self_impl->_data;
-  if (self_data.is_contiguous()) {
-    auto res = torch::nested_tensor::NestedTensor(
-        at::relu(*self_data.get_buffer()), self_data.nested_size());
-    return at::detail::make_tensor<NestedTensorImpl>(std::move(res));
-  }
-  auto structure = self_data.get_structure();
-  auto res =
-      map([&](at::Tensor t) { return at::relu(t.unsqueeze(0)).squeeze(0); },
-          structure);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
-}
 
-Tensor & NestedTensor_relu_(Tensor & self) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto self_data = self_impl->_data;
-  if (self_data.is_contiguous()) {
-    at::relu_(*self_data.get_buffer());
-    return self;
-  }
-  auto structure = self_data.get_structure();
-  apply([](at::Tensor& t) { at::relu_(t); }, structure);
-  return self;
-}
-
-Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  auto self_impl = get_nested_tensor_impl(input);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
-  auto res =
-      map([&](const at::Tensor t) { return at::dropout(t, p, train); }, structure);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
-}
-
-Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  auto self_impl = get_nested_tensor_impl(input);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
-  apply(
-      [&](at::Tensor& t) { return at::dropout_(t, p, train); }, structure);
-  return input;
-}
 
 Tensor NestedTensor_batch_norm(
     const Tensor& input, const Tensor& weight /* optional */, const Tensor& bias /* optional */,
