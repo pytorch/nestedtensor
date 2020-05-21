@@ -96,6 +96,25 @@ Tensor & NestedTensor_relu_(Tensor & self) {
   return self;
 }
 
+Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
+  auto self_impl = get_nested_tensor_impl(input);
+  auto self_data = self_impl->_data;
+  auto structure = self_data.get_structure();
+  auto res =
+      map([&](const at::Tensor t) { return at::dropout(t, p, train); }, structure);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)));
+}
+
+Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
+  auto self_impl = get_nested_tensor_impl(input);
+  auto self_data = self_impl->_data;
+  auto structure = self_data.get_structure();
+  apply(
+      [&](at::Tensor& t) { return at::dropout_(t, p, train); }, structure);
+  return input;
+}
+
 Tensor NestedTensor_batch_norm(
     const Tensor& input, const Tensor& weight /* optional */, const Tensor& bias /* optional */,
     const Tensor& running_mean /* optional */, const Tensor& running_var /* optional */,
@@ -119,25 +138,6 @@ Tensor NestedTensor_batch_norm(
       },
       structure);
   return wrap_nested_tensor(std::move(res));
-}
-
-Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  auto self_impl = get_nested_tensor_impl(input);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
-  auto res =
-      map([&](const at::Tensor t) { return at::dropout(t, p, train); }, structure);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
-}
-
-Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  auto self_impl = get_nested_tensor_impl(input);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
-  apply(
-      [&](at::Tensor& t) { return at::dropout_(t, p, train); }, structure);
-  return input;
 }
 
 Tensor NestedTensor_sum(const Tensor &self_, c10::optional<ScalarType> dtype) {
