@@ -156,14 +156,6 @@ Tensor NestedTensor_sum(const Tensor &self_, c10::optional<ScalarType> dtype) {
   return at::sum(all_tensor, dtype);
 }
 
-void NestedTensor_backward(
-    Tensor self,
-    const Tensor& gradient = {},
-    bool keep_graph = false,
-    bool create_graph = false) {
-  std::cout << "BACKWARD" << std::endl;
-}
-
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -173,6 +165,5 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
-  m.impl_UNBOXED("backward", NestedTensor_backward);
 }
 }
