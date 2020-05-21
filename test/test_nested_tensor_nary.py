@@ -127,14 +127,6 @@ def _gen_test_binary(func):
 
 TestUnary = type('TestUnary', (DynamicClassBase,), {})
 for func__ in nestedtensor.nested.codegen.extension.get_unary_functions():
-    if 'clamp' in func__:
-        continue
-    if 'gamma' in func__:
-        continue
-    if 'erfinv' in func__:
-        continue
-    if 'sign' in func__:
-        continue
     if func__ == 'fill':
         continue
     for nested_dim in range(1, 5):
