@@ -83,7 +83,7 @@ NestedTensor relu(NestedTensor& input,
         return torch::relu(t);
     }, input_structure);
 
-    return NestedTensor(std::move(res));
+    return NestedTensor(std::move(res)).contiguous();
   }
 }
 
@@ -100,7 +100,7 @@ NestedTensor dropout(NestedTensor& input,
       return torch::dropout(t, p.value(), training.value());
   }, input_structure);
 
-  return NestedTensor(std::move(res));
+  return NestedTensor(std::move(res)).contiguous();
 }
 
 NestedTensor conv2d(NestedTensor& input, 
@@ -123,7 +123,7 @@ NestedTensor conv2d(NestedTensor& input,
       return F::conv2d(t.unsqueeze(0), weight, options).squeeze(0);
   }, structure);
 
-  return NestedTensor(std::move(res));
+  return NestedTensor(std::move(res)).contiguous();
 }
 
 NestedTensor max_pool2d(NestedTensor& input,
@@ -142,7 +142,7 @@ NestedTensor max_pool2d(NestedTensor& input,
       return F::max_pool2d(t.unsqueeze(0), options).squeeze(0);
   }, structure);
 
-  return NestedTensor(std::move(res));
+  return NestedTensor(std::move(res)).contiguous();
 }
 
 NestedTensor batch_norm(NestedTensor& input,
@@ -171,7 +171,7 @@ NestedTensor batch_norm(NestedTensor& input,
         return F::batch_norm(t.unsqueeze(0), running_mean, running_var, options).squeeze(0);
     }, structure);
 
-    return NestedTensor(std::move(res));
+    return NestedTensor(std::move(res)).contiguous();
 }
 
 NestedTensor cross_entropy(NestedTensor& input,
@@ -201,7 +201,7 @@ NestedTensor cross_entropy(NestedTensor& input,
       return F::cross_entropy(input_tensor.unsqueeze(0), target_tensor.unsqueeze(0), options).squeeze(0);
   }, input_structure, target_structure);
 
-  return NestedTensor(std::move(res));
+  return NestedTensor(std::move(res)).contiguous();
 }
 
 NestedTensor interpolate(NestedTensor& input,
@@ -241,7 +241,7 @@ NestedTensor interpolate(NestedTensor& input,
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
         input_structure);
-      return NestedTensor(std::move(res));
+      return NestedTensor(std::move(res)).contiguous();
     }
 
     // Get input leaves count
@@ -263,7 +263,7 @@ NestedTensor interpolate(NestedTensor& input,
             return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
           },
           input_structure);
-        return NestedTensor(std::move(res));
+        return NestedTensor(std::move(res)).contiguous();
       } else {
         int size_i = 0;
         TensorNode res = map(
@@ -273,7 +273,7 @@ NestedTensor interpolate(NestedTensor& input,
               return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
             },
             input_structure);
-        return NestedTensor(std::move(res));
+        return NestedTensor(std::move(res)).contiguous();
       }
     }
 

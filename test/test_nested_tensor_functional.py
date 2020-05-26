@@ -25,21 +25,61 @@ class TestFunctional(TestCase):
         )
 
     def test_contiguousity(self):
-        initial_t = torch.rand(2, 5, 10, 15)
+        initial_t = torch.rand(2, 3, 500, 600)
         self.assertEqual(True, initial_t.is_contiguous())
 
-        non_contiguous_1 = initial_t.select(1, 0)
-        non_contiguous_2 = initial_t.select(1, 0)
-        self.assertEqual(False, non_contiguous_1.is_contiguous())
+        for op in [torch.nn.ReLU(), 
+                   torch.nn.BatchNorm2d(2, 1e-05, 0.1).eval(),
+                   torch.nn.Conv2d(2, 33, kernel_size=3, stride=(2, 1), padding=(4, 2), padding_mode='zeros', dilation=1, groups=1, bias=True),
+                   torch.nn.MaxPool2d(kernel_size=(3, 3), stride=2, padding=(1, 1), dilation=1, ceil_mode=False),
+                   torch.nn.Dropout(p=0.2)
+                   ]:
+            non_contiguous_t_1 = initial_t.select(1, 0)
+            non_contiguous_t_2 = initial_t.select(1, 0)
+            self.assertEqual(False, non_contiguous_t_1.is_contiguous())
 
-        relu = torch.nn.ReLU()
-        t_cont = relu(non_contiguous_1)
+            t_cont = op(non_contiguous_t_1.unsqueeze(0))
+            self.assertEqual(True, t_cont.is_contiguous())
+
+            nt = nestedtensor.nested_tensor([non_contiguous_t_1, non_contiguous_t_2])
+            self.assertEqual(True, nt.is_contiguous())
+
+            nt_cont = op(nt)
+            self.assertEqual(True, nt_cont.is_contiguous())
+
+        # cross_entropy
+        non_contiguous_t_1 = initial_t.select(1, 0)
+        non_contiguous_t_2 = initial_t.select(1, 0)
+        self.assertEqual(False, non_contiguous_t_1.is_contiguous())
+
+        targets = [
+            torch.randint(1, (500, 600), dtype=torch.int64),
+            torch.randint(1, (500, 600), dtype=torch.int64)
+        ]
+
+        t_cont = torch.nn.functional.cross_entropy(non_contiguous_t_1.unsqueeze(0), targets[0].unsqueeze(0))
         self.assertEqual(True, t_cont.is_contiguous())
 
-        nt = nestedtensor.nested_tensor([non_contiguous_1, non_contiguous_2])
+        nt = nestedtensor.nested_tensor([non_contiguous_t_1, non_contiguous_t_2])
+        nt_target = nestedtensor.nested_tensor(targets)
         self.assertEqual(True, nt.is_contiguous())
 
-        nt_cont = relu(nt)
+        nt_cont = torch.nn.functional.cross_entropy(nt, nt_target)
+        self.assertEqual(True, nt_cont.is_contiguous())
+
+        # interpolate 
+        non_contiguous_t_1 = initial_t.select(1, 0)
+        non_contiguous_t_2 = initial_t.select(1, 0)
+        self.assertEqual(False, non_contiguous_t_1.is_contiguous())
+
+        t_cont = torch.nn.functional.interpolate(non_contiguous_t_1.unsqueeze(0), 200)
+        self.assertEqual(True, t_cont.is_contiguous())
+
+        nt = nestedtensor.nested_tensor([non_contiguous_t_1, non_contiguous_t_2])
+        nt_target = nestedtensor.nested_tensor(targets)
+        self.assertEqual(True, nt.is_contiguous())
+
+        nt_cont = torch.nn.functional.interpolate(nt, 200)
         self.assertEqual(True, nt_cont.is_contiguous())
 
     def test_nn_conv2d(self):
