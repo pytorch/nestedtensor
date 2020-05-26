@@ -27,4 +27,3 @@ jobs:
             python test/test_nested_tensor_functional.py
             python test/test_nested_tensor_masking.py
             python test/test_nested_tensor_nary.py
-            python test/test_nested_tensor_tensorwise.py

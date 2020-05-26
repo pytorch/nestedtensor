@@ -1,13 +1,17 @@
 #include <nestedtensor/csrc/creation.h>
+#include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/py_utils.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
 #include <torch/extension.h>
+#include <torch/csrc/jit/python/pybind_utils.h>
 
 namespace py = pybind11;
 
 namespace torch {
 namespace nested_tensor {
+
+using namespace torch::jit;
 
 NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
   if (py::isinstance<py::list>(py_obj) || py::isinstance<py::tuple>(py_obj)) {
@@ -170,6 +174,15 @@ bool _verify_variables(
 }
 
 NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
+  if (THPVariable_Check(py_obj.ptr())) {
+    at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
+    if (tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+      auto tensor_impl = static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
+      auto tensor_data = tensor_impl->_data;
+      auto tensor_data_structure = tensor_data.get_structure();
+      return map([](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
+    }
+  }
   if (py::isinstance<py::sequence>(py_obj)) {
     std::vector<NestedNode<c10::IValue>> result;
     auto py_seq = py::sequence(py_obj);
@@ -182,7 +195,7 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   }
 }
 
-THPNestedTensor nested_tensor(py::sequence list) {
+NestedTensor _as_nested_tensor(py::sequence list) {
   NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
   bool all_same =
@@ -197,7 +210,11 @@ THPNestedTensor nested_tensor(py::sequence list) {
       _verify_variables(*first, structure, true);
     }
   }
-  return THPNestedTensor(NestedTensor(std::move(structure)).contiguous());
+  return NestedTensor(std::move(structure));
+}
+
+at::Tensor nested_tensor_impl(py::sequence list) {
+  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list)).contiguous();
 }
 
 } // namespace nested_tensor

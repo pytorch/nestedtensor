@@ -1,11 +1,7 @@
-#pragma once
-#include <nestedtensor/csrc/python_nested_tensor.h>
+#pragma once	
 
 namespace torch {
 namespace nested_tensor {
-
-void add_functions(
-    pybind11::module,
-    pybind11::class_<torch::nested_tensor::THPNestedTensor>);
+void add_functions(pybind11::module);
+} // namespace nested_tensor
 } // namespace torch
-}

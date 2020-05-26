@@ -1,12 +1,13 @@
 #pragma once
-#include <nestedtensor/csrc/python_nested_tensor.h>
+#include <nestedtensor/csrc/nested_tensor.h>
+#include <nestedtensor/csrc/py_utils.h>
 
 namespace torch {
 namespace nested_tensor {
 
 NestedNode<py::object> py_to_nested_node(py::object&& py_obj);
 
-THPNestedTensor nested_tensor(pybind11::sequence list);
+at::Tensor nested_tensor_impl(pybind11::sequence list);
 
 } // namespace nested_tensor
 } // namespace torch

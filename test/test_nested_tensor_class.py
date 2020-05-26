@@ -265,7 +265,6 @@ class TestNestedTensor(TestCase):
                               torch.tensor([7, 8])])
             a3 = constructor([torch.tensor([3, 4]),
                               torch.tensor([5, 6])])
-            # Just exercising them until we have __bool__, all() etc.
             self.assertTrue((a1 == a2).all())
             self.assertTrue((a1 != a3).all())
             self.assertTrue(not (a1 != a2).any())

@@ -64,14 +64,6 @@ struct NestedTensor {
         map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   NestedTensor grad() {
-    if (is_contiguous()) {
-      // NOTE: TensorNodes are based on split if contiguous. Any backward
-      // performed on those will accumulate in the buffer's grad. What we're
-      // creating here are views into the grad, which could then be used
-      // further.
-      at::Tensor grad_buffer = (*_buffer).grad();
-      return NestedTensor(std::move(grad_buffer), _nested_size);
-    }
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
   }
