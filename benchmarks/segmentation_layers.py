@@ -325,6 +325,7 @@ class SegLayersBenchMark(object):
                 result["std_us"] = int(result["std_us"])
                 result["name"] = layer
                 result["cuda"] = cuda
+                result["numel"] = sum(x.numel() for x in self.inputs)
                 if writer is None and self.args.csv_log:
                     writer = csv.DictWriter(open(self.args.csv_log, 'w'), fieldnames=result.keys())
                     writer.writeheader()
