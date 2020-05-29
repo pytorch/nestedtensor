@@ -95,8 +95,34 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef dilation,
     bool ceil_mode) {
   auto self_impl = get_nested_tensor_impl(self);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
+  auto nt = self_impl->_data;
+  auto tensor_node = nt.get_structure();
+
+  bool all_sizes_same = true;
+  for (const auto& size : nt.sizes()) {
+    if (!size) {
+      all_sizes_same = false;
+      break;
+    }
+  }
+ 
+  if (all_sizes_same) {
+    std::vector<at::Tensor> tensors;
+    for (auto tn : tensor_node.unbind()) {
+      tensors.push_back(tn.payload());
+    }
+
+    auto res = at::max_pool2d(at::stack(tensors),
+                              kernel_size,
+                              stride,
+                              padding,
+                              dilation,
+                              ceil_mode);
+
+    return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(res)).to_nested_tensor(nt.nested_dim() - 1));
+  }
+
   auto res = map(
       [&](at::Tensor t) {
         return at::max_pool2d(
@@ -108,7 +134,7 @@ Tensor NestedTensor_max_pool2d(
                    ceil_mode)
             .squeeze(0);
       },
-      structure);
+      tensor_node);
 
   return at::detail::make_tensor<NestedTensorImpl>(
       torch::nested_tensor::NestedTensor(std::move(res)));
