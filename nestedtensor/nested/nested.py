@@ -129,7 +129,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return _wrap_result(nestedtensor._C.requires_grad_(self._impl, requires_grad))
+        return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
         nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
