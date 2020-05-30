@@ -6,22 +6,16 @@ import collections
 import os
 
 from . import creation
-from . import codegen
 
 import nestedtensor
 import itertools
 
-# Set this flag to true, if you want to enable additional verifications.
-DEBUG = int(os.getenv("DEBUG", 1))
-
-
 def _wrap_result(result):
     return (
         NestedTensor(result)
-        if nestedtensor._C.is_nested_tensor_impl(result)
+        if torch.is_tensor(result) and nestedtensor._C.is_nested_tensor_impl(result)
         else result
     )
-
 
 def _filter_impl(args, kwargs):
     if kwargs is None:
@@ -32,9 +26,18 @@ def _filter_impl(args, kwargs):
     }
     return impl_args, impl_kwargs
 
+class NestedTensorMeta(type):
+    def __getattr__(cls, name):
+        if getattr(torch.Tensor, name):
+            def _wrapped_fn(*args, **kwargs):
+                impl_args, impl_kwargs = _filter_impl(args, kwargs)
+                result = getattr(impl_args[0], name)(*(impl_args[1:]), **impl_kwargs)
+                return _wrap_result(result)
+            return _wrapped_fn
+        return self.__dict__[name]
 
 # -------------------------NestedTensor core---------------------------
-class NestedTensor(object):
+class NestedTensor(metaclass = NestedTensorMeta):
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its
@@ -56,6 +59,15 @@ class NestedTensor(object):
             raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
+    def __getattr__(self, name):
+        if getattr(self._impl, name):
+            def _wrapped_fn(*args, **kwargs):
+                impl_args, impl_kwargs = _filter_impl(args, kwargs)
+                result = getattr(self._impl, name)(*impl_args, **impl_kwargs)
+                return _wrap_result(result)
+            return _wrapped_fn
+        return self.__dict__[name]
+
     # --- magic methods ---
 
     def __eq__(self, other):
@@ -64,22 +76,12 @@ class NestedTensor(object):
     def __ne__(self, other):
         return _wrap_result(self._impl.__ne__(other._impl))
 
-    # --- impl forward ---
+    def __add__(self, other):
+        return NestedTensor(self._impl + other._impl)
 
-    def dim(self):
-        """
-        Returns the number of dimensions of ```self``` NestedTensor.
-        The dimension is defined as the dimension of the Tensor constiuents
-        and the level of nesting.
-
-        """
-        return self._impl.dim()
-
-    def is_pinned(self):
-        """
-        Returns true if the NestedTensor resides in pinned memory.
-        """
-        return self._impl.is_pinned()
+    def __pow__(self, *args, **kwargs):
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
+        return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
 
     @property
     def shape(self):
@@ -129,9 +131,6 @@ class NestedTensor(object):
         """
         return _wrap_result(nestedtensor._C.requires_grad_(self._impl, requires_grad))
 
-    def detach(self, gradient=None, retain_graph=None, create_graph=False):
-        return NestedTensor(self._impl.detach(gradient, retain_graph, create_graph))
-
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
         nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
 
@@ -156,19 +155,6 @@ class NestedTensor(object):
         """
         return nestedtensor._C.len(self._impl)
 
-    def element_size(self):
-        """
-        Returns the size in bytes of an individual element.
-        """
-        return self._impl.element_size()
-
-    def is_contiguous(self):
-        return self._impl.is_contiguous()
-
-    def contiguous(self):
-        # TODO: Test autograd support
-        return NestedTensor(self._impl.contiguous())
-
     def size(self, dim=None):
         if dim is not None:
             return self.size()[dim]
@@ -181,12 +167,6 @@ class NestedTensor(object):
         # NOTE: Needs grad support, which nestedtensor.nested_tensor
         # constructor doesn't have.
         return nestedtensor.as_nested_tensor(new_tensors)
-
-    def numel(self):
-        return self._impl.numel()
-
-    def pin_memory(self):
-        return NestedTensor(self._impl.pin_memory())
 
     def __str__(self):
         return nestedtensor._C.str(self._impl)
@@ -209,10 +189,7 @@ class NestedTensor(object):
         Returns a tuple of views. Results might not be contiguous.
         """
         # TODO: Design choice: Return zip_longest or zip?
-        return tuple(
-            NestedTensor(t) if nestedtensor._C.is_nested_tensor_impl(t) else t
-            for t in self._impl.unbind(dim)
-        )
+        return tuple(_wrap_result(t) for t in self._impl.unbind(dim))
 
     def to_tensor(self, dim=0):
         """
@@ -281,50 +258,3 @@ class NestedTensor(object):
     def to_padded_tensor(self, mask_dim=None, padding=-1):
         tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)
-
-    # Tensor methods
-    def copy_(self, source, non_blocking=False):
-        return NestedTensor(self._impl.copy_(source._impl, non_blocking))
-
-    def squeeze(self, dim=None):
-        if dim is None:
-            return NestedTensor(self._impl.squeeze())
-        return NestedTensor(self._impl.squeeze(dim))
-
-    def squeeze_(self, dim=None):
-        if dim is None:
-            return NestedTensor(self._impl.squeeze_())
-        return NestedTensor(self._impl.squeeze_(dim))
-
-    def __add__(self, other):
-        return NestedTensor(self._impl + other._impl)
-
-    def all(self):
-        return self._impl.all()
-
-    def any(self):
-        return self._impl.any()
-
-    def sum(self, *args, **kwargs):
-        return self._impl.sum(*args, **kwargs)
-
-    def __pow__(self, *args, **kwargs):
-        impl_args, impl_kwargs = _filter_impl(args, kwargs)
-        return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
-
-
-def _gen_func(func):
-    def tmp(*args, **kwargs):
-        impl_args, impl_kwargs = _filter_impl(args, kwargs)
-        return _wrap_result(getattr(impl_args[0], func)(*impl_args[1:], **impl_kwargs))
-
-    return tmp
-
-
-for func in codegen.extension.get_unary_functions():
-    setattr(NestedTensor, func, _gen_func(func))
-    setattr(NestedTensor, func + "_", _gen_func(func + "_"))
-
-for func in codegen.extension.get_binary_functions():
-    setattr(NestedTensor, func, _gen_func(func))
-    setattr(NestedTensor, func + "_", _gen_func(func + "_"))
