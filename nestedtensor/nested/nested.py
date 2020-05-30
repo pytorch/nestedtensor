@@ -6,7 +6,6 @@ import collections
 import os
 
 from . import creation
-from . import codegen
 
 import nestedtensor
 import itertools
