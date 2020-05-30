@@ -1,7 +1,7 @@
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
-#include <nestedtensor/csrc/utils/nested_node.h>
+#include <nestedtensor/csrc/utils/python_nested_node.h>
 #include <nestedtensor/csrc/python_functions.h>
 #include <torch/csrc/Size.h>
 #include <torch/extension.h>
@@ -19,6 +19,30 @@ namespace py = pybind11;
 
 using namespace torch::nested_tensor;
 using namespace at;
+
+
+py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
+  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
+    if (dim == 0) {
+      return py::cast(s.degree());
+    }
+    // List of Tensors
+    if (s.height() == 1) {
+      std::vector<int64_t> result;
+      for (const auto& child : s.unbind()) {
+        result.push_back(child.payload().get(dim - 1));
+      }
+      return py::tuple(py::cast(result));
+    }
+    std::vector<py::object> result;
+    for (const auto& child : s.unbind()) {
+      result.emplace_back(self(self, child, dim - 1));
+    }
+    return py::tuple(py::cast(result));
+  };
+  return fn(fn, size_node, *index);
+}
+
 
 namespace torch {
 namespace nested_tensor {
