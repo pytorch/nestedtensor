@@ -85,7 +85,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
 
     @property
     def shape(self):
-        return self._impl.size()
+        return self.size()
 
     @property
     def dtype(self):
@@ -169,10 +169,10 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
-        return nestedtensor._C.str(self._impl)
+        return torch.ops.nestedtensor.str(self._impl)
 
     def __repr__(self):
-        return nestedtensor._C.str(self._impl)
+        return torch.ops.nestedtensor.str(self._impl)
 
     # --- impl forward ends ---
 
