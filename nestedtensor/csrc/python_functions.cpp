@@ -10,13 +10,6 @@ namespace F = torch::nn::functional;
 namespace torch {
 namespace nested_tensor {
 
-inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
-  if (dim == 0) {
-    return structure.children(0);
-  }
-  return TensorNode(_squeeze_nested_dim(structure, dim - 1));
-}
-
 NestedTensor cross_entropy(NestedTensor& input,
                            NestedTensor& target,
                            c10::optional<at::Tensor>& weight,
