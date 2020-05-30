@@ -178,13 +178,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
-  m.def("make_nested_tensor_impl", [](std::vector<Tensor> tensors) {
-    std::vector<TensorNode> tensor_nodes;
-    for (size_t i = 0; i < tensors.size(); i++) {
-      tensor_nodes.push_back(TensorNode(std::move(tensors[i])));
-    }
-    return wrap_tensor_node(std::move(tensor_nodes));
-  });
   add_functions(m);
 }
 
