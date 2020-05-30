@@ -85,7 +85,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
 
     @property
     def shape(self):
-        return self._impl.size()
+        return self.size()
 
     @property
     def dtype(self):
