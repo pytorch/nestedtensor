@@ -13,7 +13,7 @@ import itertools
 def _wrap_result(result):
     return (
         NestedTensor(result)
-        if torch.is_tensor(result) and nestedtensor._C.is_nested_tensor_impl(result)
+        if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
         else result
     )
 
@@ -55,7 +55,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
     def __init__(self, impl):
-        if not nestedtensor._C.is_nested_tensor_impl(impl):
+        if not torch.ops.nestedtensor.is_nested_tensor_impl(impl):
             raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
@@ -113,7 +113,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return nestedtensor._C.requires_grad(self._impl)
+        return torch.ops.nestedtensor.requires_grad(self._impl)
 
     @property
     def grad(self):
@@ -123,13 +123,13 @@ class NestedTensor(metaclass = NestedTensorMeta):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        return _wrap_result(nestedtensor._C.grad(self._impl))
+        return _wrap_result(torch.ops.nestedtensor.grad(self._impl))
 
     def requires_grad_(self, requires_grad=True):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return _wrap_result(nestedtensor._C.requires_grad_(self._impl, requires_grad))
+        return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
         nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
@@ -140,7 +140,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         The nested dimension is defined as the level of indexing required
         to reach a Tensor constiuent.
         """
-        return nestedtensor._C.nested_dim(self._impl)
+        return torch.ops.nestedtensor.nested_dim(self._impl)
 
     def tensor_dim(self):
         """
@@ -153,12 +153,12 @@ class NestedTensor(metaclass = NestedTensorMeta):
         """
         The number of entries in the list ```self``` represents.
         """
-        return nestedtensor._C.len(self._impl)
+        return torch.ops.nestedtensor.len(self._impl)
 
     def size(self, dim=None):
         if dim is not None:
             return self.size()[dim]
-        return tuple(nestedtensor._C.sizes(self._impl))
+        return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
         # TODO: to is currently not supported by impls due to argparsing.
@@ -195,7 +195,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         """
         Not necessarily a view.
         """
-        return _wrap_result(nestedtensor._C.to_tensor(self._impl, dim))
+        return _wrap_result(torch.ops.nestedtensor.to_tensor(self._impl, dim))
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
@@ -233,7 +233,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
-        return _wrap_result(nestedtensor._C.to_nested_tensor(self._impl, dim))
+        return _wrap_result(torch.ops.nestedtensor.to_nested_tensor(self._impl, dim))
 
     def to_list(self):
         return self._impl.to_list()
