@@ -77,7 +77,12 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return _wrap_result(self._impl.__ne__(other._impl))
 
     def __add__(self, other):
-        return NestedTensor(self._impl + other._impl)
+        return _wrap_result(self._impl + other._impl)
+
+    def __mul__(self, other):
+        if isinstance(other, NestedTensor):
+            return NestedTensor(self._impl + other._impl)
+        return NestedTensor(self._impl + other)
 
     def __pow__(self, *args, **kwargs):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
