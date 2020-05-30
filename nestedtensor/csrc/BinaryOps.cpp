@@ -9,7 +9,7 @@ using namespace torch::nested_tensor;
 template <Tensor& (*func)(Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
   auto self_impl = get_nested_tensor_impl(self);
-  if is_nested_tensor_impl(other) {
+  if (is_nested_tensor_impl(other)) {
     auto other_impl = get_nested_tensor_impl(other);
     auto f = [](at::Tensor tensor, const at::Tensor other) {
       func(tensor, other);
@@ -32,7 +32,7 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   auto self_impl = get_nested_tensor_impl(self);
-  if is_nested_tensor_impl(other) {
+  if (is_nested_tensor_impl(other)) {
     auto other_impl = get_nested_tensor_impl(other);
     return at::detail::make_tensor<NestedTensorImpl>(map(
         [](at::Tensor tensor, at::Tensor other) { return func(tensor, other); },

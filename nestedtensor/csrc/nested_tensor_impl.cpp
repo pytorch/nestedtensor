@@ -162,11 +162,18 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
 // TODO: Could have a NestedTensorIterator that does binary ops
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
-  auto other_impl = get_nested_tensor_impl(other);
+  if (is_nested_tensor_impl(other)) {
+    auto other_impl = get_nested_tensor_impl(other);
+    TensorNode result_tensor_node =
+        map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
+            self_impl->_data.get_structure(),
+            other_impl->_data.get_structure());
+    return at::detail::make_tensor<NestedTensorImpl>(
+        NestedTensor(std::move(result_tensor_node)));
+  }
   TensorNode result_tensor_node =
-      map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
-          self_impl->_data.get_structure(),
-          other_impl->_data.get_structure());
+      map([&other, alpha](at::Tensor a) { return at::add(a, other, alpha); },
+          self_impl->_data.get_structure());
   return at::detail::make_tensor<NestedTensorImpl>(
       NestedTensor(std::move(result_tensor_node)));
 }
