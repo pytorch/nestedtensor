@@ -101,6 +101,7 @@ static auto registry =
 } // namespace torch
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+  register_python_nested_node(m);
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
@@ -185,5 +186,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     }
     return wrap_tensor_node(std::move(tensor_nodes));
   });
+  add_functions(m);
 }
 
