@@ -106,6 +106,29 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // via unbind.
 
 
+  m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
+  m.def("str", [](Tensor tensor) {
+    auto impl_data = get_nested_tensor_impl(tensor)->_data;
+    auto node = impl_data.get_structure();
+    return NestedNode___str__(
+        node,
+        "nested_tensor",
+        [](c10::IValue payload, const std::string& tabs) {
+          std::vector<std::string> tokens = split_str(
+              THPUtils_unpackString(
+                  PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
+              "\n");
+          std::string result;
+          for (size_t i = 0; i < tokens.size(); i++) {
+            result = result + tabs + tokens[i];
+            if (i < tokens.size() - 1) {
+              result = result + "\n";
+            }
+          }
+          return result;
+        });
+  });
+
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor(self);
     if (!index_) {
@@ -138,28 +161,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
-  m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
-  m.def("str", [](Tensor tensor) {
-    auto impl_data = get_nested_tensor_impl(tensor)->_data;
-    auto node = impl_data.get_structure();
-    return NestedNode___str__(
-        node,
-        "nested_tensor",
-        [](c10::IValue payload, const std::string& tabs) {
-          std::vector<std::string> tokens = split_str(
-              THPUtils_unpackString(
-                  PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
-              "\n");
-          std::string result;
-          for (size_t i = 0; i < tokens.size(); i++) {
-            result = result + tabs + tokens[i];
-            if (i < tokens.size() - 1) {
-              result = result + "\n";
-            }
-          }
-          return result;
-        });
-  });
   // Need to overwrite because
   // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
   // requires sizes() for non Tensor-shape compliant NestedTensors
