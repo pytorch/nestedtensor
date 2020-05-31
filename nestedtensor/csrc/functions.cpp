@@ -32,7 +32,7 @@ Tensor & NestedTensor_relu_(Tensor & self) {
     return self;
   }
   auto structure = self_data.get_structure();
-  apply([](at::Tensor t) { at::relu_(t); }, structure);
+  apply([](at::Tensor& t) { at::relu_(t); }, structure);
   return self;
 }
 

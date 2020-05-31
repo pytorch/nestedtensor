@@ -288,10 +288,10 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
   // captures.
   static void function(
       F&& fn,
-      NestedNode<Args>&... nested_node) {
+      NestedNode<Args>... nested_node) {
     auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
     if (first_node.is_leaf()) {
-      std::forward<F>(fn)(nested_node.payload()...);
+      std::forward<F>(fn)(nested_node._payload...);
     } else {
       for (size_t i = 0; i < first_node.degree(); i++) {
         function(std::forward<F>(fn), nested_node._children[i]...);
@@ -309,8 +309,10 @@ template <class F, class... A>
 static inline void apply(F&& fn, NestedNode<A>... nested_node) {
   _apply<
       F,
-      typename c10::guts::infer_function_traits<F>::type::parameter_types>::
-      function(std::move(fn), nested_node...);
+      c10::guts::typelist::map_t<
+          std::remove_reference_t,
+          typename c10::guts::infer_function_traits<F>::type::
+              parameter_types>>::function(std::move(fn), nested_node...);
 }
 
 } // namespace nested_tensor

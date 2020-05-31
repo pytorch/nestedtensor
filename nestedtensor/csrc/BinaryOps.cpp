@@ -11,14 +11,14 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
   auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
     auto other_impl = get_nested_tensor_impl(other);
-    apply([](at::Tensor tensor, const at::Tensor other) {
+    apply([](at::Tensor& tensor, const at::Tensor other) {
           func(tensor, other);
         },
         self_impl->_data.get_structure(),
         other_impl->_data.get_structure());
     return self;
   }
-  apply([&other](at::Tensor tensor) {
+  apply([&other](at::Tensor& tensor) {
         func(tensor, other);
       },
       self_impl->_data.get_structure());
