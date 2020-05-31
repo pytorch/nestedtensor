@@ -104,7 +104,7 @@ Tensor NestedTensor_pow_1(const Tensor& base, const Tensor& exp) {
   return wrap_tensor_node(
       map([](Tensor base, Tensor exp) { return at::pow(base, exp); },
           get_nested_tensor_structure(base),
-          get_nested_tensor_structure(base)));
+          get_nested_tensor_structure(exp)));
 }
 
 Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
