@@ -28,8 +28,6 @@ def _filter_impl(args, kwargs):
 
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
-        print('name')
-        print(name)
         if getattr(torch.Tensor, name):
             def _wrapped_fn(*args, **kwargs):
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
@@ -62,8 +60,6 @@ class NestedTensor(metaclass = NestedTensorMeta):
         self._impl = impl
 
     def __getattr__(self, name):
-        print('name')
-        print(name)
         if getattr(self._impl, name):
             def _wrapped_fn(*args, **kwargs):
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
@@ -241,18 +237,15 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
-        print("HA")
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
         return _wrap_result(torch.ops.nestedtensor.to_nested_tensor(self._impl, dim))
 
     def to_list(self):
-        print("HA1")
         return self._impl.to_list()
 
     def to_tuple(self):
-        print("HA2")
         return self._impl.to_tuple()
 
     def to_tensor_mask(self, mask_dim=None):

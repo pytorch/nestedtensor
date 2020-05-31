@@ -94,7 +94,6 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  std::cout << "max pool 2d" << std::endl;
   auto self_impl = get_nested_tensor_impl(self);
   auto self_data = self_impl->_data;
   auto structure = self_data.get_structure();
