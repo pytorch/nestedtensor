@@ -61,7 +61,7 @@ Tensor& NestedTensor_binary_out(
 Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_data = get_nested_tensor(self);
   auto other_data = get_nested_tensor(other);
-  apply([&alpha](at::Tensor tensor, const at::Tensor other) {
+  apply([&alpha](at::Tensor& tensor, at::Tensor& other) {
         at::native::sub_(tensor, other, alpha);
       },
       self_data.get_structure(),
@@ -85,28 +85,26 @@ Tensor& NestedTensor_sub_out(
     const Tensor& self,
     const Tensor& other,
     Scalar alpha) {
-  auto result_impl = get_nested_tensor_impl(result);
-  auto self_impl = get_nested_tensor_impl(self);
-  auto other_impl = get_nested_tensor_impl(other);
-  apply([&alpha](
-          at::Tensor result,
-          const at::Tensor tensor,
-          const at::Tensor other) {
+  auto result_data = get_nested_tensor(result);
+  auto self_data = get_nested_tensor(self);
+  auto other_data = get_nested_tensor(other);
+  apply(
+      [&alpha](at::Tensor& result, at::Tensor& tensor, at::Tensor& other) {
         return at::sub_out(result, tensor, other, alpha);
       },
-      result_impl->_data.get_structure(),
-      self_impl->_data.get_structure(),
-      other_impl->_data.get_structure());
+      result_data.get_structure(),
+      self_data.get_structure(),
+      other_data.get_structure());
   return result;
 }
 
 Tensor& NestedTensor_pow_out_1(Tensor& result, const Tensor& base, const Tensor& exp) {
-  auto result_structure = get_nested_tensor_impl(result)->_data.get_structure();
-  auto base_structure = get_nested_tensor_impl(base)->_data.get_structure();
-  auto exp_structure = get_nested_tensor_impl(exp)->_data.get_structure();
-  apply([](at::Tensor result,
-         const at::Tensor base,
-         const at::Tensor exp) {
+  auto result_structure = get_nested_tensor(result).get_structure();
+  auto base_structure = get_nested_tensor(base).get_structure();
+  auto exp_structure = get_nested_tensor(exp).get_structure();
+  apply([](at::Tensor& result,
+           at::Tensor& base,
+           at::Tensor& exp) {
         return at::pow_out(result, base, exp);
       },
       result_structure,
