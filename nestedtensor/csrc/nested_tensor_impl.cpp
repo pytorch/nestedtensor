@@ -67,9 +67,8 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   std::vector<TensorNode> result;
   for (Tensor child : unbound) {
     auto ci = NestedTensor_to_tensor(child, dim - 1);
-    if (ci.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      auto ci_impl = static_cast<NestedTensorImpl*>(ci.unsafeGetTensorImpl());
-      auto s = ci_impl->_data.get_structure();
+    if (is_nested_tensor_impl(ci)) {
+      auto s = get_nested_tensor(ci).get_structure();
       result.push_back(TensorNode(std::move(s)));
     } else {
       // TODO: If it's a NestedTensor instance get the structure
