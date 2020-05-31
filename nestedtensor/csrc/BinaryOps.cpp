@@ -14,30 +14,27 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
     apply([](Tensor& tensor, const Tensor other) {
           func(tensor, other);
         },
-        self_impl->_data.get_structure(),
-        other_impl->_data.get_structure());
+        get_nested_tensor_structure(self),
+        get_nested_tensor_structure(other));
     return self;
   }
-  apply([&other](Tensor& tensor) {
-        func(tensor, other);
-      },
-      self_impl->_data.get_structure());
+  apply(
+      [&other](Tensor& tensor) { func(tensor, other); },
+      get_nested_tensor_structure(self));
   return self;
 }
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
-  auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
-    auto other_impl = get_nested_tensor_impl(other);
-    return at::detail::make_tensor<NestedTensorImpl>(map(
-        [](Tensor tensor, Tensor other) { return func(tensor, other); },
-        self_impl->_data.get_structure(),
-        other_impl->_data.get_structure()));
+    return wrap_tensor_node(
+        map([](Tensor tensor, Tensor other) { return func(tensor, other); },
+            get_nested_tensor_structure(self),
+            get_nested_tensor_structure(other)));
   }
-  return at::detail::make_tensor<NestedTensorImpl>(map(
-      [&other](Tensor tensor) { return func(tensor, other); },
-      self_impl->_data.get_structure()));
+  return wrap_tensor_node(
+      map([&other](Tensor tensor) { return func(tensor, other); },
+          get_nested_tensor_structure(self)));
 }
 
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
