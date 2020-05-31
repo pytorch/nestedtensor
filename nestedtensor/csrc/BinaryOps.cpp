@@ -11,20 +11,18 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
   auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
     auto other_impl = get_nested_tensor_impl(other);
-    auto f = [](at::Tensor tensor, const at::Tensor other) {
-      func(tensor, other);
-    };
-    apply<decltype(f)>(
-        std::move(f),
+    apply(
+        [](at::Tensor tensor, const at::Tensor other) {
+          func(tensor, other);
+        },
         self_impl->_data.get_structure(),
         other_impl->_data.get_structure());
     return self;
   }
-  auto f = [&other](at::Tensor tensor) {
-    func(tensor, other);
-  };
-  apply<decltype(f)>(
-      std::move(f),
+  apply(
+      [&other](at::Tensor tensor) {
+        func(tensor, other);
+      },
       self_impl->_data.get_structure());
   return self;
 }
@@ -65,11 +63,10 @@ Tensor& NestedTensor_binary_out(
 Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
   auto other_impl = get_nested_tensor_impl(other);
-  auto f = [&alpha](at::Tensor tensor, const at::Tensor other) {
-    at::native::sub_(tensor, other, alpha);
-  };
-  apply<decltype(f)>(
-      std::move(f),
+  apply(
+      [&alpha](at::Tensor tensor, const at::Tensor other) {
+        at::native::sub_(tensor, other, alpha);
+      },
       self_impl->_data.get_structure(),
       other_impl->_data.get_structure());
   return self;
