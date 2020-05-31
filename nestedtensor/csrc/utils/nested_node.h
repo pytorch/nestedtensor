@@ -99,26 +99,6 @@ struct NestedNode {
   int64_t _height;
 };
 
-template <class... A>
-inline bool shape_matches(const NestedNode<A>&... a) {
-  if (!template_utils::equal(a.height()...)) {
-    return false;
-  }
-  if (!template_utils::equal(a.degree()...)) {
-    return false;
-  }
-  auto first_node = std::get<0>(std::forward_as_tuple(a...));
-  if (first_node.is_leaf() && !template_utils::all(a.is_leaf()...)) {
-    return false;
-  }
-  for (size_t i = 0; i < first_node.degree(); i++) {
-    if (!shape_matches(a.children(i)...)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
@@ -188,7 +168,6 @@ template <class F, class... B>
 static inline NestedNode<
     typename c10::guts::infer_function_traits<F>::type::return_type>
 map(F&& fn, const NestedNode<B>&... nested_node) {
-  shape_matches(nested_node...);
   return _map<
       F,
       typename c10::guts::infer_function_traits<F>::type::return_type,
@@ -328,7 +307,6 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
 // TODO: Add check that lambda returns void
 template <class F, class... A>
 void apply(F&& fn, NestedNode<A>&... nested_node) {
-  shape_matches(nested_node...);
   return _apply<
       F,
       typename c10::guts::infer_function_traits<F>::type::parameter_types>::

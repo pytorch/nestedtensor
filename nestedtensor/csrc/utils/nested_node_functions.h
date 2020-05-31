@@ -53,6 +53,26 @@ bool any(A first, B second, C... other) {
 
 } // namespace template_utils
 
+template <class... A>
+inline bool shape_matches(const NestedNode<A>&... a) {
+  if (!template_utils::equal(a.height()...)) {
+    return false;
+  }
+  if (!template_utils::equal(a.degree()...)) {
+    return false;
+  }
+  auto first_node = std::get<0>(std::forward_as_tuple(a...));
+  if (first_node.is_leaf() && !template_utils::all(a.is_leaf()...)) {
+    return false;
+  }
+  for (size_t i = 0; i < first_node.degree(); i++) {
+    if (!shape_matches(a.children(i)...)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // TODO: Assuming all NestedNodes have same shape.
 template <typename F, typename... B>
 inline bool all(F&& fn, const NestedNode<B>&... nested_node) {
