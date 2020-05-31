@@ -45,26 +45,27 @@ Tensor& NestedTensor_binary_out(
     Tensor& result,
     const Tensor& self,
     const Tensor& other) {
-  auto result_impl = get_nested_tensor_impl(result);
-  auto self_impl = get_nested_tensor_impl(self);
-  auto other_impl = get_nested_tensor_impl(other);
-  apply([](at::Tensor result,
-         const at::Tensor tensor,
-         const at::Tensor other) { return func(result, tensor, other); },
-      result_impl->_data.get_structure(),
-      self_impl->_data.get_structure(),
-      other_impl->_data.get_structure());
+  auto result_data = get_nested_tensor(result);
+  auto self_data = get_nested_tensor(self);
+  auto other_data = get_nested_tensor(other);
+  apply(
+      [](at::Tensor& result, at::Tensor& tensor, at::Tensor& other) {
+        return func(result, tensor, other);
+      },
+      result_data.get_structure(),
+      self_data.get_structure(),
+      other_data.get_structure());
   return result;
 }
 
 Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto other_impl = get_nested_tensor_impl(other);
+  auto self_data = get_nested_tensor(self);
+  auto other_data = get_nested_tensor(other);
   apply([&alpha](at::Tensor tensor, const at::Tensor other) {
         at::native::sub_(tensor, other, alpha);
       },
-      self_impl->_data.get_structure(),
-      other_impl->_data.get_structure());
+      self_data.get_structure(),
+      other_data.get_structure());
   return self;
 }
 
