@@ -25,8 +25,7 @@ Tensor NestedTensor_relu(const Tensor& self) {
 }
 
 Tensor & NestedTensor_relu_(Tensor & self) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto self_data = self_impl->_data;
+  auto self_data = get_nested_tensor(self);
   if (self_data.is_contiguous()) {
     at::relu_(*self_data.get_buffer());
     return self;
@@ -37,21 +36,15 @@ Tensor & NestedTensor_relu_(Tensor & self) {
 }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  auto self_impl = get_nested_tensor_impl(input);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
-  auto res =
-      map([&](const at::Tensor t) { return at::dropout(t, p, train); }, structure);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
+  return wrap_tensor_node(
+      map([&](const at::Tensor t) { return at::dropout(t, p, train); },
+          get_nested_tensor_structure(input)));
 }
 
 Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  auto self_impl = get_nested_tensor_impl(input);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
   apply(
-      [&](at::Tensor t) { return at::dropout_(t, p, train); }, structure);
+      [&](at::Tensor t) { return at::dropout_(t, p, train); },
+      get_nested_tensor_structure(input));
   return input;
 }
 
@@ -63,11 +56,7 @@ Tensor NestedTensor_conv2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     int64_t groups) {
-  auto input_impl = get_nested_tensor_impl(input);
-  auto input_data = input_impl->_data;
-  auto structure = input_data.get_structure();
-
-  auto res = map(
+  return wrap_tensor_node(map(
       [&weight, &bias, &stride, &padding, &dilation, groups](at::Tensor t) {
         return at::convolution(
                    t.unsqueeze(0),
@@ -81,10 +70,7 @@ Tensor NestedTensor_conv2d(
                    groups)
             .squeeze(0);
       },
-      structure);
-
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
+      get_nested_tensor_structure(input)));
 }
 
 Tensor NestedTensor_max_pool2d(
@@ -94,10 +80,7 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto self_data = self_impl->_data;
-  auto structure = self_data.get_structure();
-  auto res = map(
+  return wrap_tensor_node(map(
       [&](at::Tensor t) {
         return at::max_pool2d(
                    t.unsqueeze(0),
@@ -108,22 +91,14 @@ Tensor NestedTensor_max_pool2d(
                    ceil_mode)
             .squeeze(0);
       },
-      structure);
-
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
+      get_nested_tensor_structure(self)));
 }
-
-
 
 Tensor NestedTensor_batch_norm(
     const Tensor& input, const Tensor& weight /* optional */, const Tensor& bias /* optional */,
     const Tensor& running_mean /* optional */, const Tensor& running_var /* optional */,
     bool training, double momentum, double eps, bool cudnn_enabled) {
-  auto input_impl = get_nested_tensor_impl(input);
-  auto input_data = input_impl->_data;
-  auto structure = input_data.get_structure();
-  auto res = map(
+  return wrap_tensor_node(map(
       [&](at::Tensor t) {
         return at::batch_norm(
                    t.unsqueeze(0),
@@ -137,23 +112,20 @@ Tensor NestedTensor_batch_norm(
                    cudnn_enabled)
             .squeeze(0);
       },
-      structure);
-  return wrap_nested_tensor(std::move(res));
+      get_nested_tensor_structure(input)));
 }
 
-Tensor NestedTensor_sum(const Tensor &self_, c10::optional<ScalarType> dtype) {
-  auto self = get_nested_tensor_impl(self_)->_data;
-  auto flat_structure =
+Tensor NestedTensor_sum(const Tensor &self, c10::optional<ScalarType> dtype) {
+  auto tensors = flatten(
       map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-          self.get_structure());
-  auto tensors = flatten(flat_structure).vec();
+          get_nested_tensor_structure(self)));
   if (tensors.size() == 0) {
     if (dtype) {
       return at::ones({0}, *dtype);
     }
     return at::ones({0});
   }
-  auto all_tensor = at::stack(tensors);
+  auto all_tensor = at::stack(tensors.vec());
   return at::sum(all_tensor, dtype);
 }
 
