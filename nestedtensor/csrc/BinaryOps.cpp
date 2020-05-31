@@ -48,9 +48,9 @@ Tensor& NestedTensor_binary_out(
   auto result_impl = get_nested_tensor_impl(result);
   auto self_impl = get_nested_tensor_impl(self);
   auto other_impl = get_nested_tensor_impl(other);
-  apply([](at::Tensor& result,
-         const at::Tensor& tensor,
-         const at::Tensor& other) { return func(result, tensor, other); },
+  apply([](at::Tensor result,
+         const at::Tensor tensor,
+         const at::Tensor other) { return func(result, tensor, other); },
       result_impl->_data.get_structure(),
       self_impl->_data.get_structure(),
       other_impl->_data.get_structure());
@@ -88,9 +88,9 @@ Tensor& NestedTensor_sub_out(
   auto self_impl = get_nested_tensor_impl(self);
   auto other_impl = get_nested_tensor_impl(other);
   apply([&alpha](
-          at::Tensor& result,
-          const at::Tensor& tensor,
-          const at::Tensor& other) {
+          at::Tensor result,
+          const at::Tensor tensor,
+          const at::Tensor other) {
         return at::sub_out(result, tensor, other, alpha);
       },
       result_impl->_data.get_structure(),
@@ -103,9 +103,9 @@ Tensor& NestedTensor_pow_out_1(Tensor& result, const Tensor& base, const Tensor&
   auto result_structure = get_nested_tensor_impl(result)->_data.get_structure();
   auto base_structure = get_nested_tensor_impl(base)->_data.get_structure();
   auto exp_structure = get_nested_tensor_impl(exp)->_data.get_structure();
-  apply([](at::Tensor& result,
-         const at::Tensor& base,
-         const at::Tensor& exp) {
+  apply([](at::Tensor result,
+         const at::Tensor base,
+         const at::Tensor exp) {
         return at::pow_out(result, base, exp);
       },
       result_structure,
@@ -131,8 +131,8 @@ Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
 Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
   auto result_structure = get_nested_tensor_impl(result)->_data.get_structure();
   auto base_structure = get_nested_tensor_impl(base)->_data.get_structure();
-  apply([&exp](at::Tensor& result,
-         const at::Tensor& base) {
+  apply([&exp](at::Tensor result,
+         const at::Tensor base) {
         return at::pow_out(result, base, exp);
       },
       result_structure,
@@ -150,8 +150,8 @@ Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
 Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
   auto result_structure = get_nested_tensor_impl(result)->_data.get_structure();
   auto exp_structure = get_nested_tensor_impl(exp)->_data.get_structure();
-  apply([&base](at::Tensor& result,
-         const at::Tensor& exp) {
+  apply([&base](at::Tensor result,
+          const at::Tensor exp) {
         return at::pow_out(result, base, exp);
       },
       result_structure,

@@ -32,7 +32,7 @@ Tensor & NestedTensor_relu_(Tensor & self) {
     return self;
   }
   auto structure = self_data.get_structure();
-  apply([](at::Tensor& t) { at::relu_(t); }, structure);
+  apply([](at::Tensor t) { at::relu_(t); }, structure);
   return self;
 }
 
@@ -51,7 +51,7 @@ Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
   auto self_data = self_impl->_data;
   auto structure = self_data.get_structure();
   apply(
-      [&](at::Tensor& t) { return at::dropout_(t, p, train); }, structure);
+      [&](at::Tensor t) { return at::dropout_(t, p, train); }, structure);
   return input;
 }
 

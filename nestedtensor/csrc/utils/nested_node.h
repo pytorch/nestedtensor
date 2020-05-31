@@ -76,7 +76,7 @@ struct NestedNode {
 
   template <class F, class... A>
   friend inline void
-  apply(F&&, const NestedNode<A>&...);
+  apply(F&&, NestedNode<A>...);
 
   inline NestedNode<T> children(size_t i) const {
     return _children[i];
@@ -294,7 +294,7 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
       std::forward<F>(fn)(nested_node.payload()...);
     } else {
       for (size_t i = 0; i < first_node.degree(); i++) {
-        function(std::forward<F>(fn), nested_node.children(i)...);
+        function(std::forward<F>(fn), nested_node._children[i]...);
       }
     }
   };
@@ -306,8 +306,8 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
 // TODO: Do we want broadcasting?
 // TODO: Add check that lambda returns void
 template <class F, class... A>
-void apply(F&& fn, NestedNode<A>&... nested_node) {
-  return _apply<
+static inline void apply(F&& fn, NestedNode<A>... nested_node) {
+  _apply<
       F,
       typename c10::guts::infer_function_traits<F>::type::parameter_types>::
       function(std::move(fn), nested_node...);
