@@ -176,10 +176,8 @@ bool _verify_variables(
 NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   if (THPVariable_Check(py_obj.ptr())) {
     at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
-    if (tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      auto tensor_impl = static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
-      auto tensor_data = tensor_impl->_data;
-      auto tensor_data_structure = tensor_data.get_structure();
+    if (is_nested_tensor_impl(tensor)) {
+      auto tensor_data_structure = get_nested_tensor(tensor).get_structure();
       return map([](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
     }
   }

@@ -40,8 +40,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  auto nt = self_impl->_data.contiguous();
+  auto nt = get_nested_tensor(self).contiguous();
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
@@ -80,13 +79,11 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
-  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  return self_impl->_data.is_pinned();
+  return get_nested_tensor(self).is_pinned();
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
-  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  auto _data = self_impl->_data;
+  auto _data = get_nested_tensor(self);
   dim = at::maybe_wrap_dim(dim, _data.dim());
   auto node = _data.get_structure();
   auto nested_dim = _data.nested_dim();
@@ -151,8 +148,7 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   if (dim == 0) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
-  auto input_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  TensorNode tn = input_impl->_data.get_structure().unbind()[index];
+  TensorNode tn = get_nested_tensor(self).get_structure().unbind()[index];
   torch::nested_tensor::NestedTensor nt = torch::nested_tensor::NestedTensor(
       std::move(tn));
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
