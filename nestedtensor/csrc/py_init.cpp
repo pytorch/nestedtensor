@@ -51,10 +51,10 @@ namespace {
 static auto registry =
     torch::RegisterOperators()
       .op("nestedtensor::is_nested_tensor_impl", [](Tensor tensor) {
-        return tensor.unsafeGetTensorImpl()->key_set().has(NestedTensorKey);
+        return is_nested_tensor_impl(tensor);
       })
       .op("nestedtensor::nested_dim", [](Tensor tensor) {
-        return get_nested_tensor_impl(tensor)->_data.nested_dim();
+        return get_nested_tensor(tensor).nested_dim();
       })
       .op("nestedtensor::to_nested_tensor",
               [](Tensor tensor, c10::optional<int64_t> dim) {

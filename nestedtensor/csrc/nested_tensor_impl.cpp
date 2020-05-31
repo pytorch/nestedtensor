@@ -40,8 +40,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  auto nt = self_impl->_data.contiguous();
+  auto nt = get_nested_tensor(self).contiguous();
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
@@ -67,9 +66,8 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   std::vector<TensorNode> result;
   for (Tensor child : unbound) {
     auto ci = NestedTensor_to_tensor(child, dim - 1);
-    if (ci.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-      auto ci_impl = static_cast<NestedTensorImpl*>(ci.unsafeGetTensorImpl());
-      auto s = ci_impl->_data.get_structure();
+    if (is_nested_tensor_impl(ci)) {
+      auto s = get_nested_tensor(ci).get_structure();
       result.push_back(TensorNode(std::move(s)));
     } else {
       // TODO: If it's a NestedTensor instance get the structure
@@ -81,13 +79,11 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
-  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  return self_impl->_data.is_pinned();
+  return get_nested_tensor(self).is_pinned();
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
-  auto self_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  auto _data = self_impl->_data;
+  auto _data = get_nested_tensor(self);
   dim = at::maybe_wrap_dim(dim, _data.dim());
   auto node = _data.get_structure();
   auto nested_dim = _data.nested_dim();
@@ -152,8 +148,7 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   if (dim == 0) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
-  auto input_impl = static_cast<NestedTensorImpl*>(self.unsafeGetTensorImpl());
-  TensorNode tn = input_impl->_data.get_structure().unbind()[index];
+  TensorNode tn = get_nested_tensor(self).get_structure().unbind()[index];
   torch::nested_tensor::NestedTensor nt = torch::nested_tensor::NestedTensor(
       std::move(tn));
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
@@ -162,11 +157,18 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
 // TODO: Could have a NestedTensorIterator that does binary ops
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
-  auto other_impl = get_nested_tensor_impl(other);
+  if (is_nested_tensor_impl(other)) {
+    auto other_impl = get_nested_tensor_impl(other);
+    TensorNode result_tensor_node =
+        map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
+            self_impl->_data.get_structure(),
+            other_impl->_data.get_structure());
+    return at::detail::make_tensor<NestedTensorImpl>(
+        NestedTensor(std::move(result_tensor_node)));
+  }
   TensorNode result_tensor_node =
-      map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
-          self_impl->_data.get_structure(),
-          other_impl->_data.get_structure());
+      map([&other, alpha](at::Tensor a) { return at::add(a, other, alpha); },
+          self_impl->_data.get_structure());
   return at::detail::make_tensor<NestedTensorImpl>(
       NestedTensor(std::move(result_tensor_node)));
 }

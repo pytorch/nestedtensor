@@ -77,7 +77,14 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return _wrap_result(self._impl.__ne__(other._impl))
 
     def __add__(self, other):
-        return NestedTensor(self._impl + other._impl)
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl + other._impl)
+        return _wrap_result(self._impl + other)
+
+    def __mul__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl * other._impl)
+        return _wrap_result(self._impl * other)
 
     def __pow__(self, *args, **kwargs):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
@@ -227,7 +234,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         raise NotImplementedError("NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
-        return nestedtensor._C.get_item(self._impl, key)
+        return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())
