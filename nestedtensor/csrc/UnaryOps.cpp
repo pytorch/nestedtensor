@@ -15,8 +15,8 @@ Tensor& NestedTensor_unary_(Tensor& self) {
     func(*self_impl.get_buffer());
     return self;
   }
-  auto f = [](at::Tensor& tensor) { func(tensor); };
-  apply<decltype(f)>(std::move(f), self_impl.get_structure());
+  apply([](at::Tensor& tensor) { func(tensor); },
+      self_impl.get_structure());
   return self;
 }
 
@@ -28,8 +28,8 @@ Tensor& NestedTensor_unary_method_(Tensor& self) {
     ((*self_impl.get_buffer()).*func)();
     return self;
   }
-  auto f = [](at::Tensor& tensor) { (tensor.*func)(); };
-  apply<decltype(f)>(std::move(f), self_impl.get_structure());
+  apply([](at::Tensor& tensor) { (tensor.*func)(); },
+      self_impl.get_structure());
   return self;
 }
 
@@ -52,7 +52,7 @@ Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
     func(*result_impl.get_buffer(), *self_impl.get_buffer());
     return result;
   }
-  apply([](at::Tensor& result, const at::Tensor tensor)
+  apply([](at::Tensor& result, at::Tensor& tensor)
           { return func(result, tensor); },
       result_impl.get_structure(),
       self_impl.get_structure());
@@ -60,96 +60,86 @@ Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
 }
 
 Tensor& NestedTensor_clamp_(Tensor& self, optional<Scalar> min, optional<Scalar> max) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto f = [min, max](at::Tensor& tensor) { at::clamp_(tensor, min, max); };
-  apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
+  apply(
+      [min, max](at::Tensor& tensor) { at::clamp_(tensor, min, max); },
+      get_nested_tensor_structure(self));
   return self;
 }
 
 Tensor NestedTensor_clamp(const Tensor& self, optional<Scalar> min, optional<Scalar> max) {
-  auto self_impl = get_nested_tensor_impl(self);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([min, max](at::Tensor tensor) { return at::clamp(tensor, min, max); },
-          self_impl->_data.get_structure()));
+          get_nested_tensor_structure(self)));
 }
 
 Tensor& NestedTensor_clamp_out(Tensor& result,
                                const Tensor& self,
                                optional<Scalar> min,
                                optional<Scalar> max) {
-  auto result_impl = get_nested_tensor_impl(result);
-  auto self_impl = get_nested_tensor_impl(self);
-  apply([min, max](at::Tensor& result, const at::Tensor tensor)
-          { return at::clamp_out(result, tensor, min, max); },
-      result_impl->_data.get_structure(),
-      self_impl->_data.get_structure());
+  apply(
+      [min, max](at::Tensor result, const at::Tensor tensor) {
+        return at::clamp_out(result, tensor, min, max);
+      },
+      get_nested_tensor_structure(result),
+      get_nested_tensor_structure(self));
   return result;
 }
 
 Tensor& NestedTensor_clamp_min_(Tensor& self, Scalar min) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto f = [min](at::Tensor& tensor) { at::clamp_min_(tensor, min); };
-  apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
+  apply(
+      [min](at::Tensor& tensor) { at::clamp_min_(tensor, min); },
+      get_nested_tensor_structure(self));
   return self;
 }
 
 Tensor NestedTensor_clamp_min(const Tensor& self, Scalar min) {
-  auto self_impl = get_nested_tensor_impl(self);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([min](at::Tensor tensor) { return at::clamp_min(tensor, min); },
-          self_impl->_data.get_structure()));
+          get_nested_tensor_structure(self)));
 }
 
 Tensor& NestedTensor_clamp_min_out(Tensor& result,
                                const Tensor& self,
                                Scalar min) {
-  auto result_impl = get_nested_tensor_impl(result);
-  auto self_impl = get_nested_tensor_impl(self);
-  apply([min](at::Tensor& result, const at::Tensor tensor)
+  apply([min](at::Tensor result, const at::Tensor tensor)
           { return at::clamp_min_out(result, tensor, min); },
-      result_impl->_data.get_structure(),
-      self_impl->_data.get_structure());
+      get_nested_tensor_structure(result),
+      get_nested_tensor_structure(self));
   return result;
 }
 
 Tensor& NestedTensor_clamp_max_(Tensor& self, Scalar min) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto f = [min](at::Tensor& tensor) { at::clamp_max_(tensor, min); };
-  apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
+  apply([min](at::Tensor tensor) { at::clamp_max_(tensor, min); },
+      get_nested_tensor_structure(self));
   return self;
 }
 
 Tensor NestedTensor_clamp_max(const Tensor& self, Scalar min) {
-  auto self_impl = get_nested_tensor_impl(self);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([min](at::Tensor tensor) { return at::clamp_max(tensor, min); },
-          self_impl->_data.get_structure()));
+          get_nested_tensor_structure(self)));
 }
 
 Tensor& NestedTensor_clamp_max_out(Tensor& result,
                                const Tensor& self,
                                Scalar min) {
-  auto result_impl = get_nested_tensor_impl(result);
-  auto self_impl = get_nested_tensor_impl(self);
-  apply([min](at::Tensor& result, const at::Tensor tensor)
-          { return at::clamp_max_out(result, tensor, min); },
-      result_impl->_data.get_structure(),
-      self_impl->_data.get_structure());
+  apply([min](at::Tensor result, const at::Tensor tensor)
+        { return at::clamp_max_out(result, tensor, min); },
+      get_nested_tensor_structure(result),
+      get_nested_tensor_structure(self));
   return result;
 }
 
 Tensor& NestedTensor_mvlgamma_(Tensor& self, int64_t p) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto f = [p](at::Tensor& tensor) { tensor.mvlgamma_(p); };
-  apply<decltype(f)>(std::move(f), self_impl->_data.get_structure());
+  apply([p](at::Tensor tensor) { tensor.mvlgamma_(p); },
+      get_nested_tensor_structure(self));
   return self;
 }
 
 Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
-  auto self_impl = get_nested_tensor_impl(self);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([p](at::Tensor tensor) { return at::mvlgamma(tensor, p); },
-          self_impl->_data.get_structure()));
+          get_nested_tensor_structure(self)));
 }
 
 #define UNARY_OP_INPLACE_METHOD(NAME)                                                      \
