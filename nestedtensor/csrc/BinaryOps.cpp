@@ -8,9 +8,7 @@ using namespace torch::nested_tensor;
 
 template <Tensor& (*func)(Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
-  auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
-    auto other_impl = get_nested_tensor_impl(other);
     apply([](Tensor& tensor, const Tensor other) {
           func(tensor, other);
         },
