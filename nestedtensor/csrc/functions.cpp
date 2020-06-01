@@ -82,22 +82,29 @@ Tensor NestedTensor_max_pool2d(
     bool ceil_mode) {
   auto self_impl = get_nested_tensor_impl(self);
   auto nt = self_impl->_data;
-  auto tensor_node = nt.get_structure();
+  auto tensor_node = get_nested_tensor_structure(self);
 
-  bool all_sizes_same = true;
-  for (const auto& size : nt.sizes()) {
-    if (!size) {
-      all_sizes_same = false;
-      break;
+  if (is_tensor_shape(self)) {
+    if (self.is_contiguous()) {
+      auto buffer = nt.get_buffer();
+      auto tensor = torch::reshape(buffer.value(), self_impl->sizes());
+
+      auto res = at::max_pool2d(tensor,
+                                kernel_size,
+                                stride,
+                                padding,
+                                dilation,
+                                ceil_mode);
+
+      return at::detail::make_tensor<NestedTensorImpl>(
+        torch::nested_tensor::NestedTensor(std::move(res)).to_nested_tensor(nt.nested_dim() - 1));
     }
-  }
- 
-  if (all_sizes_same) {
+
     std::vector<at::Tensor> tensors;
     for (auto tn : tensor_node.unbind()) {
       tensors.push_back(tn.payload());
     }
-
+    
     auto res = at::max_pool2d(at::stack(tensors),
                               kernel_size,
                               stride,
@@ -109,7 +116,7 @@ Tensor NestedTensor_max_pool2d(
       torch::nested_tensor::NestedTensor(std::move(res)).to_nested_tensor(nt.nested_dim() - 1));
   }
 
-  auto res = map(
+  return wrap_tensor_node(map(
       [&](at::Tensor t) {
         return at::max_pool2d(
                    t.unsqueeze(0),

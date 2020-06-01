@@ -26,7 +26,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _data.is_contiguous();
   }
 
-  IntArrayRef sizes() const override;
+  std::vector<int64_t> sizes();
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
@@ -55,6 +55,15 @@ inline torch::nested_tensor::TensorNode get_nested_tensor_structure(
   return get_nested_tensor(tensor).get_structure();
 }
 
+inline bool is_tensor_shape(const at::Tensor tensor) {
+  auto nt = get_nested_tensor(tensor);
+  for (const auto& size : nt.sizes()) {
+    if (!size) {
+      return false;
+    }
+  }
+  return true;
+}
 
 inline at::Tensor wrap_nested_tensor(
     torch::nested_tensor::NestedTensor&& result) {
