@@ -177,13 +177,13 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
     apply(
-        [alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
+        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
         get_nested_tensor_structure(self),
         get_nested_tensor_structure(other));
     return self;
   }
   apply(
-      [&other, alpha](at::Tensor a) { return at::add(a, other, alpha); },
+      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
       get_nested_tensor_structure(self));
   return self;
 }
