@@ -154,7 +154,7 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
-// TODO: Could have a NestedTensorIterator that does binary ops
+// TODO: Replace with a generalized Binary op
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
@@ -171,6 +171,21 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
           self_impl->_data.get_structure());
   return at::detail::make_tensor<NestedTensorImpl>(
       NestedTensor(std::move(result_tensor_node)));
+}
+
+Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
+  auto self_impl = get_nested_tensor_impl(self);
+  if (is_nested_tensor_impl(other)) {
+    apply(
+        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
+        get_nested_tensor_structure(self),
+        get_nested_tensor_structure(other));
+    return self;
+  }
+  apply(
+      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
+      get_nested_tensor_structure(self));
+  return self;
 }
 
 Tensor NestedTensor_all(const Tensor& self) {
@@ -295,6 +310,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
   m.impl_UNBOXED("ne.Tensor", NestedTensor_ne);
   m.impl_UNBOXED("add.Tensor", NestedTensor_add);
+  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("contiguous", NestedTensor_contiguous);
   m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);

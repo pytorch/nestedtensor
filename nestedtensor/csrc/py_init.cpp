@@ -136,7 +136,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // TODO: Advanced indexing
   // TODO: Tensor-wise select
   // TODO: Tuple support
-  m.def("get_item", [](Tensor tensor, int64_t key) {
+  m.def("get_item", [](Tensor tensor, int64_t key_) {
+    std::vector<at::Tensor> unbound = unbind(tensor, 0);
+    int64_t key = at::maybe_wrap_dim(key_, unbound.size());
     return unbind(tensor, 0)[key];
   });
 #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)

@@ -253,7 +253,7 @@ def get_unary_functions():
 
 def get_binary_functions():
     return [
-        # 'add',
+        'add',
         'mul',
         'sub',
         'div',
