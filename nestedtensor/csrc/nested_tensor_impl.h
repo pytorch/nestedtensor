@@ -13,7 +13,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
             c10::DispatchKeySet(NestedTensorKey),
             data.dtype(),
             data.device()),
-        _data(std::move(data)) {}
+        _data(std::move(data)) {
+            for (auto opt_int : _data.sizes()) {
+              if (opt_int) {
+                _sizes.push_back(*opt_int);
+              }
+            }
+        }
 
   int64_t dim() const override {
     return _data.dim();
@@ -26,12 +32,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _data.is_contiguous();
   }
 
-  std::vector<int64_t> sizes();
+  IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
   torch::nested_tensor::NestedTensor _data;
-
+  std::vector<int64_t> _sizes;
 };
 
 inline bool is_nested_tensor_impl(const at::Tensor tensor) {
