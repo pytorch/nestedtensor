@@ -71,8 +71,12 @@ struct NestedNode {
   template <typename F, typename A, typename... B>
   friend inline A reduce(NestedNode<B>..., F, A);
 
+  template <class F, class TypeList>
+  friend class _apply;
+
   template <class F, class... A>
-  friend inline void apply(F&&, NestedNode<A>&...);
+  friend inline void
+  apply(F&&, NestedNode<A>...);
 
   inline NestedNode<T> children(size_t i) const {
     return _children[i];
@@ -274,17 +278,41 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
   return result;
 }
 
-// TODO: Assuming all NestedNodes have same shape.
-template <class F, class... A>
-inline void apply(F&& fn, NestedNode<A>&... nested_node) {
-  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
-  if (first_node.is_leaf()) {
-    std::forward<F>(fn)(nested_node._payload...);
-  } else {
-    for (size_t i = 0; i < first_node.degree(); i++) {
-      apply<F, A...>(std::forward<F>(fn), nested_node._children[i]...);
+template <class F, class TypeList>
+class _apply;
+
+template <class F, class... Args>
+class _apply<F, c10::guts::typelist::typelist<Args...>> {
+ public:
+  // NOTE: We must move F to avoid copying objects if it is a lambda with
+  // captures.
+  static void function(
+      F&& fn,
+      NestedNode<Args>... nested_node) {
+    auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+    if (first_node.is_leaf()) {
+      std::forward<F>(fn)(nested_node._payload...);
+    } else {
+      for (size_t i = 0; i < first_node.degree(); i++) {
+        function(std::forward<F>(fn), nested_node._children[i]...);
+      }
     }
-  }
+  };
+};
+
+// NOTE: Assuming all NestedNodes have same shape.
+// TODO: Add check that all shapes match
+// TODO: Add static assert to verify lambda arguments match nested_node types
+// TODO: Do we want broadcasting?
+// TODO: Add check that lambda returns void
+template <class F, class... A>
+static inline void apply(F&& fn, NestedNode<A>... nested_node) {
+  _apply<
+      F,
+      c10::guts::typelist::map_t<
+          std::remove_reference_t,
+          typename c10::guts::infer_function_traits<F>::type::
+              parameter_types>>::function(std::move(fn), nested_node...);
 }
 
 } // namespace nested_tensor

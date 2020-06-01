@@ -6,6 +6,8 @@ import torch
 import nestedtensor
 import unittest
 from utils import TestCase
+from utils import get_unary_functions
+from utils import get_binary_functions
 import random
 import utils
 
@@ -126,7 +128,7 @@ def _gen_test_binary(func):
 
 
 TestUnary = type('TestUnary', (DynamicClassBase,), {})
-for func__ in nestedtensor.nested.codegen.extension.get_unary_functions():
+for func__ in get_unary_functions():
     if func__ == 'fill':
         continue
     for nested_dim in range(1, 5):
@@ -137,7 +139,7 @@ for func__ in nestedtensor.nested.codegen.extension.get_unary_functions():
             setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
                 func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
 TestBinary = type('TestBinary', (DynamicClassBase,), {})
-for func in nestedtensor.nested.codegen.extension.get_binary_functions():
+for func in get_binary_functions():
     setattr(TestBinary, "test_{0}".format(func),
             _gen_test_binary(func))
 

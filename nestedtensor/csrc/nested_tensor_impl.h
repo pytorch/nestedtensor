@@ -34,22 +34,27 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
 };
 
-inline torch::nested_tensor::NestedTensor get_nested_tensor(
-    const at::Tensor tensor) {
-  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
-    throw std::runtime_error("Function requires NestedTensorImpl");
-  }
-  auto nt_impl =
-      static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
-  return nt_impl->_data;
+inline bool is_nested_tensor_impl(const at::Tensor tensor) {
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
 }
 
 inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
-  if (!tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey)) {
+  if (!is_nested_tensor_impl(tensor)) {
     throw std::runtime_error("Function requires NestedTensorImpl");
   }
   return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
 }
+
+inline torch::nested_tensor::NestedTensor get_nested_tensor(
+    const at::Tensor tensor) {
+  return get_nested_tensor_impl(tensor)->_data;
+}
+
+inline torch::nested_tensor::TensorNode get_nested_tensor_structure(
+    const at::Tensor tensor) {
+  return get_nested_tensor(tensor).get_structure();
+}
+
 
 inline at::Tensor wrap_nested_tensor(
     torch::nested_tensor::NestedTensor&& result) {

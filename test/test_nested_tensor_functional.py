@@ -395,6 +395,23 @@ class TestFunctional(TestCase):
             self.assertEqual(nt.squeeze(2), constructor([[t.reshape(2, 1, 3)]]))
             self.assertEqual(nt.squeeze(4), constructor([[t.reshape(1, 2, 3)]]))
 
+    def test_matmul(self):
+        for constructor in _iter_constructors():
+            t1 = torch.randn(2, 3)
+            a = constructor([t1, t1])
+            t21 = torch.randn(3, 2)
+            t22 = torch.randn(3, 2)
+            b = constructor([t21, t22])
+            result = torch.matmul(a, b)
+            result1 = torch.matmul(a, t22)
+            self.assertEqual(result[1], result1[0])
+            self.assertEqual(result[1], result1[1])
+            c = constructor([[t21, t22], [t22, t21]])
+            result2 = torch.matmul(c, t1)
+            self.assertEqual(result2[0][0], torch.matmul(t21, t1))
+            self.assertEqual(result2[0][1], torch.matmul(t22, t1))
+            self.assertEqual(result2[1][0], torch.matmul(t22, t1))
+            self.assertEqual(result2[1][1], torch.matmul(t21, t1))
 
 if __name__ == "__main__":
     unittest.main()
