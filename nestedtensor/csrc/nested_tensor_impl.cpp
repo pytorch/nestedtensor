@@ -9,16 +9,7 @@ namespace at {
 using namespace torch::nested_tensor;
 
 IntArrayRef NestedTensorImpl::sizes() const {
-  std::vector<c10::optional<int64_t>> size = _data.sizes();
-  std::vector<int64_t> sizes;
-  for (auto opt_int : size) {
-    if (opt_int) {
-      sizes.push_back(*opt_int);
-    } else {
-      throw std::runtime_error("NestedTensor size is not Tensor shape compliant.");
-    }
-  }
-  return IntArrayRef(sizes);
+  return IntArrayRef(_sizes);
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {
