@@ -276,7 +276,7 @@ class SegLayersBenchMark(object):
             layer = self.layers.setdefault(
                 (name, cuda),
                 torch.nn.MaxPool2d(
-                    kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), dilation=(1, 1)
+                    kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1)
                 ),
             )
         try:

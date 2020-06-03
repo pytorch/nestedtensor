@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#include <nestedtensor/csrc/nested_tensor.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -84,6 +85,7 @@ Tensor NestedTensor_max_pool2d(
   auto nt = self_impl->_data;
   auto tensor_node = get_nested_tensor_structure(self);
 
+  // all tensors are same size
   if (is_tensor_shape(self)) {
     if (self.is_contiguous()) {
       auto buffer = nt.get_buffer();
@@ -105,17 +107,80 @@ Tensor NestedTensor_max_pool2d(
       tensors.push_back(tn.payload());
     }
     
-    auto res = at::max_pool2d(at::stack(tensors),
-                              kernel_size,
-                              stride,
-                              padding,
-                              dilation,
-                              ceil_mode);
-
-    return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)).to_nested_tensor(nt.nested_dim() - 1));
+    return wrap_tensor_node(at::max_pool2d(at::stack(tensors),
+                                           kernel_size,
+                                           stride,
+                                           padding,
+                                           dilation,
+                                           ceil_mode));
   }
 
+  //
+  // special kernel
+  //
+  
+  bool flag = true;
+  if (kernel_size[0] == 3 && kernel_size[1] == 3 && 
+      stride[0] == 2 && stride[1] == 2 && 
+      padding[0] == 1 && padding[1] == 1 &&
+      dilation[0] == 1 && dilation[1] == 1) {
+    // great
+  } else {
+    bool flag = false;
+  }
+  
+  if (!flag) {
+    std::vector<at::Tensor> tensors;
+    for (auto tn : tensor_node.unbind()) {
+      tensors.push_back(tn.payload());
+    }
+
+    std::vector<at::Tensor> unfolded;
+    for (auto t : tensors) { 
+      unfolded.push_back(
+        torch::nn::functional::unfold(t.unsqueeze(0), torch::nn::functional::UnfoldFuncOptions(kernel_size).padding(padding).stride(stride).dilation(dilation))
+      );
+    }
+
+    auto cat = at::cat(unfolded, 2);
+    auto res = at::max_pool2d(
+                   cat,
+                   /*kernel size*/{9, 1},
+                   /*stride*/{9, 1},
+                   /*padding*/ 0,
+                   /*dilation*/ 1,
+                   /*ceil_mode*/ false);
+
+    std::vector<int64_t> split_sizes;
+    for (auto t : unfolded) {
+      split_sizes.push_back(t.size(2));
+    }
+
+    auto splitted = at::split_with_sizes(res, IntArrayRef(split_sizes), 2);
+
+    std::vector<torch::nested_tensor::TensorNode> tensorNodes;
+    for (int i = 0; i < tensors.size(); i++) {
+      std::vector<int64_t> sizes;
+      sizes.push_back(std::ceil(tensors[i].sizes()[1] / 2.0));
+      sizes.push_back(std::ceil(tensors[i].sizes()[2] / 2.0));
+
+      auto folded = torch::nn::functional::fold(splitted[i], torch::nn::functional::FoldFuncOptions(/*output size*/ sizes, 
+                                                                                                    /*kernel size*/ {1, 1})
+                                                                                                    .stride({1, 1})
+                                                                                                    .padding(0)
+                                                                                                    .dilation(1));
+      
+      torch::nested_tensor::TensorNode node = torch::nested_tensor::TensorNode(std::move(folded.squeeze(0)));
+      tensorNodes.push_back(node);
+    }
+
+    return at::detail::make_tensor<at::NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(torch::nested_tensor::TensorNode(std::move(tensorNodes))).to_nested_tensor(nt.nested_dim() - 1));
+  }
+
+  //
+  // all other cases
+  //
   return wrap_tensor_node(map(
       [&](at::Tensor t) {
         return at::max_pool2d(
