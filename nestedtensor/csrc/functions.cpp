@@ -204,6 +204,32 @@ Tensor NestedTensor_transpose(const Tensor & self, int64_t dim0, int64_t dim1) {
 
 }
 
+Tensor NestedTensor_softmax(const Tensor& input, const int64_t dim_, c10::optional<ScalarType> dtype) {
+  int64_t dim = maybe_wrap_dim(dim_, input.dim());
+  auto input_data = get_nested_tensor(input);
+  int64_t nested_dim = input_data.nested_dim();
+  TORCH_CHECK(dim >= nested_dim, "Cannot apply softmax across nested dimensions");
+  return wrap_tensor_node(
+      map([dim, nested_dim, dtype](const at::Tensor t) { 
+        return at::softmax(t, dim - nested_dim, dtype);
+        },
+      get_nested_tensor_structure(input)));
+
+  // std::cout << "DNDNDN" << std::endl;
+  // auto result = [&]() {
+  //   NoNamesGuard guard;
+  //   if (input_.is_cuda() && input_.scalar_type() == ScalarType::Half && dtype == ScalarType::Float){
+  //       return at::_softmax(input_, dim_, true);
+  //   } else {
+  //       Tensor converted = dtype.has_value() ? input_.toType(dtype.value()) : input_;
+  //       return at::_softmax(converted, dim_, false);
+  //   }
+  // }();
+  // namedinference::propagate_names(result, input_);
+  // return result;
+  // return input_;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -215,5 +241,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("sum", NestedTensor_sum);
   m.impl_UNBOXED("reshape", NestedTensor_reshape);
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
+  m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
 }
 }

@@ -6,3 +6,4 @@
   // non-optional if possible and throws error otherwise.
   // TODO: Introduce nested_reshape
   // TODO: Transposition of nested dimensions
+  // TODO: Softmax across nested dimensions
