@@ -165,11 +165,24 @@ Tensor NestedTensor_sum(const Tensor &self, c10::optional<ScalarType> dtype) {
 }
 
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
-  for (size_t i = 0; size.size(); i++) {
-    if(!_
+  auto self_data = get_nested_tensor(self);
+  TORCH_CHECK(int64_t(size.size()) > self_data.nested_dim(), "Reshape cannot include nested dimensions.");
+  for (size_t i = 0; i < self_data.nested_dim(); i++) {
+    if (size[0] >= 0) {
+      throw std::runtime_error("Cannot reshape explicitly along nested dimension "
+          + std::to_string(size[i]));
+    }
   }
-  std::cout << "HEEEEEEE" << std::endl;
-  return self;
+  int64_t nested_dim = self_data.nested_dim();
+  std::vector<int64_t> target_shape;
+  for (size_t i = nested_dim; i < self_data.dim(); i++) {
+    target_shape.push_back(size[i]);
+  }
+  return wrap_tensor_node(
+      map([target_shape](const at::Tensor t) { 
+        return at::reshape(t, IntArrayRef(target_shape));
+      },
+      get_nested_tensor_structure(self)));
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
