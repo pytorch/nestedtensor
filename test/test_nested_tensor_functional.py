@@ -413,5 +413,27 @@ class TestFunctional(TestCase):
             self.assertEqual(result2[1][0], torch.matmul(t22, t1))
             self.assertEqual(result2[1][1], torch.matmul(t21, t1))
 
+    def test_mha(self):
+        embed_dim = 2
+        num_heads = 2
+        mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
+        query = torch.randn(5, 1, embed_dim)
+        key = torch.randn(3, 1, embed_dim)
+        value = torch.randn(3, 1, embed_dim)
+        attn_output, _ = mha(query, key, value)
+        print('attn_output')
+        print(attn_output)
+        nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
+        nt_mha.in_proj_weight = mha.in_proj_weight
+        nt_mha.in_proj_bias = mha.in_proj_bias
+        nt_mha.out_proj.weight = mha.out_proj.weight
+        nt_mha.out_proj.bias = mha.out_proj.bias
+        query_nt = nestedtensor.nested_tensor([query.squeeze(1)])
+        key_nt = nestedtensor.nested_tensor([key.squeeze(1)])
+        value_nt = nestedtensor.nested_tensor([value.squeeze(1)])
+        nt_attn_output, _ = nt_mha(query_nt, key_nt, value_nt)
+        print('nt_attn_output')
+        print(nt_attn_output)
+
 if __name__ == "__main__":
     unittest.main()
