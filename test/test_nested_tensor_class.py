@@ -191,21 +191,21 @@ class TestNestedTensor(TestCase):
             self.assertEqual(len(a.nested_size()), 1)
             self.assertEqual(a.nested_size()[0], torch.Size([]))
             self.assertEqual(a.nested_size(0), 1)
-            self.assertRaises(IndexError, lambda: a.nested_size(1))
+            self.assertRaises(RuntimeError, lambda: a.nested_size(1))
 
             a = constructor([torch.randn(1)])
             self.assertEqual(a.nested_size()[0], torch.Size([1]))
             self.assertEqual(a.nested_size()[0][0], 1)
             self.assertEqual(a.nested_size(0), 1)
             self.assertEqual(a.nested_size(1), (1,))
-            self.assertRaises(IndexError, lambda: a.nested_size(2))
+            self.assertRaises(RuntimeError, lambda: a.nested_size(2))
 
             a = constructor([torch.randn(1, 2)])
             self.assertEqual(a.nested_size()[0], torch.Size([1, 2]))
             self.assertEqual(a.nested_size(0), 1)
             self.assertEqual(a.nested_size(1), (1,))
             self.assertEqual(a.nested_size(2), (2,))
-            self.assertRaises(IndexError, lambda: a.nested_size(3))
+            self.assertRaises(RuntimeError, lambda: a.nested_size(3))
 
             # Make sure object is not bound to life-time of NestedTensor instance
             b = a.nested_size()
@@ -222,7 +222,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.nested_size(0), 2)
             self.assertEqual(a.nested_size(1), (1, 2))
             self.assertEqual(a.nested_size(2), ((1,), (2, 1)))
-            self.assertRaises(IndexError, lambda: a.nested_size(3))
+            self.assertRaises(RuntimeError, lambda: a.nested_size(3))
 
             a = constructor([[torch.tensor(1)],
                             [torch.tensor(2), torch.tensor(1)]])
@@ -231,7 +231,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.nested_size()[1][1], torch.Size([]))
             self.assertEqual(a.nested_size(0), 2)
             self.assertEqual(a.nested_size(1), (1, 2))
-            self.assertRaises(IndexError, lambda: a.nested_size(2))
+            self.assertRaises(RuntimeError, lambda: a.nested_size(2))
 
     def test_nested_stride(self):
         for constructor in _iter_constructors():
