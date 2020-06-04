@@ -1,0 +1,6 @@
+  // TODO: Should we use -1 to indicate optional for sizes()
+  // akin to how -1 is a placeholder in reshape or view?
+  // Could cause a lot of strange errors in places
+  // where that's not expected.
+  // Could have a type that converts into array of
+  // non-optional if possible and throws error otherwise.

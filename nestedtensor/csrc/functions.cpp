@@ -9,8 +9,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_relu(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto self_data = self_impl->_data;
+  auto self_data = get_nested_tensor(self);
   if (self_data.is_contiguous()) {
     auto res = torch::nested_tensor::NestedTensor(
         at::relu(*self_data.get_buffer()), self_data.nested_size());
@@ -165,6 +164,14 @@ Tensor NestedTensor_sum(const Tensor &self, c10::optional<ScalarType> dtype) {
   return at::sum(all_tensor, dtype);
 }
 
+Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
+  for (size_t i = 0; size.size(); i++) {
+    if(!_
+  }
+  std::cout << "HEEEEEEE" << std::endl;
+  return self;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -174,5 +181,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
+  m.impl_UNBOXED("reshape", NestedTensor_reshape);
 }
 }

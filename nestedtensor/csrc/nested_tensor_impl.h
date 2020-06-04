@@ -7,19 +7,29 @@ namespace at {
 
 constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
 
+inline c10::optional<std::vector<int64_t>>
+_get_tensor_sizes(
+      const std::vector<c10::optional<int64_t>> sizes) {
+  std::vector<int64_t> result;
+  for (auto opt_int : sizes) {
+    if (!opt_int) {
+      return c10::nullopt;
+    }
+    result.push_back(*opt_int);
+  }
+  return result;
+}
+
+
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
       : TensorImpl(
             c10::DispatchKeySet(NestedTensorKey),
             data.dtype(),
             data.device()),
-        _data(std::move(data)) {
-            for (auto opt_int : _data.sizes()) {
-              if (opt_int) {
-                _sizes.push_back(*opt_int);
-              }
-            }
-        }
+        _data(std::move(data)),
+        _sizes(data.sizes()),
+        _tensor_sizes(_get_tensor_sizes(_sizes)){}
 
   int64_t dim() const override {
     return _data.dim();
@@ -32,12 +42,21 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _data.is_contiguous();
   }
 
+  // This, confusingly, returns _tensor_sizes, if defined.
+  // For NestedTensors sizes have optional entries.
+  // TODO: Should we use -1 to indicate optional
+  // akin to how -1 is a placeholder in reshape or view?
+  // Could cause a lot of strange errors in places
+  // where that's not expected.
+  // Could have a type that converts into array of
+  // non-optional if possible and throws error otherwise.
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
   torch::nested_tensor::NestedTensor _data;
-  std::vector<int64_t> _sizes;
+  const std::vector<c10::optional<int64_t>> _sizes;
+  const c10::optional<std::vector<int64_t>> _tensor_sizes;
 };
 
 inline bool is_nested_tensor_impl(const at::Tensor tensor) {

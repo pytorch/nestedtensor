@@ -9,7 +9,10 @@ namespace at {
 using namespace torch::nested_tensor;
 
 IntArrayRef NestedTensorImpl::sizes() const {
-  return IntArrayRef(_sizes);
+  if (_tensor_sizes) {
+    return IntArrayRef(*_tensor_sizes);
+  }
+  throw std::runtime_error("NestedTensor size is not Tensor shape compliant.");
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {
@@ -147,25 +150,18 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
 
 // TODO: Replace with a generalized Binary op
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
-    auto other_impl = get_nested_tensor_impl(other);
-    TensorNode result_tensor_node =
+    return wrap_tensor_node(
         map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
-            self_impl->_data.get_structure(),
-            other_impl->_data.get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(
-        NestedTensor(std::move(result_tensor_node)));
+          get_nested_tensor_structure(self),
+          get_nested_tensor_structure(other)));
   }
-  TensorNode result_tensor_node =
+  return wrap_tensor_node(
       map([&other, alpha](at::Tensor a) { return at::add(a, other, alpha); },
-          self_impl->_data.get_structure());
-  return at::detail::make_tensor<NestedTensorImpl>(
-      NestedTensor(std::move(result_tensor_node)));
+          get_nested_tensor_structure(self)));
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
     apply(
         [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
