@@ -93,12 +93,20 @@ def multi_head_attention_forward(query,                           # type: Tensor
     assert static_v is None
     assert not add_zero_attn
 
+    print("02q:\n", q)
+    print("02k:\n", k)
+    print("02v:\n", v)
+
     # NOTE: This is usually contiguous plus a view
-    q = q.reshape(-1, num_heads, -1, head_dim)
+    q = q.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
     if k is not None:
-        k = k.reshape(-1, num_heads, -1, head_dim)
+        k = k.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
     if v is not None:
-        v = v.reshape(-1, num_heads, -1, head_dim)
+        v = v.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
+
+    print("12q:\n", q)
+    print("12k:\n", k)
+    print("12v:\n", v)
 
     # src_len = k.size(1)
 
@@ -111,13 +119,17 @@ def multi_head_attention_forward(query,                           # type: Tensor
         attn_output_weights, dim=-1)
     attn_output_weights = F.dropout(
         attn_output_weights, p=dropout_p, training=training)
+    print('2attn_output_weights')
+    print(attn_output_weights)
 
     attn_output = torch.matmul(attn_output_weights, v)
     # assert list(attn_output.size()) == [bsz * num_heads, tgt_len, head_dim]
 
     # attn_output = attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, embed_dim)
     # import pdb; pdb.set_trace()
-    attn_output = attn_output.reshape(-1, -1, embed_dim)
+    attn_output = attn_output.transpose(1, 2).reshape(-1, -1, embed_dim)
+    print('2attn_output')
+    print(attn_output)
 
     attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)
 

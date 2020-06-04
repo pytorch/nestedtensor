@@ -417,9 +417,9 @@ class TestFunctional(TestCase):
         embed_dim = 2
         num_heads = 2
         mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
-        query = torch.randn(5, 1, embed_dim)
-        key = torch.randn(3, 1, embed_dim)
-        value = torch.randn(3, 1, embed_dim)
+        query = torch.randn(3, 1, embed_dim)
+        key = torch.randn(2, 1, embed_dim)
+        value = torch.randn(2, 1, embed_dim)
         attn_output, _ = mha(query, key, value)
         print('attn_output')
         print(attn_output)
