@@ -50,6 +50,11 @@ Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
   return input;
 }
 
+//
+// 277 -> 210
+// 18915 -> 6010
+//
+
 Tensor NestedTensor_conv2d(
     const Tensor& input,
     const Tensor& weight,
@@ -62,23 +67,19 @@ Tensor NestedTensor_conv2d(
       auto nt = self_impl->_data;
       auto tensor_node = get_nested_tensor_structure(input);
 
+  bool flag = true;
   if (padding[0] == 0 && padding[1] == 0 &&
-      stride[0] == 1 && stride[1] == 1) {
-
+      stride[0] == 1 && stride[1] == 1 && flag) {
       std::vector<at::Tensor> tensors;
       std::vector<int> Hs;
       std::vector<int> Ws;
 
-      for (auto tn : tensor_node.unbind()) {
-        Hs.push_back(tn.payload().size(1));
-        Ws.push_back(tn.payload().size(2));
-        tensors.push_back(tn.payload());
-      }
-
       std::vector<at::Tensor> unfold_transpose;
-      for (auto t : tensors) {
+      for (auto t : tensor_node.unbind()) {
+        Hs.push_back(t.payload().size(1));
+        Ws.push_back(t.payload().size(2));
         unfold_transpose.push_back(
-          torch::nn::functional::unfold(t.unsqueeze(0), 
+          torch::nn::functional::unfold(t.payload().unsqueeze(0), 
                                         torch::nn::functional::UnfoldFuncOptions({weight.size(2), weight.size(3)}).padding(padding)
                                                                                                                   .stride(stride)
                                                                                                                   .dilation(dilation)
@@ -93,13 +94,11 @@ Tensor NestedTensor_conv2d(
         );
       }
 
-      std::cout << "check1" << std::endl;
       std::vector<torch::nested_tensor::TensorNode> tensorNodes;
       int i=0;
       for (auto t : matmul_trans_res) {
         int h = ((Hs[i] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
         int w = ((Ws[i] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
-        std::cout << Hs[i] << " " << h << " " << w << std::endl;
 
         tensorNodes.push_back(
           torch::nested_tensor::TensorNode(
