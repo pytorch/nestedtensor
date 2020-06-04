@@ -5,3 +5,4 @@
   // Could have a type that converts into array of
   // non-optional if possible and throws error otherwise.
   // TODO: Introduce nested_reshape
+  // TODO: Transposition of nested dimensions
