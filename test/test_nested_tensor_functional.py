@@ -435,5 +435,8 @@ class TestFunctional(TestCase):
         print('nt_attn_output')
         print(nt_attn_output)
 
+    def test_layer_norm(self):
+        pass
+
 if __name__ == "__main__":
     unittest.main()

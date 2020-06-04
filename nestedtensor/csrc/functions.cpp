@@ -214,20 +214,21 @@ Tensor NestedTensor_softmax(const Tensor& input, const int64_t dim_, c10::option
         return at::softmax(t, dim - nested_dim, dtype);
         },
       get_nested_tensor_structure(input)));
+}
 
-  // std::cout << "DNDNDN" << std::endl;
-  // auto result = [&]() {
-  //   NoNamesGuard guard;
-  //   if (input_.is_cuda() && input_.scalar_type() == ScalarType::Half && dtype == ScalarType::Float){
-  //       return at::_softmax(input_, dim_, true);
-  //   } else {
-  //       Tensor converted = dtype.has_value() ? input_.toType(dtype.value()) : input_;
-  //       return at::_softmax(converted, dim_, false);
-  //   }
-  // }();
-  // namedinference::propagate_names(result, input_);
-  // return result;
-  // return input_;
+Tensor NestedTensor_layer_norm(
+    const Tensor& input,
+    IntArrayRef normalized_shape,
+    const Tensor& weight /* optional */,
+    const Tensor& bias /* optional */,
+    double eps,
+    bool /* cudnn_enable, deprecated */) {
+  return wrap_tensor_node(
+      map([normalized_shape, &weight, &bias, eps](const at::Tensor t) { 
+        return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
+        },
+      get_nested_tensor_structure(input)));
+
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
@@ -242,5 +243,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("reshape", NestedTensor_reshape);
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
+  m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
 }
 }
