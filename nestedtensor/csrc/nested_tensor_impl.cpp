@@ -219,28 +219,6 @@ Tensor NestedTensor_any(const Tensor& self) {
   return gathered.any();
 }
 
-// Tensor NestedTensor_eq(const Tensor& self, const Tensor& other) {
-//   auto self_impl = get_nested_tensor_impl(self);
-//   auto other_impl = get_nested_tensor_impl(other);
-//   return at::detail::make_tensor<NestedTensorImpl>(
-//   map([](const Tensor a, const Tensor b) {
-//       return at::eq(a, b);
-//       }, 
-//       self_impl->_data.get_structure(),
-//       other_impl->_data.get_structure()));
-// }
-// 
-// Tensor NestedTensor_ne(const Tensor& self, const Tensor& other) {
-//   auto self_impl = get_nested_tensor_impl(self);
-//   auto other_impl = get_nested_tensor_impl(other);
-//   return at::detail::make_tensor<NestedTensorImpl>(
-//   map([](const Tensor a, const Tensor b) {
-//       return at::ne(a, b);
-//       }, 
-//       self_impl->_data.get_structure(),
-//       other_impl->_data.get_structure()));
-// }
-
 Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> optional_memory_format) {
   auto self_impl = get_nested_tensor_impl(src);
   return at::detail::make_tensor<NestedTensorImpl>(
@@ -298,8 +276,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
-  // m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
-  // m.impl_UNBOXED("ne.Tensor", NestedTensor_ne);
   m.impl_UNBOXED("add.Tensor", NestedTensor_add);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("contiguous", NestedTensor_contiguous);
