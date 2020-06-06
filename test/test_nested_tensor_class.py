@@ -185,7 +185,7 @@ class TestNestedTensor(TestCase):
         for constructor in _iter_constructors():
             a = constructor([])
             self.assertEqual(len(a.nested_size()), 0)
-            self.assertRaises(IndexError, lambda: a.nested_size()[0])
+            self.assertRaises(RuntimeError, lambda: a.nested_size()[0])
 
             a = constructor([torch.tensor(1)])
             self.assertEqual(len(a.nested_size()), 1)
