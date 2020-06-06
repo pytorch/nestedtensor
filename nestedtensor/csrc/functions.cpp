@@ -138,7 +138,6 @@ Tensor NestedTensor_sum(const Tensor &self, c10::optional<ScalarType> dtype) {
   return at::sum(all_tensor, dtype);
 }
 
-<<<<<<< HEAD
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   auto self_data = get_nested_tensor(self);
   TORCH_CHECK(int64_t(size.size()) > self_data.nested_dim(), "Reshape cannot include nested dimensions.");
