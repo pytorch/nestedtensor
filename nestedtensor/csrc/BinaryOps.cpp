@@ -156,8 +156,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   BINARY_OP(mul)
   BINARY_OP(remainder)
 
-  m.impl_UNBOXED("eq", NestedTensor_binary<at::eq>);
-  m.impl_UNBOXED("ne", NestedTensor_binary<at::ne>);
+  m.impl_UNBOXED("eq.Tensor", NestedTensor_binary<at::eq>);
+  m.impl_UNBOXED("ne.Tensor", NestedTensor_binary<at::ne>);
 
   m.impl_UNBOXED("matmul", NestedTensor_binary<at::matmul>);
   m.impl_UNBOXED("matmul.out", NestedTensor_binary_out<at::matmul_out>);
