@@ -284,3 +284,4 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
   m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
 }
+}
