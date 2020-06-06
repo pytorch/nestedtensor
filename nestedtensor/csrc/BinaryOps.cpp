@@ -49,6 +49,19 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
           get_nested_tensor_structure(self)));
 }
 
+template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
+Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
+  if (is_nested_tensor_impl(other)) {
+    return wrap_tensor_node(
+        map([&scalar](Tensor tensor, Tensor other) { return func(tensor, other, scalar); },
+            get_nested_tensor_structure(self),
+            get_nested_tensor_structure(other)));
+  }
+  return wrap_tensor_node(
+      map([&other, &scalar](Tensor tensor) { return func(tensor, other, scalar); },
+          get_nested_tensor_structure(self)));
+}
+
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_out(
     Tensor& result,
@@ -72,15 +85,6 @@ Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
       get_nested_tensor_structure(self),
       get_nested_tensor_structure(other));
   return self;
-}
-
-Tensor NestedTensor_sub(const Tensor& self, const Tensor& other, Scalar alpha) {
-  return at::detail::make_tensor<NestedTensorImpl>(map(
-      [&alpha](Tensor tensor, Tensor other) {
-        return at::sub(tensor, other, alpha);
-      },
-      get_nested_tensor_structure(self),
-      get_nested_tensor_structure(other)));
 }
 
 Tensor& NestedTensor_sub_out(
@@ -107,13 +111,6 @@ Tensor& NestedTensor_pow_out_1(Tensor& result, const Tensor& base, const Tensor&
       get_nested_tensor_structure(base),
       get_nested_tensor_structure(exp));
   return result;
-}
-
-Tensor NestedTensor_pow_1(const Tensor& base, const Tensor& exp) {
-  return wrap_tensor_node(
-      map([](Tensor base, Tensor exp) { return at::pow(base, exp); },
-          get_nested_tensor_structure(base),
-          get_nested_tensor_structure(exp)));
 }
 
 Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
@@ -166,12 +163,12 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("atan2_", NestedTensor_binary_<at::native::atan2_>);
   m.impl_UNBOXED("atan2.out", NestedTensor_binary_out<at::atan2_out>);
 
-  m.impl_UNBOXED("sub.Tensor", NestedTensor_sub);
+  m.impl_UNBOXED("sub.Tensor", NestedTensor_binary<Scalar, at::sub>);
   m.impl_UNBOXED("sub_.Tensor", NestedTensor_sub_);
   m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
 
   m.impl_UNBOXED("pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
-  m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_pow_1);
+  m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
   m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
   m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
   m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);

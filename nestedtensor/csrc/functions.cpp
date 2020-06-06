@@ -8,32 +8,6 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-Tensor NestedTensor_relu(const Tensor& self) {
-  auto self_data = get_nested_tensor(self);
-  if (self_data.is_contiguous()) {
-    auto res = torch::nested_tensor::NestedTensor(
-        at::relu(*self_data.get_buffer()), self_data.nested_size());
-    return at::detail::make_tensor<NestedTensorImpl>(std::move(res));
-  }
-  auto structure = self_data.get_structure();
-  auto res =
-      map([&](at::Tensor t) { return at::relu(t.unsqueeze(0)).squeeze(0); },
-          structure);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(res)));
-}
-
-Tensor & NestedTensor_relu_(Tensor & self) {
-  auto self_data = get_nested_tensor(self);
-  if (self_data.is_contiguous()) {
-    at::relu_(*self_data.get_buffer());
-    return self;
-  }
-  auto structure = self_data.get_structure();
-  apply([](at::Tensor& t) { at::relu_(t); }, structure);
-  return self;
-}
-
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
   return wrap_tensor_node(
       map([&](const at::Tensor t) { return at::dropout(t, p, train); },
@@ -164,6 +138,7 @@ Tensor NestedTensor_sum(const Tensor &self, c10::optional<ScalarType> dtype) {
   return at::sum(all_tensor, dtype);
 }
 
+<<<<<<< HEAD
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   auto self_data = get_nested_tensor(self);
   TORCH_CHECK(int64_t(size.size()) > self_data.nested_dim(), "Reshape cannot include nested dimensions.");
@@ -229,20 +204,89 @@ Tensor NestedTensor_layer_norm(
         },
       get_nested_tensor_structure(input)));
 
+=======
+Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
+  auto self_impl = get_nested_tensor_impl(self);
+  if (is_nested_tensor_impl(other)) {
+    apply(
+        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
+        get_nested_tensor_structure(self),
+        get_nested_tensor_structure(other));
+    return self;
+  }
+  apply(
+      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
+      get_nested_tensor_structure(self));
+  return self;
+}
+
+Tensor NestedTensor_all(const Tensor& self) {
+  auto self_impl = get_nested_tensor_impl(self)->_data;
+  if (self_impl.numel() == 0) {
+    // XXX: self.options doesn't work here because
+    // we don't want a Tensor backed by a NestedTensor
+    Tensor result = at::empty({0}, at::kBool); //, self.options());
+    result.fill_(1);
+    return result;
+  }
+  auto map_all = flatten(map(
+        [](at::Tensor tensor) { return tensor.all(); },
+          self_impl.get_structure()));
+  at::Tensor gathered = at::empty(
+      {static_cast<int64_t>(map_all.size())}, at::kBool); //, self.options());
+  for (size_t i = 0; i < map_all.size(); i++) {
+    gathered[i] = map_all[i];
+  }
+  return gathered.all();
+}
+
+Tensor NestedTensor_any(const Tensor& self) {
+  auto self_impl = get_nested_tensor_impl(self)->_data;
+  if (self_impl.numel() == 0) {
+    // XXX: self.options doesn't work here because
+    // we don't want a Tensor backed by a NestedTensor
+    Tensor result = at::empty({0}, at::kBool); //, self.options());
+    result.fill_(1);
+    return result;
+  }
+  auto map_any = flatten(map(
+        [](at::Tensor tensor) { return tensor.any(); },
+          self_impl.get_structure()));
+  at::Tensor gathered = at::empty(
+      {static_cast<int64_t>(map_any.size())}, at::kBool); //, self.options());
+  for (size_t i = 0; i < map_any.size(); i++) {
+    gathered[i] = map_any[i];
+  }
+  return gathered.any();
+}
+
+Tensor NestedTensor__log_softmax(const Tensor& input_, const int64_t dim_, const bool half_to_float) {
+  auto self_impl = get_nested_tensor_impl(input_);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      map([&](Tensor a) {
+          return at::_log_softmax(a, dim_, half_to_float);
+          }, 
+          self_impl->_data.get_structure()));
+>>>>>>> master
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  m.impl_UNBOXED("relu", NestedTensor_relu);
-  m.impl_UNBOXED("relu_", NestedTensor_relu_);
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
+<<<<<<< HEAD
   m.impl_UNBOXED("reshape", NestedTensor_reshape);
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
   m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
+=======
+  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
+  m.impl_UNBOXED("any", NestedTensor_any);
+  m.impl_UNBOXED("all", NestedTensor_all);
+  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
+>>>>>>> master
 }
 }
