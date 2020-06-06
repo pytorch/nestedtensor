@@ -99,13 +99,6 @@ Tensor& NestedTensor_pow_out_1(Tensor& result, const Tensor& base, const Tensor&
   return result;
 }
 
-Tensor NestedTensor_pow_1(const Tensor& base, const Tensor& exp) {
-  return wrap_tensor_node(
-      map([](Tensor base, Tensor exp) { return at::pow(base, exp); },
-          get_nested_tensor_structure(base),
-          get_nested_tensor_structure(exp)));
-}
-
 Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
   return NestedTensor_pow_out_1(base, base, other);
 }
@@ -163,7 +156,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
 
   m.impl_UNBOXED("pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
-  m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_pow_1);
+  m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
   m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
   m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
   m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
