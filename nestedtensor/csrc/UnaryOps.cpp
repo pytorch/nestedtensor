@@ -158,6 +158,11 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       #NAME ".out",                                                         \
       NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
 
+#define UNARY_OP_NO_OUT(NAME)                                               \
+  m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
+  m.impl_UNBOXED(                                                           \
+      #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>);
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(abs);
   UNARY_OP(acos);
@@ -183,6 +188,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // UNARY_OP(mvlgamma);
   UNARY_OP(neg);
   UNARY_OP(reciprocal);
+  UNARY_OP_NO_OUT(relu);
   UNARY_OP(round);
   UNARY_OP(rsqrt);
   UNARY_OP(sigmoid);

@@ -31,8 +31,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  auto nt = get_nested_tensor(self).contiguous();
-  return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
+  return wrap_nested_tensor(get_nested_tensor(self).contiguous());
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -145,116 +144,12 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
-// TODO: Replace with a generalized Binary op
-Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  auto self_impl = get_nested_tensor_impl(self);
-  if (is_nested_tensor_impl(other)) {
-    auto other_impl = get_nested_tensor_impl(other);
-    TensorNode result_tensor_node =
-        map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
-            self_impl->_data.get_structure(),
-            other_impl->_data.get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(
-        NestedTensor(std::move(result_tensor_node)));
-  }
-  TensorNode result_tensor_node =
-      map([&other, alpha](at::Tensor a) { return at::add(a, other, alpha); },
-          self_impl->_data.get_structure());
-  return at::detail::make_tensor<NestedTensorImpl>(
-      NestedTensor(std::move(result_tensor_node)));
-}
-
-Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  auto self_impl = get_nested_tensor_impl(self);
-  if (is_nested_tensor_impl(other)) {
-    apply(
-        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
-        get_nested_tensor_structure(self),
-        get_nested_tensor_structure(other));
-    return self;
-  }
-  apply(
-      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
-      get_nested_tensor_structure(self));
-  return self;
-}
-
-Tensor NestedTensor_all(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self)->_data;
-  if (self_impl.numel() == 0) {
-    // XXX: self.options doesn't work here because
-    // we don't want a Tensor backed by a NestedTensor
-    Tensor result = at::empty({0}, at::kBool); //, self.options());
-    result.fill_(1);
-    return result;
-  }
-  auto map_all = flatten(map(
-        [](at::Tensor tensor) { return tensor.all(); },
-          self_impl.get_structure()));
-  at::Tensor gathered = at::empty(
-      {static_cast<int64_t>(map_all.size())}, at::kBool); //, self.options());
-  for (size_t i = 0; i < map_all.size(); i++) {
-    gathered[i] = map_all[i];
-  }
-  return gathered.all();
-}
-
-Tensor NestedTensor_any(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self)->_data;
-  if (self_impl.numel() == 0) {
-    // XXX: self.options doesn't work here because
-    // we don't want a Tensor backed by a NestedTensor
-    Tensor result = at::empty({0}, at::kBool); //, self.options());
-    result.fill_(1);
-    return result;
-  }
-  auto map_any = flatten(map(
-        [](at::Tensor tensor) { return tensor.any(); },
-          self_impl.get_structure()));
-  at::Tensor gathered = at::empty(
-      {static_cast<int64_t>(map_any.size())}, at::kBool); //, self.options());
-  for (size_t i = 0; i < map_any.size(); i++) {
-    gathered[i] = map_any[i];
-  }
-  return gathered.any();
-}
-
-Tensor NestedTensor_eq(const Tensor& self, const Tensor& other) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto other_impl = get_nested_tensor_impl(other);
-  return at::detail::make_tensor<NestedTensorImpl>(
-  map([](const Tensor a, const Tensor b) {
-      return at::eq(a, b);
-      }, 
-      self_impl->_data.get_structure(),
-      other_impl->_data.get_structure()));
-}
-
-Tensor NestedTensor_ne(const Tensor& self, const Tensor& other) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto other_impl = get_nested_tensor_impl(other);
-  return at::detail::make_tensor<NestedTensorImpl>(
-  map([](const Tensor a, const Tensor b) {
-      return at::ne(a, b);
-      }, 
-      self_impl->_data.get_structure(),
-      other_impl->_data.get_structure()));
-}
 
 Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> optional_memory_format) {
   auto self_impl = get_nested_tensor_impl(src);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([&optional_memory_format](Tensor a) {
           return at::clone(a, optional_memory_format);
-          }, 
-          self_impl->_data.get_structure()));
-}
-
-Tensor NestedTensor__log_softmax(const Tensor& input_, const int64_t dim_, const bool half_to_float) {
-  auto self_impl = get_nested_tensor_impl(input_);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      map([&](Tensor a) {
-          return at::_log_softmax(a, dim_, half_to_float);
           }, 
           self_impl->_data.get_structure()));
 }
@@ -290,18 +185,11 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
-  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
   m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
   m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
   m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
-  m.impl_UNBOXED("any", NestedTensor_any);
-  m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
-  m.impl_UNBOXED("ne.Tensor", NestedTensor_ne);
-  m.impl_UNBOXED("add.Tensor", NestedTensor_add);
-  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("contiguous", NestedTensor_contiguous);
   m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
