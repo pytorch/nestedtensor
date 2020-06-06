@@ -146,7 +146,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   BINARY_OP(mul)
   BINARY_OP(remainder)
 
-  m.impl_UNBOXED("sub.Tensor", NestedTensor_binary<Scalar, at::sub>);
   m.impl_UNBOXED("add.Tensor", NestedTensor_binary<Scalar, at::add>);
 
   m.impl_UNBOXED("eq.Tensor", NestedTensor_binary<at::eq>);
@@ -159,6 +158,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("atan2_", NestedTensor_binary_<at::native::atan2_>);
   m.impl_UNBOXED("atan2.out", NestedTensor_binary_out<at::atan2_out>);
 
+  m.impl_UNBOXED("sub.Tensor", NestedTensor_binary<Scalar, at::sub>);
   m.impl_UNBOXED("sub_.Tensor", NestedTensor_sub_);
   m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
 
