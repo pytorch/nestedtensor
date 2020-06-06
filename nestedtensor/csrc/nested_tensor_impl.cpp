@@ -145,25 +145,6 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
-// TODO: Replace with a generalized Binary op
-Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  auto self_impl = get_nested_tensor_impl(self);
-  if (is_nested_tensor_impl(other)) {
-    auto other_impl = get_nested_tensor_impl(other);
-    TensorNode result_tensor_node =
-        map([alpha](at::Tensor a, at::Tensor b) { return at::add(a, b, alpha); },
-            self_impl->_data.get_structure(),
-            other_impl->_data.get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(
-        NestedTensor(std::move(result_tensor_node)));
-  }
-  TensorNode result_tensor_node =
-      map([&other, alpha](at::Tensor a) { return at::add(a, other, alpha); },
-          self_impl->_data.get_structure());
-  return at::detail::make_tensor<NestedTensorImpl>(
-      NestedTensor(std::move(result_tensor_node)));
-}
-
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
@@ -276,7 +257,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("add.Tensor", NestedTensor_add);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("contiguous", NestedTensor_contiguous);
   m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
