@@ -298,8 +298,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("eq.Tensor", NestedTensor_eq);
-  m.impl_UNBOXED("ne.Tensor", NestedTensor_ne);
   m.impl_UNBOXED("add.Tensor", NestedTensor_add);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("contiguous", NestedTensor_contiguous);
