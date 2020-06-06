@@ -202,6 +202,7 @@ Tensor NestedTensor_layer_norm(
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
         },
       get_nested_tensor_structure(input)));
+}
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
@@ -278,5 +279,4 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
   m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
-}
 }
