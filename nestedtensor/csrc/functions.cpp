@@ -8,33 +8,6 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-// Tensor NestedTensor_relu(const Tensor& self) {
-//   auto self_impl = get_nested_tensor_impl(self);
-//   auto self_data = self_impl->_data;
-//   if (self_data.is_contiguous()) {
-//     auto res = torch::nested_tensor::NestedTensor(
-//         at::relu(*self_data.get_buffer()), self_data.nested_size());
-//     return at::detail::make_tensor<NestedTensorImpl>(std::move(res));
-//   }
-//   auto structure = self_data.get_structure();
-//   auto res =
-//       map([&](at::Tensor t) { return at::relu(t.unsqueeze(0)).squeeze(0); },
-//           structure);
-//   return at::detail::make_tensor<NestedTensorImpl>(
-//       torch::nested_tensor::NestedTensor(std::move(res)));
-// }
-// 
-// Tensor & NestedTensor_relu_(Tensor & self) {
-//   auto self_data = get_nested_tensor(self);
-//   if (self_data.is_contiguous()) {
-//     at::relu_(*self_data.get_buffer());
-//     return self;
-//   }
-//   auto structure = self_data.get_structure();
-//   apply([](at::Tensor& t) { at::relu_(t); }, structure);
-//   return self;
-// }
-
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
   return wrap_tensor_node(
       map([&](const at::Tensor t) { return at::dropout(t, p, train); },
@@ -233,8 +206,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  // m.impl_UNBOXED("relu", NestedTensor_relu);
-  // m.impl_UNBOXED("relu_", NestedTensor_relu_);
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
