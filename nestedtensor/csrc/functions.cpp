@@ -275,6 +275,10 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
+  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
+  m.impl_UNBOXED("any", NestedTensor_any);
+  m.impl_UNBOXED("all", NestedTensor_all);
+  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
   m.impl_UNBOXED("reshape", NestedTensor_reshape);
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
