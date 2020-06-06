@@ -204,7 +204,6 @@ Tensor NestedTensor_layer_norm(
         },
       get_nested_tensor_structure(input)));
 
-=======
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
@@ -267,7 +266,6 @@ Tensor NestedTensor__log_softmax(const Tensor& input_, const int64_t dim_, const
           return at::_log_softmax(a, dim_, half_to_float);
           }, 
           self_impl->_data.get_structure()));
->>>>>>> master
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
@@ -277,16 +275,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
-<<<<<<< HEAD
   m.impl_UNBOXED("reshape", NestedTensor_reshape);
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
   m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
-=======
-  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
-  m.impl_UNBOXED("any", NestedTensor_any);
-  m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
->>>>>>> master
 }
 }
