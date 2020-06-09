@@ -205,7 +205,6 @@ Tensor NestedTensor_layer_norm(
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  auto self_impl = get_nested_tensor_impl(self);
   if (is_nested_tensor_impl(other)) {
     apply(
         [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
@@ -268,6 +267,32 @@ Tensor NestedTensor__log_softmax(const Tensor& input_, const int64_t dim_, const
           self_impl->_data.get_structure()));
 }
 
+Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
+  if (is_nested_tensor_impl(other)) {
+    return wrap_tensor_node(
+        map([](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
+            get_nested_tensor_structure(self),
+            get_nested_tensor_structure(other)));
+  }
+  return wrap_tensor_node(
+      map([&other](Tensor tensor) { return at::matmul(tensor, other); },
+          get_nested_tensor_structure(self)));
+}
+
+Tensor& NestedTensor_matmul_out(
+    Tensor& result,
+    const Tensor& self,
+    const Tensor& other) {
+  apply(
+      [](Tensor& result, Tensor& tensor, Tensor& other) {
+        return at::matmul_out(result, tensor, other);
+      },
+      get_nested_tensor_structure(result),
+      get_nested_tensor_structure(self),
+      get_nested_tensor_structure(other));
+  return result;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -283,5 +308,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
   m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
+
+  m.impl_UNBOXED("matmul", NestedTensor_matmul);
+  m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
 }
 }

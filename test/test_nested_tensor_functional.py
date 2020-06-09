@@ -431,7 +431,7 @@ class TestFunctional(TestCase):
         query_nt = nestedtensor.nested_tensor([query.squeeze(1)])
         key_nt = nestedtensor.nested_tensor([key.squeeze(1)])
         value_nt = nestedtensor.nested_tensor([value.squeeze(1)])
-        nt_attn_output, _ = nt_mha(query_nt, key_nt, value_nt)
+        nt_attn_output, _ = nt_mha(query_nt, key_nt, value_nt, need_weights=False)
         print('nt_attn_output')
         print(nt_attn_output)
 
