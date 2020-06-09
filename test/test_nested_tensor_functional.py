@@ -421,8 +421,6 @@ class TestFunctional(TestCase):
         key = torch.randn(2, 1, embed_dim)
         value = torch.randn(2, 1, embed_dim)
         attn_output, _ = mha(query, key, value)
-        print('attn_output')
-        print(attn_output)
         nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
         nt_mha.in_proj_weight = mha.in_proj_weight
         nt_mha.in_proj_bias = mha.in_proj_bias
@@ -432,8 +430,8 @@ class TestFunctional(TestCase):
         key_nt = nestedtensor.nested_tensor([key.squeeze(1)])
         value_nt = nestedtensor.nested_tensor([value.squeeze(1)])
         nt_attn_output, _ = nt_mha(query_nt, key_nt, value_nt, need_weights=False)
-        print('nt_attn_output')
-        print(nt_attn_output)
+        # For regular tensors the batch dimension is along dimension 1
+        self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
     def test_layer_norm(self):
         pass
