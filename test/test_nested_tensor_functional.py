@@ -469,43 +469,90 @@ class TestFunctional(TestCase):
         # For regular tensors the batch dimension is along dimension 1
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
-    def test_softmax(self):
-        def _test(ts, nt):
-            self.assertRaises(RuntimeError, lambda: F.softmax(nt, 0))
-            self.assertRaises(RuntimeError, lambda: F.softmax(nt, 1))
-
-            def _map_fn(dim, result):
-                result = F.softmax(nt, 2)
-                map(self.assertEqual, tuple(
-                    map(lambda x: F.softmax(x, dim), ts[0])), result[0])
-                map(self.assertEqual, tuple(
-                    map(lambda x: F.softmax(x, dim), ts[1])), result[1])
-
-            for i in range(nt.dim() - nt.nested_dim()):
-                _map_fn(i, F.softmax(nt, i + nt.nested_dim()))
-
-        ts = [[], []]
-        nt = nestedtensor.nested_tensor(ts)
-        _test(ts, nt)
-
+    def test_layer_norm(self):
+        layer_norm = torch.nn.LayerNorm((0,))
         t0 = torch.randn(3)
         t1 = torch.randn(2)
         t2 = torch.randn(3)
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
-        _test(ts, nt)
+        self.assertRaisesRegex(RuntimeError,
+                               "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
+        layer_norm = torch.nn.LayerNorm((3,))
+        t0 = torch.randn(3, 3)
+        t1 = torch.randn(2, 3)
+        t2 = torch.randn(3, 3)
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
+        result = F.layer_norm(nt, (3,))
+        map(self.assertEqual, tuple(
+            map(lambda x: layer_norm(x), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: layer_norm(x), ts[1])), result[1])
+
+        t0 = torch.randn(3, 3, 4)
+        t1 = torch.randn(2, 3, 4)
+        t2 = torch.randn(3, 3, 4)
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
+        self.assertRaisesRegex(RuntimeError,
+                               "Given normalized_shape=\[3\], expected input with shape \[\*, 3\], but got input of size\[3, 3, 4\]",
+                               lambda: layer_norm(nt))
+
+        layer_norm = torch.nn.LayerNorm((3, 2, 4))
+        self.assertRaisesRegex(RuntimeError,
+                               "Currently only singleton tuples of integers supported for layer_norm.",
+                               lambda: layer_norm(nt))
+
+
+def make_generic_map_tests(fn):
+    def _test(self, ts, nt):
+        self.assertRaises(RuntimeError, lambda: fn(nt, 0))
+        self.assertRaises(RuntimeError, lambda: fn(nt, 1))
+
+        def _map_fn(dim, result):
+            result = fn(nt, 2)
+            map(self.assertEqual, tuple(
+                map(lambda x: fn(x, dim), ts[0])), result[0])
+            map(self.assertEqual, tuple(
+                map(lambda x: fn(x, dim), ts[1])), result[1])
+
+        for i in range(nt.dim() - nt.nested_dim()):
+            _map_fn(i, fn(nt, i + nt.nested_dim()))
+
+    def _test_1(self):
+        ts = [[], []]
+        nt = nestedtensor.nested_tensor(ts)
+        _test(self, ts, nt)
+
+    def _test_2(self):
+        t0 = torch.randn(3)
+        t1 = torch.randn(2)
+        t2 = torch.randn(3)
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
+        _test(self, ts, nt)
+
+    def _test_3(self):
         t0 = torch.randn(3, 2, 1)
         t1 = torch.randn(2, 3, 1)
         t2 = torch.randn(3, 1, 2)
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
-        _test(ts, nt)
+        _test(self, ts, nt)
 
+    def _test_4(self):
         ts = torch.randn(6, 4, 3, 2, 5)
         ts = list(map(lambda x: x.unbind(), ts.unbind()))
         nt = nestedtensor.nested_tensor(ts)
-        _test(ts, nt)
+        _test(self, ts, nt)
+
+    return [_test_1, _test_2, _test_3, _test_4]
+
+
+for i, test in enumerate(make_generic_map_tests(F.softmax)):
+    setattr(TestFunctional, 'test_softmax_' + str(i), test)
 
 
 if __name__ == "__main__":
