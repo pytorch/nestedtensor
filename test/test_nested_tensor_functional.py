@@ -469,6 +469,27 @@ class TestFunctional(TestCase):
         # For regular tensors the batch dimension is along dimension 1
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
+    def test_transpose(self):
+        t0 = torch.randn(3, 3, 4)
+        t1 = torch.randn(2, 4, 3)
+        t2 = torch.randn(3, 3, 2)
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
+        self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
+                               lambda: nt.transpose(0, 2))
+        self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
+                               lambda: nt.transpose(1, 3))
+        self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
+                               lambda: nt.transpose(0, 1))
+        self.assertEqual(nt.transpose(2, 3), nt.transpose(3, 2))
+        t = torch.randn(2, 3, 2, 4, 1)
+        t_t = t.transpose(2, 3)
+        nt = nestedtensor.nested_tensor(
+            list(map(lambda x: x.unbind(), t.unbind())))
+        nt_t = nestedtensor.nested_tensor(
+            list(map(lambda x: x.unbind(), t_t.unbind())))
+        self.assertEqual(t_t, nt_t.to_tensor())
+
     def test_reshape(self):
 
         t0 = torch.randn(3, 3)
