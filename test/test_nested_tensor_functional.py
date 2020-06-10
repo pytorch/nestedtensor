@@ -490,6 +490,37 @@ class TestFunctional(TestCase):
             list(map(lambda x: x.unbind(), t_t.unbind())))
         self.assertEqual(t_t, nt_t.to_tensor())
 
+    def test_flatten(self):
+        t0 = torch.randn(3, 3, 4)
+        t1 = torch.randn(2, 4, 3)
+        t2 = torch.randn(3, 3, 2)
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
+        self.assertRaisesRegex(RuntimeError, "Cannot flatten nested dimension 0",
+                               lambda: nt.flatten(0))
+        self.assertRaisesRegex(RuntimeError, "Cannot flatten nested dimension 1",
+                               lambda: nt.flatten(2, 1))
+        result = nt.flatten(2)
+        map(self.assertEqual, tuple(
+            map(lambda x: x.flatten(), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: x.flatten(), ts[1])), result[1])
+
+        result = nt.flatten(3, 4)
+        map(self.assertEqual, tuple(
+            map(lambda x: x.flatten(1, 2), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: x.flatten(1, 2), ts[1])), result[1])
+
+        ts = torch.randn(3, 2, 4, 5, 3)
+        ts_r = ts.flatten(3, 4)
+        ts = list(map(lambda x: x.unbind(), ts.unbind()))
+        ts_r = list(map(lambda x: x.unbind(), ts_r.unbind()))
+        ts = nestedtensor.nested_tensor(ts).flatten(3, 4)
+        ts_r = nestedtensor.nested_tensor(ts_r)
+        map(self.assertEqual, zip(ts[0].unbind(), ts_r[0].unbind()))
+        map(self.assertEqual, zip(ts[1].unbind(), ts_r[1].unbind()))
+
     def test_reshape(self):
 
         t0 = torch.randn(3, 3)

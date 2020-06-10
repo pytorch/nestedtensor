@@ -152,7 +152,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   }
   int64_t nested_dim = self_data.nested_dim();
   std::vector<int64_t> target_shape;
-  for (int64_t i = nested_dim; i < size.size(); i++) {
+  for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
   return wrap_tensor_node(map(
@@ -317,6 +317,26 @@ Tensor NestedTensor_pin_memory(const Tensor& self) {
           get_nested_tensor_structure(self)));
 }
 
+Tensor NestedTensor_flatten(
+    const Tensor& self,
+    int64_t start_dim,
+    int64_t end_dim) {
+  auto self_data = get_nested_tensor(self);
+  start_dim = maybe_wrap_dim(start_dim, self_data.dim());
+  end_dim = maybe_wrap_dim(end_dim, self_data.dim());
+  int64_t nested_dim = self_data.nested_dim();
+  TORCH_CHECK(
+      start_dim >= nested_dim, "Cannot flatten nested dimension ", start_dim);
+  TORCH_CHECK(
+      end_dim >= nested_dim, "Cannot flatten nested dimension ", end_dim);
+  return wrap_tensor_node(map(
+      [start_dim, end_dim, nested_dim](at::Tensor tensor) {
+        return at::flatten(
+            tensor, start_dim - nested_dim, end_dim - nested_dim);
+      },
+      self_data.get_structure()));
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -335,5 +355,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("matmul", NestedTensor_matmul);
   m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
   m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
+  m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
 }
 } // namespace at
