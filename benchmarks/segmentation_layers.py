@@ -242,7 +242,7 @@ def interpolate_tensor_pad(self):
 @register_benchmark
 def interpolate_nt(self):
     nt = nestedtensor.nested_tensor(self.inputs)
-    input_shape = [y[-2:] for y in x.nested_size().unbind()]
+    input_shape = [y[-2:] for y in nt.nested_size().unbind()]
     def _interpolate_nt():
         torch.nn.functional.interpolate(nt, input_shape)
 
