@@ -280,6 +280,8 @@ class SegLayersBenchMark(object):
                 ),
             )
         try:
+            if cuda and layer is not None:
+                layer.cuda()
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
         except KeyError:
             raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
