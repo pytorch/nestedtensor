@@ -506,8 +506,8 @@ class TestFunctional(TestCase):
                                lambda: layer_norm(nt))
 
 
-def make_generic_map_tests(fn):
-    def _test(self, ts, nt):
+    def _test_softmax(self, ts, nt):
+        fn = F.softmax
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))
         self.assertRaises(RuntimeError, lambda: fn(nt, 1))
 
@@ -521,39 +521,32 @@ def make_generic_map_tests(fn):
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))
 
-    def _test_1(self):
+    def test_softmax_1(self):
         ts = [[], []]
         nt = nestedtensor.nested_tensor(ts)
-        _test(self, ts, nt)
+        self._test_softmax(ts, nt)
 
-    def _test_2(self):
+    def test_softmax_2(self):
         t0 = torch.randn(3)
         t1 = torch.randn(2)
         t2 = torch.randn(3)
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
-        _test(self, ts, nt)
+        self._test_softmax(ts, nt)
 
-    def _test_3(self):
+    def test_softmax_3(self):
         t0 = torch.randn(3, 2, 1)
         t1 = torch.randn(2, 3, 1)
         t2 = torch.randn(3, 1, 2)
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
-        _test(self, ts, nt)
+        self._test_softmax(ts, nt)
 
-    def _test_4(self):
+    def test_softmax_4(self):
         ts = torch.randn(6, 4, 3, 2, 5)
         ts = list(map(lambda x: x.unbind(), ts.unbind()))
         nt = nestedtensor.nested_tensor(ts)
-        _test(self, ts, nt)
-
-    return [_test_1, _test_2, _test_3, _test_4]
-
-
-for i, test in enumerate(make_generic_map_tests(F.softmax)):
-    setattr(TestFunctional, 'test_softmax_' + str(i), test)
-
+        self._test_softmax(ts, nt)
 
 if __name__ == "__main__":
     unittest.main()
