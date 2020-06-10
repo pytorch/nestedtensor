@@ -144,7 +144,6 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
-
 Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> optional_memory_format) {
   auto self_impl = get_nested_tensor_impl(src);
   return at::detail::make_tensor<NestedTensorImpl>(
