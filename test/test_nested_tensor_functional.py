@@ -469,6 +469,44 @@ class TestFunctional(TestCase):
         # For regular tensors the batch dimension is along dimension 1
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
+    def test_reshape(self):
+
+        t0 = torch.randn(3, 3)
+        t1 = torch.randn(2, 3)
+        t2 = torch.randn(3, 3)
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
+        self.assertRaisesRegex(RuntimeError, "Reshape cannot be exclusive to nested dimensions.",
+                               lambda: nt.reshape(0, -1))
+        self.assertRaisesRegex(RuntimeError, "Cannot reshape explicitly along irregular dimension 1. Please use -1 as a placeholder.",
+                               lambda: nt.reshape(-1, 1, 2, 3))
+        result = nt.reshape(-1, -1, 3, -1)
+        map(self.assertEqual, tuple(
+            map(lambda x: x.reshape(3, -1), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: x.reshape(3, -1), ts[1])), result[1])
+
+        result = nt.reshape(-1, -1, 1, 1, 3, -1)
+        map(self.assertEqual, tuple(
+            map(lambda x: x.reshape(1, 1, 3, -1), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: x.reshape(1, 1, 3, -1), ts[1])), result[1])
+
+        result = nt.reshape(-1, -1, 1, 1, 3, -1)
+        map(self.assertEqual, tuple(
+            map(lambda x: x.reshape(1, 1, 3, -1), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: x.reshape(1, 1, 3, -1), ts[1])), result[1])
+
+        ts = torch.randn(3, 2, 4, 5, 3)
+        ts_r = ts.reshape(3, 2, 5, 3, 4)
+        ts = list(map(lambda x: x.unbind(), ts.unbind()))
+        ts_r = list(map(lambda x: x.unbind(), ts_r.unbind()))
+        ts = nestedtensor.nested_tensor(ts)
+        ts_r = nestedtensor.nested_tensor(ts_r)
+        map(self.assertEqual, zip(ts[0].unbind(), ts_r[0].unbind()))
+        map(self.assertEqual, zip(ts[1].unbind(), ts_r[1].unbind()))
+
     def test_layer_norm(self):
         layer_norm = torch.nn.LayerNorm((0,))
         t0 = torch.randn(3)
@@ -504,7 +542,6 @@ class TestFunctional(TestCase):
         self.assertRaisesRegex(RuntimeError,
                                "Currently only singleton tuples of integers supported for layer_norm.",
                                lambda: layer_norm(nt))
-
 
     def _test_softmax(self, ts, nt):
         fn = F.softmax
@@ -547,6 +584,7 @@ class TestFunctional(TestCase):
         ts = list(map(lambda x: x.unbind(), ts.unbind()))
         nt = nestedtensor.nested_tensor(ts)
         self._test_softmax(ts, nt)
+
 
 if __name__ == "__main__":
     unittest.main()

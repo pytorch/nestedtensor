@@ -142,12 +142,12 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   auto self_data = get_nested_tensor(self);
   TORCH_CHECK(
       int64_t(size.size()) > self_data.nested_dim(),
-      "Reshape cannot include nested dimensions.");
+      "Reshape cannot be exclusive to nested dimensions.");
   for (int64_t i = 0; i < self_data.nested_dim(); i++) {
-    if (size[0] >= 0) {
+    if (size[i] >= 0) {
       throw std::runtime_error(
-          "Cannot reshape explicitly along nested dimension " +
-          std::to_string(size[i]));
+          "Cannot reshape explicitly along irregular dimension " +
+          std::to_string(size[i]) + ". Please use -1 as a placeholder.");
     }
   }
   int64_t nested_dim = self_data.nested_dim();
