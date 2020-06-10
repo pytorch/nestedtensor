@@ -242,9 +242,9 @@ def interpolate_tensor_pad(self):
 @register_benchmark
 def interpolate_nt(self):
     nt = nestedtensor.nested_tensor(self.inputs)
-
+    input_shape = [y[-2:] for y in x.nested_size().unbind()]
     def _interpolate_nt():
-        torch.nn.functional.interpolate(nt)
+        torch.nn.functional.interpolate(nt, input_shape)
 
     return _interpolate_nt
 
@@ -280,8 +280,6 @@ class SegLayersBenchMark(object):
                 ),
             )
         try:
-            if cuda:
-                layer.cuda()
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
         except KeyError:
             raise ValueError("Benchmark {} is not supported. Available benchmarks are\n{}.".format(layer,
@@ -310,7 +308,7 @@ class SegLayersBenchMark(object):
             self.inputs, self.targets = self.get_input(cuda, n, c, h, w, h_var, w_var, seed)
 
             benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
-
+            
             for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
                 result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
