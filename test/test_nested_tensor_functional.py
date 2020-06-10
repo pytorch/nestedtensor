@@ -481,15 +481,25 @@ class TestFunctional(TestCase):
                 map(self.assertEqual, tuple(
                     map(lambda x: F.softmax(x, dim), ts[1])), result[1])
 
-            _map_fn(0, F.softmax(nt, 3))
-            _map_fn(1, F.softmax(nt, 3))
-            _map_fn(2, F.softmax(nt, 3))
+            for i in range(nt.dim() - nt.nested_dim()):
+                _map_fn(i, F.softmax(nt, i + nt.nested_dim()))
+
+        ts = [[], []]
+        nt = nestedtensor.nested_tensor(ts)
+        _test(ts, nt)
+
+        t0 = torch.randn(3)
+        t1 = torch.randn(2)
+        t2 = torch.randn(3)
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
+        _test(ts, nt)
 
         t0 = torch.randn(3, 2, 1)
         t1 = torch.randn(2, 3, 1)
         t2 = torch.randn(3, 1, 2)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor([[t0, t1], [t2]])
+        nt = nestedtensor.nested_tensor(ts)
         _test(ts, nt)
 
         ts = torch.randn(6, 4, 3, 2, 5)
