@@ -189,7 +189,9 @@ Tensor NestedTensor_softmax(
   auto input_data = get_nested_tensor(input);
   int64_t nested_dim = input_data.nested_dim();
   TORCH_CHECK(
-      dim >= nested_dim, "Cannot apply softmax across nested dimensions");
+      dim >= nested_dim,
+      "Cannot apply softmax across nested dimensions ",
+      std::to_string(dim));
   return wrap_tensor_node(map(
       [dim, nested_dim, dtype](const at::Tensor t) {
         return at::softmax(t, dim - nested_dim, dtype);
