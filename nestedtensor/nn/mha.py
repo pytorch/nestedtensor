@@ -11,9 +11,9 @@ import nestedtensor
 # NT case query, key, value have nested_dim 1 and are of shape (bsz, tgt_len, embed_dim)
 
 
-def multi_head_attention_forward(query,                           # type: Tensor
-                                 key,                             # type: Tensor
-                                 value,                           # type: Tensor
+def multi_head_attention_forward(query,                           # type: NestedTensor
+                                 key,                             # type: NestedTensor
+                                 value,                           # type: NestedTensor
                                  embed_dim_to_check,              # type: int
                                  num_heads,                       # type: int
                                  in_proj_weight,                  # type: Tensor
@@ -47,14 +47,8 @@ def multi_head_attention_forward(query,                           # type: Tensor
     assert isinstance(query, nestedtensor.NestedTensor)
     assert isinstance(key, nestedtensor.NestedTensor)
     assert isinstance(value, nestedtensor.NestedTensor)
-    bsz, tgt_len, embed_dim = query.size()
-    assert embed_dim == embed_dim_to_check
-    # allow MHA to have different sizes for the feature dimension
-    assert key.size(0) == value.size(0) and key.size(1) == value.size(1)
-
-    head_dim = embed_dim // num_heads
-    assert head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
-    scaling = float(head_dim) ** -0.5
+    assert torch.is_tensor(out_proj_weight)
+    assert torch.is_tensor(out_proj_bias)
 
     # TODO: Explicitly unsupported flags
     assert not use_separate_proj_weight
@@ -66,6 +60,16 @@ def multi_head_attention_forward(query,                           # type: Tensor
     assert static_v is None
     assert not add_zero_attn
     assert not need_weights
+
+    bsz, tgt_len, embed_dim = query.size()
+    assert embed_dim == embed_dim_to_check
+    # allow MHA to have different sizes for the feature dimension
+    assert key.size(0) == value.size(0) and key.size(1) == value.size(1)
+
+    head_dim = embed_dim // num_heads
+    assert head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
+    scaling = float(head_dim) ** -0.5
+
 
     # This is inline in_proj function with in_proj_weight and in_proj_bias
     _b = in_proj_bias
@@ -102,7 +106,6 @@ def multi_head_attention_forward(query,                           # type: Tensor
     if v is not None:
         v = v.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
     attn_output_weights = torch.matmul(q, k.transpose(2, 3))
-    # NEXT: Softmax
     attn_output_weights = F.softmax(
         attn_output_weights, dim=-1)
     attn_output_weights = F.dropout(
