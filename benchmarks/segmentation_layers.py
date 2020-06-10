@@ -310,7 +310,6 @@ class SegLayersBenchMark(object):
             self.inputs, self.targets = self.get_input(cuda, n, c, h, w, h_var, w_var, seed)
 
             benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
-            
             for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
                 result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
