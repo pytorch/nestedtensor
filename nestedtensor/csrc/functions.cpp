@@ -58,18 +58,6 @@ Tensor NestedTensor_max_pool2d(
   auto tensor_node = get_nested_tensor_structure(self);
 
   if (is_tensor_shape(self)) {
-    if (self.is_contiguous()) {
-      auto buffer = nt.get_buffer();
-      auto tensor = torch::reshape(buffer.value(), self_impl->sizes());
-
-      auto res = at::max_pool2d(
-          tensor, kernel_size, stride, padding, dilation, ceil_mode);
-
-      return at::detail::make_tensor<NestedTensorImpl>(
-          torch::nested_tensor::NestedTensor(std::move(res))
-              .to_nested_tensor(nt.nested_dim() - 1));
-    }
-
     std::vector<at::Tensor> tensors;
     for (auto tn : tensor_node.unbind()) {
       tensors.push_back(tn.payload());

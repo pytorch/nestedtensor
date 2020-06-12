@@ -202,7 +202,7 @@ NestedTensor _as_nested_tensor(py::sequence list) {
       all_same,
       "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
   TensorNode structure =
-      map([](c10::IValue a) { return a.toTensor(); }, ivalue_structure);
+      map([](c10::IValue a) { return a.toTensor().clone().detach(); }, ivalue_structure);
   if (auto first = get_first_leaf(structure)) {
     if (!_verify_variables(*first, structure)) {
       _verify_variables(*first, structure, true);
