@@ -1,5 +1,5 @@
 #pragma once
-#include <nestedtensor/csrc/nested_tensor.h>
+#include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/py_utils.h>
 
 namespace torch {

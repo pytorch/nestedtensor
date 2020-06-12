@@ -1,7 +1,6 @@
 #pragma once
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <ATen/ATen.h>
-#include <nestedtensor/csrc/nested_tensor.h>
 
 namespace torch {
 namespace nested_tensor {
