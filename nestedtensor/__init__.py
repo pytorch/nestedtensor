@@ -11,3 +11,5 @@ from .nested.nested import NestedTensor
 from . import nested
 
 from . import _C
+
+from . import nn
