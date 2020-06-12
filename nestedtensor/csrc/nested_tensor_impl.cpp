@@ -4,7 +4,6 @@
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
 #include <ATen/ATen.h>
-#include <nestedtensor/csrc/nested_tensor.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 
 namespace torch {
