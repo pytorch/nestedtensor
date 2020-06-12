@@ -173,7 +173,7 @@ def cross_entropy_tensor_iter(self):
 @register_benchmark
 def cross_entropy_tensor_pad(self):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
-    targets = torch.stack(self.targets)
+    targets, _ = nestedtensor.nested_tensor(self.targets).to_tensor_mask()
 
     def _cross_entropy_tensor_pad():
         torch.nn.functional.cross_entropy(tensor, targets)
@@ -280,7 +280,7 @@ class SegLayersBenchMark(object):
                 ),
             )
         try:
-            if cuda:
+            if cuda and layer is not None:
                 layer.cuda()
             return Benchmarks[name](self) if layer is None else Benchmarks[name](self, layer)
         except KeyError:
@@ -310,7 +310,6 @@ class SegLayersBenchMark(object):
             self.inputs, self.targets = self.get_input(cuda, n, c, h, w, h_var, w_var, seed)
 
             benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
-
             for layer, benchmark in benchmarks:
                 result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
                 result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
@@ -339,6 +338,7 @@ class SegLayersBenchMark(object):
         targets = []
 
         torch.manual_seed(seed)
+        random.seed(seed)
         if cuda:
             torch.cuda.init()
         for i in range(n):
