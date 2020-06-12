@@ -19,10 +19,8 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
     return result
 
 
-def as_nested_tensor(data, dtype=None, device=None):
+def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     # TODO: Needs tests to check failure cases
     if not isinstance(data, nested.NestedTensor):
-        data = nested_tensor(data, dtype, device)
-    if dtype is not None or device is not None:
-        return data.to(dtype=dtype, device=device)
+        data = nested_tensor(data, dtype, device, requires_grad, pin_memory)
     return data

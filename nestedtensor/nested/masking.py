@@ -43,7 +43,7 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
 def nt_from_tensor_mask(tensor, mask, nested_dim):
     def _merge(tensors, nested_dim):
         if len(tensors) == 0:
-            return torch.tensor([], dtype=tensor.dtype, device=tensor.device, requires_grad=tensor.requires_grad)
+            return torch.tensor([]).to(tensor)
         return torch.stack(tensors)
 
     if nested_dim == 0:
@@ -60,21 +60,21 @@ def nt_from_tensor_mask(tensor, mask, nested_dim):
             if not all(t.numel() == 0 for t in tensors):
                 tensors = list(filter(lambda x: x.numel() > 0, tensors))
             return _merge(tensors, nested_dim)
-        else:
-            return None
-    else:
-        inner_tensors = []
-        if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
-            for i in range(len(tensor)):
-                inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
-        elif (mask.numel() == 1 and mask == False):
-            inner_tensors.append(None)
-        else:
-            inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
 
-        # Filtering out None values which were ignored by mask
-        inner_tensors = list(filter(lambda x: x is not None, inner_tensors))
-        return creation.nested_tensor(inner_tensors)
+        return None
+
+    inner_tensors = []
+    if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
+        for i in range(len(tensor)):
+            inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
+    elif (mask.numel() == 1 and mask == False):
+        inner_tensors.append(None)
+    else:
+        inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
+
+    # Filtering out None values which were ignored by mask
+    inner_tensors = list(filter(lambda x: x is not None, inner_tensors))
+    return creation.nested_tensor(inner_tensors, requires_grad=tensor.requires_grad)
 
 # Get max size per each dimension from all the passed tensors.
 def get_max_size(obj, res=None):
