@@ -59,18 +59,12 @@ class TestNestedTensorAutograd(TestCase):
                                              torch.tensor([1, 2, 3]),
                                              torch.tensor([1, 2])],
                                              dtype=torch.float, requires_grad=True)
-        # print('nt2')
-        # print(nt2)
-        # print('nt2.grad')
-        # print(nt2.grad)
         tensor, mask = nt2.to_tensor_mask(mask_dim=2)
         sum_res = some_func(tensor)
         sum_res.backward()
 
         self.assertEqual(sum_res, nt_sum_res)
 
-        print('nt2.grad')
-        print(nt2.grad)
         self.assertEqual(nt2[0].grad, torch.tensor([ 5., 16., 33., 56.]))
         self.assertEqual(nt2[1].grad, torch.tensor([ 5., 16., 33.]))
         self.assertEqual(nt2[2].grad, torch.tensor([ 5., 16.]))

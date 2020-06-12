@@ -130,12 +130,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        result = _wrap_result(torch.ops.nestedtensor.grad(self._impl))
-        print('result')
-        print(result)
-        print('type(result)')
-        print(type(result))
-        return result
+        return _wrap_result(torch.ops.nestedtensor.grad(self._impl))
 
     def requires_grad_(self, requires_grad=True):
         """
