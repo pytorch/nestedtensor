@@ -16,6 +16,7 @@ class TestNestedTensorBuffer(TestCase):
     def test_grad(self):
         nt = nestedtensor.nested_tensor([torch.rand(1, 2)])
         nt.requires_grad_(True)
+        print(nt)
         a = nt.unbind()[0]
         c = nt.sum()
         c.backward()

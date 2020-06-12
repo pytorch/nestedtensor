@@ -57,8 +57,15 @@ struct NestedTensor {
         map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   NestedTensor grad() {
+    auto fn = [](at::Tensor leaf, bool input) {
+      return input && leaf.grad().defined();
+    };
+    if (!reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true)) {
+      throw std::runtime_error("Grad is undefined");
+    }
     return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
+        map([](at::Tensor tensor) { 
+          return tensor.grad(); }, _structure));
   }
   NestedTensor detach() {
     return NestedTensor(
@@ -66,7 +73,7 @@ struct NestedTensor {
   }
   NestedTensor requires_grad_(bool requires_grad) {
     apply(
-        [requires_grad](at::Tensor tensor) -> void {
+        [requires_grad](at::Tensor& tensor) -> void {
           tensor.set_requires_grad(requires_grad);
         },
         _structure);
