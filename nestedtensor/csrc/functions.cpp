@@ -97,7 +97,7 @@ Tensor NestedTensor_batch_norm(
     bool cudnn_enabled) {
   return wrap_tensor_node(map(
       [&](at::Tensor t) {
-        return at::batch_norm(
+        auto result = at::batch_norm(
                    t.unsqueeze(0),
                    weight,
                    bias,
@@ -108,6 +108,7 @@ Tensor NestedTensor_batch_norm(
                    eps,
                    cudnn_enabled)
             .squeeze(0);
+        return result;
       },
       get_nested_tensor_structure(input)));
 }
