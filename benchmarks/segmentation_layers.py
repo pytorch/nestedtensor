@@ -173,7 +173,7 @@ def cross_entropy_tensor_iter(self):
 @register_benchmark
 def cross_entropy_tensor_pad(self):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
-    targets = torch.stack(self.targets)
+    targets, _ = nestedtensor.nested_tensor(self.targets).to_tensor_mask()
 
     def _cross_entropy_tensor_pad():
         torch.nn.functional.cross_entropy(tensor, targets)
@@ -338,6 +338,7 @@ class SegLayersBenchMark(object):
         targets = []
 
         torch.manual_seed(seed)
+        random.seed(seed)
         if cuda:
             torch.cuda.init()
         for i in range(n):
