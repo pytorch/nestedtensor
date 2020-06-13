@@ -112,6 +112,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(default_nested_tensor.dtype, default_tensor.dtype)
             self.assertEqual(default_nested_tensor.requires_grad,
                              default_tensor.requires_grad)
+            self.assertRaises(RuntimeError, default_tensor.grad)
             self.assertEqual(default_nested_tensor.is_pinned(),
                              default_tensor.is_pinned())
 
@@ -556,6 +557,11 @@ class TestNestedTensor(TestCase):
 
     def test_requires_grad(self):
         _test_property(self, lambda x: x.requires_grad)
+        tensors = [torch.randn(1, 8),
+                   torch.randn(3, 8),
+                   torch.randn(7, 8)]
+        a1 = nestedtensor.nested_tensor(tensors, requires_grad=True)
+        self.assertRaises(RuntimeError, lambda: a1.grad)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_pin_memory(self):

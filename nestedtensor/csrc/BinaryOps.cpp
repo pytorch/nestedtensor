@@ -28,17 +28,6 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(other)) {
     auto self_data = get_nested_tensor(self);
     auto other_data = get_nested_tensor(other);
-    if (self_data.is_contiguous() &&
-        other_data.is_contiguous() &&
-        shape_matches(
-          self_data.nested_size(),
-          other_data.nested_size())) {
-      auto self_buffer = *self_data.get_buffer();
-      auto other_buffer = *other_data.get_buffer();
-      return wrap_nested_tensor(NestedTensor(
-            func(self_buffer.reshape({-1}),
-                 other_buffer.reshape({-1})), self_data.nested_size()));
-    }
     return wrap_tensor_node(
         map([](Tensor tensor, Tensor other) { return func(tensor, other); },
             get_nested_tensor_structure(self),

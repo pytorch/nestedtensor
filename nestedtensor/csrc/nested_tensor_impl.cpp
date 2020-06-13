@@ -63,60 +63,6 @@ c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
   return c10::List<int64_t>(stride);
 }
 
-TensorNode build_structure(
-    const at::Tensor& buffer,
-    const SizeNode& nested_size,
-    const SizeNode& nested_stride) {
-  c10::List<int64_t> split_sizes = flatten(
-      map([](c10::List<int64_t> a,
-             c10::List<int64_t> b) { return num_memory(a, b); },
-          nested_size,
-          nested_stride));
-  std::vector<int64_t> nonzero_split_sizes;
-  for (size_t i = 0; i < split_sizes.size(); i++) {
-    if (split_sizes[i] > 0) {
-      nonzero_split_sizes.push_back(split_sizes[i]);
-    }
-  }
-  std::vector<at::Tensor> buffers_;
-  if (nonzero_split_sizes.size() > 0) {
-    buffers_ =
-        at::split_with_sizes(buffer, c10::IntArrayRef(nonzero_split_sizes), 0);
-  }
-  std::vector<at::Tensor> buffers;
-  int64_t index = 0;
-  for (size_t i = 0; i < split_sizes.size(); i++) {
-    if (split_sizes[i] > 0) {
-      buffers.push_back(buffers_[index]);
-      index++;
-    } else {
-      buffers.push_back(at::empty({}, buffer.options()));
-    }
-  }
-  TensorNode tmp = unflatten(nested_size, c10::List<at::Tensor>(buffers));
-  TensorNode result = map(
-      [](at::Tensor buffer,
-         c10::List<int64_t> size,
-         c10::List<int64_t> stride) {
-        return at::as_strided(
-            buffer,
-            c10::IntArrayRef(size.vec()),
-            c10::IntArrayRef(stride.vec()));
-      },
-      tmp,
-      nested_size,
-      nested_stride);
-  return result;
-}
-
-TensorNode build_structure(
-    const at::Tensor& buffer,
-    const SizeNode& nested_size) {
-  SizeNode nested_stride = map(
-      [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
-  return build_structure(buffer, nested_size, nested_stride);
-}
-
 SizeNode infer_nested_size(const TensorNode& _structure) {
   return map(
       [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
@@ -127,13 +73,8 @@ NestedTensor NestedTensor::contiguous() const {
   if (is_contiguous()) {
     return *this;
   }
-  TensorNode flat_structure =
-      map([](at::Tensor tensor) { return tensor.reshape({-1}); }, _structure);
-  auto tensors = flatten(flat_structure).vec();
-  if (tensors.size() == 0) {
-    return NestedTensor(at::ones({0}), _nested_size);
-  }
-  return NestedTensor(at::cat(tensors, 0), _nested_size);
+  return NestedTensor(
+      map([](at::Tensor tensor) { return tensor.contiguous(); }, _structure));
 }
 
 at::Tensor _to_tensor(TensorNode node) {
@@ -162,9 +103,6 @@ at::Tensor NestedTensor::to_tensor() {
           "to_tensor()/to_tensor(0) only works if there is no None in size().");
     }
     new_size.push_back(*si);
-  }
-  if (is_contiguous()) {
-    return (*_buffer).reshape(at::IntArrayRef(new_size));
   }
   return _to_tensor(_structure);
 }
@@ -208,25 +146,6 @@ NestedTensor::NestedTensor(TensorNode&& structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
 
-// NOTE: It is assumed that structure is a tree of views
-// of buffer.
-// TODO: Add an explicit test for debug purposes.
-NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
-    : _buffer(buffer),
-      _structure(structure),
-      _first_variable(
-          get_first_leaf(_structure) ? *get_first_leaf(_structure)
-                                     : at::ones({})),
-      _nested_size(infer_nested_size(_structure)) {}
-
-NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
-    : _buffer(buffer),
-      _structure(build_structure(*_buffer, nested_size)),
-      _first_variable(
-          get_first_leaf(_structure) ? *get_first_leaf(_structure)
-                                     : at::ones({})),
-      _nested_size(nested_size) {}
-
 // torch.Tensor methods
 NestedTensor NestedTensor::copy_(
     const NestedTensor& source,
@@ -234,15 +153,6 @@ NestedTensor NestedTensor::copy_(
   TORCH_CHECK(
       shape_matches(nested_size(), source.nested_size()),
       "self and source don't match in shape");
-  if (_buffer && source.get_buffer()) {
-    _buffer->copy_(*source.get_buffer());
-    return *this;
-  }
-  if (_buffer) {
-    NestedTensor cont_source = source.contiguous();
-    _buffer->copy_(*cont_source.get_buffer());
-    return *this;
-  }
   auto result =
       map([](at::Tensor self, at::Tensor source) { return self.copy_(source); },
           _structure,

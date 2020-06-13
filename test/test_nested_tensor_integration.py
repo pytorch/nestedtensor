@@ -65,11 +65,6 @@ class TestIntegration(TestCase):
         tr1 = torch.randn(2, 2, requires_grad=True)
         tr2 = torch.randn(2, 2, requires_grad=True)
 
-        nt_t1 = t1.detach().requires_grad_()
-        nt_t2 = t2.detach().requires_grad_()
-        nt_tr1 = tr1.detach().requires_grad_()
-        nt_tr2 = tr2.detach().requires_grad_()
-
         model_name = "fcn_resnet101"
         num_classes = 21
         aux_loss = "store_true"
@@ -90,6 +85,11 @@ class TestIntegration(TestCase):
         confmat.reduce_from_all_processes()
 
         # nt run
+        nt_t1 = t1.clone().detach()
+        nt_t2 = t2.clone().detach()
+        nt_tr1 = tr1.clone().detach()
+        nt_tr2 = tr2.clone().detach()
+
         nt_input = nestedtensor.nested_tensor([nt_t1, nt_t2], requires_grad=True)
         nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
         confmat2 = ConfusionMatrix(num_classes)
@@ -111,8 +111,8 @@ class TestIntegration(TestCase):
         output1_sum.backward()
         output2_sum.backward()
 
-        self.assertEqual(t1.grad, nt_t1.grad)
-        self.assertEqual(t2.grad, nt_t2.grad)
+        self.assertEqual(t1.grad, nt_input[0].grad)
+        self.assertEqual(t2.grad, nt_input[1].grad)
 
 
 if __name__ == "__main__":

@@ -14,14 +14,6 @@ using IntegerNode = NestedNode<int64_t>;
 struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
-  NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
-  NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
-  c10::optional<at::Tensor>& get_buffer() {
-    return _buffer;
-  }
-  const c10::optional<at::Tensor>& get_buffer() const {
-    return _buffer;
-  }
   std::vector<c10::optional<int64_t>> sizes() const;
   caffe2::TypeMeta dtype() const {
     return _first_variable.dtype();
@@ -65,39 +57,34 @@ struct NestedTensor {
         map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   NestedTensor grad() {
+    auto fn = [](at::Tensor leaf, bool input) {
+      return input && leaf.grad().defined();
+    };
+    if (!reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true)) {
+      throw std::runtime_error("Grad is undefined");
+    }
     return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
+        map([](at::Tensor tensor) { 
+          return tensor.grad(); }, _structure));
   }
   NestedTensor detach() {
-    // NOTE: For the contiguous case the tensors in _structure are views
-    // of parts of _buffer and the returned detached views will still
-    // modify that buffer if using in-place methods etc.
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   NestedTensor requires_grad_(bool requires_grad) {
     apply(
-        [requires_grad](at::Tensor tensor) -> void {
+        [requires_grad](at::Tensor& tensor) -> void {
           tensor.set_requires_grad(requires_grad);
         },
         _structure);
-    if (is_contiguous()) {
-      (*_buffer).set_requires_grad(requires_grad);
-    }
     return *this;
   }
   void backward(NestedTensor gradient, bool retain_graph, bool create_graph) {
-    if (is_contiguous() && gradient.is_contiguous()) {
-      (*_buffer).backward((*gradient.get_buffer()), retain_graph, create_graph);
-    } else {
-      apply(
-          [retain_graph, create_graph](
-              at::Tensor tensor1, at::Tensor tensor2) -> void {
-            tensor1.backward(tensor2, retain_graph, create_graph);
-          },
-          _structure,
-          gradient.get_structure());
-    }
+    apply(
+        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
+            -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
+        _structure,
+        gradient.get_structure());
   }
   int64_t __len__() const {
     return _structure.degree();
@@ -135,11 +122,7 @@ struct NestedTensor {
     return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
   }
   bool is_pinned() const {
-    if (is_contiguous()) {
-      return (*_buffer).is_pinned();
-    } else {
-      return _first_variable.is_pinned();
-    }
+    return _first_variable.is_pinned();
   }
   bool is_contiguous() const {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
@@ -148,8 +131,7 @@ struct NestedTensor {
     auto fn = [](at::Tensor leaf, bool input) {
       return input && leaf.is_contiguous();
     };
-    return _buffer && (*_buffer).is_contiguous() &&
-        reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
+    return reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
   NestedTensor contiguous() const;
   TensorNode& get_structure() {
@@ -164,7 +146,6 @@ struct NestedTensor {
   NestedTensor squeeze_(c10::optional<int64_t> dim);
 
  private:
-  c10::optional<at::Tensor> _buffer;
   TensorNode _structure;
   at::Tensor _first_variable;
   SizeNode _nested_size;

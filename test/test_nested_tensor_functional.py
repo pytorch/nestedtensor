@@ -61,7 +61,7 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = conv2d(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
 
         # some of optional params
         conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, bias=False)
@@ -72,7 +72,7 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = conv2d(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
 
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
@@ -113,7 +113,7 @@ class TestFunctional(TestCase):
         ]
 
         batch_norm = torch.nn.BatchNorm2d(2, 1e-05, 0.1)
-        batch_norm.eval()
+        batch_norm = batch_norm.eval()
 
         tensor_res = []
         for i in range(2):
@@ -122,7 +122,7 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = batch_norm(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+            self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
 
     def test_nn_functional_batch_norm(self):
         inputs = [
