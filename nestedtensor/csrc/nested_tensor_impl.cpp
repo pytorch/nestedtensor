@@ -146,20 +146,6 @@ NestedTensor::NestedTensor(TensorNode&& structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
 
-// torch.Tensor methods
-NestedTensor NestedTensor::copy_(
-    const NestedTensor& source,
-    bool non_blocking) {
-  TORCH_CHECK(
-      shape_matches(nested_size(), source.nested_size()),
-      "self and source don't match in shape");
-  auto result =
-      map([](at::Tensor self, at::Tensor source) { return self.copy_(source); },
-          _structure,
-          source.get_structure());
-  return *this;
-}
-
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   if (dim == 0) {
     return structure.children(0);
@@ -355,9 +341,15 @@ Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> op
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto src_impl = get_nested_tensor_impl(src);
-  self_impl->_data.copy_(src_impl->_data);
+  auto self_data = get_nested_tensor(self);
+  auto src_data = get_nested_tensor(src);
+  TORCH_CHECK(
+      shape_matches(self_data.nested_size(), src_data.nested_size()),
+      "self and source don't match in shape");
+  apply(
+      [](at::Tensor& self, at::Tensor& source) { return self.copy_(source); },
+      self_data.get_structure(),
+      src_data.get_structure());
   return self;
 }
 
