@@ -62,18 +62,16 @@ static auto registry =
             })
         .op("nestedtensor::grad",
             [](Tensor tensor) {
-              auto nt = get_nested_tensor(tensor);
-              return wrap_nested_tensor(nt.grad());
+              return get_nested_tensor_impl(tensor)->grad();
             })
         .op("nestedtensor::requires_grad",
             [](Tensor tensor) {
-              auto nt = get_nested_tensor(tensor);
-              return nt.requires_grad();
+              return get_nested_tensor_impl(tensor)->requires_grad();
             })
         .op("nestedtensor::requires_grad_",
             [](Tensor tensor, bool requires_grad) {
-              auto nt = get_nested_tensor(tensor);
-              return wrap_nested_tensor(nt.requires_grad_(requires_grad));
+              auto nt = get_nested_tensor_impl(tensor);
+              return nt->requires_grad_(requires_grad);
             })
         .op("nestedtensor::backward",
             [](Tensor tensor,

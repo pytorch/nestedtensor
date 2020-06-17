@@ -217,6 +217,17 @@ torch::nested_tensor::TensorNode get_nested_tensor_structure(
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
+at::Tensor wrap_nested_tensor(
+    torch::nested_tensor::NestedTensor&& result) {
+  return at::detail::make_tensor<NestedTensorImpl>(std::move(result));
+}
+
+at::Tensor wrap_tensor_node(
+    torch::nested_tensor::TensorNode&& result) {
+  return at::detail::make_tensor<NestedTensorImpl>(
+      torch::nested_tensor::NestedTensor(std::move(result)));
+}
+
 IntArrayRef NestedTensorImpl::sizes() const {
   return IntArrayRef(_sizes);
 }

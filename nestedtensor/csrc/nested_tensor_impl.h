@@ -56,28 +56,9 @@ struct NestedTensor {
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
-  NestedTensor grad() {
-    auto fn = [](at::Tensor leaf, bool input) {
-      return input && leaf.grad().defined();
-    };
-    if (!reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true)) {
-      throw std::runtime_error("Grad is undefined");
-    }
-    return NestedTensor(
-        map([](at::Tensor tensor) { 
-          return tensor.grad(); }, _structure));
-  }
   NestedTensor detach() {
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
-  }
-  NestedTensor requires_grad_(bool requires_grad) {
-    apply(
-        [requires_grad](at::Tensor& tensor) -> void {
-          tensor.set_requires_grad(requires_grad);
-        },
-        _structure);
-    return *this;
   }
   int64_t __len__() const {
     return _structure.degree();
@@ -158,6 +139,10 @@ at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::NestedTensor get_nested_tensor(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
+at::Tensor wrap_nested_tensor(NestedTensor&& result);
+
+at::Tensor wrap_tensor_node(TensorNode&& result);
+
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(torch::nested_tensor::NestedTensor data)
       : TensorImpl(
@@ -199,6 +184,28 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return get_structure().height();
   }
   Tensor to_nested_tensor(c10::optional<int64_t> dim);
+  Tensor grad() {
+    auto fn = [](at::Tensor leaf, bool input) {
+      return input && leaf.grad().defined();
+    };
+    if (!reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true)) {
+      throw std::runtime_error("Grad is undefined");
+    }
+    return wrap_tensor_node(
+        map([](at::Tensor tensor) { 
+          return tensor.grad(); }, get_structure()));
+  }
+  Tensor requires_grad_(bool requires_grad) {
+    apply(
+        [requires_grad](at::Tensor& tensor) -> void {
+          tensor.set_requires_grad(requires_grad);
+        },
+        get_structure());
+    return at::detail::make_tensor<NestedTensorImpl>(_data);
+  }
+  bool requires_grad() const {
+    return _data.requires_grad();
+  }
 
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
@@ -217,17 +224,6 @@ inline bool is_tensor_shape(const at::Tensor tensor) {
     }
   }
   return true;
-}
-
-inline at::Tensor wrap_nested_tensor(
-    torch::nested_tensor::NestedTensor&& result) {
-  return at::detail::make_tensor<NestedTensorImpl>(std::move(result));
-}
-
-inline at::Tensor wrap_tensor_node(
-    torch::nested_tensor::TensorNode&& result) {
-  return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(result)));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
