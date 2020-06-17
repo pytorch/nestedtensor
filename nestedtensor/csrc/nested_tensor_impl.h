@@ -15,35 +15,6 @@ struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
   std::vector<c10::optional<int64_t>> sizes() const;
-  // This is a C++ representation of a nested list of torch.Sizes
-  //
-  // It can never be a list of just numbers, because torch.Size
-  // is always a list and NestedTensors represent lists of torch.Tensors
-  //
-  // Noteworthy cases:
-  //
-  // This is an empty list of lists if we construct
-  // nested_tensor([])
-  // which is of nested_dim 1, dim 1 and tensor_dim 0
-  //
-  // This is a list of empty lists if we construct e.g.
-  // nested_tensor([torch.tensor(0), torch.tensor(1), ...])
-  // which is of nested_dim 1, dim 1 and tensor_dim 0
-  //
-  // This is a list of list of numbers if we construct e.g.
-  // nested_tensor([torch.tensor([1]), torch.tensor([2]), ...])
-  // which is of nested_dim 1, dim 2 and tensor_dim 1
-  //
-  // That means, if the list is not empty it is either a list of
-  // lists of numbers or a list of empty lists.
-  SizeNode nested_size() const {
-    return _nested_size;
-  }
-  SizeNode nested_stride() const {
-    return map(
-        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
-        _structure);
-  }
   NestedTensor pin_memory() {
     // NOTE: The assumption here is that pin_memory will materialize
     // the views that _structure contains when NestedTensor is contiguous.
@@ -91,7 +62,6 @@ struct NestedTensor {
  private:
   TensorNode _structure;
   at::Tensor _first_variable;
-  SizeNode _nested_size;
 };
 
 } // namespace nested_tensor
@@ -185,11 +155,36 @@ struct NestedTensorImpl : public c10::TensorImpl {
   bool requires_grad() const {
     return _data.requires_grad();
   }
+  // This is a C++ representation of a nested list of torch.Sizes
+  //
+  // It can never be a list of just numbers, because torch.Size
+  // is always a list and NestedTensors represent lists of torch.Tensors
+  //
+  // Noteworthy cases:
+  //
+  // This is an empty list of lists if we construct
+  // nested_tensor([])
+  // which is of nested_dim 1, dim 1 and tensor_dim 0
+  //
+  // This is a list of empty lists if we construct e.g.
+  // nested_tensor([torch.tensor(0), torch.tensor(1), ...])
+  // which is of nested_dim 1, dim 1 and tensor_dim 0
+  //
+  // This is a list of list of numbers if we construct e.g.
+  // nested_tensor([torch.tensor([1]), torch.tensor([2]), ...])
+  // which is of nested_dim 1, dim 2 and tensor_dim 1
+  //
+  // That means, if the list is not empty it is either a list of
+  // lists of numbers or a list of empty lists.
   SizeNode nested_size() const {
-    return _data.nested_size();
+    return map(
+        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+        get_structure());
   }
   SizeNode nested_stride() const {
-    return _data.nested_stride();
+    return map(
+        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
+        get_structure());
   }
   at::Tensor to_tensor();
 
