@@ -6,8 +6,9 @@
 #include <ATen/ATen.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 
-namespace torch {
-namespace nested_tensor {
+namespace at {
+
+using namespace torch::nested_tensor;
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
@@ -47,7 +48,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
+std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
   return construct_size(
       map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           get_structure()));
@@ -88,10 +89,10 @@ TensorNode _unbind_tensors(TensorNode structure) {
 NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     : TensorImpl(
           c10::DispatchKeySet(NestedTensorKey),
-          get_first_leaf(structure).dtype() ? *get_first_leaf(structure)
-                                            : at::ones({}).dtype(),
-          get_first_leaf(structure).device() ? *get_first_leaf(structure)
-                                             : at::ones({}).device()),
+          get_first_leaf(structure)->dtype() ? get_first_leaf(structure)
+                                             : at::ones({}).dtype(),
+          get_first_leaf(structure)->device() ? get_first_leaf(structure)
+                                              : at::ones({}).device()),
       _structure(structure),
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
@@ -115,13 +116,6 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   return TensorNode(_squeeze_nested_dim(structure, dim - 1));
 }
 
-} // namespace nested_tensor
-} // namespace torch
-
-namespace at {
-
-using namespace torch::nested_tensor;
-
 at::Tensor _to_tensor(TensorNode node) {
   // TODO: Recursive stacking is expensive.
   if (node.is_leaf()) {
@@ -140,7 +134,7 @@ at::Tensor _to_tensor(TensorNode node) {
 at::Tensor NestedTensorImpl::to_tensor() {
   // TODO: Not necessarily a view because of stack and reshape.
   std::vector<int64_t> new_size;
-  for (const auto& si : _data.sizes()) {
+  for (const auto& si : opt_sizes()) {
     if (!si) {
       // TODO: This assumes we'll extend to_tensor to also work with int64_t at
       // this level.
@@ -168,7 +162,7 @@ Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
     }
     return at::detail::make_tensor<NestedTensorImpl>(NestedTensorImpl(std::move(unbound)));
   }
-  return at::detail::make_tensor<NestedTensorImpl>(_data);
+  return at::detail::make_tensor<NestedTensorImpl>(_structure);
 }
 
 
@@ -204,7 +198,7 @@ IntArrayRef NestedTensorImpl::sizes() const {
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {
-  std::vector<c10::optional<int64_t>> size = _data.sizes();
+  std::vector<c10::optional<int64_t>> size = opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
@@ -343,7 +337,7 @@ Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> op
       map([&optional_memory_format](Tensor a) {
           return at::clone(a, optional_memory_format);
           }, 
-          self_impl->_data.get_structure()));
+          self_impl->get_structure()));
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
@@ -365,7 +359,7 @@ Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
     // TODO: First dimension is always ignored.
     // We could decide to return a Tensor if the 0th
     // dimension can be squeezed.
-    auto init_sizes = self_impl->_data.sizes();
+    auto init_sizes = self_impl->opt_sizes();
     for (size_t i = 0; i < init_sizes.size() - 1; i++) {
       int64_t index = init_sizes.size() - i - 1;
       c10::optional<int64_t> s = init_sizes[index];
@@ -378,8 +372,8 @@ Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
   int64_t dim = at::maybe_wrap_dim(*dim_, self.dim());
   TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
   TORCH_CHECK(
-      ((get_nested_tensor_impl(self)->_data.sizes()[dim]) &&
-       ((*(get_nested_tensor_impl(self)->_data.sizes()[dim])) == 1)),
+      ((get_nested_tensor_impl(self)->opt_sizes()[dim]) &&
+       ((*(get_nested_tensor_impl(self)->opt_sizes()[dim])) == 1)),
       "Given dimension is either undefined or not a singleton.");
   if (dim < get_nested_tensor_impl(self)->nested_dim()) {
     return wrap_tensor_node(
@@ -392,16 +386,12 @@ Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
 }
 
 Tensor& NestedTensor_squeeze_(Tensor& self) {
-  auto new_tensor = _NestedTensor_squeeze_(self, c10::nullopt);
-  auto self_impl = get_nested_tensor_impl(self);
-  self_impl->_data = get_nested_tensor_impl(new_tensor)->_data;
+  self = _NestedTensor_squeeze_(self, c10::nullopt);
   return self;
 }
 
 Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
-  auto new_tensor = _NestedTensor_squeeze_(self, dim);
-  auto self_impl = get_nested_tensor_impl(self);
-  self_impl->_data = get_nested_tensor_impl(new_tensor)->_data;
+  self = _NestedTensor_squeeze_(self, dim);
   return self;
 }
 

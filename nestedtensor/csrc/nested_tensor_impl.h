@@ -25,14 +25,13 @@ bool is_nested_tensor_impl(const at::Tensor tensor);
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
-at::Tensor wrap_nested_tensor(NestedTensor&& result);
 at::Tensor wrap_tensor_node(TensorNode&& result);
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl::NestedTensorImpl(TensorNode structure);
+  explicit NestedTensorImpl(TensorNode structure);
 
   int64_t dim() const override {
-    return _data.get_first_variable().dim() + nested_dim();
+    return _first_variable.dim() + nested_dim();
   }
   int64_t numel() const override {
     auto fn = [](at::Tensor leaf, int64_t input) {
@@ -51,10 +50,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
   }
   TensorNode& get_structure() {
-    return _data.get_structure();
+    return _structure;
   }
   const TensorNode& get_structure() const {
-    return _data.get_structure();
+    return _structure;
   }
   void backward(Tensor gradient, bool retain_graph, bool create_graph) {
     apply(
@@ -84,13 +83,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
           tensor.set_requires_grad(requires_grad);
         },
         get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(_data);
+    return at::detail::make_tensor<NestedTensorImpl>(_structure);
   }
   bool requires_grad() const {
-    return _data.get_first_variable().requires_grad();
+    return _first_variable.requires_grad();
   }
   bool is_pinned() const {
-    return _data.get_first_variable().is_pinned();
+    return _first_variable.is_pinned();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //
@@ -125,10 +124,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
   at::Tensor to_tensor();
 
-  std::vector<c10::optional<int64_t>> opt_sizes() const {
+  std::vector<c10::optional<int64_t>> opt_sizes() const;
+  IntArrayRef sizes() const override {
     return _sizes;
   }
-  IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
@@ -153,7 +152,7 @@ inline bool is_tensor_shape(const at::Tensor tensor) {
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
 inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
-  auto node = batch_tensor._data.get_structure();
+  auto node = batch_tensor.get_structure();
   out << "NESTED_TENSOR";
   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
   out << std::endl;
