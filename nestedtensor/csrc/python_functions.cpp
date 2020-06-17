@@ -10,7 +10,7 @@ namespace F = torch::nn::functional;
 namespace torch {
 namespace nested_tensor {
 
-NestedTensor cross_entropy(NestedTensorImpl* input,
+NestedTensorImpl cross_entropy(NestedTensorImpl* input,
                            NestedTensorImpl* target,
                            c10::optional<at::Tensor>& weight,
                            c10::optional<bool>& size_average, // TODO: use
@@ -37,10 +37,10 @@ NestedTensor cross_entropy(NestedTensorImpl* input,
       return F::cross_entropy(input_tensor.unsqueeze(0), target_tensor.unsqueeze(0), options).squeeze(0);
   }, input_structure, target_structure);
 
-  return NestedTensor(std::move(res));
+  return NestedTensorImpl(std::move(res));
 }
 
-NestedTensor interpolate(NestedTensorImpl* input,
+NestedTensorImpl interpolate(NestedTensorImpl* input,
                          c10::optional<std::vector<std::vector<int64_t>>> size,
                          c10::optional<at::ArrayRef<double>> scale_factor,
                          c10::optional<std::string> mode,
@@ -76,7 +76,7 @@ NestedTensor interpolate(NestedTensorImpl* input,
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
         input_structure);
-      return NestedTensor(std::move(res));
+      return NestedTensorImpl(std::move(res));
     }
 
     // Get input leaves count
@@ -98,7 +98,7 @@ NestedTensor interpolate(NestedTensorImpl* input,
             return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
           },
           input_structure);
-        return NestedTensor(std::move(res));
+        return NestedTensorImpl(std::move(res));
       } else {
         int size_i = 0;
         TensorNode res = map(
@@ -108,7 +108,7 @@ NestedTensor interpolate(NestedTensorImpl* input,
               return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
             },
             input_structure);
-        return NestedTensor(std::move(res));
+        return NestedTensorImpl(std::move(res));
       }
     }
 
