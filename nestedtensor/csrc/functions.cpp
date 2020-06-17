@@ -68,7 +68,7 @@ Tensor NestedTensor_max_pool2d(
 
     return NestedTensorImpl(
                torch::nested_tensor::NestedTensor(std::move(res)))
-        .to_nested_tensor(nt.nested_dim() - 1);
+        .to_nested_tensor(self_impl->nested_dim() - 1);
   }
 
   return wrap_tensor_node(map(
@@ -128,18 +128,18 @@ Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
 }
 
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
-  auto self_data = get_nested_tensor(self);
+  auto self_data = get_nested_tensor_impl(self);
   TORCH_CHECK(
-      int64_t(size.size()) > self_data.nested_dim(),
+      int64_t(size.size()) > self_data->nested_dim(),
       "Reshape cannot be exclusive to nested dimensions.");
-  for (int64_t i = 0; i < self_data.nested_dim(); i++) {
+  for (int64_t i = 0; i < self_data->nested_dim(); i++) {
     if (size[i] >= 0) {
       throw std::runtime_error(
           "Cannot reshape explicitly along irregular dimension " +
           std::to_string(size[i]) + ". Please use -1 as a placeholder.");
     }
   }
-  int64_t nested_dim = self_data.nested_dim();
+  int64_t nested_dim = self_data->nested_dim();
   std::vector<int64_t> target_shape;
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
@@ -152,14 +152,14 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
 }
 
 Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
-  auto self_data = get_nested_tensor(self);
+  auto self_data = get_nested_tensor_impl(self);
   auto ndims = self.dim();
   dim0 = maybe_wrap_dim(dim0, ndims);
   dim1 = maybe_wrap_dim(dim1, ndims);
   if (dim0 == dim1) {
     return self;
   }
-  int64_t nested_dim = self_data.nested_dim();
+  int64_t nested_dim = self_data->nested_dim();
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
@@ -175,8 +175,8 @@ Tensor NestedTensor_softmax(
     const int64_t dim_,
     c10::optional<ScalarType> dtype) {
   int64_t dim = maybe_wrap_dim(dim_, input.dim());
-  auto input_data = get_nested_tensor(input);
-  int64_t nested_dim = input_data.nested_dim();
+  auto input_data = get_nested_tensor_impl(input);
+  int64_t nested_dim = input_data->nested_dim();
   TORCH_CHECK(
       dim >= nested_dim,
       "Cannot apply softmax across nested dimensions ",
@@ -310,10 +310,10 @@ Tensor NestedTensor_flatten(
     const Tensor& self,
     int64_t start_dim,
     int64_t end_dim) {
-  auto self_data = get_nested_tensor(self);
+  auto self_data = get_nested_tensor_impl(self);
   start_dim = maybe_wrap_dim(start_dim, self.dim());
   end_dim = maybe_wrap_dim(end_dim, self.dim());
-  int64_t nested_dim = self_data.nested_dim();
+  int64_t nested_dim = self_data->nested_dim();
   TORCH_CHECK(
       start_dim >= nested_dim, "Cannot flatten nested dimension ", start_dim);
   TORCH_CHECK(
@@ -323,7 +323,7 @@ Tensor NestedTensor_flatten(
         return at::flatten(
             tensor, start_dim - nested_dim, end_dim - nested_dim);
       },
-      self_data.get_structure()));
+      self_data->get_structure()));
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {

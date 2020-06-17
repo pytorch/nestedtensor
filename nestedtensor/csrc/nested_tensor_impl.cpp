@@ -48,7 +48,9 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
 }
 
 std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
-  return construct_size(_nested_size);
+  return construct_size(
+      map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+          get_structure()));
 }
 
 c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
@@ -69,14 +71,6 @@ SizeNode infer_nested_size(const TensorNode& _structure) {
       _structure);
 }
 
-NestedTensor NestedTensor::contiguous() const {
-  if (is_contiguous()) {
-    return *this;
-  }
-  return NestedTensor(
-      map([](at::Tensor tensor) { return tensor.contiguous(); }, _structure));
-}
-
 TensorNode _unbind_tensors(TensorNode structure) {
   std::vector<TensorNode> result_nodes;
   if (structure.is_leaf()) {
@@ -95,8 +89,7 @@ NestedTensor::NestedTensor(TensorNode&& structure)
     : _structure(structure),
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
-                                     : at::ones({})),
-      _nested_size(infer_nested_size(_structure)) {}
+                                     : at::ones({})) {}
 
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   if (dim == 0) {
@@ -217,7 +210,9 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return wrap_nested_tensor(get_nested_tensor(self).contiguous());
+  return wrap_tensor_node(
+      map([](at::Tensor tensor) { return tensor.contiguous(); },
+          get_nested_tensor_impl(self)->get_structure()));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -255,7 +250,7 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
-  return get_nested_tensor(self).is_pinned();
+  return get_nested_tensor_impl(self)->is_pinned();
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
@@ -340,15 +335,15 @@ Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> op
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
-  auto self_data = get_nested_tensor(self);
-  auto src_data = get_nested_tensor(src);
+  auto self_data = get_nested_tensor_impl(self);
+  auto src_data = get_nested_tensor_impl(src);
   TORCH_CHECK(
-      shape_matches(self_data.nested_size(), src_data.nested_size()),
+      shape_matches(self_data->nested_size(), src_data->nested_size()),
       "self and source don't match in shape");
   apply(
       [](at::Tensor& self, at::Tensor& source) { return self.copy_(source); },
-      self_data.get_structure(),
-      src_data.get_structure());
+      self_data->get_structure(),
+      src_data->get_structure());
   return self;
 }
 
