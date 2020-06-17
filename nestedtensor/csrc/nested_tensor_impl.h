@@ -83,7 +83,6 @@ struct NestedTensor {
     return _structure.degree();
   }
   at::Tensor to_tensor();
-  NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
   at::ScalarType scalar_type() const {
     return _first_variable.scalar_type();
   }
@@ -199,6 +198,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   int64_t nested_dim() const {
     return get_structure().height();
   }
+  Tensor to_nested_tensor(c10::optional<int64_t> dim);
 
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;

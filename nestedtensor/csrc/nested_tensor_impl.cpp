@@ -121,24 +121,6 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
-  int64_t dim_ = 0;
-  if (dim__) {
-    dim_ = *dim__;
-  }
-  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
-  // if dim < nested_dim() the NestedTensor is already nested
-  // up to the given dimension.
-  if (dim >= nested_dim()) {
-    TensorNode unbound = _unbind_tensors(_structure);
-    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
-      unbound = _unbind_tensors(unbound);
-    }
-    return NestedTensor(std::move(unbound));
-  }
-  return *this;
-}
-
 NestedTensor::NestedTensor(TensorNode&& structure)
     : _structure(structure),
       _first_variable(
@@ -194,6 +176,25 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
 namespace at {
 
 using namespace torch::nested_tensor;
+
+Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
+  int64_t dim_ = 0;
+  if (dim__) {
+    dim_ = *dim__;
+  }
+  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
+  // if dim < nested_dim() the NestedTensor is already nested
+  // up to the given dimension.
+  if (dim >= nested_dim()) {
+    TensorNode unbound = _unbind_tensors(get_structure());
+    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
+      unbound = _unbind_tensors(unbound);
+    }
+    return at::detail::make_tensor<NestedTensorImpl>(NestedTensorImpl(std::move(unbound)));
+  }
+  return at::detail::make_tensor<NestedTensorImpl>(std::move(_data));
+}
+
 
 bool is_nested_tensor_impl(const at::Tensor tensor) {
   return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);

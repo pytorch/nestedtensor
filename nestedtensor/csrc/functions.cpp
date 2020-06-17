@@ -66,9 +66,9 @@ Tensor NestedTensor_max_pool2d(
     auto res = at::max_pool2d(
         at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
 
-    return at::detail::make_tensor<NestedTensorImpl>(
-        torch::nested_tensor::NestedTensor(std::move(res))
-            .to_nested_tensor(nt.nested_dim() - 1));
+    return NestedTensorImpl(
+               torch::nested_tensor::NestedTensor(TensorNode(std::move(res))))
+        .to_nested_tensor(nt.nested_dim() - 1);
   }
 
   return wrap_tensor_node(map(
