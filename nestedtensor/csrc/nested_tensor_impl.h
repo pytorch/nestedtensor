@@ -84,9 +84,6 @@ struct NestedTensor {
   }
   at::Tensor to_tensor();
   NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
-  int64_t nested_dim() const {
-    return _structure.height();
-  }
   at::ScalarType scalar_type() const {
     return _first_variable.scalar_type();
   }
@@ -104,6 +101,9 @@ struct NestedTensor {
   }
   bool requires_grad() const {
     return _first_variable.requires_grad();
+  }
+  int64_t nested_dim() const {
+    return _structure.height();
   }
   int64_t dim() const {
     return _first_variable.dim() + nested_dim();
@@ -195,6 +195,9 @@ struct NestedTensorImpl : public c10::TensorImpl {
             -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
         get_structure(),
         get_nested_tensor_impl(gradient)->get_structure());
+  }
+  int64_t nested_dim() const {
+    return get_structure().height();
   }
 
   IntArrayRef sizes() const override;

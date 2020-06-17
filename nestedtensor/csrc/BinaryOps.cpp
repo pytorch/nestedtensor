@@ -26,8 +26,6 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(other)) {
-    auto self_data = get_nested_tensor(self);
-    auto other_data = get_nested_tensor(other);
     return wrap_tensor_node(
         map([](Tensor tensor, Tensor other) { return func(tensor, other); },
             get_nested_tensor_structure(self),

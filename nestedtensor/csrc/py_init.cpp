@@ -54,7 +54,7 @@ static auto registry =
         return is_nested_tensor_impl(tensor);
       })
       .op("nestedtensor::nested_dim", [](Tensor tensor) {
-        return get_nested_tensor(tensor).nested_dim();
+        return get_nested_tensor_impl(tensor)->nested_dim();
       })
       .op("nestedtensor::to_nested_tensor",
               [](Tensor tensor, c10::optional<int64_t> dim) {
