@@ -153,7 +153,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
 
 Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   auto self_data = get_nested_tensor(self);
-  auto ndims = self_data.dim();
+  auto ndims = self.dim();
   dim0 = maybe_wrap_dim(dim0, ndims);
   dim1 = maybe_wrap_dim(dim1, ndims);
   if (dim0 == dim1) {
@@ -200,9 +200,9 @@ Tensor NestedTensor_layer_norm(
       "Currently only singleton tuples of integers supported for layer_norm.");
   auto input_data = get_nested_tensor(input);
   TORCH_CHECK(
-      input_data.sizes()[input_data.dim() - 1],
+      input_data.sizes()[input.dim() - 1],
       "Cannot normalize across irregular dimension ",
-      std::to_string(input_data.dim() - 1));
+      std::to_string(input.dim() - 1));
   return wrap_tensor_node(map(
       [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
@@ -226,7 +226,7 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
 
 Tensor NestedTensor_all(const Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self)->_data;
-  if (self_impl.numel() == 0) {
+  if (self.numel() == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
     Tensor result = at::empty({0}, at::kBool); //, self.options());
@@ -246,7 +246,7 @@ Tensor NestedTensor_all(const Tensor& self) {
 
 Tensor NestedTensor_any(const Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self)->_data;
-  if (self_impl.numel() == 0) {
+  if (self.numel() == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
     Tensor result = at::empty({0}, at::kBool); //, self.options());
@@ -311,8 +311,8 @@ Tensor NestedTensor_flatten(
     int64_t start_dim,
     int64_t end_dim) {
   auto self_data = get_nested_tensor(self);
-  start_dim = maybe_wrap_dim(start_dim, self_data.dim());
-  end_dim = maybe_wrap_dim(end_dim, self_data.dim());
+  start_dim = maybe_wrap_dim(start_dim, self.dim());
+  end_dim = maybe_wrap_dim(end_dim, self.dim());
   int64_t nested_dim = self_data.nested_dim();
   TORCH_CHECK(
       start_dim >= nested_dim, "Cannot flatten nested dimension ", start_dim);

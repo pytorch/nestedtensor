@@ -15,12 +15,6 @@ struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
   std::vector<c10::optional<int64_t>> sizes() const;
-  caffe2::TypeMeta dtype() const {
-    return _first_variable.dtype();
-  }
-  int64_t element_size() const {
-    return _first_variable.element_size();
-  }
   // This is a C++ representation of a nested list of torch.Sizes
   //
   // It can never be a list of just numbers, because torch.Size
@@ -63,7 +57,6 @@ struct NestedTensor {
   int64_t __len__() const {
     return _structure.degree();
   }
-  at::Tensor to_tensor();
   at::ScalarType scalar_type() const {
     return _first_variable.scalar_type();
   }
@@ -85,15 +78,6 @@ struct NestedTensor {
   int64_t nested_dim() const {
     return _structure.height();
   }
-  int64_t dim() const {
-    return _first_variable.dim() + nested_dim();
-  }
-  int64_t numel() const {
-    auto fn = [](at::Tensor leaf, int64_t input) {
-      return input + leaf.numel();
-    };
-    return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
-  }
   bool is_pinned() const {
     return _first_variable.is_pinned();
   }
@@ -113,9 +97,9 @@ struct NestedTensor {
   const TensorNode& get_structure() const {
     return _structure;
   }
-
-// torch.Tensor methods
-  NestedTensor squeeze_(c10::optional<int64_t> dim);
+  const at::Tensor get_first_variable() const {
+    return _first_variable;
+  }
 
  private:
   TensorNode _structure;
@@ -146,8 +130,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(torch::nested_tensor::NestedTensor data)
       : TensorImpl(
             c10::DispatchKeySet(NestedTensorKey),
-            data.dtype(),
-            data.device()),
+            data.get_first_variable().dtype(),
+            data.get_first_variable().device()),
         _data(data) {
             for (auto opt_int : _data.sizes()) {
               if (opt_int) {
@@ -157,10 +141,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
         }
 
   int64_t dim() const override {
-    return _data.dim();
+    return _data.get_first_variable().dim() + nested_dim();
   }
   int64_t numel() const override {
-    return _data.numel();
+    auto fn = [](at::Tensor leaf, int64_t input) {
+      return input + leaf.numel();
+    };
+    return reduce<decltype(fn), int64_t, at::Tensor>(get_structure(), fn, 0);
   }
   bool is_contiguous(
       at::MemoryFormat memory_format) const override {
@@ -211,6 +198,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   SizeNode nested_stride() const {
     return _data.nested_stride();
   }
+  at::Tensor to_tensor();
 
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
