@@ -67,7 +67,7 @@ Tensor NestedTensor_max_pool2d(
         at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
 
     return NestedTensorImpl(
-               torch::nested_tensor::NestedTensor(TensorNode(std::move(res))))
+               torch::nested_tensor::NestedTensor(std::move(res)))
         .to_nested_tensor(nt.nested_dim() - 1);
   }
 
