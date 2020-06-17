@@ -40,12 +40,6 @@ struct NestedTensor {
   at::TensorOptions options() const {
     return _first_variable.options();
   }
-  bool requires_grad() const {
-    return _first_variable.requires_grad();
-  }
-  bool is_pinned() const {
-    return _first_variable.is_pinned();
-  }
   TensorNode& get_structure() {
     return _structure;
   }
@@ -150,7 +144,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return at::detail::make_tensor<NestedTensorImpl>(_data);
   }
   bool requires_grad() const {
-    return _data.requires_grad();
+    return _data.get_first_variable().requires_grad();
+  }
+  bool is_pinned() const {
+    return _data.get_first_variable().is_pinned();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //

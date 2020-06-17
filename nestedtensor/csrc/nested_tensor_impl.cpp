@@ -250,7 +250,7 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
-  return get_nested_tensor(self).is_pinned();
+  return get_nested_tensor_impl(self)->is_pinned();
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
