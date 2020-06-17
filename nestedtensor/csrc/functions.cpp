@@ -198,16 +198,16 @@ Tensor NestedTensor_layer_norm(
   TORCH_CHECK(
       normalized_shape.size() == 1,
       "Currently only singleton tuples of integers supported for layer_norm.");
-  auto input_data = get_nested_tensor(input);
+  auto input_data = get_nested_tensor_impl(input);
   TORCH_CHECK(
-      input_data.sizes()[input.dim() - 1],
+      input_data->opt_sizes()[input.dim() - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(input.dim() - 1));
   return wrap_tensor_node(map(
       [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
-      input_data.get_structure()));
+      input_data->get_structure()));
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {

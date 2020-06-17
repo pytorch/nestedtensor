@@ -177,7 +177,7 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   if (THPVariable_Check(py_obj.ptr())) {
     at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
     if (is_nested_tensor_impl(tensor)) {
-      auto tensor_data_structure = get_nested_tensor(tensor).get_structure();
+      auto tensor_data_structure = get_nested_tensor_impl(tensor)->get_structure();
       return map([](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
     }
   }

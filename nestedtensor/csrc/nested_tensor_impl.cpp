@@ -85,11 +85,28 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensor::NestedTensor(TensorNode&& structure)
-    : _structure(structure),
+NestedTensorImpl::NestedTensorImpl(TensorNode structure)
+    : TensorImpl(
+          c10::DispatchKeySet(NestedTensorKey),
+          get_first_leaf(structure).dtype() ? *get_first_leaf(structure)
+                                            : at::ones({}).dtype(),
+          get_first_leaf(structure).device() ? *get_first_leaf(structure)
+                                             : at::ones({}).device()),
+      _structure(structure),
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
-                                     : at::ones({})) {}
+                                     : at::ones({})),
+      _nested_size(map(
+          [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+          _structure)) {
+  for (auto opt_int : construct_size(_nested_size)) {
+    if (opt_int) {
+      _sizes.push_back(*opt_int);
+    } else {
+      break;
+    }
+  }
+}
 
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   if (dim == 0) {
@@ -166,11 +183,6 @@ at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
 }
 
-torch::nested_tensor::NestedTensor get_nested_tensor(
-    const at::Tensor tensor) {
-  return get_nested_tensor_impl(tensor)->_data;
-}
-
 torch::nested_tensor::TensorNode get_nested_tensor_structure(
     const at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
@@ -238,7 +250,7 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   for (Tensor child : unbound) {
     auto ci = NestedTensor_to_tensor(child, dim - 1);
     if (is_nested_tensor_impl(ci)) {
-      auto s = get_nested_tensor(ci).get_structure();
+      auto s = get_nested_tensor_impl(ci)->get_structure();
       result.push_back(TensorNode(std::move(s)));
     } else {
       // TODO: If it's a NestedTensor instance get the structure
@@ -319,7 +331,7 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   if (dim == 0) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
-  TensorNode tn = get_nested_tensor(self).get_structure().unbind()[index];
+  TensorNode tn = get_nested_tensor_impl(self)->get_structure().unbind()[index];
   torch::nested_tensor::NestedTensor nt = torch::nested_tensor::NestedTensor(
       std::move(tn));
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));

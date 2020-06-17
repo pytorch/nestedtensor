@@ -10,26 +10,6 @@ using IValueNode = NestedNode<c10::IValue>;
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 
-// TODO: Eventually allow construction from a list of _BufferNestedTensors.
-struct NestedTensor {
-  NestedTensor() = delete;
-  NestedTensor(TensorNode&& structure);
-  std::vector<c10::optional<int64_t>> sizes() const;
-  TensorNode& get_structure() {
-    return _structure;
-  }
-  const TensorNode& get_structure() const {
-    return _structure;
-  }
-  const at::Tensor get_first_variable() const {
-    return _first_variable;
-  }
-
- private:
-  TensorNode _structure;
-  at::Tensor _first_variable;
-};
-
 } // namespace nested_tensor
 } // namespace torch
 
@@ -43,25 +23,13 @@ struct NestedTensorImpl;
 
 bool is_nested_tensor_impl(const at::Tensor tensor);
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
-torch::nested_tensor::NestedTensor get_nested_tensor(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
 at::Tensor wrap_nested_tensor(NestedTensor&& result);
 at::Tensor wrap_tensor_node(TensorNode&& result);
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor data)
-      : TensorImpl(
-            c10::DispatchKeySet(NestedTensorKey),
-            data.get_first_variable().dtype(),
-            data.get_first_variable().device()),
-        _data(data) {
-            for (auto opt_int : _data.sizes()) {
-              if (opt_int) {
-                _sizes.push_back(*opt_int);
-              }
-            }
-        }
+  explicit NestedTensorImpl::NestedTensorImpl(TensorNode structure);
 
   int64_t dim() const override {
     return _data.get_first_variable().dim() + nested_dim();
@@ -157,18 +125,24 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
   at::Tensor to_tensor();
 
+  std::vector<c10::optional<int64_t>> opt_sizes() const {
+    return _sizes;
+  }
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
-  torch::nested_tensor::NestedTensor _data;
+ private:
+  TensorNode _structure;
+  at::Tensor _first_variable;
+  SizeNode _nested_size;
   std::vector<int64_t> _sizes;
 };
 
 
 inline bool is_tensor_shape(const at::Tensor tensor) {
-  auto nt = get_nested_tensor(tensor);
-  for (const auto& size : nt.sizes()) {
+  auto nt = get_nested_tensor_impl(tensor);
+  for (const auto& size : nt->opt_sizes()) {
     if (!size) {
       return false;
     }
