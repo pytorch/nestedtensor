@@ -82,18 +82,19 @@ static auto registry =
               nt->backward(gradient, retain_graph, create_graph);
             })
         .op("nestedtensor::sizes",
-            [](Tensor tensor) { return get_nested_tensor(tensor).sizes(); })
+            [](Tensor tensor) {
+              return get_nested_tensor_impl(tensor)->sizes();
+            })
         .op("nestedtensor::len",
             [](Tensor self) {
-              return (int64_t)(
-                  get_nested_tensor(self).get_structure().degree());
+              return (int64_t)(get_nested_tensor_structure(self).degree());
             })
         .op("nestedtensor::to_tensor",
             [](Tensor tensor, c10::optional<int64_t> dim) {
               return NestedTensor_to_tensor(tensor, dim);
             })
         .op("nestedtensor::str", [](Tensor tensor) {
-          auto node = get_nested_tensor(tensor).get_structure();
+          auto node = get_nested_tensor_structure(tensor);
           return NestedNode___str__(
               node,
               "nested_tensor",
@@ -145,7 +146,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 #endif
 
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor(self);
+    auto nt = get_nested_tensor_impl(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map(
@@ -154,25 +155,25 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 return py::reinterpret_steal<py::object>(
                     THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
               },
-              nt.nested_size()),
+              nt->nested_size()),
           "NestedSize"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
-    SizeNode size_node = nt.nested_size();
+    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
+    SizeNode size_node = nt->nested_size();
     return _nested_helper(index, std::move(size_node));
   });
 
   m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor(self);
+    auto nt = get_nested_tensor_impl(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map([](c10::List<int64_t> e)
                   -> py::object { return py::tuple(py::cast(e.vec())); },
-              nt.nested_stride()),
+              nt->nested_stride()),
           "NestedStride"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
-    SizeNode size_node = nt.nested_stride();
+    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
+    SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
   });
 

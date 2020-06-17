@@ -205,6 +205,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
   bool requires_grad() const {
     return _data.requires_grad();
   }
+  SizeNode nested_size() const {
+    return _data.nested_size();
+  }
+  SizeNode nested_stride() const {
+    return _data.nested_stride();
+  }
 
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
