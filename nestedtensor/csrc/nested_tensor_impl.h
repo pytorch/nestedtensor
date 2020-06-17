@@ -15,16 +15,6 @@ struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(TensorNode&& structure);
   std::vector<c10::optional<int64_t>> sizes() const;
-  NestedTensor pin_memory() {
-    // NOTE: The assumption here is that pin_memory will materialize
-    // the views that _structure contains when NestedTensor is contiguous.
-    return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
-  }
-  NestedTensor detach() {
-    return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
-  }
   TensorNode& get_structure() {
     return _structure;
   }
