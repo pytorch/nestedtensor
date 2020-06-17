@@ -75,9 +75,6 @@ struct NestedTensor {
   bool requires_grad() const {
     return _first_variable.requires_grad();
   }
-  int64_t nested_dim() const {
-    return _structure.height();
-  }
   bool is_pinned() const {
     return _first_variable.is_pinned();
   }
