@@ -385,11 +385,17 @@ Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
 }
 
 Tensor& NestedTensor_squeeze_(Tensor& self) {
-  return self.copy_(_NestedTensor_squeeze_(self, c10::nullopt));
+  auto new_tensor = _NestedTensor_squeeze_(self, c10::nullopt);
+  auto self_impl = get_nested_tensor_impl(self);
+  self_impl->_data = get_nested_tensor_impl(new_tensor)->_data;
+  return self;
 }
 
 Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
-  return self.copy_(_NestedTensor_squeeze_(self, dim));
+  auto new_tensor = _NestedTensor_squeeze_(self, dim);
+  auto self_impl = get_nested_tensor_impl(self);
+  self_impl->_data = get_nested_tensor_impl(new_tensor)->_data;
+  return self;
 }
 
 Tensor NestedTensor_squeeze(const Tensor& self) {
