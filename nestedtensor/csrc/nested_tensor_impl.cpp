@@ -77,36 +77,6 @@ NestedTensor NestedTensor::contiguous() const {
       map([](at::Tensor tensor) { return tensor.contiguous(); }, _structure));
 }
 
-at::Tensor _to_tensor(TensorNode node) {
-  // TODO: Recursive stacking is expensive.
-  if (node.is_leaf()) {
-    return node.payload();
-  }
-  if (node.degree() == 0) {
-    return at::empty({0});
-  }
-  std::vector<at::Tensor> flat;
-  for (auto child : node.unbind()) {
-    flat.push_back(_to_tensor(child));
-  }
-  return stack(flat);
-}
-
-at::Tensor NestedTensor::to_tensor() {
-  // TODO: Not necessarily a view because of stack and reshape.
-  std::vector<int64_t> new_size;
-  for (const auto& si : sizes()) {
-    if (!si) {
-      // TODO: This assumes we'll extend to_tensor to also work with int64_t at
-      // this level.
-      throw std::out_of_range(
-          "to_tensor()/to_tensor(0) only works if there is no None in size().");
-    }
-    new_size.push_back(*si);
-  }
-  return _to_tensor(_structure);
-}
-
 TensorNode _unbind_tensors(TensorNode structure) {
   std::vector<TensorNode> result_nodes;
   if (structure.is_leaf()) {
@@ -135,47 +105,43 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   return TensorNode(_squeeze_nested_dim(structure, dim - 1));
 }
 
-NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
-  if (!dim_) {
-    // TODO: First dimension is always ignored.
-    // We could decide to return a Tensor if the 0th
-    // dimension can be squeezed.
-    auto init_sizes = sizes();
-    for (size_t i = 0; i < init_sizes.size() - 1; i++) {
-      int64_t index = init_sizes.size() - i - 1;
-      c10::optional<int64_t> s = init_sizes[index];
-      if (s && ((*s) == 1)) {
-        this->squeeze_(index);
-      }
-    }
-    return *this;
-  }
-  int64_t dim = at::maybe_wrap_dim(*dim_, this->dim());
-  TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
-  TORCH_CHECK(
-      ((sizes()[dim]) && ((*(sizes()[dim])) == 1)),
-      "Given dimension is either undefined or not a singleton.");
-  if (dim < this->nested_dim()) {
-    _structure = _squeeze_nested_dim(_structure, dim);
-  } else {
-    int64_t height = _structure.height();
-    _structure =
-        map([dim, height](
-                at::Tensor tensor) { return tensor.squeeze(dim - height); },
-            _structure);
-  }
-  _first_variable =
-      get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
-  _nested_size = infer_nested_size(_structure);
-  return *this;
-}
-
 } // namespace nested_tensor
 } // namespace torch
 
 namespace at {
 
 using namespace torch::nested_tensor;
+
+at::Tensor _to_tensor(TensorNode node) {
+  // TODO: Recursive stacking is expensive.
+  if (node.is_leaf()) {
+    return node.payload();
+  }
+  if (node.degree() == 0) {
+    return at::empty({0});
+  }
+  std::vector<at::Tensor> flat;
+  for (auto child : node.unbind()) {
+    flat.push_back(_to_tensor(child));
+  }
+  return stack(flat);
+}
+
+at::Tensor NestedTensorImpl::to_tensor() {
+  // TODO: Not necessarily a view because of stack and reshape.
+  std::vector<int64_t> new_size;
+  for (const auto& si : _data.sizes()) {
+    if (!si) {
+      // TODO: This assumes we'll extend to_tensor to also work with int64_t at
+      // this level.
+      throw std::out_of_range(
+          "to_tensor()/to_tensor(0) only works if there is no None in size().");
+    }
+    new_size.push_back(*si);
+  }
+  return _to_tensor(get_structure());
+}
+
 
 Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
   int64_t dim_ = 0;
@@ -255,17 +221,17 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
-  auto impl_data = get_nested_tensor_impl(tensor)->_data;
+  auto impl_data = get_nested_tensor_impl(tensor);
   if (!dim_) {
-    return impl_data.to_tensor();
+    return impl_data->to_tensor();
   }
-  int64_t dim = maybe_wrap_dim((*dim_), impl_data.dim());
+  int64_t dim = maybe_wrap_dim((*dim_), impl_data->dim());
   if (dim == 0) {
-    return impl_data.to_tensor();
+    return impl_data->to_tensor();
   }
   // If dim is bigger than nested_dim the NestedTensor is already
   // of Tensor for dimensions bigger than the given.
-  if (impl_data.nested_dim() == 1) {
+  if (impl_data->nested_dim() == 1) {
     return tensor;
   }
   // At this point nested_dim is at least 2. That means any unbind
@@ -293,10 +259,10 @@ bool NestedTensor_is_pinned(const Tensor& self) {
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
-  auto _data = get_nested_tensor(self);
-  dim = at::maybe_wrap_dim(dim, _data.dim());
-  auto node = _data.get_structure();
-  auto nested_dim = _data.nested_dim();
+  auto _data = get_nested_tensor_impl(self);
+  dim = at::maybe_wrap_dim(dim, _data->dim());
+  auto node = _data->get_structure();
+  auto nested_dim = _data->nested_dim();
   if (nested_dim == 1) {
     if (dim == 0) {
       std::vector<at::Tensor> result;
@@ -386,26 +352,60 @@ Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
   return self;
 }
 
-Tensor& NestedTensor_squeeze_(Tensor& self) {
+Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
   auto self_impl = get_nested_tensor_impl(self);
-  self_impl->_data.squeeze_(c10::nullopt);
+  if (!dim_) {
+    // TODO: First dimension is always ignored.
+    // We could decide to return a Tensor if the 0th
+    // dimension can be squeezed.
+    auto init_sizes = self_impl->_data.sizes();
+    for (size_t i = 0; i < init_sizes.size() - 1; i++) {
+      int64_t index = init_sizes.size() - i - 1;
+      c10::optional<int64_t> s = init_sizes[index];
+      if (s && ((*s) == 1)) {
+        self = _NestedTensor_squeeze_(self, index);
+      }
+    }
+    return self;
+  }
+  int64_t dim = at::maybe_wrap_dim(*dim_, self.dim());
+  TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
+  TORCH_CHECK(
+      ((get_nested_tensor_impl(self)->_data.sizes()[dim]) &&
+       ((*(get_nested_tensor_impl(self)->_data.sizes()[dim])) == 1)),
+      "Given dimension is either undefined or not a singleton.");
+  if (dim < get_nested_tensor_impl(self)->nested_dim()) {
+    return wrap_tensor_node(
+        _squeeze_nested_dim(self_impl->get_structure(), dim));
+  }
+  int64_t height = self_impl->get_structure().height();
+  return wrap_tensor_node(map(
+      [dim, height](at::Tensor tensor) { return tensor.squeeze(dim - height); },
+      self_impl->get_structure()));
+}
+
+Tensor& NestedTensor_squeeze_(Tensor& self) {
+  auto new_tensor = _NestedTensor_squeeze_(self, c10::nullopt);
+  auto self_impl = get_nested_tensor_impl(self);
+  self_impl->_data = get_nested_tensor_impl(new_tensor)->_data;
   return self;
 }
 
 Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
+  auto new_tensor = _NestedTensor_squeeze_(self, dim);
   auto self_impl = get_nested_tensor_impl(self);
-  self_impl->_data.squeeze_(dim);
+  self_impl->_data = get_nested_tensor_impl(new_tensor)->_data;
   return self;
 }
 
 Tensor NestedTensor_squeeze(const Tensor& self) {
   auto new_tensor = NestedTensor_clone(self, c10::nullopt);
-  return NestedTensor_squeeze_(new_tensor);
+  return _NestedTensor_squeeze_(new_tensor, c10::nullopt);
 }
 
 Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
   auto new_tensor = NestedTensor_clone(self, c10::nullopt);
-  return NestedTensor_squeeze__dim(new_tensor, dim);
+  return _NestedTensor_squeeze_(new_tensor, dim);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
