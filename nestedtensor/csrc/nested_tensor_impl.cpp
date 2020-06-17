@@ -192,7 +192,7 @@ Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
     }
     return at::detail::make_tensor<NestedTensorImpl>(NestedTensorImpl(std::move(unbound)));
   }
-  return at::detail::make_tensor<NestedTensorImpl>(std::move(_data));
+  return at::detail::make_tensor<NestedTensorImpl>(_data);
 }
 
 

@@ -159,12 +159,12 @@ torch::nested_tensor::NestedTensor get_nested_tensor(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
+  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor data)
       : TensorImpl(
             c10::DispatchKeySet(NestedTensorKey),
             data.dtype(),
             data.device()),
-        _data(std::move(data)) {
+        _data(data) {
             for (auto opt_int : _data.sizes()) {
               if (opt_int) {
                 _sizes.push_back(*opt_int);
