@@ -79,13 +79,6 @@ struct NestedTensor {
         _structure);
     return *this;
   }
-  void backward(NestedTensor gradient, bool retain_graph, bool create_graph) {
-    apply(
-        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
-            -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
-        _structure,
-        gradient.get_structure());
-  }
   int64_t __len__() const {
     return _structure.degree();
   }
@@ -155,7 +148,16 @@ struct NestedTensor {
 
 namespace at {
 
+using namespace torch::nested_tensor;
+
 constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
+
+struct NestedTensorImpl;
+
+bool is_nested_tensor_impl(const at::Tensor tensor);
+at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
+torch::nested_tensor::NestedTensor get_nested_tensor(const at::Tensor tensor);
+torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
@@ -181,6 +183,19 @@ struct NestedTensorImpl : public c10::TensorImpl {
       at::MemoryFormat memory_format) const override {
     return _data.is_contiguous();
   }
+  TensorNode& get_structure() {
+    return _data.get_structure();
+  }
+  const TensorNode& get_structure() const {
+    return _data.get_structure();
+  }
+  void backward(Tensor gradient, bool retain_graph, bool create_graph) {
+    apply(
+        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
+            -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
+        get_structure(),
+        get_nested_tensor_impl(gradient)->get_structure());
+  }
 
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
@@ -190,26 +205,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
   std::vector<int64_t> _sizes;
 };
 
-inline bool is_nested_tensor_impl(const at::Tensor tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
-}
-
-inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
-  if (!is_nested_tensor_impl(tensor)) {
-    throw std::runtime_error("Function requires NestedTensorImpl");
-  }
-  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
-}
-
-inline torch::nested_tensor::NestedTensor get_nested_tensor(
-    const at::Tensor tensor) {
-  return get_nested_tensor_impl(tensor)->_data;
-}
-
-inline torch::nested_tensor::TensorNode get_nested_tensor_structure(
-    const at::Tensor tensor) {
-  return get_nested_tensor(tensor).get_structure();
-}
 
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor(tensor);

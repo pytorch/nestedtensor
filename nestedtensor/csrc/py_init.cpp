@@ -81,8 +81,8 @@ static auto registry =
              Tensor gradient,
              bool retain_graph,
              bool create_graph) {
-            auto nt = get_nested_tensor(tensor);
-            nt.backward(get_nested_tensor(gradient), retain_graph, create_graph);
+            auto nt = get_nested_tensor_impl(tensor);
+            nt->backward(gradient, retain_graph, create_graph);
           })
       .op("nestedtensor::sizes", [](Tensor tensor) {
         return get_nested_tensor(tensor).sizes();

@@ -195,6 +195,27 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
+bool is_nested_tensor_impl(const at::Tensor tensor) {
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+}
+
+at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
+  if (!is_nested_tensor_impl(tensor)) {
+    throw std::runtime_error("Function requires NestedTensorImpl");
+  }
+  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
+}
+
+torch::nested_tensor::NestedTensor get_nested_tensor(
+    const at::Tensor tensor) {
+  return get_nested_tensor_impl(tensor)->_data;
+}
+
+torch::nested_tensor::TensorNode get_nested_tensor_structure(
+    const at::Tensor tensor) {
+  return get_nested_tensor_impl(tensor)->get_structure();
+}
+
 IntArrayRef NestedTensorImpl::sizes() const {
   return IntArrayRef(_sizes);
 }
