@@ -54,7 +54,6 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef dilation,
     bool ceil_mode) {
   auto self_impl = get_nested_tensor_impl(self);
-  auto nt = self_impl->_data;
   auto tensor_node = get_nested_tensor_structure(self);
 
   if (is_tensor_shape(self)) {
@@ -66,8 +65,7 @@ Tensor NestedTensor_max_pool2d(
     auto res = at::max_pool2d(
         at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
 
-    return NestedTensorImpl(
-               torch::nested_tensor::NestedTensor(std::move(res)))
+    return NestedTensorImpl(std::move(res))
         .to_nested_tensor(self_impl->nested_dim() - 1);
   }
 
@@ -198,16 +196,16 @@ Tensor NestedTensor_layer_norm(
   TORCH_CHECK(
       normalized_shape.size() == 1,
       "Currently only singleton tuples of integers supported for layer_norm.");
-  auto input_data = get_nested_tensor(input);
+  auto input_data = get_nested_tensor_impl(input);
   TORCH_CHECK(
-      input_data.sizes()[input.dim() - 1],
+      input_data->opt_sizes()[input.dim() - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(input.dim() - 1));
   return wrap_tensor_node(map(
       [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
-      input_data.get_structure()));
+      input_data->get_structure()));
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
@@ -225,7 +223,7 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
 }
 
 Tensor NestedTensor_all(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self)->_data;
+  auto self_impl = get_nested_tensor_impl(self);
   if (self.numel() == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
@@ -235,7 +233,7 @@ Tensor NestedTensor_all(const Tensor& self) {
   }
   auto map_all = flatten(
       map([](at::Tensor tensor) { return tensor.all(); },
-          self_impl.get_structure()));
+          self_impl->get_structure()));
   at::Tensor gathered = at::empty(
       {static_cast<int64_t>(map_all.size())}, at::kBool); //, self.options());
   for (size_t i = 0; i < map_all.size(); i++) {
@@ -245,7 +243,7 @@ Tensor NestedTensor_all(const Tensor& self) {
 }
 
 Tensor NestedTensor_any(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self)->_data;
+  auto self_impl = get_nested_tensor_impl(self);
   if (self.numel() == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
@@ -255,7 +253,7 @@ Tensor NestedTensor_any(const Tensor& self) {
   }
   auto map_any = flatten(
       map([](at::Tensor tensor) { return tensor.any(); },
-          self_impl.get_structure()));
+          self_impl->get_structure()));
   at::Tensor gathered = at::empty(
       {static_cast<int64_t>(map_any.size())}, at::kBool); //, self.options());
   for (size_t i = 0; i < map_any.size(); i++) {
@@ -271,7 +269,7 @@ Tensor NestedTensor__log_softmax(
   auto self_impl = get_nested_tensor_impl(input_);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); },
-          self_impl->_data.get_structure()));
+          self_impl->get_structure()));
 }
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {

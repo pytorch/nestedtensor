@@ -177,7 +177,7 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   if (THPVariable_Check(py_obj.ptr())) {
     at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
     if (is_nested_tensor_impl(tensor)) {
-      auto tensor_data_structure = get_nested_tensor(tensor).get_structure();
+      auto tensor_data_structure = get_nested_tensor_impl(tensor)->get_structure();
       return map([](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
     }
   }
@@ -193,7 +193,7 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   }
 }
 
-NestedTensor _as_nested_tensor(py::sequence list) {
+NestedTensorImpl _as_nested_tensor(py::sequence list) {
   NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
   bool all_same =
@@ -208,7 +208,7 @@ NestedTensor _as_nested_tensor(py::sequence list) {
       _verify_variables(*first, structure, true);
     }
   }
-  return NestedTensor(std::move(structure));
+  return NestedTensorImpl(std::move(structure));
 }
 
 at::Tensor nested_tensor_impl(py::sequence list) {

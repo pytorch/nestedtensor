@@ -10,26 +10,6 @@ using IValueNode = NestedNode<c10::IValue>;
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 
-// TODO: Eventually allow construction from a list of _BufferNestedTensors.
-struct NestedTensor {
-  NestedTensor() = delete;
-  NestedTensor(TensorNode&& structure);
-  std::vector<c10::optional<int64_t>> sizes() const;
-  TensorNode& get_structure() {
-    return _structure;
-  }
-  const TensorNode& get_structure() const {
-    return _structure;
-  }
-  const at::Tensor get_first_variable() const {
-    return _first_variable;
-  }
-
- private:
-  TensorNode _structure;
-  at::Tensor _first_variable;
-};
-
 } // namespace nested_tensor
 } // namespace torch
 
@@ -43,28 +23,15 @@ struct NestedTensorImpl;
 
 bool is_nested_tensor_impl(const at::Tensor tensor);
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
-torch::nested_tensor::NestedTensor get_nested_tensor(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
-at::Tensor wrap_nested_tensor(NestedTensor&& result);
 at::Tensor wrap_tensor_node(TensorNode&& result);
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor data)
-      : TensorImpl(
-            c10::DispatchKeySet(NestedTensorKey),
-            data.get_first_variable().dtype(),
-            data.get_first_variable().device()),
-        _data(data) {
-            for (auto opt_int : _data.sizes()) {
-              if (opt_int) {
-                _sizes.push_back(*opt_int);
-              }
-            }
-        }
+  explicit NestedTensorImpl(TensorNode structure);
 
   int64_t dim() const override {
-    return _data.get_first_variable().dim() + nested_dim();
+    return _first_variable.dim() + nested_dim();
   }
   int64_t numel() const override {
     auto fn = [](at::Tensor leaf, int64_t input) {
@@ -83,10 +50,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
   }
   TensorNode& get_structure() {
-    return _data.get_structure();
+    return _structure;
   }
   const TensorNode& get_structure() const {
-    return _data.get_structure();
+    return _structure;
   }
   void backward(Tensor gradient, bool retain_graph, bool create_graph) {
     apply(
@@ -116,13 +83,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
           tensor.set_requires_grad(requires_grad);
         },
         get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(_data);
+    return at::detail::make_tensor<NestedTensorImpl>(_structure);
   }
   bool requires_grad() const {
-    return _data.get_first_variable().requires_grad();
+    return _first_variable.requires_grad();
   }
   bool is_pinned() const {
-    return _data.get_first_variable().is_pinned();
+    return _first_variable.is_pinned();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //
@@ -157,18 +124,24 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
   at::Tensor to_tensor();
 
-  IntArrayRef sizes() const override;
+  std::vector<c10::optional<int64_t>> opt_sizes() const;
+  IntArrayRef sizes() const override {
+    return IntArrayRef(_sizes);
+  }
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
-  torch::nested_tensor::NestedTensor _data;
+ private:
+  TensorNode _structure;
+  at::Tensor _first_variable;
+  SizeNode _nested_size;
   std::vector<int64_t> _sizes;
 };
 
 
 inline bool is_tensor_shape(const at::Tensor tensor) {
-  auto nt = get_nested_tensor(tensor);
-  for (const auto& size : nt.sizes()) {
+  auto nt = get_nested_tensor_impl(tensor);
+  for (const auto& size : nt->opt_sizes()) {
     if (!size) {
       return false;
     }
@@ -179,7 +152,7 @@ inline bool is_tensor_shape(const at::Tensor tensor) {
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
 inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
-  auto node = batch_tensor._data.get_structure();
+  auto node = batch_tensor.get_structure();
   out << "NESTED_TENSOR";
   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
   out << std::endl;
