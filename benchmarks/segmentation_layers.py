@@ -22,7 +22,7 @@ def register_benchmark(fn):
 def relu__tensor_iter(self):
     def _relu_tensor_iter():
         for t in self.inputs:
-            torch.nn.functional.relu_(t)
+            res = torch.nn.functional.relu_(t)
 
     return _relu_tensor_iter
 
@@ -31,7 +31,7 @@ def relu__tensor_pad(self):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _relu_tensor_pad():
-        torch.nn.functional.relu_(tensor)
+        res = torch.nn.functional.relu_(tensor)
 
     return _relu_tensor_pad
 
@@ -40,7 +40,7 @@ def relu__nt(self):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _relu_nt():
-        torch.nn.functional.relu_(nt)
+        res = torch.nn.functional.relu_(nt)
 
     return _relu_nt
 
@@ -48,7 +48,7 @@ def relu__nt(self):
 def relu_tensor_iter(self):
     def _relu_tensor_iter():
         for t in self.inputs:
-            torch.nn.functional.relu(t)
+            res = torch.nn.functional.relu(t)
 
     return _relu_tensor_iter
 
@@ -57,7 +57,7 @@ def relu_tensor_pad(self):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _relu_tensor_pad():
-        torch.nn.functional.relu(tensor)
+        res = torch.nn.functional.relu(tensor)
 
     return _relu_tensor_pad
 
@@ -66,7 +66,7 @@ def relu_nt(self):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _relu_nt():
-        torch.nn.functional.relu(nt)
+        res = torch.nn.functional.relu(nt)
 
     return _relu_nt
 
@@ -77,7 +77,7 @@ def relu_nt(self):
 def conv2d_iter(self, module):
     def _conv2d_tensor_iter():
         for t in self.inputs:
-            module(t.unsqueeze(0)).squeeze(0)
+            res = module(t.unsqueeze(0)).squeeze(0)
 
     return _conv2d_tensor_iter
 
@@ -86,7 +86,7 @@ def conv2d_pad(self, module):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _conv2d_tensor():
-        module(tensor)
+        res = module(tensor)
 
     return _conv2d_tensor
 
@@ -95,7 +95,7 @@ def conv2d_nt(self, module):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _conv2d():
-        module(nt)
+        res = module(nt)
 
     return _conv2d
 
@@ -106,7 +106,7 @@ def conv2d_nt(self, module):
 def batch_norm_tensor_iter(self, module):
     def _batch_norm_tensor_iter():
         for t in self.inputs:
-            module(t.unsqueeze(0)).squeeze(0)
+            res = module(t.unsqueeze(0)).squeeze(0)
 
     return _batch_norm_tensor_iter
 
@@ -115,7 +115,7 @@ def batch_norm_tensor_pad(self, module):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _batch_norm_tensor_pad():
-        module(tensor)
+        res = module(tensor)
 
     return _batch_norm_tensor_pad
 
@@ -124,7 +124,7 @@ def batch_norm_nt(self, module):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _batch_norm_nt():
-        module(nt)
+        res = module(nt)
 
     return _batch_norm_nt
 
@@ -135,7 +135,7 @@ def batch_norm_nt(self, module):
 def max_pool2d_tensor_iter(self, module):
     def _max_pool2d_tensor_iter():
         for t in self.inputs:
-            module(t.unsqueeze(0)).squeeze(0)
+            res = module(t.unsqueeze(0)).squeeze(0)
 
     return _max_pool2d_tensor_iter
 
@@ -144,7 +144,7 @@ def max_pool2d_tensor_pad(self, module):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _max_pool2d_tensor_pad():
-        module(tensor)
+        res = module(tensor)
 
     return _max_pool2d_tensor_pad
 
@@ -153,7 +153,7 @@ def max_pool2d_nt(self, module):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _max_pool2d_nt():
-        module(nt)
+        res = module(nt)
 
     return _max_pool2d_nt
 
@@ -164,7 +164,7 @@ def max_pool2d_nt(self, module):
 def cross_entropy_tensor_iter(self):
     def _cross_entropy_tensor_iter():
         for a, b in zip(self.inputs, self.targets):
-            torch.nn.functional.cross_entropy(
+            res = torch.nn.functional.cross_entropy(
                 a.unsqueeze(0), b.unsqueeze(0)
             ).squeeze(0)
 
@@ -176,7 +176,7 @@ def cross_entropy_tensor_pad(self):
     targets, _ = nestedtensor.nested_tensor(self.targets).to_tensor_mask()
 
     def _cross_entropy_tensor_pad():
-        torch.nn.functional.cross_entropy(tensor, targets)
+        res = torch.nn.functional.cross_entropy(tensor, targets)
 
     return _cross_entropy_tensor_pad
 
@@ -186,7 +186,7 @@ def cross_entropy_nt(self):
     nt_targets = nestedtensor.nested_tensor(self.targets)
 
     def _cross_entropy_nt():
-        torch.nn.functional.cross_entropy(nt_input, nt_targets)
+        res = torch.nn.functional.cross_entropy(nt_input, nt_targets)
 
     return _cross_entropy_nt
 
@@ -197,7 +197,7 @@ def cross_entropy_nt(self):
 def dropout_tensor_iter(self):
     def _dropout_tensor_iter():
         for t in self.inputs:
-            torch.nn.functional.dropout(t.unsqueeze(0)).squeeze(0)
+            res = torch.nn.functional.dropout(t.unsqueeze(0)).squeeze(0)
 
     return _dropout_tensor_iter
 
@@ -206,7 +206,7 @@ def dropout_tensor_pad(self):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _dropout_tensor_pad():
-        torch.nn.functional.dropout(tensor)
+        res = torch.nn.functional.dropout(tensor)
 
     return _dropout_tensor_pad
 
@@ -215,7 +215,7 @@ def dropout_nt(self):
     nt = nestedtensor.nested_tensor(self.inputs)
 
     def _dropout_nt():
-        torch.nn.functional.dropout(nt)
+        res = torch.nn.functional.dropout(nt)
 
     return _dropout_nt
 
@@ -226,7 +226,7 @@ def dropout_nt(self):
 def interpolate_tensor_iter(self):
     def _interpolate_tensor_iter():
         for t in self.inputs:
-            torch.nn.functional.interpolate(t, t.unsqueeze(0).shape[-2])
+            res = torch.nn.functional.interpolate(t, t.unsqueeze(0).shape[-2])
 
     return _interpolate_tensor_iter
 
@@ -235,7 +235,7 @@ def interpolate_tensor_pad(self):
     tensor, _ = nestedtensor.nested_tensor(self.inputs).to_tensor_mask()
 
     def _interpolate_tensor_pad():
-        torch.nn.functional.interpolate(tensor, tensor[0].unsqueeze(0).shape[-2])
+        res = torch.nn.functional.interpolate(tensor, tensor[0].unsqueeze(0).shape[-2])
 
     return _interpolate_tensor_pad
 
@@ -244,7 +244,7 @@ def interpolate_nt(self):
     nt = nestedtensor.nested_tensor(self.inputs)
     input_shape = [y[-2:] for y in nt.nested_size().unbind()]
     def _interpolate_nt():
-        torch.nn.functional.interpolate(nt, input_shape)
+        res = torch.nn.functional.interpolate(nt, input_shape)
 
     return _interpolate_nt
 
@@ -311,7 +311,7 @@ class SegLayersBenchMark(object):
 
             benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
             for layer, benchmark in benchmarks:
-                result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
+                result = utils.benchmark_fn(benchmark, cuda=cuda, run_time=self.args.run_time, warmup=self.args.warmup, cuda=cuda)
                 result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
                 result["N"] = n
                 result["C"] = c
@@ -336,6 +336,9 @@ class SegLayersBenchMark(object):
     def get_input(self, cuda, n, c, h, w, h_var, w_var, seed):
         inputs = []
         targets = []
+        device = 'cpu'
+        if cuda:
+            device = 'cuda'
 
         torch.manual_seed(seed)
         random.seed(seed)
@@ -344,10 +347,10 @@ class SegLayersBenchMark(object):
         for i in range(n):
             h_res = max(1, int(random.gauss(h, h_var)))
             w_res = max(1, int(random.gauss(w, w_var)))
-            input_i = torch.randn(c, h_res, w_res)
-            target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64)
-            inputs.append(input_i.cuda() if cuda else input_i)
-            targets.append(target_i.cuda() if cuda else target_i)
+            input_i = torch.randn(c, h_res, w_res, device=device)
+            target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64, device=device)
+            inputs.append(input_i)
+            targets.append(target_i)
         if cuda:
             # Synchronize copy operations so they don't influence the benchmark
             torch.cuda.synchronize()
