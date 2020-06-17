@@ -25,9 +25,6 @@ struct NestedTensor {
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
-  int64_t __len__() const {
-    return _structure.degree();
-  }
   at::ScalarType scalar_type() const {
     return _first_variable.scalar_type();
   }
