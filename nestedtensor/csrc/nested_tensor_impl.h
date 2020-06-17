@@ -140,7 +140,6 @@ torch::nested_tensor::NestedTensor get_nested_tensor(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
 at::Tensor wrap_nested_tensor(NestedTensor&& result);
-
 at::Tensor wrap_tensor_node(TensorNode&& result);
 
 struct NestedTensorImpl : public c10::TensorImpl {
