@@ -10,37 +10,36 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  auto self_impl = get_nested_tensor(self);
-  apply([](at::Tensor& tensor) { func(tensor); },
-      self_impl.get_structure());
+  apply(
+      [](at::Tensor& tensor) { func(tensor); },
+      get_nested_tensor_structure(self));
   return self;
 }
 
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  auto self_impl = get_nested_tensor(self);
-  apply([](at::Tensor& tensor) { (tensor.*func)(); },
-      self_impl.get_structure());
+  apply(
+      [](at::Tensor& tensor) { (tensor.*func)(); },
+      get_nested_tensor_structure(self));
   return self;
 }
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  auto self_impl = get_nested_tensor(self);
   return wrap_tensor_node(
       map([](at::Tensor tensor) { return func(tensor); },
-          self_impl.get_structure()));
+          get_nested_tensor_structure(self)));
 }
 
 template <class F, F func>
 Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
-  auto result_impl = get_nested_tensor(result);
-  auto self_impl = get_nested_tensor(self);
-  apply([](at::Tensor& result, at::Tensor& tensor)
-          { return func(result, tensor); },
-      result_impl.get_structure(),
-      self_impl.get_structure());
+  apply(
+      [](at::Tensor& result, at::Tensor& tensor) {
+        return func(result, tensor);
+      },
+      get_nested_tensor_structure(result),
+      get_nested_tensor_structure(self));
   return result;
 }
 

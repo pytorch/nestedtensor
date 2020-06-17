@@ -50,72 +50,69 @@ namespace {
 
 static auto registry =
     torch::RegisterOperators()
-      .op("nestedtensor::is_nested_tensor_impl", [](Tensor tensor) {
-        return is_nested_tensor_impl(tensor);
-      })
-      .op("nestedtensor::nested_dim", [](Tensor tensor) {
-        return get_nested_tensor(tensor).nested_dim();
-      })
-      .op("nestedtensor::to_nested_tensor",
-              [](Tensor tensor, c10::optional<int64_t> dim) {
-                auto nt = get_nested_tensor(tensor);
-                return wrap_nested_tensor(nt.to_nested_tensor(dim));
-              })
-      .op("nestedtensor::grad", 
+        .op("nestedtensor::is_nested_tensor_impl",
+            [](Tensor tensor) { return is_nested_tensor_impl(tensor); })
+        .op("nestedtensor::nested_dim",
             [](Tensor tensor) {
-              auto nt = get_nested_tensor(tensor);
-              return wrap_nested_tensor(nt.grad());
+              return get_nested_tensor_impl(tensor)->nested_dim();
             })
-      .op("nestedtensor::requires_grad", 
+        .op("nestedtensor::to_nested_tensor",
+            [](Tensor tensor, c10::optional<int64_t> dim) {
+              return get_nested_tensor_impl(tensor)->to_nested_tensor(dim);
+            })
+        .op("nestedtensor::grad",
             [](Tensor tensor) {
-              auto nt = get_nested_tensor(tensor);
-              return nt.requires_grad();
+              return get_nested_tensor_impl(tensor)->grad();
             })
-      .op("nestedtensor::requires_grad_",
+        .op("nestedtensor::requires_grad",
+            [](Tensor tensor) {
+              return get_nested_tensor_impl(tensor)->requires_grad();
+            })
+        .op("nestedtensor::requires_grad_",
             [](Tensor tensor, bool requires_grad) {
-            auto nt = get_nested_tensor(tensor);
-            return wrap_nested_tensor(nt.requires_grad_(requires_grad));
-          })
-      .op("nestedtensor::backward",
-          [](Tensor tensor,
-             Tensor gradient,
-             bool retain_graph,
-             bool create_graph) {
-            auto nt = get_nested_tensor_impl(tensor);
-            nt->backward(gradient, retain_graph, create_graph);
-          })
-      .op("nestedtensor::sizes", [](Tensor tensor) {
-        return get_nested_tensor(tensor).sizes();
-      })
-      .op("nestedtensor::len", [](Tensor self) {
-        return (int64_t)(get_nested_tensor(self).get_structure().degree());
-      })
-      .op("nestedtensor::to_tensor",
-        [](Tensor tensor, c10::optional<int64_t> dim) {
-          return NestedTensor_to_tensor(tensor, dim);
-        })
-      .op("nestedtensor::str", [](Tensor tensor) {
-        auto node = get_nested_tensor(tensor).get_structure();
-        return NestedNode___str__(
-            node,
-            "nested_tensor",
-            [](c10::IValue payload, const std::string& tabs) {
-              std::vector<std::string> tokens = split_str(
-                  THPUtils_unpackString(
-                      PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
-                  "\n");
-              std::string result;
-              for (size_t i = 0; i < tokens.size(); i++) {
-                result = result + tabs + tokens[i];
-                if (i < tokens.size() - 1) {
-                  result = result + "\n";
+              auto nt = get_nested_tensor_impl(tensor);
+              return nt->requires_grad_(requires_grad);
+            })
+        .op("nestedtensor::backward",
+            [](Tensor tensor,
+               Tensor gradient,
+               bool retain_graph,
+               bool create_graph) {
+              auto nt = get_nested_tensor_impl(tensor);
+              nt->backward(gradient, retain_graph, create_graph);
+            })
+        .op("nestedtensor::sizes",
+            [](Tensor tensor) {
+              return get_nested_tensor(tensor).sizes();
+            })
+        .op("nestedtensor::len",
+            [](Tensor self) {
+              return (int64_t)(get_nested_tensor_structure(self).degree());
+            })
+        .op("nestedtensor::to_tensor",
+            [](Tensor tensor, c10::optional<int64_t> dim) {
+              return NestedTensor_to_tensor(tensor, dim);
+            })
+        .op("nestedtensor::str", [](Tensor tensor) {
+          auto node = get_nested_tensor_structure(tensor);
+          return NestedNode___str__(
+              node,
+              "nested_tensor",
+              [](c10::IValue payload, const std::string& tabs) {
+                std::vector<std::string> tokens = split_str(
+                    THPUtils_unpackString(
+                        PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
+                    "\n");
+                std::string result;
+                for (size_t i = 0; i < tokens.size(); i++) {
+                  result = result + tabs + tokens[i];
+                  if (i < tokens.size() - 1) {
+                    result = result + "\n";
+                  }
                 }
-              }
-              return result;
-            });
-        })
-      ;
-
+                return result;
+              });
+        });
 }
 } // namespace nested_tensor
 } // namespace torch
@@ -149,7 +146,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 #endif
 
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor(self);
+    auto nt = get_nested_tensor_impl(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map(
@@ -158,25 +155,25 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 return py::reinterpret_steal<py::object>(
                     THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
               },
-              nt.nested_size()),
+              nt->nested_size()),
           "NestedSize"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
-    SizeNode size_node = nt.nested_size();
+    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
+    SizeNode size_node = nt->nested_size();
     return _nested_helper(index, std::move(size_node));
   });
 
   m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor(self);
+    auto nt = get_nested_tensor_impl(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map([](c10::List<int64_t> e)
                   -> py::object { return py::tuple(py::cast(e.vec())); },
-              nt.nested_stride()),
+              nt->nested_stride()),
           "NestedStride"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
-    SizeNode size_node = nt.nested_stride();
+    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
+    SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
   });
 
