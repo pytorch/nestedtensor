@@ -25,21 +25,21 @@ struct NestedTensor {
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
-  at::ScalarType scalar_type() const {
-    return _first_variable.scalar_type();
-  }
-  at::Backend backend() const {
-    return options().backend();
-  }
-  at::Layout layout() const {
-    return _first_variable.layout();
-  }
-  at::Device device() const {
-    return _first_variable.device();
-  }
-  at::TensorOptions options() const {
-    return _first_variable.options();
-  }
+  // at::ScalarType scalar_type() const {
+  //   return _first_variable.scalar_type();
+  // }
+  // at::Backend backend() const {
+  //   return options().backend();
+  // }
+  // at::Layout layout() const {
+  //   return _first_variable.layout();
+  // }
+  // at::Device device() const {
+  //   return _first_variable.device();
+  // }
+  // at::TensorOptions options() const {
+  //   return _first_variable.options();
+  // }
   TensorNode& get_structure() {
     return _structure;
   }
