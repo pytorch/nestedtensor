@@ -81,16 +81,6 @@ struct NestedTensor {
   bool is_pinned() const {
     return _first_variable.is_pinned();
   }
-  bool is_contiguous() const {
-    // NOTE: The Tensors themselves might not be contiguous even if there is a
-    // buffer. For this to be contiguous not only the individuals Tensors have
-    // to be but also the buffer.
-    auto fn = [](at::Tensor leaf, bool input) {
-      return input && leaf.is_contiguous();
-    };
-    return reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
-  }
-  NestedTensor contiguous() const;
   TensorNode& get_structure() {
     return _structure;
   }
@@ -151,7 +141,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
   bool is_contiguous(
       at::MemoryFormat memory_format) const override {
-    return _data.is_contiguous();
+    // NOTE: The Tensors themselves might not be contiguous even if there is a
+    // buffer. For this to be contiguous not only the individuals Tensors have
+    // to be but also the buffer.
+    auto fn = [](at::Tensor leaf, bool input) {
+      return input && leaf.is_contiguous();
+    };
+    return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
   }
   TensorNode& get_structure() {
     return _data.get_structure();

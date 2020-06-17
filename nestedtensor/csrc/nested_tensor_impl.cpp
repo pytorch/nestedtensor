@@ -69,14 +69,6 @@ SizeNode infer_nested_size(const TensorNode& _structure) {
       _structure);
 }
 
-NestedTensor NestedTensor::contiguous() const {
-  if (is_contiguous()) {
-    return *this;
-  }
-  return NestedTensor(
-      map([](at::Tensor tensor) { return tensor.contiguous(); }, _structure));
-}
-
 TensorNode _unbind_tensors(TensorNode structure) {
   std::vector<TensorNode> result_nodes;
   if (structure.is_leaf()) {
@@ -217,7 +209,8 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return wrap_nested_tensor(get_nested_tensor(self).contiguous());
+  return wrap_tensor_node(
+      map([](at::Tensor tensor) { return tensor.contiguous(); }, _structure));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
