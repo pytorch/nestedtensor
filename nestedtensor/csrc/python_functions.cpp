@@ -10,15 +10,15 @@ namespace F = torch::nn::functional;
 namespace torch {
 namespace nested_tensor {
 
-NestedTensor cross_entropy(NestedTensor& input,
-                           NestedTensor& target,
+NestedTensorImpl cross_entropy(NestedTensorImpl* input,
+                           NestedTensorImpl* target,
                            c10::optional<at::Tensor>& weight,
                            c10::optional<bool>& size_average, // TODO: use
                            c10::optional<int64_t>& ignore_index,
                            c10::optional<bool>& reduce, // TODO: use
                            c10::optional<std::string>& reduction) {
-  TensorNode input_structure = input.get_structure();
-  TensorNode target_structure = target.get_structure();
+  TensorNode input_structure = input->get_structure();
+  TensorNode target_structure = target->get_structure();
   F::CrossEntropyFuncOptions::reduction_t redct;
   if (reduction.value() == "mean" || reduction.value() == "none") {
       redct = torch::kMean;
@@ -37,10 +37,10 @@ NestedTensor cross_entropy(NestedTensor& input,
       return F::cross_entropy(input_tensor.unsqueeze(0), target_tensor.unsqueeze(0), options).squeeze(0);
   }, input_structure, target_structure);
 
-  return NestedTensor(std::move(res));
+  return NestedTensorImpl(std::move(res));
 }
 
-NestedTensor interpolate(NestedTensor& input,
+NestedTensorImpl interpolate(NestedTensorImpl* input,
                          c10::optional<std::vector<std::vector<int64_t>>> size,
                          c10::optional<at::ArrayRef<double>> scale_factor,
                          c10::optional<std::string> mode,
@@ -62,7 +62,7 @@ NestedTensor interpolate(NestedTensor& input,
         throw std::runtime_error("Unexpected mode for interpolate: " + mode.value());
     }
 
-    TensorNode input_structure = input.get_structure();
+    TensorNode input_structure = input->get_structure();
     auto options = F::InterpolateFuncOptions().mode(int_mode);
     if (align_corners.has_value()) {
       options.align_corners() = align_corners.value();
@@ -76,14 +76,14 @@ NestedTensor interpolate(NestedTensor& input,
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
         input_structure);
-      return NestedTensor(std::move(res));
+      return NestedTensorImpl(std::move(res));
     }
 
     // Get input leaves count
     auto fn = [](at::Tensor leaf, int64_t input) {
       return input + 1;
     };
-    auto leaves_count = size_t(reduce<decltype(fn), int64_t, at::Tensor>(input.get_structure(), fn, 0));
+    auto leaves_count = size_t(reduce<decltype(fn), int64_t, at::Tensor>(input->get_structure(), fn, 0));
 
     if (size.has_value()) {
       // There can be either 1 size for all tensor or an individual size value per tensor
@@ -98,7 +98,7 @@ NestedTensor interpolate(NestedTensor& input,
             return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
           },
           input_structure);
-        return NestedTensor(std::move(res));
+        return NestedTensorImpl(std::move(res));
       } else {
         int size_i = 0;
         TensorNode res = map(
@@ -108,7 +108,7 @@ NestedTensor interpolate(NestedTensor& input,
               return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
             },
             input_structure);
-        return NestedTensor(std::move(res));
+        return NestedTensorImpl(std::move(res));
       }
     }
 
@@ -126,7 +126,7 @@ void add_functions(pybind11::module m) {
          c10::optional<std::string> mode,
          c10::optional<bool> align_corners,
          c10::optional<bool> recompute_scale_factor) {
-        auto input = get_nested_tensor_impl(input_)->_data;
+        auto input = get_nested_tensor_impl(input_);
         if (scale_factor.has_value() && size.has_value()) {
           throw std::runtime_error(
               "only one of size or scale_factor should be defined");
@@ -163,7 +163,7 @@ void add_functions(pybind11::module m) {
          c10::optional<std::string> mode,
          c10::optional<bool> align_corners,
          c10::optional<bool> recompute_scale_factor) {
-        auto input = get_nested_tensor_impl(input_)->_data;
+        auto input = get_nested_tensor_impl(input_);
         if (scale_factor.has_value() && size.has_value()) {
           throw std::runtime_error(
               "only one of size or scale_factor should be defined");
@@ -201,7 +201,7 @@ void add_functions(pybind11::module m) {
          c10::optional<std::string> mode,
          c10::optional<bool> align_corners,
          c10::optional<bool> recompute_scale_factor) {
-        auto input = get_nested_tensor_impl(input_)->_data;
+        auto input = get_nested_tensor_impl(input_);
         if (scale_factor.has_value() && size.has_value()) {
           throw std::runtime_error(
               "only one of size or scale_factor should be defined");
@@ -242,8 +242,8 @@ void add_functions(pybind11::module m) {
          c10::optional<int64_t> ignore_index,
          c10::optional<bool> reduce, // TODO: use
          c10::optional<std::string> reduction) {
-        auto input = get_nested_tensor_impl(input_)->_data;
-        auto target = get_nested_tensor_impl(target_)->_data;
+        auto input = get_nested_tensor_impl(input_);
+        auto target = get_nested_tensor_impl(target_);
         return at::detail::make_tensor<NestedTensorImpl>(cross_entropy(
             input,
             target,

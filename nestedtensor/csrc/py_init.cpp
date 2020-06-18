@@ -83,7 +83,7 @@ static auto registry =
             })
         .op("nestedtensor::sizes",
             [](Tensor tensor) {
-              return get_nested_tensor(tensor).sizes();
+              return get_nested_tensor_impl(tensor)->opt_sizes();
             })
         .op("nestedtensor::len",
             [](Tensor self) {
