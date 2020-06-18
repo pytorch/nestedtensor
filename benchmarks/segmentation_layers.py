@@ -311,7 +311,7 @@ class SegLayersBenchMark(object):
 
             benchmarks = [(layer, self.get_benchmark(c, layer, cuda)) for layer in self.args.layers]
             for layer, benchmark in benchmarks:
-                result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup)
+                result = utils.benchmark_fn(benchmark, run_time=self.args.run_time, warmup=self.args.warmup, cuda=cuda)
                 result["#"] = str(i) + "/" + str(len(benchmarks) * len(params))
                 result["N"] = n
                 result["C"] = c
@@ -336,6 +336,9 @@ class SegLayersBenchMark(object):
     def get_input(self, cuda, n, c, h, w, h_var, w_var, seed):
         inputs = []
         targets = []
+        device = 'cpu'
+        if cuda:
+            device = 'cuda'
 
         torch.manual_seed(seed)
         random.seed(seed)
@@ -344,10 +347,10 @@ class SegLayersBenchMark(object):
         for i in range(n):
             h_res = max(1, int(random.gauss(h, h_var)))
             w_res = max(1, int(random.gauss(w, w_var)))
-            input_i = torch.randn(c, h_res, w_res)
-            target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64)
-            inputs.append(input_i.cuda() if cuda else input_i)
-            targets.append(target_i.cuda() if cuda else target_i)
+            input_i = torch.randn(c, h_res, w_res, device=device)
+            target_i = torch.randint(1, (h_res, w_res), dtype=torch.int64, device=device)
+            inputs.append(input_i)
+            targets.append(target_i)
         if cuda:
             # Synchronize copy operations so they don't influence the benchmark
             torch.cuda.synchronize()
