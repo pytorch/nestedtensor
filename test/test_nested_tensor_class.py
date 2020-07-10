@@ -610,6 +610,8 @@ class TestNestedTensor(TestCase):
         print(nt[0, :])  # recursive getitem call across tuples
         print("nt[:, -1:]: ", nt[:, -1:])  # recursive getitem call across tuples
         print("nt[-1:, :]: ", nt[-1:, :])  # recursive getitem call across tuples
+        print("nt[:, -1:, None]: ", nt[:, -1:, None])  # recursive getitem call across tuples
+        print("nt[-1:, :, None]: ", nt[-1:, :, None])  # recursive getitem call across tuples
 
 
 class TestContiguous(TestCase):

@@ -92,14 +92,27 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return _wrap_result(self._impl * other._impl)
         return _wrap_result(self._impl * other)
 
+    def __rmul__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(self._impl * other)
+
     def __truediv__(self, other):
         if isinstance(other, NestedTensor):
             return _wrap_result(self._impl / other._impl)
         return _wrap_result(self._impl / other)
 
+    def __floordiv__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl // other._impl)
+        return _wrap_result(self._impl // other)
+
     def __pow__(self, *args, **kwargs):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
+
+    def __rpow__(self, exponent):
+        assert not isinstance(exponent, NestedTensor)
+        return _wrap_result(torch.pow(exponent, self._impl))
 
     @property
     def shape(self):

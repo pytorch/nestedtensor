@@ -160,6 +160,12 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
   return result;
 }
 
+Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
+  return wrap_tensor_node(
+      map([&base](Tensor exp) { return at::pow(base, exp); },
+          get_nested_tensor_structure(exp)));
+}
+
 #define BINARY_OP(NAME)                                                        \
   m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
@@ -169,6 +175,13 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)
+
+  // floor_divide has an inconsistent signature
+  m.impl_UNBOXED("floor_divide", NestedTensor_binary<at::floor_divide>);
+  m.impl_UNBOXED(
+      "floor_divide_.Tensor", NestedTensor_binary_<at::native::floor_divide_>);
+  m.impl_UNBOXED(
+      "floor_divide.out", NestedTensor_binary_out<at::floor_divide_out>);
 
   m.impl_UNBOXED("add.Tensor", NestedTensor_binary<Scalar, at::add>);
 
@@ -189,5 +202,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
   m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
   m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
+  m.impl_UNBOXED("pow.Scalar", NestedTensor_pow_3);
 }
 } // namespace at
