@@ -140,6 +140,7 @@ for func__ in get_unary_functions():
                 func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
 TestBinary = type('TestBinary', (DynamicClassBase,), {})
 for func in get_binary_functions():
+    print("func: ", func)
     setattr(TestBinary, "test_{0}".format(func),
             _gen_test_binary(func))
 

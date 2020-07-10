@@ -594,6 +594,23 @@ class TestNestedTensor(TestCase):
         self.assertFalse(a5.is_pinned())
         self.assertFalse(a6.is_pinned())
 
+    def test_slice(self):
+        nt = nestedtensor.nested_tensor([torch.randn(2, 3), torch.randn(3, 2)])
+        print('nt.size(): ', nt.size())
+        print('nt._impl.size(): ', nt._impl.size())
+        print("nt: ", nt)
+        print("nt[0]: ", nt[0])  # NestedTensor_select
+        print("nt[:]: ", nt[:])  # NestedTensor_slice
+        print("nt[:, 0]: ", nt[:, 0])  # recursive getitem call across tuples
+        print('nt[0]')
+        print(nt[0])
+        print('nt[0].unbind()')
+        print(nt[0].unbind())
+        print("nt[0, :]: ")
+        print(nt[0, :])  # recursive getitem call across tuples
+        print("nt[:, -1:]: ", nt[:, -1:])  # recursive getitem call across tuples
+        print("nt[-1:, :]: ", nt[-1:, :])  # recursive getitem call across tuples
+
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
