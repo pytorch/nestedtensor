@@ -1,14 +1,24 @@
 import torch
 import numbers
-from functools import wraps
 from . import masking
-import collections
-import os
 
 from . import creation
 
 import nestedtensor
-import itertools
+
+
+def _new_torch_cat(tensors, dim=0, out=None):
+    result = torch.ops.nestedtensor.cat(list(t._impl for t in tensors), dim)
+    if out is None:
+        return NestedTensor(result)
+    out.copy_(result)
+
+
+def _new_torch_stack(tensors, dim=0, out=None):
+    result = torch.ops.nestedtensor.stack(list(t._impl for t in tensors), dim)
+    if out is None:
+        return NestedTensor(result)
+    out.copy_(result)
 
 
 def _wrap_result(result):

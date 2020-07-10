@@ -1,8 +1,8 @@
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
+#include <nestedtensor/csrc/python_functions.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <nestedtensor/csrc/utils/python_nested_node.h>
-#include <nestedtensor/csrc/python_functions.h>
 #include <torch/csrc/Size.h>
 #include <torch/extension.h>
 
@@ -19,7 +19,6 @@ namespace py = pybind11;
 
 using namespace torch::nested_tensor;
 using namespace at;
-
 
 py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
@@ -43,7 +42,6 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   return fn(fn, size_node, *index);
 }
 
-
 namespace torch {
 namespace nested_tensor {
 namespace {
@@ -55,6 +53,29 @@ static auto registry =
         .op("nestedtensor::nested_dim",
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->nested_dim();
+            })
+        .op("nestedtensor::cat",
+            [](std::vector<Tensor> tensors, int64_t dim) {
+              TORCH_CHECK(
+                  dim == 0, "cat currently only supports dim set to 0.");
+              std::vector<TensorNode> tensor_nodes;
+              for (size_t i = 0; i < tensors.size(); i++) {
+                auto unbound = get_nested_tensor_structure(tensors[i]).unbind();
+                for (size_t j = 0; j < unbound.size(); j++) {
+                  tensor_nodes.push_back(unbound[j]);
+                }
+              }
+              return wrap_tensor_node(std::move(tensor_nodes));
+            })
+        .op("nestedtensor::stack",
+            [](std::vector<Tensor> tensors, int64_t dim) {
+              TORCH_CHECK(
+                  dim == 0, "stack currently only supports dim set to 0.");
+              std::vector<TensorNode> tensor_nodes;
+              for (size_t i = 0; i < tensors.size(); i++) {
+                tensor_nodes.push_back(get_nested_tensor_structure(tensors[i]));
+              }
+              return wrap_tensor_node(TensorNode(std::move(tensor_nodes)));
             })
         .op("nestedtensor::to_nested_tensor",
             [](Tensor tensor, c10::optional<int64_t> dim) {
@@ -123,7 +144,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // since you can expect transparent changes to the constiuents
   // via unbind.
 
-
   m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
   m.def("_nested_tensor_view", &torch::nested_tensor::_nested_tensor_view);
 
@@ -134,22 +154,22 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // TODO: Advanced indexing
   // TODO: Tensor-wise select
   // TODO: Tuple support
-//   m.def("get_item", [](Tensor tensor, int64_t key_) {
-//     std::cout << "11101" << std::endl;
-//     std::vector<at::Tensor> unbound = unbind(tensor, 0);
-//     std::cout << "11102" << std::endl;
-//     int64_t key = at::maybe_wrap_dim(key_, unbound.size());
-//     std::cout << "11103" << std::endl;
-//     return unbind(tensor, 0)[key];
-//   });
-// #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
-//   m.def("get_item", [](Tensor tensor, py::slice key) {
-//     std::cout << "22201" << std::endl;
-//     py::list unbound = py::cast(unbind(tensor, 0));
-//     std::cout << "22202" << std::endl;
-//     return unbound[key];
-//   });
-// #endif
+  //   m.def("get_item", [](Tensor tensor, int64_t key_) {
+  //     std::cout << "11101" << std::endl;
+  //     std::vector<at::Tensor> unbound = unbind(tensor, 0);
+  //     std::cout << "11102" << std::endl;
+  //     int64_t key = at::maybe_wrap_dim(key_, unbound.size());
+  //     std::cout << "11103" << std::endl;
+  //     return unbind(tensor, 0)[key];
+  //   });
+  // #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
+  //   m.def("get_item", [](Tensor tensor, py::slice key) {
+  //     std::cout << "22201" << std::endl;
+  //     py::list unbound = py::cast(unbind(tensor, 0));
+  //     std::cout << "22202" << std::endl;
+  //     return unbound[key];
+  //   });
+  // #endif
 
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor_impl(self);
@@ -185,4 +205,3 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   add_functions(m);
 }
-
