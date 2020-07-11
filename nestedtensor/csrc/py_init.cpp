@@ -60,39 +60,37 @@ static auto registry =
                   tensors.size() > 0, "Cannot concatenate an empty list.");
               auto nested_dim_0 =
                   get_nested_tensor_impl(tensors[0])->nested_dim();
+              int64_t max_len = tensors[0].size(dim);
               for (size_t i = 1; i < tensors.size(); i++) {
                 TORCH_CHECK(
                     nested_dim_0 ==
                         get_nested_tensor_impl(tensors[i])->nested_dim(),
                     "Nested dimension of NestedTensors must match for cat to succeed.");
+                if (max_len < tensors[i].size(dim)) {
+                  max_len = tensors[i].size(dim);
+                }
               }
 
-              std::vector<std::vector<TensorNode>> tensor_nodes;
-              for (size_t i = 0; i < tensors.size(); i++) {
+              std::vector<TensorNode> result;
+              for (size_t j = 0; j < max_len; j++) {
                 std::vector<TensorNode> nodes;
                 if (nested_dim_0 == 1) {
-                  for (auto t : tensors[i].unbind(dim)) {
-                    nodes.push_back(TensorNode(std::move(t)));
-                  }
-                } else {
-                  for (auto t : tensors[i].unbind(dim)) {
-                    nodes.push_back(get_nested_tensor_structure(t));
-                  }
-                }
-                tensor_nodes.push_back(nodes);
-              }
-              std::vector<TensorNode> result;
-              for (size_t i = 0; i < tensor_nodes.size(); i++) {
-                if (nested_dim_0 == 1) {
                   std::vector<Tensor> result_i;
-                  for (size_t j = 0; j < tensor_nodes[i].size(); j++) {
-                    result_i.push_back(tensor_nodes[i][j].payload());
+                  for (size_t i = 0; i < tensors.size(); i++) {
+                    auto unbound = tensors[i].unbind(dim);
+                    if (j < unbound.size()) {
+                      result_i.push_back(unbound[j]);
+                    }
                   }
-                  result.push_back(TensorNode(at::cat(result_i)));
+                  result.push_back(TensorNode(at::cat(TensorList(result_i))));
                 } else {
                   std::vector<TensorNode> result_i;
-                  for (size_t j = 0; j < tensor_nodes[i].size(); j++) {
-                    result_i.push_back(tensor_nodes[i][j]);
+                  for (size_t i = 0; i < tensors.size(); i++) {
+                    auto unbound = tensors[i].unbind(dim);
+                    if (j < unbound.size()) {
+                      result_i.push_back(get_nested_tensor_structure(
+                          tensors[i].unbind(dim)[j]));
+                    }
                   }
                   result.push_back(TensorNode(std::move(result_i)));
                 }

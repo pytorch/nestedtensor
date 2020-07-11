@@ -9,15 +9,17 @@ import nestedtensor
 
 def _new_torch_cat(tensors, dim=0, out=None):
     result = torch.ops.nestedtensor.cat(list(t._impl for t in tensors), dim)
+    result = NestedTensor(result)
     if out is None:
-        return NestedTensor(result)
+        return result
     out.copy_(result)
 
 
 def _new_torch_stack(tensors, dim=0, out=None):
     result = torch.ops.nestedtensor.stack(list(t._impl for t in tensors), dim)
+    result = NestedTensor(result)
     if out is None:
-        return NestedTensor(result)
+        return result
     out.copy_(result)
 
 
