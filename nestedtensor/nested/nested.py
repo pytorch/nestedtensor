@@ -24,6 +24,10 @@ def _new_torch_stack(tensors, dim=0, out=None):
 
 
 def _wrap_result(result):
+    if isinstance(result, list):
+        return list(_wrap_result(r) for r in result)
+    if isinstance(result, tuple):
+        return tuple(_wrap_result(r) for r in result)
     return (
         NestedTensor(result)
         if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
@@ -222,18 +226,18 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     # --- dependent on impl ---
 
-    def unbind(self, dim=0):
-        """
-        unbind returns a tuple containing the entries
-        of the list ```self``` represents. 
+    # def unbind(self, dim=0):
+    #     """
+    #     unbind returns a tuple containing the entries
+    #     of the list ```self``` represents. 
 
-        For now unbind does not accept a dim argument akin
-        to torch.Tensor.unbind
+    #     For now unbind does not accept a dim argument akin
+    #     to torch.Tensor.unbind
 
-        Returns a tuple of views. Results might not be contiguous.
-        """
-        # TODO: Design choice: Return zip_longest or zip?
-        return tuple(_wrap_result(t) for t in self._impl.unbind(dim))
+    #     Returns a tuple of views. Results might not be contiguous.
+    #     """
+    #     # TODO: Design choice: Return zip_longest or zip?
+    #     return tuple(_wrap_result(t) for t in self._impl.unbind(dim))
 
     def to_tensor(self, dim=0):
         """

@@ -306,97 +306,105 @@ class TestNestedTensor(TestCase):
         # TODO: Check that unbind returns torch.Tensors when nested_dim is 1
         # TODO: contiguous nestedtensors should return tuples of contiguous nestedtensors on dimension 0
 
-        def _test(a, b, c, d, e):
-            nt = nestedtensor.nested_tensor([a, b])
-            a1, b1 = nt.unbind()
-            self.assertTrue(a is not a1)
-            self.assertTrue(b is not b1)
+        def _test_fn(unbind_fn):
+            def _test(a, b, c, d, e):
+                nt = nestedtensor.nested_tensor([a, b])
+                a1, b1 = nt.unbind()
+                self.assertTrue(a is not a1)
+                self.assertTrue(b is not b1)
 
-            nt1 = nestedtensor.nested_tensor([[c, d], [e]])
-            nt11, nt12 = nt1.unbind()
-            c1, d1 = nt11.unbind()
-            e1 = nt12.unbind()[0]
+                nt1 = nestedtensor.nested_tensor([[c, d], [e]])
+                nt11, nt12 = unbind_fn(nt1, 0)
+                c1, d1 = unbind_fn(nt11, 0)
+                e1 = unbind_fn(nt12, 0)[0]
 
-            self.assertTrue(c is not c1)
-            self.assertTrue(d is not d1)
-            self.assertTrue(e is not e1)
+                self.assertTrue(c is not c1)
+                self.assertTrue(d is not d1)
+                self.assertTrue(e is not e1)
 
-            nt = nestedtensor.nested_tensor([a, b])
-            a1, b1 = nt.unbind()
-            self.assertEqual(a, a1)
-            self.assertEqual(b, b1)
+                nt = nestedtensor.nested_tensor([a, b])
+                a1, b1 = unbind_fn(nt, 0)
+                self.assertEqual(a, a1)
+                self.assertEqual(b, b1)
 
-            a = utils.gen_float_tensor(1, (2, 3)).add_(1)
-            nt = nestedtensor.nested_tensor([a])
-            self.assertEqual(a, nt.unbind()[0])
+                a = utils.gen_float_tensor(1, (2, 3)).add_(1)
+                nt = nestedtensor.nested_tensor([a])
+                self.assertEqual(a, unbind_fn(nt, 0)[0])
 
-        _test(torch.tensor([1, 2]),
-              torch.tensor([7, 8]),
-              torch.tensor([3, 4]),
-              torch.tensor([5, 6]),
-              torch.tensor([6, 7]))
-        _test(torch.tensor([1]),
-              torch.tensor([7]),
-              torch.tensor([3]),
-              torch.tensor([5]),
-              torch.tensor([6]))
-        _test(torch.tensor(1),
-              torch.tensor(7),
-              torch.tensor(3),
-              torch.tensor(5),
-              torch.tensor(6))
-        _test(torch.tensor([]),
-              torch.tensor([]),
-              torch.tensor([]),
-              torch.tensor([]),
-              torch.tensor([]))
+            _test(torch.tensor([1, 2]),
+                  torch.tensor([7, 8]),
+                  torch.tensor([3, 4]),
+                  torch.tensor([5, 6]),
+                  torch.tensor([6, 7]))
+            _test(torch.tensor([1]),
+                  torch.tensor([7]),
+                  torch.tensor([3]),
+                  torch.tensor([5]),
+                  torch.tensor([6]))
+            _test(torch.tensor(1),
+                  torch.tensor(7),
+                  torch.tensor(3),
+                  torch.tensor(5),
+                  torch.tensor(6))
+            _test(torch.tensor([]),
+                  torch.tensor([]),
+                  torch.tensor([]),
+                  torch.tensor([]),
+                  torch.tensor([]))
+        _test_fn(lambda x, dim: x.unbind(dim))
+        _test_fn(lambda x, dim: torch.unbind(x, dim))
 
     def test_unbind_dim(self):
         # Unbinding across nested dimensions or tensors dimensions
         # is akin splitting up the tree across a level.
 
-        nt = nestedtensor.nested_tensor([])
-        self.assertEqual(nt.unbind(0), ())
-        self.assertRaises(IndexError, lambda: nt.unbind(1))
+        def _test_fn(unbind_fn):
+            # nt = nestedtensor.nested_tensor([])
+            # self.assertEqual(unbind_fn(nt, 0), ())
+            # self.assertRaises(IndexError, lambda: unbind_fn(nt, 1))
 
-        a = torch.rand(3, 2)
-        nt = nestedtensor.nested_tensor([a])
-        self.assertEqual(nt.unbind(0), (a,))
-        result = (
-            nestedtensor.nested_tensor([a.unbind(0)[0]]),
-            nestedtensor.nested_tensor([a.unbind(0)[1]]),
-            nestedtensor.nested_tensor([a.unbind(0)[2]]))
-        for x, y in zip(nt.unbind(1), result):
-            self.assertEqual(x, y, ignore_contiguity=True)
-        result = (
-            nestedtensor.nested_tensor([a.unbind(1)[0]]),
-            nestedtensor.nested_tensor([a.unbind(1)[1]]))
-        for x, y in zip(nt.unbind(2), result):
-            self.assertEqual(x, y, ignore_contiguity=True)
+            a = torch.rand(3, 2)
+            nt = nestedtensor.nested_tensor([a])
+            # self.assertEqual(unbind_fn(nt, 0), (a,))
+            result = (
+                nestedtensor.nested_tensor([unbind_fn(a, 0)[0]]),
+                nestedtensor.nested_tensor([unbind_fn(a, 0)[1]]),
+                nestedtensor.nested_tensor([unbind_fn(a, 0)[2]]))
+            # print('unbind_fn: ', unbind_fn)
+            for x, y in zip(unbind_fn(nt, 1), result):
+                # print('x: ', type(x), ' - y: ', type(y))
+                self.assertEqual(x, y, ignore_contiguity=True)
+            result = (
+                nestedtensor.nested_tensor([unbind_fn(a, 1)[0]]),
+                nestedtensor.nested_tensor([unbind_fn(a, 1)[1]]))
+            for x, y in zip(unbind_fn(nt, 2), result):
+                self.assertEqual(x, y, ignore_contiguity=True)
 
-        b = torch.rand(2, 3)
-        nt = nestedtensor.nested_tensor([a, b])
-        self.assertEqual(nt.unbind(0), (a, b))
-        result = (
-            nestedtensor.nested_tensor([a.unbind(0)[0], b.unbind(0)[0]]),
-            nestedtensor.nested_tensor([a.unbind(0)[1], b.unbind(0)[1]]),
-            nestedtensor.nested_tensor([a.unbind(0)[2]]))
-        for x, y in zip(nt.unbind(1), result):
-            self.assertEqual(x, y, ignore_contiguity=True)
-        # TODO: Add more tensors and unbind across more dimensions to create mixing
+            b = torch.rand(2, 3)
+            nt = nestedtensor.nested_tensor([a, b])
+            self.assertEqual(unbind_fn(nt, 0), (a, b))
+            result = (
+                nestedtensor.nested_tensor([unbind_fn(a, 0)[0], unbind_fn(b, 0)[0]]),
+                nestedtensor.nested_tensor([unbind_fn(a, 0)[1], unbind_fn(b, 0)[1]]),
+                nestedtensor.nested_tensor([unbind_fn(a, 0)[2]]))
+            for x, y in zip(unbind_fn(nt, 1), result):
+                self.assertEqual(x, y, ignore_contiguity=True)
+            # TODO: Add more tensors and unbind across more dimensions to create mixing
 
-        c = torch.rand(4, 3)
-        nt = nestedtensor.nested_tensor([[a], [b, c]])
-        nt_a, nt_b = nt.unbind(0)
-        self.assertEqual(nt_a, nestedtensor.nested_tensor(
-            [a]), ignore_contiguity=True)
-        self.assertEqual(nt_b, nestedtensor.nested_tensor(
-            [b, c]), ignore_contiguity=True)
-        result = (
-            nestedtensor.nested_tensor([a, b]),
-            nestedtensor.nested_tensor([c]))
-        for x, y in zip(nt.unbind(1), result):
-            self.assertEqual(x, y, ignore_contiguity=True)
+            c = torch.rand(4, 3)
+            nt = nestedtensor.nested_tensor([[a], [b, c]])
+            nt_a, nt_b = unbind_fn(nt, 0)
+            self.assertEqual(nt_a, nestedtensor.nested_tensor(
+                [a]), ignore_contiguity=True)
+            self.assertEqual(nt_b, nestedtensor.nested_tensor(
+                [b, c]), ignore_contiguity=True)
+            result = (
+                nestedtensor.nested_tensor([a, b]),
+                nestedtensor.nested_tensor([c]))
+            for x, y in zip(unbind_fn(nt, 1), result):
+                self.assertEqual(x, y, ignore_contiguity=True)
+        _test_fn(lambda x, dim: x.unbind(dim))
+        _test_fn(lambda x, dim: torch.unbind(x, dim))
 
     def test_size(self):
         for constructor in _iter_constructors():
@@ -612,6 +620,22 @@ class TestNestedTensor(TestCase):
         print("nt[-1:, :]: ", nt[-1:, :])  # recursive getitem call across tuples
         print("nt[:, -1:, None]: ", nt[:, -1:, None])  # recursive getitem call across tuples
         print("nt[-1:, :, None]: ", nt[-1:, :, None])  # recursive getitem call across tuples
+
+    def test_cat(self):
+        nt0 = nestedtensor.nested_tensor([torch.randn(2, 3), torch.randn(3, 2)])
+        nt1 = nestedtensor.nested_tensor([torch.randn(4, 3), torch.randn(4, 2)])
+        print(nt0.nested_size())
+        print(nt1.nested_size())
+        print(torch.unbind(nt0, dim=0)[0].size())
+        print(torch.unbind(nt0, dim=1)[0].size())
+        print(torch.unbind(nt0, dim=2)[0].size())
+        print(nt0.unbind(dim=0)[0].size())
+        print(nt0.unbind(dim=1)[0].size())
+        print(nt0.unbind(dim=2)[0].size())
+        print('nt1.dim(): ', nt1.dim())
+        print(nestedtensor.cat([nt0, nt1], dim=0).nested_size())
+        print(nestedtensor.cat([nt0, nt1], dim=1).nested_size())
+        print(nestedtensor.cat([nt0, nt1], dim=2).nested_size())
 
 
 class TestContiguous(TestCase):
