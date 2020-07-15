@@ -53,11 +53,11 @@ at::Tensor get_item(Tensor tensor, py::slice slice) {
   size_t start, stop, step, slicelength;
   if (!slice.compute(tensor.size(0), &start, &stop, &step, &slicelength))
     throw py::error_already_set();
-std::cout << " - start: " << start;
-std::cout << " - stop: " << stop;
-std::cout << " - step: " << step;
-std::cout << " - slicelength: " << slicelength;
-std::cout << std::endl;
+  std::cout << " - start: " << start;
+  std::cout << " - stop: " << stop;
+  std::cout << " - step: " << step;
+  std::cout << " - slicelength: " << slicelength;
+  std::cout << std::endl;
   return at::slice(tensor, 0, start, stop, step);
 }
 at::Tensor get_item(Tensor tensor, py::tuple key) {
@@ -161,6 +161,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return get_item(tensor, key);
   });
   m.def("get_item", [](Tensor tensor, py::tuple key) {
+    if (key.size() == 1) {
+      return get_item(key[0]);
+    }
+    // TODO: Continue here
+    std::vector<py::object> entries;
+    for (size_t i = 0; i < key.size(); i++) {
+      entries.push_back(key[i]);
+    }
     return get_item(tensor, key);
   });
   // #endif

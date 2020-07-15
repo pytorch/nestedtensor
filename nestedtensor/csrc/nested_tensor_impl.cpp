@@ -323,7 +323,7 @@ Tensor NestedTensor_slice(
     TORCH_CHECK_INDEX(false, "slice() only supports dim == 0 for now.");
   }
   // TODO: support negative strides
-  // TORCH_CHECK(step == 1, "slice step must be 1 for now.");
+  TORCH_CHECK(step >= 1, "slice step must be positive for now.");
   int64_t sizes_0 = self.size(0);
   if (start < 0) {
     start += sizes_0;
