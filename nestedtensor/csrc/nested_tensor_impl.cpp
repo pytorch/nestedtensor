@@ -159,10 +159,9 @@ Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
     for (int64_t i = 0; i < (dim - nested_dim()); i++) {
       unbound = _unbind_tensors(unbound);
     }
-    return at::detail::make_tensor<NestedTensorImpl>(
-        NestedTensorImpl(std::move(unbound)));
+    return wrap_tensor_node(std::move(unbound));
   }
-  return at::detail::make_tensor<NestedTensorImpl>(_structure);
+  return wrap_tensor_node(std::move(_structure));
 }
 
 bool is_nested_tensor_impl(const at::Tensor tensor) {
@@ -180,7 +179,7 @@ TensorNode get_nested_tensor_structure(const at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-at::Tensor wrap_tensor_node(TensorNode&& result) {
+at::Tensor wrap_tensor_node(TensorNode result) {
   if (result.is_leaf()) {
     return result.payload();
   }
@@ -217,7 +216,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
       "preserve memory format is unsupported by the contiguous operator");
   return wrap_tensor_node(
       map([](at::Tensor tensor) { return tensor.contiguous(); },
-          get_nested_tensor_impl(self)->get_structure()));
+          get_nested_tensor_structure(self)));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -250,8 +249,7 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
       result.push_back(TensorNode(std::move(ci)));
     }
   }
-  return at::detail::make_tensor<at::NestedTensorImpl>(
-      TensorNode(std::move(result)));
+  return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
@@ -264,7 +262,6 @@ std::vector<at::Tensor> NestedTensor_unbind(
   auto _data = get_nested_tensor_impl(self);
   dim = at::maybe_wrap_dim(dim, _data->dim());
   auto node = _data->get_structure();
-  auto nested_dim = _data->nested_dim();
   if (dim == 0) {
     return wrap_tensor_node(node.unbind());
   }
@@ -292,19 +289,19 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   if (dim == 0) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
-  TensorNode tn = get_nested_tensor_impl(self)->get_structure().unbind()[index];
-  return at::detail::make_tensor<NestedTensorImpl>(std::move(tn));
+  auto children = get_nested_tensor_structure(self).unbind();
+  auto child = children[index];
+  return wrap_tensor_node(std::move(child));
 }
 
 Tensor NestedTensor_clone(
     const Tensor& src,
     c10::optional<c10::MemoryFormat> optional_memory_format) {
-  auto self_impl = get_nested_tensor_impl(src);
-  return at::detail::make_tensor<NestedTensorImpl>(map(
+  return wrap_tensor_node(map(
       [&optional_memory_format](Tensor a) {
         return at::clone(a, optional_memory_format);
       },
-      self_impl->get_structure()));
+      get_nested_tensor_structure(src)));
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
