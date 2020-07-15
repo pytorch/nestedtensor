@@ -269,29 +269,16 @@ std::vector<at::Tensor> NestedTensor_unbind(
     return wrap_tensor_node(node.unbind());
   }
   std::vector<std::vector<TensorNode>> unbound;
-  // if (nested_dim == 1) {
-  //   for (auto child : node.unbind()) {
-  //     at::Tensor child_t = wrap_tensor_node(std::move(child));
-  //     if (child_t.size(dim - 1) >= unbound.size()) {
-  //       unbound.resize(child_t.size(dim - 1));
-  //     }
-  //     std::vector<at::Tensor> tmp = at::unbind(child_t, dim - 1);
-  //     for (size_t j = 0; j < tmp.size(); j++) {
-  //       unbound[j].push_back(TensorNode(std::move(tmp[j])));
-  //     }
-  //   }
-  // } else {
-    for (auto child : node.unbind()) {
-      std::vector<at::Tensor> tmp =
-          at::unbind(wrap_tensor_node(std::move(child)), dim - 1);
-      for (size_t j = 0; j < tmp.size(); j++) {
-        if (unbound.size() >= j) {
-          unbound.resize(j + 1);
-        }
-        unbound[j].push_back(TensorNode(std::move(tmp[j])));
+  for (auto child : node.unbind()) {
+    std::vector<at::Tensor> tmp =
+        at::unbind(wrap_tensor_node(std::move(child)), dim - 1);
+    for (size_t j = 0; j < tmp.size(); j++) {
+      if (j >= unbound.size()) {
+        unbound.resize(j + 1);
       }
+      unbound[j].push_back(TensorNode(std::move(tmp[j])));
     }
-  // }
+  }
   std::vector<TensorNode> result;
   for (size_t i = 0; i < unbound.size(); i++) {
     result.push_back(TensorNode(std::move(unbound[i])));
