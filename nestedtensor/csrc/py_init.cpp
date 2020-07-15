@@ -128,30 +128,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
   m.def("_nested_tensor_view", &torch::nested_tensor::_nested_tensor_view);
 
-  // Need to overwrite because
-  // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
-  // requires sizes() for non Tensor-shape compliant NestedTensors
-  // and can't be overwritten since it's not a native function.
-  // TODO: Advanced indexing
-  // TODO: Tensor-wise select
-  // TODO: Tuple support
-  //   m.def("get_item", [](Tensor tensor, int64_t key_) {
-  //     std::cout << "11101" << std::endl;
-  //     std::vector<at::Tensor> unbound = unbind(tensor, 0);
-  //     std::cout << "11102" << std::endl;
-  //     int64_t key = at::maybe_wrap_dim(key_, unbound.size());
-  //     std::cout << "11103" << std::endl;
-  //     return unbind(tensor, 0)[key];
-  //   });
-  // #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
-  //   m.def("get_item", [](Tensor tensor, py::slice key) {
-  //     std::cout << "22201" << std::endl;
-  //     py::list unbound = py::cast(unbind(tensor, 0));
-  //     std::cout << "22202" << std::endl;
-  //     return unbound[key];
-  //   });
-  // #endif
-
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor_impl(self);
     if (!index_) {
