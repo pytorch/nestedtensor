@@ -14,5 +14,3 @@ from . import nested
 from . import _C
 
 from . import nn
-
-from .nested.nested import _new_torch_stack as stack
