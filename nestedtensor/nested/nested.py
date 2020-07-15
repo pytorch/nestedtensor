@@ -1,11 +1,14 @@
 import torch
 import numbers
+from functools import wraps
 from . import masking
+import collections
+import os
 
 from . import creation
 
 import nestedtensor
-
+import itertools
 
 def _wrap_result(result):
     if isinstance(result, list):
@@ -18,7 +21,6 @@ def _wrap_result(result):
         else result
     )
 
-
 def _filter_impl(args, kwargs):
     if kwargs is None:
         kwargs = {}
@@ -28,22 +30,18 @@ def _filter_impl(args, kwargs):
     }
     return impl_args, impl_kwargs
 
-
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
             def _wrapped_fn(*args, **kwargs):
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
-                result = getattr(impl_args[0], name)(
-                    *(impl_args[1:]), **impl_kwargs)
+                result = getattr(impl_args[0], name)(*(impl_args[1:]), **impl_kwargs)
                 return _wrap_result(result)
             return _wrapped_fn
         return self.__dict__[name]
 
 # -------------------------NestedTensor core---------------------------
-
-
-class NestedTensor(metaclass=NestedTensorMeta):
+class NestedTensor(metaclass = NestedTensorMeta):
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its
@@ -92,27 +90,9 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return _wrap_result(self._impl * other._impl)
         return _wrap_result(self._impl * other)
 
-    def __rmul__(self, other):
-        assert not isinstance(other, NestedTensor)
-        return _wrap_result(self._impl * other)
-
-    def __truediv__(self, other):
-        if isinstance(other, NestedTensor):
-            return _wrap_result(self._impl / other._impl)
-        return _wrap_result(self._impl / other)
-
-    def __floordiv__(self, other):
-        if isinstance(other, NestedTensor):
-            return _wrap_result(self._impl // other._impl)
-        return _wrap_result(self._impl // other)
-
     def __pow__(self, *args, **kwargs):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
-
-    def __rpow__(self, exponent):
-        assert not isinstance(exponent, NestedTensor)
-        return _wrap_result(torch.pow(exponent, self._impl))
 
     @property
     def shape(self):
@@ -163,8 +143,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        nestedtensor._C.backward(
-            self._impl, gradient._impl, retain_graph, create_graph)
+        nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
 
     def nested_dim(self):
         """
@@ -210,6 +189,19 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     # --- dependent on impl ---
 
+    def unbind(self, dim=0):
+        """
+        unbind returns a tuple containing the entries
+        of the list ```self``` represents. 
+
+        For now unbind does not accept a dim argument akin
+        to torch.Tensor.unbind
+
+        Returns a tuple of views. Results might not be contiguous.
+        """
+        # TODO: Design choice: Return zip_longest or zip?
+        return tuple(_wrap_result(t) for t in self._impl.unbind(dim))
+
     def to_tensor(self, dim=0):
         """
         Not necessarily a view.
@@ -243,21 +235,10 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     # Might require nonzero
     def __bool__(self):
-        raise NotImplementedError(
-            "NestedTensor doesn't support function __bool__")
+        raise NotImplementedError("NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
-        # print("key: ", key)
-        if isinstance(key, numbers.Number):
-            return _wrap_result(self._impl[key])
-        if isinstance(key, slice):
-            return _wrap_result(self._impl[key])
-        if isinstance(key, tuple):
-            if len(key) == 1:
-                return self[key[0]]
-            return nestedtensor._nested_tensor_view(list(t[key[1:]] for t in self[key[0]].unbind()))
-        raise NotImplementedError(
-            "getitem doesn't support key of type: ", type(key))
+        return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())

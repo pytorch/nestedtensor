@@ -1,8 +1,8 @@
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
-#include <nestedtensor/csrc/python_functions.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <nestedtensor/csrc/utils/python_nested_node.h>
+#include <nestedtensor/csrc/python_functions.h>
 #include <torch/csrc/Size.h>
 #include <torch/extension.h>
 
@@ -19,6 +19,7 @@ namespace py = pybind11;
 
 using namespace torch::nested_tensor;
 using namespace at;
+
 
 py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
@@ -41,6 +42,7 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   };
   return fn(fn, size_node, *index);
 }
+
 
 namespace torch {
 namespace nested_tensor {
@@ -111,7 +113,7 @@ static auto registry =
                 return result;
               });
         });
-} // namespace
+}
 } // namespace nested_tensor
 } // namespace torch
 
@@ -121,8 +123,27 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // since you can expect transparent changes to the constiuents
   // via unbind.
 
+
   m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
-  m.def("_nested_tensor_view", &torch::nested_tensor::_nested_tensor_view);
+
+  // Need to overwrite because
+  // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
+  // requires sizes() for non Tensor-shape compliant NestedTensors
+  // and can't be overwritten since it's not a native function.
+  // TODO: Advanced indexing
+  // TODO: Tensor-wise select
+  // TODO: Tuple support
+  m.def("get_item", [](Tensor tensor, int64_t key_) {
+    std::vector<at::Tensor> unbound = unbind(tensor, 0);
+    int64_t key = at::maybe_wrap_dim(key_, unbound.size());
+    return unbind(tensor, 0)[key];
+  });
+#if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
+  m.def("get_item", [](Tensor tensor, py::slice key) {
+    py::list unbound = py::cast(unbind(tensor, 0));
+    return unbound[key];
+  });
+#endif
 
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor_impl(self);
@@ -158,3 +179,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   add_functions(m);
 }
+
