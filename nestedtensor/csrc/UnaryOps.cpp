@@ -51,7 +51,7 @@ Tensor& NestedTensor_clamp_(Tensor& self, optional<Scalar> min, optional<Scalar>
 }
 
 Tensor NestedTensor_clamp(const Tensor& self, optional<Scalar> min, optional<Scalar> max) {
-  return at::detail::make_tensor<NestedTensorImpl>(
+  return wrap_tensor_node(
       map([min, max](at::Tensor tensor) { return at::clamp(tensor, min, max); },
           get_nested_tensor_structure(self)));
 }
@@ -77,7 +77,7 @@ Tensor& NestedTensor_clamp_min_(Tensor& self, Scalar min) {
 }
 
 Tensor NestedTensor_clamp_min(const Tensor& self, Scalar min) {
-  return at::detail::make_tensor<NestedTensorImpl>(
+  return wrap_tensor_node(
       map([min](at::Tensor tensor) { return at::clamp_min(tensor, min); },
           get_nested_tensor_structure(self)));
 }
@@ -99,7 +99,7 @@ Tensor& NestedTensor_clamp_max_(Tensor& self, Scalar min) {
 }
 
 Tensor NestedTensor_clamp_max(const Tensor& self, Scalar min) {
-  return at::detail::make_tensor<NestedTensorImpl>(
+  return wrap_tensor_node(
       map([min](at::Tensor tensor) { return at::clamp_max(tensor, min); },
           get_nested_tensor_structure(self)));
 }
@@ -121,7 +121,7 @@ Tensor& NestedTensor_mvlgamma_(Tensor& self, int64_t p) {
 }
 
 Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
-  return at::detail::make_tensor<NestedTensorImpl>(
+  return wrap_tensor_node(
       map([p](at::Tensor tensor) { return at::mvlgamma(tensor, p); },
           get_nested_tensor_structure(self)));
 }
