@@ -96,16 +96,16 @@ Tensor NestedTensor_batch_norm(
   return wrap_tensor_node(map(
       [&](at::Tensor t) {
         auto result = at::batch_norm(
-                   t.unsqueeze(0),
-                   weight,
-                   bias,
-                   running_mean,
-                   running_var,
-                   training,
-                   momentum,
-                   eps,
-                   cudnn_enabled)
-            .squeeze(0);
+                          t.unsqueeze(0),
+                          weight,
+                          bias,
+                          running_mean,
+                          running_var,
+                          training,
+                          momentum,
+                          eps,
+                          cudnn_enabled)
+                          .squeeze(0);
         return result;
       },
       get_nested_tensor_structure(input)));
@@ -324,6 +324,56 @@ Tensor NestedTensor_flatten(
       self_data->get_structure()));
 }
 
+Tensor& NestedTensor_cat_out(Tensor& result, TensorList tensors, int64_t dim) {
+  auto tmp = at::cat(tensors, dim);
+  result.copy_(tmp);
+  return result;
+}
+
+Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
+  TORCH_CHECK(tensors.size() > 0, "Cannot concatenate an empty list.");
+  auto nested_dim_0 = get_nested_tensor_impl(tensors[0])->nested_dim();
+  auto dim_0 = get_nested_tensor_impl(tensors[0])->dim();
+  int64_t max_len = tensors[0].size(dim);
+  for (size_t i = 1; i < tensors.size(); i++) {
+    TORCH_CHECK(
+        nested_dim_0 == get_nested_tensor_impl(tensors[i])->nested_dim(),
+        "Nested dimension of NestedTensors must match for cat to succeed.");
+    TORCH_CHECK(
+        dim_0 == get_nested_tensor_impl(tensors[i])->dim(),
+        "Dimension of NestedTensors must match for cat to succeed.");
+    if (max_len < tensors[i].size(dim)) {
+      max_len = tensors[i].size(dim);
+    }
+  }
+
+  std::vector<TensorNode> result;
+  for (size_t i = 0; i < tensors.size(); i++) {
+    auto unbound = tensors[i].unbind(dim);
+    // if (is_nested_tensor_impl(tensors[i])) {
+    //   std::cout << "tensors[" << i << "]: " << std::endl;
+    //   apply(
+    //       [](at::Tensor tensor) { std::cout << tensor << std::endl; },
+    //       get_nested_tensor_structure(tensors[i]));
+    // } else {
+    //   std::cout << "tensors[" << i << "]: " << tensors[i] << std::endl;
+    // }
+    for (size_t j = 0; j < unbound.size(); j++) {
+      // if (is_nested_tensor_impl(unbound[j])) {
+      //   std::cout << "i: " << i << " - unbound[" << j << "]: " << std::endl;
+      //   apply(
+      //       [](at::Tensor tensor) { std::cout << tensor << std::endl; },
+      //       get_nested_tensor_structure(unbound[j]));
+      // } else {
+      //   std::cout << "i: " << i << " - unbound[" << j << "]: " << unbound[j]
+      //             << std::endl;
+      // }
+      result.push_back(get_nested_tensor_structure(unbound[j]));
+    }
+  }
+  return wrap_tensor_node(TensorNode(std::move(result)));
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -343,5 +393,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
   m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
   m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
+  m.impl_UNBOXED("cat", NestedTensor_cat);
+  m.impl_UNBOXED("cat.out", NestedTensor_cat_out);
 }
 } // namespace at
