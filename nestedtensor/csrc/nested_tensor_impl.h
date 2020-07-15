@@ -25,7 +25,8 @@ bool is_nested_tensor_impl(const at::Tensor tensor);
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
 
-at::Tensor wrap_tensor_node(TensorNode&& result);
+at::Tensor wrap_tensor_node(TensorNode&&);
+at::Tensor tensor_vector_to_node(std::vector<at::Tensor>&&);
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(TensorNode structure);
