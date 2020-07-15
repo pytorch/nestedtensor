@@ -113,7 +113,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(default_nested_tensor.dtype, default_tensor.dtype)
             self.assertEqual(default_nested_tensor.requires_grad,
                              default_tensor.requires_grad)
-            self.assertRaises(RuntimeError, default_tensor.grad)
+            self.assertIsNone(default_tensor.grad)
             self.assertEqual(default_nested_tensor.is_pinned(),
                              default_tensor.is_pinned())
 
