@@ -1,9 +1,7 @@
-#include <python_nested_tensor.h>
+#pragma once	
 
 namespace torch {
 namespace nested_tensor {
-
-pybind11::cpp_function jit_tensorwise();
-
+void add_functions(pybind11::module);
 } // namespace nested_tensor
 } // namespace torch
