@@ -3,72 +3,49 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/library.h>
 
-// TODO: Non-NT argument support
-
 namespace at {
 
 using namespace torch::nested_tensor;
 
 template <Tensor& (*func)(Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
-  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
-    apply(
-        [](Tensor& tensor, const Tensor other) { func(tensor, other); },
+  if (is_nested_tensor_impl(other)) {
+    apply([](Tensor& tensor, const Tensor other) {
+          func(tensor, other);
+        },
         get_nested_tensor_structure(self),
         get_nested_tensor_structure(other));
     return self;
   }
-  if (is_nested_tensor_impl(other)) {
-    apply(
-        [&self](Tensor& other) { func(self, other); },
-        get_nested_tensor_structure(other));
-  }
   apply(
-      [&other](Tensor& self) { func(self, other); },
+      [&other](Tensor& tensor) { func(tensor, other); },
       get_nested_tensor_structure(self));
   return self;
 }
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
-  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
-    TORCH_CHECK(
-        shape_matches(
-            get_nested_tensor_structure(self),
-            get_nested_tensor_structure(other)),
-        "binary requires shapes of arguments to match.");
-    return wrap_tensor_node(
-        map([](Tensor self, Tensor other) { return func(self, other); },
-            get_nested_tensor_structure(self),
-            get_nested_tensor_structure(other)));
-  }
   if (is_nested_tensor_impl(other)) {
     return wrap_tensor_node(
-        map([&self](Tensor other) { return func(self, other); },
+        map([](Tensor tensor, Tensor other) { return func(tensor, other); },
+            get_nested_tensor_structure(self),
             get_nested_tensor_structure(other)));
   }
   return wrap_tensor_node(
-      map([&other](Tensor self) { return func(self, other); },
+      map([&other](Tensor tensor) { return func(tensor, other); },
           get_nested_tensor_structure(self)));
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
-  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(map(
-        [&scalar](Tensor tensor, Tensor other) {
-          return func(tensor, other, scalar);
-        },
-        get_nested_tensor_structure(self),
-        get_nested_tensor_structure(other)));
-  }
   if (is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(map(
-        [&self, &scalar](Tensor other) { return func(self, other, scalar); },
-        get_nested_tensor_structure(other)));
+    return wrap_tensor_node(
+        map([&scalar](Tensor tensor, Tensor other) { return func(tensor, other, scalar); },
+            get_nested_tensor_structure(self),
+            get_nested_tensor_structure(other)));
   }
   return wrap_tensor_node(
-      map([&other, &scalar](Tensor self) { return func(self, other, scalar); },
+      map([&other, &scalar](Tensor tensor) { return func(tensor, other, scalar); },
           get_nested_tensor_structure(self)));
 }
 
@@ -77,10 +54,6 @@ Tensor& NestedTensor_binary_out(
     Tensor& result,
     const Tensor& self,
     const Tensor& other) {
-  TORCH_CHECK(
-      is_nested_tensor_impl(result) && is_nested_tensor_impl(self) &&
-          is_nested_tensor_impl(other),
-      "binary_out doesn't support non-NT arguments.")
   apply(
       [](Tensor& result, Tensor& tensor, Tensor& other) {
         return func(result, tensor, other);
@@ -116,10 +89,7 @@ Tensor& NestedTensor_sub_out(
   return result;
 }
 
-Tensor& NestedTensor_pow_out_1(
-    Tensor& result,
-    const Tensor& base,
-    const Tensor& exp) {
+Tensor& NestedTensor_pow_out_1(Tensor& result, const Tensor& base, const Tensor& exp) {
   apply(
       [](Tensor& result, Tensor& base, Tensor& exp) {
         return at::pow_out(result, base, exp);
@@ -160,12 +130,6 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
   return result;
 }
 
-Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
-  return wrap_tensor_node(
-      map([&base](Tensor exp) { return at::pow(base, exp); },
-          get_nested_tensor_structure(exp)));
-}
-
 #define BINARY_OP(NAME)                                                        \
   m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
@@ -175,13 +139,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)
-
-  // floor_divide has an inconsistent signature
-  m.impl_UNBOXED("floor_divide", NestedTensor_binary<at::floor_divide>);
-  m.impl_UNBOXED(
-      "floor_divide_.Tensor", NestedTensor_binary_<at::native::floor_divide_>);
-  m.impl_UNBOXED(
-      "floor_divide.out", NestedTensor_binary_out<at::floor_divide_out>);
 
   m.impl_UNBOXED("add.Tensor", NestedTensor_binary<Scalar, at::add>);
 
@@ -202,6 +159,5 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
   m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
   m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
-  m.impl_UNBOXED("pow.Scalar", NestedTensor_pow_3);
 }
-} // namespace at
+}
