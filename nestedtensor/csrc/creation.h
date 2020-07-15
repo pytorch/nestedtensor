@@ -9,7 +9,5 @@ NestedNode<py::object> py_to_nested_node(py::object&& py_obj);
 
 at::Tensor nested_tensor_impl(pybind11::sequence list);
 
-at::Tensor _nested_tensor_view(pybind11::sequence list);
-
 } // namespace nested_tensor
 } // namespace torch
