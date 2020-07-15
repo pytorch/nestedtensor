@@ -270,13 +270,16 @@ std::vector<at::Tensor> NestedTensor_unbind(
   }
   std::vector<std::vector<TensorNode>> unbound;
   if (nested_dim == 1) {
+    int64_t dim_max_size = 0;
+    for (const auto& child : node.unbind()) {
+      int64_t dim_size = child.payload().size(dim - 1);
+      dim_max_size = dim_max_size > dim_size ? dim_max_size : dim_size;
+    }
+    unbound.resize(dim_max_size);
     for (auto child : node.unbind()) {
       std::vector<at::Tensor> unbound_tensors =
           at::unbind(wrap_tensor_node(std::move(child)), dim - 1);
       for (size_t j = 0; j < unbound_tensors.size(); j++) {
-        if (unbound.size() >= j) {
-          unbound.resize(j + 1);
-        }
         unbound[j].push_back(TensorNode(std::move(unbound_tensors[j])));
       }
     }
