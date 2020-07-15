@@ -107,7 +107,8 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       _sizes.push_back(*opt_int);
     } else {
       // TODO: Should we prefer this over opt_sizes?
-      // It's of a similar thought as using -1 in reshape as a placeholder
+      // TODO: Using -1 here is of of a similar thought as using -1 in reshape as a placeholder.
+      // Unfortunatly using -1 here interacts very badly with the rest of the functions that consume size.
       _sizes.push_back(0);
     }
   }
