@@ -219,19 +219,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     # --- dependent on impl ---
 
-    # def unbind(self, dim=0):
-    #     """
-    #     unbind returns a tuple containing the entries
-    #     of the list ```self``` represents.
-
-    #     For now unbind does not accept a dim argument akin
-    #     to torch.Tensor.unbind
-
-    #     Returns a tuple of views. Results might not be contiguous.
-    #     """
-    #     # TODO: Design choice: Return zip_longest or zip?
-    #     return tuple(_wrap_result(t) for t in self._impl.unbind(dim))
-
     def to_tensor(self, dim=0):
         """
         Not necessarily a view.
