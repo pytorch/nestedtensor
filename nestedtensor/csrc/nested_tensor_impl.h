@@ -1,6 +1,6 @@
 #pragma once
-#include <nestedtensor/csrc/utils/nested_node.h>
 #include <ATen/ATen.h>
+#include <nestedtensor/csrc/utils/nested_node.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -23,10 +23,11 @@ struct NestedTensorImpl;
 
 bool is_nested_tensor_impl(const at::Tensor tensor);
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
-torch::nested_tensor::TensorNode get_nested_tensor_structure(const at::Tensor tensor);
+torch::nested_tensor::TensorNode get_nested_tensor_structure(
+    const at::Tensor tensor);
 
 at::Tensor wrap_tensor_node(TensorNode&&);
-at::Tensor tensor_vector_to_node(std::vector<at::Tensor>&&);
+std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(TensorNode structure);
@@ -40,8 +41,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     };
     return reduce<decltype(fn), int64_t, at::Tensor>(get_structure(), fn, 0);
   }
-  bool is_contiguous(
-      at::MemoryFormat memory_format) const override {
+  bool is_contiguous(at::MemoryFormat memory_format) const override {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
     // buffer. For this to be contiguous not only the individuals Tensors have
     // to be but also the buffer.
@@ -75,8 +75,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
       throw std::runtime_error("Grad is undefined");
     }
     return wrap_tensor_node(
-        map([](at::Tensor tensor) { 
-          return tensor.grad(); }, get_structure()));
+        map([](at::Tensor tensor) { return tensor.grad(); }, get_structure()));
   }
   Tensor requires_grad_(bool requires_grad) {
     apply(
@@ -139,7 +138,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
   std::vector<int64_t> _sizes;
 };
 
-
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor_impl(tensor);
   for (const auto& size : nt->opt_sizes()) {
@@ -152,7 +150,9 @@ inline bool is_tensor_shape(const at::Tensor tensor) {
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
-inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
+inline std::ostream& operator<<(
+    std::ostream& out,
+    const NestedTensorImpl& batch_tensor) {
   auto node = batch_tensor.get_structure();
   out << "NESTED_TENSOR";
   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
@@ -160,4 +160,4 @@ inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch
   return out;
 }
 
-}
+} // namespace at

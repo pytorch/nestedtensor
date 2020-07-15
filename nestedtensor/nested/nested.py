@@ -11,6 +11,10 @@ import nestedtensor
 import itertools
 
 def _wrap_result(result):
+    if isinstance(result, list):
+        return list(_wrap_result(r) for r in result)
+    if isinstance(result, tuple):
+        return tuple(_wrap_result(r) for r in result)
     return (
         NestedTensor(result)
         if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
