@@ -625,23 +625,15 @@ class TestNestedTensor(TestCase):
         print("nt[:, -1:, None]: ", nt[:, -1:, None])  # recursive getitem call across tuples
         print("nt[-1:, :, None]: ", nt[-1:, :, None])  # recursive getitem call across tuples
 
-    def test_cat(self):
+    def test_stack(self):
         nt0 = nestedtensor.nested_tensor([torch.arange(6).reshape(2, 3), torch.arange(6).reshape(3, 2) + 6])
         nt1 = nestedtensor.nested_tensor([torch.arange(12).reshape(4, 3) + 12, torch.arange(8).reshape(4, 2) + 24])
         print("nt0: ", nt0)
         print("nt1: ", nt1)
-        # print(nt0.nested_size())
-        # print(nt1.nested_size())
-        # print(torch.unbind(nt0, dim=0)[0].size())
-        # print(torch.unbind(nt0, dim=1)[0].size())
-        # print(torch.unbind(nt0, dim=2)[0].size())
-        # print(nt0.unbind(dim=0)[0].size())
-        # print(nt0.unbind(dim=1)[0].size())
-        # print(nt0.unbind(dim=2)[0].size())
-        # print('nt1.dim(): ', nt1.dim())
-        print("nestedtensor.cat([nt0, nt1], dim=0): ", nestedtensor.cat([nt0, nt1], dim=0)) # .nested_size())
-        print("nestedtensor.cat([nt0, nt1], dim=1): ", nestedtensor.cat([nt0, nt1], dim=1)) # .nested_size())
-        # print("nestedtensor.cat([nt0, nt1], dim=2): ", nestedtensor.cat([nt0, nt1], dim=2)) # .nested_size())
+        print(nt0.nested_size())
+        print(nt1.nested_size())
+        print("nestedtensor.stack([nt0, nt1], dim=0): ", nestedtensor.stack([nt0, nt1], dim=0)) # .nested_size())
+        print("nestedtensor.stack([nt0, nt1], dim=1): ", nestedtensor.stack([nt0, nt1], dim=1)) # .nested_size())
 
 
 class TestContiguous(TestCase):

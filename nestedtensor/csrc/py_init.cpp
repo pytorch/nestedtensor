@@ -54,78 +54,9 @@ static auto registry =
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->nested_dim();
             })
-        .op("nestedtensor::cat",
-            [](std::vector<Tensor> tensors, int64_t dim) {
-              return at::cat(TensorList(tensors), dim);
-              // TORCH_CHECK(
-              //     tensors.size() > 0, "Cannot concatenate an empty list.");
-              // auto nested_dim_0 =
-              //     get_nested_tensor_impl(tensors[0])->nested_dim();
-              // auto dim_0 =
-              //     get_nested_tensor_impl(tensors[0])->dim();
-              // int64_t max_len = tensors[0].size(dim);
-              // for (size_t i = 1; i < tensors.size(); i++) {
-              //   TORCH_CHECK(
-              //       nested_dim_0 ==
-              //           get_nested_tensor_impl(tensors[i])->nested_dim(),
-              //       "Nested dimension of NestedTensors must match for cat to
-              //       succeed.");
-              //   TORCH_CHECK(
-              //       dim_0 ==
-              //           get_nested_tensor_impl(tensors[i])->dim(),
-              //       "Dimension of NestedTensors must match for cat to
-              //       succeed.");
-              //   if (max_len < tensors[i].size(dim)) {
-              //     max_len = tensors[i].size(dim);
-              //   }
-              // }
-
-              // std::vector<TensorNode> result;
-              // for (size_t j = 0; j < max_len; j++) {
-              //   std::vector<TensorNode> nodes;
-              //   if (nested_dim_0 == 1) {
-              //     std::vector<Tensor> result_i;
-              //     for (size_t i = 0; i < tensors.size(); i++) {
-              //       auto unbound = tensors[i].unbind(dim);
-              //       if (j < unbound.size()) {
-              //         result_i.push_back(unbound[j]);
-              //       }
-              //     }
-              //     result.push_back(TensorNode(at::cat(TensorList(result_i))));
-              //   } else {
-              //     std::vector<TensorNode> result_i;
-              //     for (size_t i = 0; i < tensors.size(); i++) {
-              //       auto unbound = tensors[i].unbind(dim);
-              //       if (j < unbound.size()) {
-              //         result_i.push_back(get_nested_tensor_structure(
-              //             tensors[i].unbind(dim)[j]));
-              //       }
-              //     }
-              //     result.push_back(TensorNode(std::move(result_i)));
-              //   }
-              // }
-              // //  auto unbound = tensors[i].unbind(dim);
-              // //  if (nested_dim_0 == 1) {
-              // //    for (size_t j = 0; j < unbound.size(); j++) {
-              // // tensor_nodes.push_back(TensorNode(std::move(unbound[j])));
-              // //    }
-              // //  } else {
-              // //    for (size_t j = 0; j < unbound.size(); j++) {
-              // //      tensor_nodes.push_back(
-              // //          get_nested_tensor_structure(unbound[j]));
-              // //    }
-              // //  }
-              // return wrap_tensor_node(TensorNode(std::move(result)));
-            })
         .op("nestedtensor::stack",
             [](std::vector<Tensor> tensors, int64_t dim) {
-              TORCH_CHECK(
-                  dim == 0, "stack currently only supports dim set to 0.");
-              std::vector<TensorNode> tensor_nodes;
-              for (size_t i = 0; i < tensors.size(); i++) {
-                tensor_nodes.push_back(get_nested_tensor_structure(tensors[i]));
-              }
-              return wrap_tensor_node(TensorNode(std::move(tensor_nodes)));
+              return at::stack(TensorList(tensors), dim);
             })
         .op("nestedtensor::to_nested_tensor",
             [](Tensor tensor, c10::optional<int64_t> dim) {
