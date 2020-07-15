@@ -96,16 +96,16 @@ Tensor NestedTensor_batch_norm(
   return wrap_tensor_node(map(
       [&](at::Tensor t) {
         auto result = at::batch_norm(
-                          t.unsqueeze(0),
-                          weight,
-                          bias,
-                          running_mean,
-                          running_var,
-                          training,
-                          momentum,
-                          eps,
-                          cudnn_enabled)
-                          .squeeze(0);
+                   t.unsqueeze(0),
+                   weight,
+                   bias,
+                   running_mean,
+                   running_var,
+                   training,
+                   momentum,
+                   eps,
+                   cudnn_enabled)
+            .squeeze(0);
         return result;
       },
       get_nested_tensor_structure(input)));
