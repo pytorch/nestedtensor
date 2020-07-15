@@ -79,7 +79,8 @@ class TestNestedTensor(TestCase):
 
         nested_tensor1 = nestedtensor.as_nested_tensor(nested_tensor)
         self.assertTrue(nested_tensor1 is nested_tensor)
-        nested_tensor2 = nestedtensor.as_nested_tensor(nested_tensor, dtype=torch.int64)
+        nested_tensor2 = nestedtensor.as_nested_tensor(
+            nested_tensor, dtype=torch.int64)
         self.assertTrue(nested_tensor2 is not nested_tensor)
 
     def test_constructor(self):
@@ -112,7 +113,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(default_nested_tensor.dtype, default_tensor.dtype)
             self.assertEqual(default_nested_tensor.requires_grad,
                              default_tensor.requires_grad)
-            self.assertRaises(RuntimeError, default_tensor.grad)
+            self.assertIsNone(default_tensor.grad)
             self.assertEqual(default_nested_tensor.is_pinned(),
                              default_tensor.is_pinned())
 
@@ -216,7 +217,8 @@ class TestNestedTensor(TestCase):
             self.assertEqual(b[0][0], 1)
             self.assertEqual(b[0][1], 2)
 
-            a = constructor([[torch.randn(1)], [torch.randn(2), torch.randn(1)]])
+            a = constructor(
+                [[torch.randn(1)], [torch.randn(2), torch.randn(1)]])
             self.assertEqual(a.nested_size()[0][0], torch.Size([1]))
             self.assertEqual(a.nested_size()[1][0], torch.Size([2]))
             self.assertEqual(a.nested_size()[1][1], torch.Size([1]))
@@ -226,7 +228,7 @@ class TestNestedTensor(TestCase):
             self.assertRaises(IndexError, lambda: a.nested_size(3))
 
             a = constructor([[torch.tensor(1)],
-                            [torch.tensor(2), torch.tensor(1)]])
+                             [torch.tensor(2), torch.tensor(1)]])
             self.assertEqual(a.nested_size()[0][0], torch.Size([]))
             self.assertEqual(a.nested_size()[1][0], torch.Size([]))
             self.assertEqual(a.nested_size()[1][1], torch.Size([]))
@@ -384,8 +386,10 @@ class TestNestedTensor(TestCase):
             nt = nestedtensor.nested_tensor([a, b])
             self.assertEqual(unbind_fn(nt, 0), (a, b))
             result = (
-                nestedtensor.nested_tensor([unbind_fn(a, 0)[0], unbind_fn(b, 0)[0]]),
-                nestedtensor.nested_tensor([unbind_fn(a, 0)[1], unbind_fn(b, 0)[1]]),
+                nestedtensor.nested_tensor(
+                    [unbind_fn(a, 0)[0], unbind_fn(b, 0)[0]]),
+                nestedtensor.nested_tensor(
+                    [unbind_fn(a, 0)[1], unbind_fn(b, 0)[1]]),
                 nestedtensor.nested_tensor([unbind_fn(a, 0)[2]]))
             for x, y in zip(unbind_fn(nt, 1), result):
                 self.assertEqual(x, y, ignore_contiguity=True)

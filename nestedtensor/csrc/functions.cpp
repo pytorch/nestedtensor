@@ -267,7 +267,7 @@ Tensor NestedTensor__log_softmax(
     const int64_t dim_,
     const bool half_to_float) {
   auto self_impl = get_nested_tensor_impl(input_);
-  return at::detail::make_tensor<NestedTensorImpl>(
+  return wrap_tensor_node(
       map([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); },
           self_impl->get_structure()));
 }
