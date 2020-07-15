@@ -125,6 +125,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
 
   m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
+  m.def("_nested_tensor_view", &torch::nested_tensor::_nested_tensor_view);
 
   // Need to overwrite because
   // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
