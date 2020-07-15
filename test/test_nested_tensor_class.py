@@ -392,6 +392,7 @@ class TestNestedTensor(TestCase):
                     [unbind_fn(a, 0)[1], unbind_fn(b, 0)[1]]),
                 nestedtensor.nested_tensor([unbind_fn(a, 0)[2]]))
             for x, y in zip(unbind_fn(nt, 1), result):
+                print("x: ", type(x), " - y: ", type(y))
                 self.assertEqual(x, y, ignore_contiguity=True)
             # TODO: Add more tensors and unbind across more dimensions to create mixing
 
