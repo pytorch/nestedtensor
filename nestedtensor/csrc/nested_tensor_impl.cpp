@@ -179,7 +179,7 @@ TensorNode get_nested_tensor_structure(const at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-at::Tensor wrap_tensor_node(TensorNode result) {
+at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }

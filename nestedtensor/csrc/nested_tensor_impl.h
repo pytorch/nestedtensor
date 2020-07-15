@@ -27,7 +27,7 @@ torch::nested_tensor::TensorNode get_nested_tensor_structure(
     const at::Tensor tensor);
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);
-at::Tensor wrap_tensor_node(TensorNode);
+at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 
 struct NestedTensorImpl : public c10::TensorImpl {
