@@ -62,7 +62,7 @@ at::Tensor get_item(Tensor tensor, int64_t key_) {
   return unbind(tensor, 0)[key];
 }
 
-// #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
+#if (PYBIND11_VERSION_MAJOR >= 2 && PYBIND11_VERSION_MINOR >= 3)
 at::Tensor get_item(Tensor tensor, py::slice slice) {
   size_t start, stop, step, slicelength;
   if (!slice.compute(tensor.size(0), &start, &stop, &step, &slicelength))
@@ -120,6 +120,7 @@ at::Tensor get_item(Tensor tensor, py::tuple key) {
   auto result = get_item(tensor, entries);
   return result;
 }
+#endif
 
 namespace torch {
 namespace nested_tensor {
@@ -215,14 +216,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("get_item", [](Tensor tensor, int64_t key) {
     return get_item(tensor, key);
   });
-  // #if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
+#if (PYBIND11_VERSION_MAJOR >= 2 && PYBIND11_VERSION_MINOR >= 3)
   m.def("get_item", [](Tensor tensor, py::slice key) {
     return get_item(tensor, key);
   });
   m.def("get_item", [](Tensor tensor, py::tuple key) {
     return get_item(tensor, key);
   });
-  // #endif
+#endif
 
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor_impl(self);
