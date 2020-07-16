@@ -295,8 +295,8 @@ std::vector<at::Tensor> NestedTensor_unbind(
 }
 
 Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
-  std::cout << "HEEEE"
-            << " -dim: " << dim << " -index " << index << std::endl;
+  // std::cout << "HEEEE"
+  //           << " -dim: " << dim << " -index " << index << std::endl;
   int64_t ndim = self.dim();
   dim = maybe_wrap_dim(dim, ndim);
   if (dim != 0) {
@@ -313,7 +313,7 @@ Tensor NestedTensor_slice(
     int64_t end,
     int64_t step) {
   // return self;
-  std::cout << "HEHEHEHE" << std::endl;
+  // std::cout << "HEHEHEHE" << std::endl;
   int64_t ndim = self.dim();
   if (ndim == 0) {
     TORCH_CHECK_INDEX(false, "slice() cannot be applied to a 0-dim tensor.");
@@ -343,10 +343,10 @@ Tensor NestedTensor_slice(
   }
   std::vector<at::Tensor> unbound = at::unbind(self, 0);
   std::vector<TensorNode> new_tensor_nodes;
-  std::cout << "dim: " << dim << " start: " << start << " end: " << end
-            << " sizes_0: " << sizes_0
-            << " unbound.size(): " << unbound.size()
-            << " step: " << step << std::endl;
+  // std::cout << "dim: " << dim << " start: " << start << " end: " << end
+  //           << " sizes_0: " << sizes_0
+  //           << " unbound.size(): " << unbound.size()
+  //           << " step: " << step << std::endl;
   for (int64_t i = start; i < end; i += step) {
     if (is_nested_tensor_impl(unbound[i])) {
       new_tensor_nodes.push_back(get_nested_tensor_structure(unbound[i]));
