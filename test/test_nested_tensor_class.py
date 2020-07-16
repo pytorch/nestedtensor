@@ -612,42 +612,25 @@ class TestNestedTensor(TestCase):
     def test_getitem(self):
         a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
         nt = nestedtensor.nested_tensor([[a, b], [c]])
-        # self.assertEqual(nt[None], ntnt([[[a, b], [c]]]))
-        # self.assertEqual(nt[0], ntnt([a, b]))
-        # self.assertEqual(nt[:], nt)
-        # self.assertEqual(nt[:, 0], ntnt([a, c]))
-        # self.assertEqual(nt[-1:], ntnt([[c]]))
-        # self.assertEqual(nt[-1:, 0], ntnt([c]))
-        # self.assertEqual(nt[:, -1], ntnt([b, c]))
-        # self.assertEqual(nt[-1:, -1], ntnt([c]))
+        self.assertEqual(nt[None], ntnt([[[a, b], [c]]]))
+        self.assertEqual(nt[0], ntnt([a, b]))
+        self.assertEqual(nt[:], nt)
+        self.assertEqual(nt[:, 0], ntnt([a, c]))
+        self.assertEqual(nt[-1:], ntnt([[c]]))
+        self.assertEqual(nt[-1:, 0], ntnt([c]))
+        self.assertEqual(nt[:, -1], ntnt([b, c]))
+        self.assertEqual(nt[-1:, -1], ntnt([c]))
+        self.assertEqual(nt[:, -1:], ntnt([[b], [c]]))
+        self.assertEqual(nt[-1:, -1:], ntnt([[c]]))
+        self.assertEqual(nt[:, -1:, None], ntnt([[b[None]], [c[None]]]))
+        self.assertEqual(nt[-1:, :, None], ntnt([[c[None]]]))
+        self.assertEqual(nt[:, 1:, None], ntnt([[b[None]], []]))
         nt = nestedtensor.nested_tensor([[a, b]])
-        print(nt)
-        print('nt[0, 0]')
-        print(nt[0, 0])
-        print('nt[:, :]')
-        print(nt[:, :])
-        print(nt[:, None])
-        print('nt[None]')
-        print(nt[None])
-        # print('nt.size(): ', nt.size())
-        # print('nt.nested_size(): ', nt.nested_size())
-        # print("nt: ", nt)
-        # print("nt[-1:]: ", nt[-1:])  # NestedTensor_slice
-        # print("nt[:, 0]: ", nt[:, 0])  # recursive getitem call across tuples
-        # print('nt[0]')
-        # print(nt[0])
-        # print('nt[0].unbind()')
-        # print(nt[0].unbind())
-        # print("nt[0][:]: ", nt[0][:])  # recursive getitem call across tuples
-        # print("nt[0, :]: ", nt[0, :])  # recursive getitem call across tuples
-        # recursive getitem call across tuples
-        # print("nt[:, -1:]: ", nt[:, -1:])
-        # # recursive getitem call across tuples
-        # print("nt[-1:, :]: ", nt[-1:, :])
-        # recursive getitem call across tuples
-        print("nt[:, -1:, None]: ", nt[:, -1:, None])
-        # recursive getitem call across tuples
-        # print("nt[-1:, :, None]: ", nt[-1:, :, None])
+        self.assertEqual(nt[0, 0], ntnt([a[0], b[0]]))
+        self.assertEqual(nt[0, 1:], ntnt([a[1:], b[1:]]))
+        self.assertEqual(nt[:1, :, 1:], ntnt([[a[1:], b[1:]]]))
+        self.assertEqual(nt[:, :], nt)
+        self.assertEqual(nt[:, None], ntnt([[[a, b]]]))
 
 
 class TestContiguous(TestCase):
