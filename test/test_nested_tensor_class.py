@@ -654,16 +654,16 @@ class TestContiguous(TestCase):
     def test_contiguous(self):
         for _ in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
-            data=[[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
-            nt=nestedtensor.nested_tensor(data)
+            data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
+            nt = nestedtensor.nested_tensor(data)
             self.assertTrue(nt.is_contiguous())
             # buf = nt.flatten()
             self.assertEqual(nt, nt)
-            a=nt + nt
+            a = nt + nt
         nt.cos_()
         nt.cos()
 
-        a=nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
+        a = nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
                                            torch.tensor([3, 4]),
                                            torch.tensor([5, 6]),
                                            torch.tensor([7, 8])])
