@@ -226,12 +226,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
 
     def __getitem__(self, key):
         # print("key get item: ", key)
-         print("py0")
-         result = nestedtensor._C.get_item(self._impl, key)
-         print("py1")
-         result0 = _wrap_result(result)
-         print("py2")
-         return result0
+         return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())
