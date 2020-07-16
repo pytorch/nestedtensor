@@ -42,6 +42,21 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   return fn(fn, size_node, *index);
 }
 
+Tensor get_item(Tensor tensor, py::none key) {
+  if (is_nested_tensor_impl(tensor)) {
+    std::vector<TensorNode> result_nodes;
+    result_nodes.push_back(get_nested_tensor_structure(tensor));
+    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+  }
+  auto sizes = tensor.sizes();
+  std::vector<int64_t> new_sizes;
+  new_sizes.push_back(1);
+  for (size_t i = 0; i < sizes.size(); i++) {
+    new_sizes.push_back(sizes[i]);
+  }
+  return tensor.reshape(IntList(new_sizes));
+}
+
 at::Tensor get_item(Tensor tensor, int64_t key_) {
   std::vector<at::Tensor> unbound = unbind(tensor, 0);
   int64_t key = at::maybe_wrap_dim(key_, unbound.size());
@@ -63,6 +78,9 @@ at::Tensor get_item(Tensor tensor, py::slice slice) {
 
 at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   c10::optional<at::Tensor> first;
+  if (py::isinstance<py::none>(key[0])) {
+    first = get_item(tensor, py::cast<py::none>(key[0]));
+  }
   if (py::isinstance<py::int_>(key[0])) {
     first = get_item(tensor, py::cast<int64_t>(key[0]));
   }
