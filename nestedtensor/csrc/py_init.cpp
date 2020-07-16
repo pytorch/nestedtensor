@@ -60,10 +60,48 @@ at::Tensor get_item(Tensor tensor, py::slice slice) {
   std::cout << std::endl;
   return at::slice(tensor, 0, start, stop, step);
 }
-at::Tensor get_item(Tensor tensor, py::tuple key) {
-  return tensor;
+
+at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
+  c10::optional<at::Tensor> first;
+  if (py::isinstance<py::int_>(key[0])) {
+    first = get_item(tensor, py::cast<int64_t>(key[0]));
+  }
+  if (py::isinstance<py::slice>(key[0])) {
+    first = get_item(tensor, py::cast<py::slice>(key[0]));
+  }
+  TORCH_CHECK(first, "First entry of tuple doesn't have accepted type. ", py::str(key[0]));
+  if (key.size() == 1) {
+    return *first;
+  }
+  std::vector<at::Tensor> unbound = (*first).unbind();
+  // TODO: Continue here
+  std::vector<py::object> entries;
+  for (size_t i = 1; i < key.size(); i++) {
+    entries.push_back(key[i]);
+  }
+  // auto tup = py::tuple(entries);
+  std::vector<at::Tensor> result;
+  for (size_t i = 0; i < unbound.size(); i++) {
+    result.push_back(get_item(unbound[i], entries));
+  }
+  if (is_nested_tensor_impl(tensor)) {
+    std::vector<TensorNode> result_nodes;
+    for (size_t i = 0; i < result.size(); i++) {
+      result_nodes.push_back(wrap_tensor_node(std::move(result[i])));
+    }
+    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+  }
+  return at::stack(TensorList(result));
 }
-// #endif
+
+at::Tensor get_item(Tensor tensor, py::tuple key) {
+  std::cout << "key: " << py::str(key) << std::endl;
+  std::vector<py::object> entries;
+  for (size_t i = 0; i < key.size(); i++) {
+    entries.push_back(key[i]);
+  }
+  return get_item(tensor, entries);
+}
 
 namespace torch {
 namespace nested_tensor {
@@ -161,14 +199,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return get_item(tensor, key);
   });
   m.def("get_item", [](Tensor tensor, py::tuple key) {
-    if (key.size() == 1) {
-      return get_item(key[0]);
-    }
-    // TODO: Continue here
-    std::vector<py::object> entries;
-    for (size_t i = 0; i < key.size(); i++) {
-      entries.push_back(key[i]);
-    }
     return get_item(tensor, key);
   });
   // #endif
