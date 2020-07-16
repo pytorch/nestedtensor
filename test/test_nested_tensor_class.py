@@ -622,8 +622,10 @@ class TestNestedTensor(TestCase):
         # self.assertEqual(nt[-1:, -1], ntnt([c]))
         nt = nestedtensor.nested_tensor([[a, b]])
         print(nt)
-        print('nt[:, :]')
-        print(nt[:, :])
+        # print('nt[0, 0]')
+        # print(nt[0, 0])
+        # print('nt[:, :]')
+        # print(nt[:, :])
         # print(nt[:, None])
         # print('nt[None]')
         # print(nt[None])
@@ -642,9 +644,13 @@ class TestNestedTensor(TestCase):
         # print("nt[:, -1:]: ", nt[:, -1:])
         # # recursive getitem call across tuples
         # print("nt[-1:, :]: ", nt[-1:, :])
-        # # recursive getitem call across tuples
-        # print("nt[:, -1:, None]: ", nt[:, -1:, None])
-        # # recursive getitem call across tuples
+        # recursive getitem call across tuples
+        print("nt[:, -1:, None]: ")
+        print("HDH0")
+        aa = nt[:, -1:, None]
+        print("HDH1")
+        print(aa)
+        # recursive getitem call across tuples
         # print("nt[-1:, :, None]: ", nt[-1:, :, None])
 
 

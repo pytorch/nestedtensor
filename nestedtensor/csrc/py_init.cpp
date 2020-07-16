@@ -50,7 +50,7 @@ Tensor get_item(Tensor tensor, py::none key) {
         get_nested_tensor_structure(tensor));
     std::vector<TensorNode> result_nodes;
     result_nodes.push_back(get_nested_tensor_structure(tensor));
-    auto result =  wrap_tensor_node(TensorNode(std::move(result_nodes)));
+    auto result = wrap_tensor_node(TensorNode(std::move(result_nodes)));
     return result;
   }
   std::cout << "tensor0: " << tensor << std::endl;
@@ -64,6 +64,7 @@ Tensor get_item(Tensor tensor, py::none key) {
 }
 
 at::Tensor get_item(Tensor tensor, int64_t key_) {
+  std::cout << "CC: " << key_ << std::endl;
   std::vector<at::Tensor> unbound = unbind(tensor, 0);
   int64_t key = at::maybe_wrap_dim(key_, unbound.size());
   return unbind(tensor, 0)[key];
@@ -85,12 +86,15 @@ at::Tensor get_item(Tensor tensor, py::slice slice) {
 at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   c10::optional<at::Tensor> first;
   if (py::isinstance<py::none>(key[0])) {
+    std::cout << "B0" << std::endl;
     first = get_item(tensor, py::cast<py::none>(key[0]));
   }
   if (py::isinstance<py::int_>(key[0])) {
+    std::cout << "B1" << std::endl;
     first = get_item(tensor, py::cast<int64_t>(key[0]));
   }
   if (py::isinstance<py::slice>(key[0])) {
+    std::cout << "B2" << std::endl;
     first = get_item(tensor, py::cast<py::slice>(key[0]));
   }
   TORCH_CHECK(
@@ -98,36 +102,82 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
       "First entry of tuple doesn't have accepted type. ",
       py::str(key[0]));
   if (key.size() == 1) {
+    std::cout << "B3" << std::endl;
     return *first;
   }
   std::vector<at::Tensor> unbound = (*first).unbind();
   // TODO: Continue here
   std::vector<py::object> entries;
   for (size_t i = 1; i < key.size(); i++) {
+    std::cout << "B4: " << i << std::endl;
     entries.push_back(key[i]);
   }
   // auto tup = py::tuple(entries);
   std::vector<at::Tensor> result;
   for (size_t i = 0; i < unbound.size(); i++) {
+    std::cout << "B5: " << i << std::endl;
     result.push_back(get_item(unbound[i], entries));
   }
   if (is_nested_tensor_impl(tensor)) {
+    // return tensor;
+    std::cout << "A" << std::endl;
     std::vector<TensorNode> result_nodes;
     for (size_t i = 0; i < result.size(); i++) {
-      result_nodes.push_back(wrap_tensor_node(std::move(result[i])));
+      std::cout << "A0: " << i << std::endl;
+      std::cout << "A00: is impl " << is_nested_tensor_impl(result[i]) << std::endl;
+      std::cout << "A00 result[" << i << "].dim(): " << result[i].dim() << std::endl;
+      std::cout << "A00 result[" << i << "].size(0): " << result[i].size(0) << std::endl;
+      std::cout << "A00 result[" << i << "].size(1): " << result[i].size(1) << std::endl;
+      std::cout << "A00 result[" << i << "].size(2): " << result[i].size(1) << std::endl;
+      std::cout << "A00 result[" << i << "].size(3): " << result[i].size(1) << std::endl;
+      // std::cout << "A00 result[" << i << "]: " << result[i] << std::endl;
+      if (is_nested_tensor_impl(result[i])) {
+        result_nodes.push_back(get_nested_tensor_structure(result[i]));
+      } else {
+        auto new_node_i = TensorNode(std::move(result[i]));
+        result_nodes.push_back(std::move(new_node_i));
+      }
+      if (is_nested_tensor_impl(result[i])) {
+      std::cout << "A0 about to print" << std::endl;
+      apply(
+          [](at::Tensor tensor) {
+            std::cout << "A00 NT00 is impl: " << is_nested_tensor_impl(tensor) << std::endl;
+            // std::cout << "A00 NT00: " << tensor << std::endl;
+          },
+          result_nodes[i]);
+      std::cout << "done printing" << std::endl;
+      }
     }
-    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+    std::cout << "A00" << std::endl;
+    for (size_t i = 0; i < result.size(); i++) {
+      std::cout << "A00: " << i << std::endl;
+      // apply(
+      //     [](at::Tensor tensor) {
+      //       std::cout << "NT00: " << tensor << std::endl;
+      //     },
+      //     result_nodes[i]);
+    }
+    std::cout << "A1" << std::endl;
+    // return wrap_tensor_node(TensorNode(std::move(tensor)));
+    auto result = wrap_tensor_node(TensorNode(std::move(result_nodes)));
+    std::cout << "A2" << std::endl;
+    return result;
   }
+  std::cout << "B" << std::endl;
   return at::stack(TensorList(result));
 }
 
 at::Tensor get_item(Tensor tensor, py::tuple key) {
   // std::cout << "key: " << py::str(key) << std::endl;
   std::vector<py::object> entries;
+  std::cout << "D0" << std::endl;
   for (size_t i = 0; i < key.size(); i++) {
     entries.push_back(key[i]);
   }
-  return get_item(tensor, entries);
+  std::cout << "D1" << std::endl;
+  auto result = get_item(tensor, entries);
+  std::cout << "D2" << std::endl;
+  return result;
 }
 
 namespace torch {
