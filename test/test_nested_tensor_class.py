@@ -631,7 +631,6 @@ class TestNestedTensor(TestCase):
         self.assertEqual(nt[:1, :, 1:], ntnt([[a[1:], b[1:]]]))
         self.assertEqual(nt[:, :], nt)
         self.assertEqual(nt[:, None], ntnt([[[a, b]]]))
-        print(nt)
         self.assertRaisesRegex(IndexError,
                                "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
                                lambda: nt[2])
