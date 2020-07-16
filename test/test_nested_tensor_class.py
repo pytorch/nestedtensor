@@ -607,19 +607,21 @@ class TestNestedTensor(TestCase):
         self.assertFalse(a6.is_pinned())
 
     def test_slice(self):
-        nt = nestedtensor.nested_tensor([torch.randn(2, 3), torch.randn(3, 2)])
+        a, b, c = torch.randn(2, 3), torch.randn(3, 2), torch.randn(1, 3)
+        nt = nestedtensor.nested_tensor([[a, b], [c]])
         print('nt.size(): ', nt.size())
-        print('nt._impl.size(): ', nt._impl.size())
+        print('nt.nested_size(): ', nt.nested_size())
         print("nt: ", nt)
         print("nt[0]: ", nt[0])  # NestedTensor_select
         print("nt[:]: ", nt[:])  # NestedTensor_slice
+        print("nt[-1:]: ", nt[-1:])  # NestedTensor_slice
         print("nt[:, 0]: ", nt[:, 0])  # recursive getitem call across tuples
         print('nt[0]')
         print(nt[0])
         print('nt[0].unbind()')
         print(nt[0].unbind())
-        print("nt[0, :]: ")
-        print(nt[0, :])  # recursive getitem call across tuples
+        print("nt[0][:]: ", nt[0][:])  # recursive getitem call across tuples
+        print("nt[0, :]: ", nt[0, :])  # recursive getitem call across tuples
         print("nt[:, -1:]: ", nt[:, -1:])  # recursive getitem call across tuples
         print("nt[-1:, :]: ", nt[-1:, :])  # recursive getitem call across tuples
         print("nt[:, -1:, None]: ", nt[:, -1:, None])  # recursive getitem call across tuples
