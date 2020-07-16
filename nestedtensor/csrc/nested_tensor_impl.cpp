@@ -184,9 +184,9 @@ at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
 }
 
 TensorNode get_nested_tensor_structure(at::Tensor tensor) {
-  // if (!is_nested_tensor_impl(tensor)) {
-  //   return TensorNode(std::move(tensor));
-  // }
+  if (!is_nested_tensor_impl(tensor)) {
+    return TensorNode(std::move(tensor));
+  }
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
