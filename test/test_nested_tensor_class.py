@@ -10,6 +10,9 @@ import random
 
 import utils
 
+
+ntnt = nestedtensor.nested_tensor
+
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
 
@@ -606,42 +609,59 @@ class TestNestedTensor(TestCase):
         self.assertFalse(a5.is_pinned())
         self.assertFalse(a6.is_pinned())
 
-    def test_slice(self):
-        a, b, c = torch.randn(2, 3), torch.randn(3, 2), torch.randn(1, 3)
+    def test_getitem(self):
+        a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
         nt = nestedtensor.nested_tensor([[a, b], [c]])
-        print('nt.size(): ', nt.size())
-        print('nt.nested_size(): ', nt.nested_size())
-        print("nt: ", nt)
-        print("nt[0]: ", nt[0])  # NestedTensor_select
-        print("nt[:]: ", nt[:])  # NestedTensor_slice
-        print("nt[-1:]: ", nt[-1:])  # NestedTensor_slice
-        print("nt[:, 0]: ", nt[:, 0])  # recursive getitem call across tuples
-        print('nt[0]')
-        print(nt[0])
-        print('nt[0].unbind()')
-        print(nt[0].unbind())
-        print("nt[0][:]: ", nt[0][:])  # recursive getitem call across tuples
-        print("nt[0, :]: ", nt[0, :])  # recursive getitem call across tuples
-        print("nt[:, -1:]: ", nt[:, -1:])  # recursive getitem call across tuples
-        print("nt[-1:, :]: ", nt[-1:, :])  # recursive getitem call across tuples
-        print("nt[:, -1:, None]: ", nt[:, -1:, None])  # recursive getitem call across tuples
-        print("nt[-1:, :, None]: ", nt[-1:, :, None])  # recursive getitem call across tuples
+        # self.assertEqual(nt[None], ntnt([[[a, b], [c]]]))
+        # self.assertEqual(nt[0], ntnt([a, b]))
+        # self.assertEqual(nt[:], nt)
+        # self.assertEqual(nt[:, 0], ntnt([a, c]))
+        # self.assertEqual(nt[-1:], ntnt([[c]]))
+        # self.assertEqual(nt[-1:, 0], ntnt([c]))
+        # self.assertEqual(nt[:, -1], ntnt([b, c]))
+        # self.assertEqual(nt[-1:, -1], ntnt([c]))
+        nt = nestedtensor.nested_tensor([[a, b]])
+        print(nt)
+        print('nt[:, :]')
+        print(nt[:, :])
+        # print(nt[:, None])
+        # print('nt[None]')
+        # print(nt[None])
+        # print('nt.size(): ', nt.size())
+        # print('nt.nested_size(): ', nt.nested_size())
+        # print("nt: ", nt)
+        # print("nt[-1:]: ", nt[-1:])  # NestedTensor_slice
+        # print("nt[:, 0]: ", nt[:, 0])  # recursive getitem call across tuples
+        # print('nt[0]')
+        # print(nt[0])
+        # print('nt[0].unbind()')
+        # print(nt[0].unbind())
+        # print("nt[0][:]: ", nt[0][:])  # recursive getitem call across tuples
+        # print("nt[0, :]: ", nt[0, :])  # recursive getitem call across tuples
+        # recursive getitem call across tuples
+        # print("nt[:, -1:]: ", nt[:, -1:])
+        # # recursive getitem call across tuples
+        # print("nt[-1:, :]: ", nt[-1:, :])
+        # # recursive getitem call across tuples
+        # print("nt[:, -1:, None]: ", nt[:, -1:, None])
+        # # recursive getitem call across tuples
+        # print("nt[-1:, :, None]: ", nt[-1:, :, None])
 
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
         for _ in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
-            data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
-            nt = nestedtensor.nested_tensor(data)
+            data=[[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
+            nt=nestedtensor.nested_tensor(data)
             self.assertTrue(nt.is_contiguous())
             # buf = nt.flatten()
             self.assertEqual(nt, nt)
-            a = nt + nt
+            a=nt + nt
         nt.cos_()
         nt.cos()
 
-        a = nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
+        a=nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
                                            torch.tensor([3, 4]),
                                            torch.tensor([5, 6]),
                                            torch.tensor([7, 8])])

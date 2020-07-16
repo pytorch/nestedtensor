@@ -225,6 +225,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         raise NotImplementedError("NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
+        # print("key get item: ", key)
         return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):

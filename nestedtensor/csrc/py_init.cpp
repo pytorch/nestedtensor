@@ -43,11 +43,17 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
 }
 
 Tensor get_item(Tensor tensor, py::none key) {
+  std::cout << "key0: " << py::str(key) << std::endl;
   if (is_nested_tensor_impl(tensor)) {
+    apply(
+        [](at::Tensor tensor) { std::cout << "NT0: " << tensor << std::endl; },
+        get_nested_tensor_structure(tensor));
     std::vector<TensorNode> result_nodes;
     result_nodes.push_back(get_nested_tensor_structure(tensor));
-    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+    auto result =  wrap_tensor_node(TensorNode(std::move(result_nodes)));
+    return result;
   }
+  std::cout << "tensor0: " << tensor << std::endl;
   auto sizes = tensor.sizes();
   std::vector<int64_t> new_sizes;
   new_sizes.push_back(1);
@@ -68,11 +74,11 @@ at::Tensor get_item(Tensor tensor, py::slice slice) {
   size_t start, stop, step, slicelength;
   if (!slice.compute(tensor.size(0), &start, &stop, &step, &slicelength))
     throw py::error_already_set();
-  // std::cout << " - start: " << start;
-  // std::cout << " - stop: " << stop;
-  // std::cout << " - step: " << step;
-  // std::cout << " - slicelength: " << slicelength;
-  // std::cout << std::endl;
+  std::cout << " - start: " << start;
+  std::cout << " - stop: " << stop;
+  std::cout << " - step: " << step;
+  std::cout << " - slicelength: " << slicelength;
+  std::cout << std::endl;
   return at::slice(tensor, 0, start, stop, step);
 }
 
@@ -87,7 +93,10 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   if (py::isinstance<py::slice>(key[0])) {
     first = get_item(tensor, py::cast<py::slice>(key[0]));
   }
-  TORCH_CHECK(first, "First entry of tuple doesn't have accepted type. ", py::str(key[0]));
+  TORCH_CHECK(
+      first,
+      "First entry of tuple doesn't have accepted type. ",
+      py::str(key[0]));
   if (key.size() == 1) {
     return *first;
   }
@@ -209,6 +218,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // TODO: Advanced indexing
   // TODO: Tensor-wise select
   // TODO: Tuple support
+  m.def("get_item", [](Tensor tensor, py::none key) {
+    return get_item(tensor, key);
+  });
   m.def("get_item", [](Tensor tensor, int64_t key) {
     return get_item(tensor, key);
   });
