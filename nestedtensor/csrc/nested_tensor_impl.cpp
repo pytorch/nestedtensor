@@ -1,4 +1,5 @@
 #include <ATen/ATen.h>
+#include <ATen/NamedTensorUtils.h>
 #include <ATen/WrapDimUtils.h>
 #include <ATen/core/op_registration/op_registration.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
@@ -100,11 +101,18 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       _nested_size(map(
           [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           _structure)) {
+  TORCH_CHECK(
+      !_structure.is_leaf(),
+      "NestedTensorImpl must be given structure of at least height 1.")
   for (auto opt_int : construct_size(_nested_size)) {
     if (opt_int) {
       _sizes.push_back(*opt_int);
     } else {
-      break;
+      // TODO: Should we prefer this over opt_sizes?
+      // TODO: Using -1 here is of of a similar thought as using -1 in reshape
+      // as a placeholder. Unfortunatly using -1 here interacts very badly with
+      // the rest of the functions that consume size.
+      _sizes.push_back(0);
     }
   }
 }
@@ -175,7 +183,10 @@ at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
 }
 
-TensorNode get_nested_tensor_structure(const at::Tensor tensor) {
+TensorNode get_nested_tensor_structure(at::Tensor tensor) {
+  if (!is_nested_tensor_impl(tensor)) {
+    return TensorNode(std::move(tensor));
+  }
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
@@ -286,12 +297,58 @@ std::vector<at::Tensor> NestedTensor_unbind(
 Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   int64_t ndim = self.dim();
   dim = maybe_wrap_dim(dim, ndim);
-  if (dim == 0) {
+  if (dim != 0) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
-  auto children = get_nested_tensor_structure(self).unbind();
-  auto child = children[index];
-  return wrap_tensor_node(std::move(child));
+  auto tmp = get_nested_tensor_structure(self).unbind()[index];
+  return wrap_tensor_node(std::move(tmp));
+}
+
+Tensor NestedTensor_slice(
+    const Tensor& self,
+    int64_t dim,
+    int64_t start,
+    int64_t end,
+    int64_t step) {
+  int64_t ndim = self.dim();
+  if (ndim == 0) {
+    TORCH_CHECK_INDEX(false, "slice() cannot be applied to a 0-dim tensor.");
+  }
+  dim = maybe_wrap_dim(dim, ndim);
+  if (dim != 0) {
+    TORCH_CHECK_INDEX(false, "slice() only supports dim == 0 for now.");
+  }
+  // TODO: support negative strides
+  TORCH_CHECK(step >= 1, "slice step must be positive for now.");
+  int64_t sizes_0 = self.size(0);
+  if (start < 0) {
+    start += sizes_0;
+  }
+  if (end < 0) {
+    end += sizes_0;
+  }
+  if (start < 0) {
+    start = 0;
+  } else if (start >= sizes_0) {
+    start = sizes_0;
+  }
+  if (end < start) {
+    end = start;
+  } else if (end >= sizes_0) {
+    end = sizes_0;
+  }
+  std::vector<at::Tensor> unbound = at::unbind(self, 0);
+  std::vector<TensorNode> new_tensor_nodes;
+  for (int64_t i = start; i < end; i += step) {
+    if (is_nested_tensor_impl(unbound[i])) {
+      new_tensor_nodes.push_back(get_nested_tensor_structure(unbound[i]));
+    } else {
+      new_tensor_nodes.push_back(TensorNode(std::move(unbound[i])));
+    }
+  }
+  auto result = wrap_tensor_node(TensorNode(std::move(new_tensor_nodes)));
+  namedinference::propagate_names(result, self);
+  return result;
 }
 
 Tensor NestedTensor_clone(
@@ -380,5 +437,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
   m.impl_UNBOXED("select.int", NestedTensor_select);
+  m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
 }
 } // namespace at

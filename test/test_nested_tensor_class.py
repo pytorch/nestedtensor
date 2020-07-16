@@ -10,6 +10,9 @@ import random
 
 import utils
 
+
+ntnt = nestedtensor.nested_tensor
+
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
 
@@ -605,6 +608,32 @@ class TestNestedTensor(TestCase):
         self.assertTrue(a4.is_pinned())
         self.assertFalse(a5.is_pinned())
         self.assertFalse(a6.is_pinned())
+
+    def test_getitem(self):
+        a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
+        nt = nestedtensor.nested_tensor([[a, b], [c]])
+        self.assertEqual(nt[None], ntnt([[[a, b], [c]]]))
+        self.assertEqual(nt[0], ntnt([a, b]))
+        self.assertEqual(nt[:], nt)
+        self.assertEqual(nt[:, 0], ntnt([a, c]))
+        self.assertEqual(nt[-1:], ntnt([[c]]))
+        self.assertEqual(nt[-1:, 0], ntnt([c]))
+        self.assertEqual(nt[:, -1], ntnt([b, c]))
+        self.assertEqual(nt[-1:, -1], ntnt([c]))
+        self.assertEqual(nt[:, -1:], ntnt([[b], [c]]))
+        self.assertEqual(nt[-1:, -1:], ntnt([[c]]))
+        self.assertEqual(nt[:, -1:, None], ntnt([[b[None]], [c[None]]]))
+        self.assertEqual(nt[-1:, :, None], ntnt([[c[None]]]))
+        self.assertEqual(nt[:, 1:, None], ntnt([[b[None]], []]))
+        nt = nestedtensor.nested_tensor([[a, b]])
+        self.assertEqual(nt[0, 0], ntnt([a[0], b[0]]))
+        self.assertEqual(nt[0, 1:], ntnt([a[1:], b[1:]]))
+        self.assertEqual(nt[:1, :, 1:], ntnt([[a[1:], b[1:]]]))
+        self.assertEqual(nt[:, :], nt)
+        self.assertEqual(nt[:, None], ntnt([[[a, b]]]))
+        self.assertRaisesRegex(IndexError,
+                               "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
+                               lambda: nt[2])
 
 
 class TestContiguous(TestCase):

@@ -1,8 +1,8 @@
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
+#include <nestedtensor/csrc/python_functions.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <nestedtensor/csrc/utils/python_nested_node.h>
-#include <nestedtensor/csrc/python_functions.h>
 #include <torch/csrc/Size.h>
 #include <torch/extension.h>
 
@@ -19,7 +19,6 @@ namespace py = pybind11;
 
 using namespace torch::nested_tensor;
 using namespace at;
-
 
 py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
@@ -43,6 +42,85 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   return fn(fn, size_node, *index);
 }
 
+Tensor get_item(Tensor tensor, py::none key) {
+  if (is_nested_tensor_impl(tensor)) {
+    std::vector<TensorNode> result_nodes;
+    result_nodes.push_back(get_nested_tensor_structure(tensor));
+    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+  }
+  std::vector<int64_t> new_sizes;
+  new_sizes.push_back(1);
+  for (size_t i = 0; i < tensor.dim(); i++) {
+    new_sizes.push_back(tensor.size(i));
+  }
+  return tensor.reshape(IntList(new_sizes));
+}
+
+at::Tensor get_item(Tensor tensor, int64_t key_) {
+  std::vector<at::Tensor> unbound = unbind(tensor, 0);
+  int64_t key = at::maybe_wrap_dim(key_, unbound.size());
+  return unbind(tensor, 0)[key];
+}
+
+#if (PYBIND11_VERSION_MAJOR >= 2 && PYBIND11_VERSION_MINOR >= 3)
+at::Tensor get_item(Tensor tensor, py::slice slice) {
+  size_t start, stop, step, slicelength;
+  if (!slice.compute(tensor.size(0), &start, &stop, &step, &slicelength))
+    throw py::error_already_set();
+  return at::slice(tensor, 0, start, stop, step);
+}
+
+at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
+  c10::optional<at::Tensor> first;
+  if (py::isinstance<py::none>(key[0])) {
+    first = get_item(tensor, py::cast<py::none>(key[0]));
+  }
+  if (py::isinstance<py::int_>(key[0])) {
+    first = get_item(tensor, py::cast<int64_t>(key[0]));
+  }
+  if (py::isinstance<py::slice>(key[0])) {
+    first = get_item(tensor, py::cast<py::slice>(key[0]));
+  }
+  TORCH_CHECK(
+      first,
+      "First entry of tuple doesn't have accepted type. ",
+      py::str(key[0]));
+  if (key.size() == 1) {
+    return *first;
+  }
+  std::vector<at::Tensor> unbound = (*first).unbind();
+  // TODO: Continue here
+  std::vector<py::object> entries;
+  for (size_t i = 1; i < key.size(); i++) {
+    entries.push_back(key[i]);
+  }
+  std::vector<at::Tensor> result;
+  for (size_t i = 0; i < unbound.size(); i++) {
+    result.push_back(get_item(unbound[i], entries));
+  }
+  if (is_nested_tensor_impl(tensor)) {
+    std::vector<TensorNode> result_nodes;
+    for (size_t i = 0; i < result.size(); i++) {
+      if (is_nested_tensor_impl(result[i])) {
+        result_nodes.push_back(get_nested_tensor_structure(result[i]));
+      } else {
+        result_nodes.push_back(TensorNode(std::move(result[i])));
+      }
+    }
+    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+  }
+  return at::stack(TensorList(result));
+}
+
+at::Tensor get_item(Tensor tensor, py::tuple key) {
+  std::vector<py::object> entries;
+  for (size_t i = 0; i < key.size(); i++) {
+    entries.push_back(key[i]);
+  }
+  auto result = get_item(tensor, entries);
+  return result;
+}
+#endif
 
 namespace torch {
 namespace nested_tensor {
@@ -123,7 +201,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // since you can expect transparent changes to the constiuents
   // via unbind.
 
-
   m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
 
   // Need to overwrite because
@@ -133,15 +210,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // TODO: Advanced indexing
   // TODO: Tensor-wise select
   // TODO: Tuple support
-  m.def("get_item", [](Tensor tensor, int64_t key_) {
-    std::vector<at::Tensor> unbound = unbind(tensor, 0);
-    int64_t key = at::maybe_wrap_dim(key_, unbound.size());
-    return unbind(tensor, 0)[key];
+  m.def("get_item", [](Tensor tensor, py::none key) {
+    return get_item(tensor, key);
   });
-#if (PYBIND11_VERSION_MAJOR == 2 && PYBIND11_VERSION_MINOR >= 4)
+  m.def("get_item", [](Tensor tensor, int64_t key) {
+    return get_item(tensor, key);
+  });
+#if (PYBIND11_VERSION_MAJOR >= 2 && PYBIND11_VERSION_MINOR >= 3)
   m.def("get_item", [](Tensor tensor, py::slice key) {
-    py::list unbound = py::cast(unbind(tensor, 0));
-    return unbound[key];
+    return get_item(tensor, key);
+  });
+  m.def("get_item", [](Tensor tensor, py::tuple key) {
+    return get_item(tensor, key);
   });
 #endif
 
@@ -179,4 +259,3 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   add_functions(m);
 }
-
