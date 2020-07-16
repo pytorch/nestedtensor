@@ -2,79 +2,46 @@ import torch
 import numbers
 from functools import wraps
 from . import masking
-from . import monkey_patch
 import collections
 import os
 
-from . import utils
 from . import creation
 
 import nestedtensor
+import itertools
 
-# Set this flag to true, if you want to enable additional verifications.
-DEBUG = int(os.getenv("DEBUG", 1))
+def _wrap_result(result):
+    if isinstance(result, list):
+        return list(_wrap_result(r) for r in result)
+    if isinstance(result, tuple):
+        return tuple(_wrap_result(r) for r in result)
+    return (
+        NestedTensor(result)
+        if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
+        else result
+    )
 
+def _filter_impl(args, kwargs):
+    if kwargs is None:
+        kwargs = {}
+    impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+    impl_kwargs = {
+        k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()
+    }
+    return impl_args, impl_kwargs
+
+class NestedTensorMeta(type):
+    def __getattr__(cls, name):
+        if getattr(torch.Tensor, name):
+            def _wrapped_fn(*args, **kwargs):
+                impl_args, impl_kwargs = _filter_impl(args, kwargs)
+                result = getattr(impl_args[0], name)(*(impl_args[1:]), **impl_kwargs)
+                return _wrap_result(result)
+            return _wrapped_fn
+        return self.__dict__[name]
 
 # -------------------------NestedTensor core---------------------------
-
-def _construct_nested_sizes(raw_nested_size):
-    if len(raw_nested_size) == 0 or not isinstance(raw_nested_size[0], list):
-        return torch.Size(raw_nested_size)
-    else:
-        assert isinstance(raw_nested_size, list)
-        assert isinstance(raw_nested_size[0], list)
-        return tuple(_construct_nested_sizes(t) for t in raw_nested_size)
-
-
-class NestedSize(object):
-    """
-    This class stores a nested tuple of torch.Sizes that eases
-    string representation and enables certain methods, such as
-    numel, common to torch.Size but not implemented by tuple.
-    """
-
-    def __init__(self, raw_nested_size: list):
-        """We expect this to be constructed from one of the impls.
-        That means we get a nested list of integers which we need to convert."""
-        if not isinstance(raw_nested_size, list):
-            raise RuntimeError(str(raw_nested_size))
-        self._nested_size = _construct_nested_sizes(raw_nested_size)
-
-    # TODO: Test the string output explicitly
-    def __str__(self):
-        def _str(x, indent=0):
-            if len(x) == 0:
-                return ""
-            s = indent*"\t" + "(\n"
-            if isinstance(x[0], torch.Size):
-                strs = tuple(map(str, x))
-                strs = tuple("\n".join(tuple((indent + 1)*"\t" +
-                                             xij for xij in xi.split("\n"))) for xi in strs)
-                s += ",\n".join(strs)
-            else:
-                s += ",\n".join(tuple(_str(xi, indent + 1) for xi in x))
-            s += "\n" + indent * "\t" + ")"
-            return s
-        return "torch.NestedSize(" + _str(self._nested_size) + ")"
-
-    def __len__(self):
-        return len(self._nested_size)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __eq__(self, other):
-        return self._nested_size == other._nested_size
-
-    def __iter__(self):
-        if isinstance(self._nested_size[0], list):
-            return iter(NestedSize(t) for t in self._nested_size)
-        else:
-            return iter(list(self._nested_size))
-
-
-# NOTE: Methods entirely dependent on unbind don't need to be repeated in impl
-class NestedTensor(object):
+class NestedTensor(metaclass = NestedTensorMeta):
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its
@@ -92,24 +59,44 @@ class NestedTensor(object):
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
     def __init__(self, impl):
+        if not torch.ops.nestedtensor.is_nested_tensor_impl(impl):
+            raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
-    # --- impl forward ---
+    def __getattr__(self, name):
+        if getattr(self._impl, name):
+            def _wrapped_fn(*args, **kwargs):
+                impl_args, impl_kwargs = _filter_impl(args, kwargs)
+                result = getattr(self._impl, name)(*impl_args, **impl_kwargs)
+                return _wrap_result(result)
+            return _wrapped_fn
+        return self.__dict__[name]
 
-    def dim(self):
-        """
-        Returns the number of dimensions of ```self``` NestedTensor.
-        The dimension is defined as the dimension of the Tensor constiuents
-        and the level of nesting.
+    # --- magic methods ---
 
-        """
-        return self._impl.dim()
+    def __eq__(self, other):
+        return _wrap_result(self._impl.__eq__(other._impl))
 
-    def is_pinned(self):
-        """
-        Returns true if the NestedTensor resides in pinned memory.
-        """
-        return self._impl.is_pinned()
+    def __ne__(self, other):
+        return _wrap_result(self._impl.__ne__(other._impl))
+
+    def __add__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl + other._impl)
+        return _wrap_result(self._impl + other)
+
+    def __mul__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl * other._impl)
+        return _wrap_result(self._impl * other)
+
+    def __pow__(self, *args, **kwargs):
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
+        return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
+
+    @property
+    def shape(self):
+        return self.size()
 
     @property
     def dtype(self):
@@ -137,7 +124,7 @@ class NestedTensor(object):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return self._impl.requires_grad
+        return torch.ops.nestedtensor.requires_grad(self._impl)
 
     @property
     def grad(self):
@@ -147,24 +134,16 @@ class NestedTensor(object):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        return NestedTensor(self._impl.grad)
+        return _wrap_result(torch.ops.nestedtensor.grad(self._impl))
 
     def requires_grad_(self, requires_grad=True):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return NestedTensor(self._impl.requires_grad_(requires_grad))
-
-    def detach(self, gradient=None, retain_graph=None, create_graph=False):
-        return NestedTensor(self._impl.detach(gradient, retain_graph, create_graph))
+        return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        if gradient is None or isinstance(self._impl, gradient._impl):
-            self._impl.backward(gradient._impl, retain_graph._impl, create_graph)
-        else:
-            # TODO: Test mixed case explicitly
-            for t, g in zip(self.unbind(), gradient.unbind()):
-                t.backward(g, retain_graph, create_graph)
+        nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
 
     def nested_dim(self):
         """
@@ -172,7 +151,7 @@ class NestedTensor(object):
         The nested dimension is defined as the level of indexing required
         to reach a Tensor constiuent.
         """
-        return self._impl.nested_dim()
+        return torch.ops.nestedtensor.nested_dim(self._impl)
 
     def tensor_dim(self):
         """
@@ -185,38 +164,12 @@ class NestedTensor(object):
         """
         The number of entries in the list ```self``` represents.
         """
-        return self._impl.__len__()
-
-    def element_size(self):
-        """
-        Returns the size in bytes of an individual element.
-        """
-        return self._impl.element_size()
-
-    def is_contiguous(self):
-        return self._impl.is_contiguous()
-
-    def contiguous(self):
-        # TODO: Test autograd support
-        if not self.is_contiguous():
-            return creation.nested_tensor(self.unbind())
-        return self
+        return torch.ops.nestedtensor.len(self._impl)
 
     def size(self, dim=None):
         if dim is not None:
             return self.size()[dim]
-        all_sizes = tuple(t.size() for t in self.unbind())
-
-        def compare_sizes(size, other_size):
-            result_size = list(size)
-            for i in range(len(size)):
-                result_size[i] = size[i] if size[i] == other_size[i] else None
-            return tuple(result_size)
-
-        result_size = list(all_sizes[0])
-        for size in all_sizes:
-            result_size = compare_sizes(result_size, size)
-        return (len(self),) + result_size
+        return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
         # TODO: to is currently not supported by impls due to argparsing.
@@ -224,22 +177,18 @@ class NestedTensor(object):
         # TODO: Make contiguous by default? Heavy operation...
         # NOTE: Needs grad support, which nestedtensor.nested_tensor
         # constructor doesn't have.
-        return NestedTensor(nestedtensor.as_nested_tensor(new_tensors))
-
-    def numel(self):
-        return self._impl.numel()
-
-    def pin_memory(self):
-        return NestedTensor(self._impl.pin_memory())
+        return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
-        return self._impl.__str__()
+        return torch.ops.nestedtensor.str(self._impl)
+
+    def __repr__(self):
+        return torch.ops.nestedtensor.str(self._impl)
 
     # --- impl forward ends ---
 
     # --- dependent on impl ---
 
-    # TODO: More tests
     def unbind(self, dim=0):
         """
         unbind returns a tuple containing the entries
@@ -247,31 +196,17 @@ class NestedTensor(object):
 
         For now unbind does not accept a dim argument akin
         to torch.Tensor.unbind
-        """
 
-        dim = utils._wrap_dim(self, dim)
-        if dim == 0:
-            return tuple(t if torch.is_tensor(t) else NestedTensor(t) for t in self._impl.unbind())
-        else:
-            unbound = tuple(t.unbind(dim - 1) for t in self.unbind(dim - 1))
-            return tuple(creation.nested_tensor(t) for t in zip(*unbound))
+        Returns a tuple of views. Results might not be contiguous.
+        """
+        # TODO: Design choice: Return zip_longest or zip?
+        return tuple(_wrap_result(t) for t in self._impl.unbind(dim))
 
     def to_tensor(self, dim=0):
         """
         Not necessarily a view.
         """
-        dim = utils._wrap_dim(self, dim)
-        # Convert entire NestedTensor into Tensor
-        if dim == 0:
-            if None in self.size():
-                raise ValueError("Shape not Tensor compliant")
-            return self._impl.to_tensor()
-        # If dim is bigger than nested_dim the NestedTensor is already
-        # of Tensor for dimensions bigger than the given.
-        if self.nested_dim() == 1:
-            return self
-        unbound = [t.to_tensor(dim=dim - 1) for t in self.unbind()]
-        return creation.nested_tensor(unbound)
+        return _wrap_result(torch.ops.nestedtensor.to_tensor(self._impl, dim))
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
@@ -279,110 +214,43 @@ class NestedTensor(object):
         return self.__str__()
 
     def nested_size(self, dim=None):
-        # TODO: Negative dims and slices
-        if dim is None:
-            return NestedSize(self._impl.nested_size())
-        else:
-            if isinstance(dim, tuple):
-                nested_sizes = []
-                for dimi in dim:
-                    if dimi < self.nested_dim():
-                        raise ValueError("Tuples only support for Tensor dims")
-                    nested_sizes.append(self.nested_size(dimi))
-                return tuple(t for t in zip(*nested_sizes))
-            else:
-                if dim == 0:
-                    return len(self)
-                if self.nested_dim() == 1:
-                    return tuple(s[dim - 1] for s in self.nested_size())
-                return tuple(t.nested_size(dim - 1) for t in self.unbind())
+        return nestedtensor._C.nested_size(self._impl, dim)
 
     def nested_stride(self, dim=None):
-        # TODO: Negative dims and slices
-        if dim is None:
-            return NestedSize(self._impl.nested_stride())
-        else:
-            if isinstance(dim, tuple):
-                nested_strides = []
-                for dimi in dim:
-                    if dimi < self.nested_dim():
-                        raise ValueError("Tuples only support for Tensor dims")
-                    nested_strides.append(self.nested_stride(dimi))
-                return tuple(t for t in zip(*nested_strides))
-            else:
-                if dim == 0:
-                    return len(self)
-                if self.nested_dim() == 1:
-                    return tuple(s[dim - 1] for s in self.nested_stride())
-                return tuple(t.nested_stride(dim - 1) for t in self.unbind())
+        return nestedtensor._C.nested_stride(self._impl, dim)
 
     # --- dependent on impl ends ---
 
-    def __torch_function__(self, func, args=(), kwargs=None):
-        _local_func = None
-        if kwargs is None:
-            kwargs = {}
-        if func in NestedTensor.__jit_function_dispatch:
-            _jit_local_func = NestedTensor.__jit_function_dispatch[func]
-            impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
-            impl_kwargs = {k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()}
-            return NestedTensor(_jit_local_func(*impl_args, **impl_kwargs))
-        if func in NestedTensor.__function_dispatch:
-            _local_func = NestedTensor.__function_dispatch[func]
-            return _local_func(*args, **kwargs)
-        raise NotImplementedError("NestedTensor doesn't support function {}".format(func))
+    def __torch_function__(self, func, types, args=(), kwargs=None):
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
+        # Need a specialized implementation to support lists of lists of sizes.
+        if func is torch.nn.functional.interpolate:
+            return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
+        # Need a specialized implementation to dodge call to view in nll_loss
+        if func is torch.nn.functional.cross_entropy:
+            return _wrap_result(
+                nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs)
+            )
+        return _wrap_result(func(*impl_args, **impl_kwargs))
 
+    # Might require nonzero
     def __bool__(self):
-        raise NotImplementedError(
-            "This has not been covered by NestedTensor 0.0.1")
+        raise NotImplementedError("NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
-        # TODO: Not covered by 0.0.2 or 0.0.1!
-        # NOTE: Returns a view
-        # TODO: Advanced indexing
-        # TODO: Tensor-wise select
-        # TODO: More testing
-        if isinstance(key, numbers.Number):
-            return self.unbind()[key]
-        if isinstance(key, slice):
-            return creation.as_nested_tensor(self.unbind()[key])
-        assert isinstance(key, tuple)
-        if key[0] == Ellipsis:
-            raise NotImplementedError(
-                "Ellipsis is not yet supported for nested dimensions")
-        assert len(key) > 0
-        selected_tensors = self.unbind()[key[0]]
-        if len(key) == 1:
-            return selected_tensors
-        return creation.as_nested_tensor([t[key[1:]] for t in selected_tensors])
+        return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
-        # TODO: Better errors when conversion fails.
-        """
-        Not a view.
-        """
-        if dim < self.nested_dim:
-            raise ValueError("Given dimension is already nested")
-        else:
-            if self.nested_dim == dim:
-                return creation.nested_tensor(list(t.unbind() for t in self.unbind()))
-            else:
-                return creation.nested_tensor(list(t.to_nested_tensor(dim - 1) for t in self.unbind()))
+        return _wrap_result(torch.ops.nestedtensor.to_nested_tensor(self._impl, dim))
 
     def to_list(self):
-        if self.nested_dim() == 1:
-            return list(self.unbind())
-        else:
-            return list(map(lambda x: x.to_list(), self.unbind()))
+        return self._impl.to_list()
 
     def to_tuple(self):
-        if self.nested_dim() == 1:
-            return tuple(self.unbind())
-        else:
-            return tuple(map(lambda x: x.to_tuple(), self.unbind()))
+        return self._impl.to_tuple()
 
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)
@@ -396,8 +264,8 @@ class NestedTensor(object):
         element. These two tensors can be used to contruct a NestedTensor, however,
         nested_dim will be lost in this process."""
 
-        return masking.make_tensor_mask(self.to_list(), mask_dim)
+        return masking.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = masking.make_tensor_mask(self.to_list(), mask_dim)
+        tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)

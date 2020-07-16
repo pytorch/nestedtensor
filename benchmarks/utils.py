@@ -16,23 +16,29 @@ def gen_tensor():
     # return torch.tensor([globals()['SEED']])
     return torch.rand(EMBED_DIM)
 
-def benchmark_fn(fn, run_time = 5.0, use_cprofile=False):
+def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0, cuda=False):
     times = []
-    num_runs = 0
     t = 0.0
     pr = cProfile.Profile()
-    cuda_avail = torch.cuda.is_available()
     while (t < run_time):
-        ti = time.time()
+        if cuda:
+            torch.cuda.synchronize()
+            torch.cuda.synchronize()
+        ti = time.monotonic()
         if use_cprofile:
             pr.enable()
         fn()
-        if cuda_avail:
+        if cuda:
             torch.cuda.synchronize()
         if use_cprofile:
             pr.disable()
-        ti = time.time() - ti
+        ti = time.monotonic() - ti
         t += ti
+        if warmup is not None:
+            if t > warmup:
+                warmup = None
+                t = 0
+            continue
         times.append(ti)
     times = torch.tensor(times) * 1e6
     if use_cprofile:
@@ -40,8 +46,11 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False):
         sortby = SortKey.CUMULATIVE
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
-    result = ""
-    result +=  "fn {:<15} avg(us): {:10.4f} std(us): {:10.4f} num_runs: {}".format(fn.__name__, times.mean().item(), times.std().item(), len(times))
+    result = {}
+    result['name'] = fn.__name__
+    result['avg_us'] = times.mean().item()
+    result['std_us'] = times.std().item()
+    result['runs'] = len(times)
     if use_cprofile:
-        result += s.getvalue()
+        result['cprofile'] = s.getvalue()
     return result

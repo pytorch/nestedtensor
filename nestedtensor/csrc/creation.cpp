@@ -1,92 +1,218 @@
-#include <creation.h>
-#include <nested_node.h>
-#include <torch/csrc/jit/pybind_utils.h>
+#include <nestedtensor/csrc/creation.h>
+#include <nestedtensor/csrc/nested_tensor_impl.h>
+#include <nestedtensor/csrc/py_utils.h>
+#include <nestedtensor/csrc/utils/nested_node.h>
+#include <torch/csrc/jit/python/pybind_utils.h>
 #include <torch/extension.h>
+#include <torch/csrc/jit/python/pybind_utils.h>
 
 namespace py = pybind11;
 
 namespace torch {
 namespace nested_tensor {
 
-// TODO: Support for THPNestedTensor as part of given data.
+using namespace torch::jit;
 
-c10::optional<c10::List<at::Tensor>> to_tensor_sequence(
-    const py::sequence& py_obj) {
-  bool result = true;
-  for (size_t i = 0; i < py_obj.size(); i++) {
-    c10::IValue payload = py_obj_to_ivalue(py_obj[i]);
-    result = result && payload.isTensor();
-  }
-  if (!result) {
-    return c10::nullopt;
-  }
-  c10::List<at::Tensor> tensors;
-  tensors.resize(py_obj.size());
-  for (size_t i = 0; i < py_obj.size(); i++) {
-    c10::IValue payload = py_obj_to_ivalue(py_obj[i]);
-    tensors[i] = payload.toTensor();
-  }
-  return tensors;
-}
-
-TensorNode _get_tensor_structure(const py::sequence& py_obj) {
-  // Empty list of Tensors
-  if (py_obj.size() == 0) {
-    return TensorNode();
-  }
-  if (auto tensor_sequence = to_tensor_sequence(py_obj)) {
-    // List of Tensors
-    return TensorNode(std::move(*tensor_sequence));
-  } else {
-    // List of lists of Tensors
-    std::vector<TensorNode> result;
-    for (size_t i = 0; i < py_obj.size(); i++) {
-      py::sequence py_obj_i = py::sequence(py_obj[i]);
-      result.push_back(_get_tensor_structure(py_obj_i));
+NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
+  if (py::isinstance<py::list>(py_obj) || py::isinstance<py::tuple>(py_obj)) {
+    std::vector<NestedNode<py::object>> result;
+    auto py_seq = py::sequence(py_obj);
+    for (size_t i = 0; i < py_seq.size(); i++) {
+      py::object py_seq_i(py_seq[i]);
+      result.emplace_back(py_to_nested_node(std::move(py_seq_i)));
     }
-    return TensorNode(result);
-  }
-}
-
-void _make_tensors(
-    const py::sequence& py_obj,
-    std::vector<at::Tensor>& tensors) {
-  // Empty list of Tensors
-  if (auto tensor_sequence = to_tensor_sequence(py_obj)) {
-    // List of Tensors
-    for (size_t i = 0; i < py_obj.size(); i++) {
-      tensors.push_back((*tensor_sequence).extract(i).reshape({-1}));
-    }
+    return NestedNode<py::object>(std::move(result));
   } else {
-    // List of lists of Tensors
-    for (size_t i = 0; i < py_obj.size(); i++) {
-      py::sequence py_obj_i = py::sequence(py_obj[i]);
-      _make_tensors(py_obj_i, tensors);
+    return NestedNode<py::object>(std::move(py_obj));
+  }
+}
+
+
+bool _verify_variables(
+    const int64_t dim,
+    const at::Layout& layout,
+    const at::Device& device,
+    const at::ScalarType& scalar_type,
+    bool requires_grad,
+    const TensorNode& nested_node,
+    bool throw_error = false) {
+  constexpr const char* advice =
+      ("To form a valid NestedTensor all Tensor / NestedTensor constiuents of the given list must be of the same dimension, layout, device,"
+       " scalar type and either all or none require gradients. There many further also only be either NestedTensor  / list / tuple entries in a"
+       " given list or Tensor entries. Or put differently, if one entry is a Tensor, so must all the others. If one entry is a "
+       " NestedTensor / list / tuple, so must all the others.");
+  // The attributes must match across all constiuents
+  //
+  // The NestedTensor's attributes then become that of its
+  // constiuents.
+  //
+  // data must be a list of Tensors or NestedTensors
+  //
+  // Attributes:
+  //     dim()
+  //     layout
+  //     device
+  //     scalar_type
+  //     requires_grad
+  //     is_pinned()
+  bool valid = true;
+  if (nested_node.is_leaf()) {
+    const at::Tensor& variable = nested_node.payload();
+    // TODO: Add more checks?
+
+    valid = valid && (dim == variable.dim());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given Tensor / NestedTensor constiuent of dimension ";
+      error << variable.dim();
+      error << " doesn't match another constiuent of dimension ";
+      error << dim;
+      error << ". ";
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (layout == variable.layout());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given Tensor / NestedTensor constiuent of layout ";
+      error << variable.layout();
+      error << " doesn't match another constiuent of layout ";
+      error << layout;
+      error << ". ";
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (device == variable.device());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given Tensor / NestedTensor constiuent of device ";
+      error << variable.device();
+      error << " doesn't match another constiuent of device ";
+      error << device;
+      error << ". ";
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (scalar_type == variable.scalar_type());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      error << "Given Tensor / NestedTensor constiuent of scalar type ";
+      error << variable.scalar_type();
+      error << " doesn't match another constiuent of scalar type ";
+      error << scalar_type;
+      error << ". ";
+      TORCH_CHECK(false, error.str());
+    }
+    valid = valid && (requires_grad == variable.requires_grad());
+    if (!valid && throw_error) {
+      std::stringstream error;
+      if (variable.requires_grad()) {
+        error
+            << "Given Tensor / NestedTensor constiuent requires gradient in contrast to another constiuent. ";
+      } else {
+        error
+            << "Given Tensor / NestedTensor constiuent doesnt't requires gradient in contrast to another constiuent. ";
+      }
+      error << advice;
+      TORCH_CHECK(false, error.str());
+    }
+    // TODO: Checking is_pinned is prohibitively costly. It also shouldn't be
+    // required. If making the Tensor contiguous we'll create memory in the
+    // usual address space and then require the user to move it over into pinned
+    // memory manually. However, if it's not contiguous this special memory
+    // location might forbid certain operations unexpectedly. For now we blindly
+    // rely on those throwing intelligible error.
+  } else {
+    // NOTE: Checking height is very cheap, so we should do it first.
+    for (size_t i = 1; i < nested_node.degree(); i++) {
+      valid = valid &&
+          (nested_node.children(i).height() ==
+           nested_node.children(i - 1).height());
+      if (!valid) {
+        if (throw_error) {
+          TORCH_CHECK(
+              false,
+              "The to-be constructed NestedTensor is of inconsistent height.");
+        }
+        break;
+      }
+    }
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      valid = valid &&
+          _verify_variables(
+                  dim,
+                  layout,
+                  device,
+                  scalar_type,
+                  requires_grad,
+                  nested_node.children(i),
+                  throw_error);
+      if (!valid) {
+        break;
+      }
     }
   }
+  return valid;
 }
 
-THPNestedTensor as_nested_tensor(py::sequence list) {
-  return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
+bool _verify_variables(
+    const at::Tensor& first_variable,
+    const TensorNode& nested_node,
+    bool throw_error = false) {
+  const int64_t dim = first_variable.dim();
+  const at::Layout& layout = first_variable.layout();
+  const at::Device& device = first_variable.device();
+  const at::ScalarType& scalar_type = first_variable.scalar_type();
+  bool requires_grad = first_variable.requires_grad();
+  return _verify_variables(
+      dim,
+      layout,
+      device,
+      scalar_type,
+      requires_grad,
+      nested_node,
+      throw_error);
 }
 
-// TODO: Support THPNestedTensor entries
-THPNestedTensor nested_tensor(py::sequence list) {
-  TensorNode structure = _get_tensor_structure(list);
-  at::Tensor buffer;
-  if (list.size() == 0) {
-    buffer = torch::ones({});
-  } else {
-    std::vector<at::Tensor> tensors;
-    _make_tensors(list, tensors);
-    buffer = at::cat(tensors, 0);
+NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
+  if (THPVariable_Check(py_obj.ptr())) {
+    at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
+    if (is_nested_tensor_impl(tensor)) {
+      auto tensor_data_structure = get_nested_tensor_impl(tensor)->get_structure();
+      return map([](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
+    }
   }
-  SizeNode nested_size = map<at::Tensor, c10::List<int64_t>>(
-      structure, [](at::Tensor tensor) -> c10::List<int64_t> {
-        return c10::List<int64_t>(tensor.sizes());
-      });
-  auto bnt = _BufferNestedTensor(buffer, nested_size);
-  return THPNestedTensor(std::move(bnt));
+  if (py::isinstance<py::sequence>(py_obj)) {
+    std::vector<NestedNode<c10::IValue>> result;
+    auto py_seq = py::sequence(py_obj);
+    for (size_t i = 0; i < py_seq.size(); i++) {
+      result.emplace_back(py_to_nested_tensor(py_seq[i]));
+    }
+    return NestedNode<c10::IValue>(std::move(result));
+  } else {
+    return NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj));
+  }
+}
+
+NestedTensorImpl _as_nested_tensor(py::sequence list) {
+  NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
+  auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
+  bool all_same =
+      reduce<decltype(fn), bool, c10::IValue>(ivalue_structure, fn, true);
+  TORCH_CHECK(
+      all_same,
+      "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
+  TensorNode structure =
+      map([](c10::IValue a) { return a.toTensor().clone().detach(); }, ivalue_structure);
+  if (auto first = get_first_leaf(structure)) {
+    if (!_verify_variables(*first, structure)) {
+      _verify_variables(*first, structure, true);
+    }
+  }
+  return NestedTensorImpl(std::move(structure));
+}
+
+at::Tensor nested_tensor_impl(py::sequence list) {
+  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list)).contiguous();
 }
 
 } // namespace nested_tensor
