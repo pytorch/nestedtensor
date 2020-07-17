@@ -231,10 +231,5 @@ at::Tensor nested_tensor_impl(py::sequence list) {
       .contiguous();
 }
 
-at::Tensor _nested_tensor_view(py::sequence list) {
-  return at::detail::make_tensor<NestedTensorImpl>(
-      _as_nested_tensor_view(list));
-}
-
 } // namespace nested_tensor
 } // namespace torch

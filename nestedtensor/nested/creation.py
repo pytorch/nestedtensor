@@ -31,6 +31,3 @@ def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_mem
         if pin_memory:
             data = data.pin_memory()
     return data
-
-def _nested_tensor_view(data):
-    return nested.NestedTensor(_C._nested_tensor_view(data))

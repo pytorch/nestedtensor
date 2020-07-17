@@ -295,7 +295,6 @@ std::vector<at::Tensor> NestedTensor_unbind(
 }
 
 Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
-  std::cout << "HEEEE" << " -dim: " << dim << " -index " << index << std::endl;
   int64_t ndim = self.dim();
   dim = maybe_wrap_dim(dim, ndim);
   if (dim != 0) {
