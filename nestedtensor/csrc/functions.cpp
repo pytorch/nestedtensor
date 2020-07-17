@@ -370,11 +370,11 @@ Tensor NestedTensor_stack(TensorList tensors, int64_t dim) {
   std::vector<TensorNode> result;
   for (size_t i = 0; i < candidates.size(); i++) {
     auto tmp = at::stack(TensorList(candidates[i]), dim - 1);
-    if (is_nested_tensor_impl(tmp)) {
+    // if (is_nested_tensor_impl(tmp)) {
       result.push_back(get_nested_tensor_structure(tmp));
-    } else {
-      result.push_back(TensorNode(std::move(tmp)));
-    }
+    // } else {
+    //   result.push_back(TensorNode(std::move(tmp)));
+    // }
   }
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
