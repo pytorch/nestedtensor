@@ -256,17 +256,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
             "NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
-        # print("key: ", key)
-        if isinstance(key, numbers.Number):
-            return _wrap_result(self._impl[key])
-        if isinstance(key, slice):
-            return _wrap_result(self._impl[key])
-        if isinstance(key, tuple):
-            if len(key) == 1:
-                return self[key[0]]
-            return nestedtensor._nested_tensor_view(list(t[key[1:]] for t in self[key[0]].unbind()))
-        raise NotImplementedError(
-            "getitem doesn't support key of type: ", type(key))
+         return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())

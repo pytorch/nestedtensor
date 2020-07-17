@@ -62,10 +62,14 @@ Tensor NestedTensor_max_pool2d(
       tensors.push_back(tn.payload());
     }
 
-    auto res = at::max_pool2d(
+    auto res_ = at::max_pool2d(
         at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
-
-    return NestedTensorImpl(std::move(res))
+    std::vector<at::Tensor> res = res_.unbind();
+    std::vector<TensorNode> result;
+    for (size_t i = 0; i < res.size(); i++) {
+      result.push_back(TensorNode(std::move(res[i])));
+    }
+    return NestedTensorImpl(TensorNode(std::move(result)))
         .to_nested_tensor(self_impl->nested_dim() - 1);
   }
 

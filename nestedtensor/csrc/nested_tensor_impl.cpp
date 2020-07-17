@@ -101,13 +101,17 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       _nested_size(map(
           [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           _structure)) {
-  TORCH_CHECK(!_structure.is_leaf(), "NestedTensorImpl must be given structure of at least height 1.")
+  TORCH_CHECK(
+      !_structure.is_leaf(),
+      "NestedTensorImpl must be given structure of at least height 1.")
   for (auto opt_int : construct_size(_nested_size)) {
     if (opt_int) {
       _sizes.push_back(*opt_int);
     } else {
       // TODO: Should we prefer this over opt_sizes?
-      // It's of a similar thought as using -1 in reshape as a placeholder
+      // TODO: Using -1 here is of of a similar thought as using -1 in reshape
+      // as a placeholder. Unfortunatly using -1 here interacts very badly with
+      // the rest of the functions that consume size.
       _sizes.push_back(0);
     }
   }
@@ -307,8 +311,6 @@ Tensor NestedTensor_slice(
     int64_t start,
     int64_t end,
     int64_t step) {
-  // return self;
-  std::cout << "HEHEHEHE" << std::endl;
   int64_t ndim = self.dim();
   if (ndim == 0) {
     TORCH_CHECK_INDEX(false, "slice() cannot be applied to a 0-dim tensor.");
@@ -318,7 +320,7 @@ Tensor NestedTensor_slice(
     TORCH_CHECK_INDEX(false, "slice() only supports dim == 0 for now.");
   }
   // TODO: support negative strides
-  TORCH_CHECK(step == 1, "slice step must be 1 for now.");
+  TORCH_CHECK(step >= 1, "slice step must be positive for now.");
   int64_t sizes_0 = self.size(0);
   if (start < 0) {
     start += sizes_0;
@@ -338,11 +340,7 @@ Tensor NestedTensor_slice(
   }
   std::vector<at::Tensor> unbound = at::unbind(self, 0);
   std::vector<TensorNode> new_tensor_nodes;
-  // std::cout << "dim: " << dim << " start: " << start << " end: " << end
-  //           << " sizes_0: " << sizes_0
-  //           << " unbound.size(): " << unbound.size()
-  //           << " step: " << step << std::endl;
-  for (int64_t i = start; i < end; i++) {
+  for (int64_t i = start; i < end; i += step) {
     if (is_nested_tensor_impl(unbound[i])) {
       new_tensor_nodes.push_back(get_nested_tensor_structure(unbound[i]));
     } else {

@@ -10,6 +10,9 @@ import random
 
 import utils
 
+
+ntnt = nestedtensor.nested_tensor
+
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
 
@@ -606,34 +609,31 @@ class TestNestedTensor(TestCase):
         self.assertFalse(a5.is_pinned())
         self.assertFalse(a6.is_pinned())
 
-    def test_slice(self):
-        nt = nestedtensor.nested_tensor([torch.randn(2, 3), torch.randn(3, 2)])
-        print('nt.size(): ', nt.size())
-        print('nt._impl.size(): ', nt._impl.size())
-        print("nt: ", nt)
-        print("nt[0]: ", nt[0])  # NestedTensor_select
-        print("nt[:]: ", nt[:])  # NestedTensor_slice
-        print("nt[:, 0]: ", nt[:, 0])  # recursive getitem call across tuples
-        print('nt[0]')
-        print(nt[0])
-        print('nt[0].unbind()')
-        print(nt[0].unbind())
-        print("nt[0, :]: ")
-        print(nt[0, :])  # recursive getitem call across tuples
-        print("nt[:, -1:]: ", nt[:, -1:])  # recursive getitem call across tuples
-        print("nt[-1:, :]: ", nt[-1:, :])  # recursive getitem call across tuples
-        print("nt[:, -1:, None]: ", nt[:, -1:, None])  # recursive getitem call across tuples
-        print("nt[-1:, :, None]: ", nt[-1:, :, None])  # recursive getitem call across tuples
-
-    def test_stack(self):
-        nt0 = nestedtensor.nested_tensor([torch.arange(6).reshape(2, 3), torch.arange(6).reshape(3, 2) + 6])
-        nt1 = nestedtensor.nested_tensor([torch.arange(12).reshape(4, 3) + 12, torch.arange(8).reshape(4, 2) + 24])
-        print("nt0: ", nt0)
-        print("nt1: ", nt1)
-        print(nt0.nested_size())
-        print(nt1.nested_size())
-        print("nestedtensor.stack([nt0, nt1], dim=0): ", nestedtensor.stack([nt0, nt1], dim=0)) # .nested_size())
-        print("nestedtensor.stack([nt0, nt1], dim=1): ", nestedtensor.stack([nt0, nt1], dim=1)) # .nested_size())
+    def test_getitem(self):
+        a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
+        nt = nestedtensor.nested_tensor([[a, b], [c]])
+        self.assertEqual(nt[None], ntnt([[[a, b], [c]]]))
+        self.assertEqual(nt[0], ntnt([a, b]))
+        self.assertEqual(nt[:], nt)
+        self.assertEqual(nt[:, 0], ntnt([a, c]))
+        self.assertEqual(nt[-1:], ntnt([[c]]))
+        self.assertEqual(nt[-1:, 0], ntnt([c]))
+        self.assertEqual(nt[:, -1], ntnt([b, c]))
+        self.assertEqual(nt[-1:, -1], ntnt([c]))
+        self.assertEqual(nt[:, -1:], ntnt([[b], [c]]))
+        self.assertEqual(nt[-1:, -1:], ntnt([[c]]))
+        self.assertEqual(nt[:, -1:, None], ntnt([[b[None]], [c[None]]]))
+        self.assertEqual(nt[-1:, :, None], ntnt([[c[None]]]))
+        self.assertEqual(nt[:, 1:, None], ntnt([[b[None]], []]))
+        nt = nestedtensor.nested_tensor([[a, b]])
+        self.assertEqual(nt[0, 0], ntnt([a[0], b[0]]))
+        self.assertEqual(nt[0, 1:], ntnt([a[1:], b[1:]]))
+        self.assertEqual(nt[:1, :, 1:], ntnt([[a[1:], b[1:]]]))
+        self.assertEqual(nt[:, :], nt)
+        self.assertEqual(nt[:, None], ntnt([[[a, b]]]))
+        self.assertRaisesRegex(IndexError,
+                               "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
+                               lambda: nt[2])
 
 
 class TestContiguous(TestCase):
