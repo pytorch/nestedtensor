@@ -359,8 +359,6 @@ Tensor& NestedTensor_cat_out(Tensor& result, TensorList tensors, int64_t dim) {
 
 Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   TORCH_CHECK(tensors.size() > 0, "Cannot cat an empty list.");
-  // TODO: legacy_cat_wrap_dim?
-  dim = maybe_wrap_dim(dim, tensors[0].dim());
   auto nested_dim_0 = get_nested_tensor_impl(tensors[0])->nested_dim();
   auto dim_0 = get_nested_tensor_impl(tensors[0])->dim();
   // TORCH_CHECK(dim == 0, "cat currently only supports dim set to 0.")
@@ -394,8 +392,12 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   }
   std::vector<TensorNode> result;
   for (size_t i = 0; i < candidates.size(); i++) {
-    result.push_back(get_nested_tensor_structure(
-        at::cat(TensorList(candidates[i]), dim - 1)));
+    auto tmp = at::cat(TensorList(candidates[i]), dim - 1);
+    if (is_nested_tensor_impl(tmp)) {
+      result.push_back(get_nested_tensor_structure(tmp));
+    } else {
+      result.push_back(TensorNode(std::move(tmp)));
+    }
   }
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
