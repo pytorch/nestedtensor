@@ -635,6 +635,7 @@ class TestNestedTensor(TestCase):
                                "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
                                lambda: nt[2])
 
+
 class TestContiguous(TestCase):
     def test_contiguous(self):
         for _ in range(1, 10):
