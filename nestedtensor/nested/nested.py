@@ -19,23 +19,6 @@ def _wrap_result(result):
     )
 
 
-def _new_torch_stack(tensors, dim=0, out=None):
-    result = torch.ops.nestedtensor.stack(list(
-        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
-    result = _wrap_result(result)
-    if out is None:
-        return result
-    out.copy_(result)
-
-def _new_torch_cat(tensors, dim=0, out=None):
-    result = torch.ops.nestedtensor.cat(list(
-        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
-    result = _wrap_result(result)
-    if out is None:
-        return result
-    out.copy_(result)
-
-
 def _filter_impl(args, kwargs):
     if kwargs is None:
         kwargs = {}

@@ -134,14 +134,6 @@ static auto registry =
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->nested_dim();
             })
-        .op("nestedtensor::stack",
-            [](std::vector<Tensor> tensors, int64_t dim) {
-              return at::stack(TensorList(tensors), dim);
-            })
-        .op("nestedtensor::cat",
-            [](std::vector<Tensor> tensors, int64_t dim) {
-              return at::cat(TensorList(tensors), dim);
-            })
         .op("nestedtensor::to_nested_tensor",
             [](Tensor tensor, c10::optional<int64_t> dim) {
               return get_nested_tensor_impl(tensor)->to_nested_tensor(dim);

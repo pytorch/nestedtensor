@@ -635,32 +635,6 @@ class TestNestedTensor(TestCase):
                                "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
                                lambda: nt[2])
 
-    def test_stack(self):
-        a = torch.arange(12).reshape(3, 4)
-        b = a + 12
-        c = b + 12
-
-        nt = nestedtensor.nested_tensor([[a, b], [c]])
-        nt0 = nestedtensor.nested_tensor([a, b])
-        nt1 = nestedtensor.nested_tensor([c])
-        self.assertEqual(nt, nestedtensor.stack([nt0, nt1]))
-        print(nt0)
-        print(nt1)
-        print(nestedtensor.stack([nt0, nt1], dim=0))
-        print(nestedtensor.stack([nt0, nt1], dim=1))
-        print(nestedtensor.stack([nt0, nt1], dim=2))
-
-        nt = nestedtensor.nested_tensor([[a, b], [c]])
-        nt0 = nestedtensor.nested_tensor([[a, b]])
-        nt1 = nestedtensor.nested_tensor([[c]])
-        # self.assertEqual(nt, nestedtensor.stack([nt0, nt1]))
-        print(nt0)
-        print(nt1)
-        print(nestedtensor.stack([nt0, nt1], dim=0))
-        print(nestedtensor.stack([nt0, nt1], dim=1))
-        print(nestedtensor.stack([nt0, nt1], dim=2))
-
-
 class TestContiguous(TestCase):
     def test_contiguous(self):
         for _ in range(1, 10):
