@@ -643,10 +643,10 @@ class TestNestedTensor(TestCase):
         nt = nestedtensor.nested_tensor([[a, b], [c]])
         nt0 = nestedtensor.nested_tensor([a, b])
         nt1 = nestedtensor.nested_tensor([c])
-        # self.assertEqual(nt, nestedtensor.stack([nt0, nt1]))
+        self.assertEqual(nt, nestedtensor.stack([nt0, nt1]))
         print(nt0)
         print(nt1)
-        print("HERE:", nestedtensor.stack([nt0, nt1], dim=0))
+        print(nestedtensor.stack([nt0, nt1], dim=0))
         print(nestedtensor.stack([nt0, nt1], dim=1))
         print(nestedtensor.stack([nt0, nt1], dim=2))
 
@@ -654,11 +654,11 @@ class TestNestedTensor(TestCase):
         nt0 = nestedtensor.nested_tensor([[a, b]])
         nt1 = nestedtensor.nested_tensor([[c]])
         # self.assertEqual(nt, nestedtensor.stack([nt0, nt1]))
-        print(nt0)
-        print(nt1)
-        print(nestedtensor.stack([nt0, nt1], dim=0))
-        print(nestedtensor.stack([nt0, nt1], dim=1))
-        print(nestedtensor.stack([nt0, nt1], dim=2))
+        # print(nt0)
+        # print(nt1)
+        # print(nestedtensor.stack([nt0, nt1], dim=0))
+        # print(nestedtensor.stack([nt0, nt1], dim=1))
+        # print(nestedtensor.stack([nt0, nt1], dim=2))
 
 
 class TestContiguous(TestCase):
