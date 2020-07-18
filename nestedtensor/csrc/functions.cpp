@@ -109,7 +109,7 @@ Tensor NestedTensor_batch_norm(
                    momentum,
                    eps,
                    cudnn_enabled)
-             .squeeze(0);
+            .squeeze(0);
         return result;
       },
       get_nested_tensor_structure(input)));
