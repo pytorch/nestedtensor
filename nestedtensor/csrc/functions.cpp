@@ -100,16 +100,16 @@ Tensor NestedTensor_batch_norm(
   return wrap_tensor_node(map(
       [&](at::Tensor t) {
         auto result = at::batch_norm(
-                   t.unsqueeze(0),
-                   weight,
-                   bias,
-                   running_mean,
-                   running_var,
-                   training,
-                   momentum,
-                   eps,
-                   cudnn_enabled)
-            .squeeze(0);
+                          t.unsqueeze(0),
+                          weight,
+                          bias,
+                          running_mean,
+                          running_var,
+                          training,
+                          momentum,
+                          eps,
+                          cudnn_enabled)
+                          .squeeze(0);
         return result;
       },
       get_nested_tensor_structure(input)));
@@ -328,55 +328,27 @@ Tensor NestedTensor_flatten(
       self_data->get_structure()));
 }
 
+std::vector<Tensor> get_stack_inputs(TensorList tensors, int64_t dim) {
+  std::vector<Tensor> inputs(tensors.size());
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    inputs[i] = tensors[i].unsqueeze(dim);
+  }
+  return inputs;
+}
+
 Tensor& NestedTensor_stack_out(
     Tensor& result,
     TensorList tensors,
     int64_t dim) {
-  auto tmp = at::stack(tensors, dim);
-  result.copy_(tmp);
-  return result;
+  TORCH_CHECK(tensors.size() > 0, "stack expects a non-empty TensorList");
+  dim = maybe_wrap_dim(dim, tensors[0].dim() + 1);
+  return at::cat_out(result, get_stack_inputs(tensors, dim), dim);
 }
 
 Tensor NestedTensor_stack(TensorList tensors, int64_t dim) {
-  TORCH_CHECK(tensors.size() > 0, "Cannot stack an empty list.");
-  auto nested_dim_0 = get_nested_tensor_impl(tensors[0])->nested_dim();
-  auto dim_0 = get_nested_tensor_impl(tensors[0])->dim();
-  // TORCH_CHECK(dim == 0, "stack currently only supports dim set to 0.")
-  for (size_t i = 1; i < tensors.size(); i++) {
-    TORCH_CHECK(
-        nested_dim_0 == get_nested_tensor_impl(tensors[i])->nested_dim(),
-        "Nested dimension of NestedTensors must match for stack to succeed.");
-    TORCH_CHECK(
-        dim_0 == get_nested_tensor_impl(tensors[i])->dim(),
-        "Dimension of NestedTensors must match for stack to succeed.");
-  }
-  if (dim == 0) {
-    std::vector<TensorNode> result;
-    for (size_t i = 0; i < tensors.size(); i++) {
-      result.push_back(get_nested_tensor_structure(tensors[i]));
-    }
-    return wrap_tensor_node(TensorNode(std::move(result)));
-  }
-  std::vector<std::vector<at::Tensor>> candidates;
-  for (size_t i = 0; i < tensors.size(); i++) {
-    auto unbound = tensors[i].unbind();
-    for (size_t j = 0; j < unbound.size(); j++) {
-      if (j >= candidates.size()) {
-        candidates.resize(j + 1);
-      }
-      candidates[j].push_back(unbound[j]);
-    }
-  }
-  std::vector<TensorNode> result;
-  for (size_t i = 0; i < candidates.size(); i++) {
-    auto tmp = at::stack(TensorList(candidates[i]), dim - 1);
-    // if (is_nested_tensor_impl(tmp)) {
-      result.push_back(get_nested_tensor_structure(tmp));
-    // } else {
-    //   result.push_back(TensorNode(std::move(tmp)));
-    // }
-  }
-  return wrap_tensor_node(TensorNode(std::move(result)));
+  TORCH_CHECK(tensors.size() > 0, "stack expects a non-empty TensorList");
+  dim = maybe_wrap_dim(dim, tensors[0].dim() + 1);
+  return at::cat(get_stack_inputs(tensors, dim), dim);
 }
 
 Tensor& NestedTensor_cat_out(Tensor& result, TensorList tensors, int64_t dim) {
@@ -387,6 +359,8 @@ Tensor& NestedTensor_cat_out(Tensor& result, TensorList tensors, int64_t dim) {
 
 Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   TORCH_CHECK(tensors.size() > 0, "Cannot cat an empty list.");
+  // TODO: legacy_cat_wrap_dim?
+  dim = maybe_wrap_dim(dim, tensors[0].dim());
   auto nested_dim_0 = get_nested_tensor_impl(tensors[0])->nested_dim();
   auto dim_0 = get_nested_tensor_impl(tensors[0])->dim();
   // TORCH_CHECK(dim == 0, "cat currently only supports dim set to 0.")
@@ -420,12 +394,8 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   }
   std::vector<TensorNode> result;
   for (size_t i = 0; i < candidates.size(); i++) {
-    auto tmp = at::cat(TensorList(candidates[i]), dim - 1);
-    if (is_nested_tensor_impl(tmp)) {
-      result.push_back(get_nested_tensor_structure(tmp));
-    } else {
-      result.push_back(TensorNode(std::move(tmp)));
-    }
+    result.push_back(get_nested_tensor_structure(
+        at::cat(TensorList(candidates[i]), dim - 1)));
   }
   return wrap_tensor_node(TensorNode(std::move(result)));
 }

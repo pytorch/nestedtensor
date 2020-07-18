@@ -304,6 +304,9 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return wrap_tensor_node(std::move(tmp));
 }
 
+// TODO: There are unanswered questions
+// around 0-numel NestedTensors as maybe brought about by
+// t[:, out_of_bounds:, :]
 Tensor NestedTensor_slice(
     const Tensor& self,
     int64_t dim,
