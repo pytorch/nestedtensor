@@ -304,6 +304,9 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return wrap_tensor_node(std::move(tmp));
 }
 
+// TODO: There are unanswered questions
+// around 0-numel NestedTensors as maybe brought about by
+// t[:, out_of_bounds:, :]
 Tensor NestedTensor_slice(
     const Tensor& self,
     int64_t dim,
@@ -426,6 +429,22 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
   return _NestedTensor_squeeze_(new_tensor, dim);
 }
 
+Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
+  dim = maybe_wrap_dim(dim, self.dim() + 1);
+  if (dim == 0) {
+    std::vector<TensorNode> one_node;
+    one_node.push_back(get_nested_tensor_structure(self));
+    return wrap_tensor_node(TensorNode(std::move(one_node)));
+  }
+  std::vector<TensorNode> result_nodes;
+  auto unbound = self.unbind(0);
+  for (size_t i = 0; i < unbound.size(); i++) {
+    result_nodes.push_back(
+        get_nested_tensor_structure(at::unsqueeze(unbound[i], dim - 1)));
+  }
+  return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
@@ -438,5 +457,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
   m.impl_UNBOXED("select.int", NestedTensor_select);
   m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
+  m.impl_UNBOXED("unsqueeze", NestedTensor_unsqueeze);
 }
 } // namespace at
