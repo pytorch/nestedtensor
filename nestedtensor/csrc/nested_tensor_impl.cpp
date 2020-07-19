@@ -430,7 +430,7 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
 }
 
 Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
-  dim = maybe_wrap_dim(dim, self.dim());
+  dim = maybe_wrap_dim(dim, self.dim() + 1);
   if (dim == 0) {
     std::vector<TensorNode> one_node;
     one_node.push_back(get_nested_tensor_structure(self));
