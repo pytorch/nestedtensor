@@ -635,6 +635,19 @@ class TestNestedTensor(TestCase):
                                "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
                                lambda: nt[2])
 
+    def test_cat(self):
+        a = torch.arange(12).reshape(3, 4)
+        b = a + 12
+        c = b + 12
+
+        nt0 = nestedtensor.nested_tensor([a, b])
+        nt1 = nestedtensor.nested_tensor([c])
+        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=0), ntnt([a, b, c]))
+        self.assertEqual(nestedtensor.cat(
+            [nt0, nt1], dim=1), ntnt([torch.cat([a, c]), b]))
+        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=2), ntnt(
+            [torch.cat([a, c], dim=1), b]))
+
     def test_stack(self):
         a = torch.arange(12).reshape(3, 4)
         b = a + 12
@@ -643,22 +656,12 @@ class TestNestedTensor(TestCase):
         nt = nestedtensor.nested_tensor([[a, b], [c]])
         nt0 = nestedtensor.nested_tensor([a, b])
         nt1 = nestedtensor.nested_tensor([c])
-        self.assertEqual(nt, nestedtensor.stack([nt0, nt1]))
-        print(nt0)
-        print(nt1)
-        print(nestedtensor.stack([nt0, nt1], dim=0))
-        print(nestedtensor.stack([nt0, nt1], dim=1))
-        print(nestedtensor.stack([nt0, nt1], dim=2))
-
-        nt = nestedtensor.nested_tensor([[a, b], [c]])
-        nt0 = nestedtensor.nested_tensor([[a, b]])
-        nt1 = nestedtensor.nested_tensor([[c]])
-        # self.assertEqual(nt, nestedtensor.stack([nt0, nt1]))
-        # print(nt0)
-        # print(nt1)
-        # print(nestedtensor.stack([nt0, nt1], dim=0))
-        # print(nestedtensor.stack([nt0, nt1], dim=1))
-        # print(nestedtensor.stack([nt0, nt1], dim=2))
+        self.assertEqual(nestedtensor.stack(
+            [nt0, nt1], dim=0), ntnt([[a, b], [c]]))
+        self.assertEqual(nestedtensor.stack(
+            [nt0, nt1], dim=1), ntnt([torch.stack([a, c]), b.reshape(1, 3, 4)]))
+        self.assertEqual(nestedtensor.stack(
+            [nt0, nt1], dim=2), ntnt([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
 
 class TestContiguous(TestCase):
