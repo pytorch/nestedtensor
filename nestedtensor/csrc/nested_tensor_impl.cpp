@@ -430,7 +430,6 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
 }
 
 Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
-  int64_t nested_dim = get_nested_tensor_impl(self)->nested_dim();
   dim = maybe_wrap_dim(dim, self.dim());
   if (dim == 0) {
     std::vector<TensorNode> one_node;
@@ -446,18 +445,6 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-Tensor& NestedTensor_unsqueeze_(Tensor& self, int64_t dim) {
-  int64_t nested_dim = get_nested_tensor_impl(self)->nested_dim();
-  dim = maybe_wrap_dim(dim, self.dim());
-  TORCH_CHECK(dim > nested_dim, "Cannot unsqueeze nested dimensions in place.");
-  apply(
-      [dim, nested_dim](at::Tensor& t) {
-        return t.unsqueeze_(dim - nested_dim);
-      },
-      get_nested_tensor_structure(self));
-  return self;
-}
-
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
@@ -470,7 +457,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
   m.impl_UNBOXED("select.int", NestedTensor_select);
   m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
-  m.impl_UNBOXED("unsqueeze_", NestedTensor_unsqueeze_);
   m.impl_UNBOXED("unsqueeze", NestedTensor_unsqueeze);
 }
 } // namespace at
