@@ -61,7 +61,8 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = conv2d(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
+            self.assertEqual(nestedtensor.nested_tensor(
+                tensor_res, requires_grad=True), nt_res)
 
         # some of optional params
         conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, bias=False)
@@ -72,7 +73,8 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = conv2d(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
+            self.assertEqual(nestedtensor.nested_tensor(
+                tensor_res, requires_grad=True), nt_res)
 
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
@@ -122,7 +124,8 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = batch_norm(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
+            self.assertEqual(nestedtensor.nested_tensor(
+                tensor_res, requires_grad=True), nt_res)
 
     def test_nn_functional_batch_norm(self):
         inputs = [
@@ -379,6 +382,47 @@ class TestFunctional(TestCase):
                 [[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
             nt1.copy_(nt2)
             self.assertEqual(nt1, nt2)
+
+    def test_unsqueeze(self):
+        for constructor in _iter_constructors():
+            t = torch.randn(2, 3)
+
+            nt = constructor([[t.reshape(2, 3)]])
+            self.assertEqual(nt.unsqueeze(
+                0), constructor([[[t.reshape(2, 3)]]]))
+            self.assertEqual(nt.unsqueeze(
+                1), constructor([[[t.reshape(2, 3)]]]))
+            self.assertEqual(nt.unsqueeze(
+                2), constructor([[t.reshape(1, 2, 3)]]))
+            self.assertEqual(nt.unsqueeze(
+                3), constructor([[t.reshape(2, 1, 3)]]))
+            self.assertEqual(nt.unsqueeze(
+                4), constructor([[t.reshape(2, 3, 1)]]))
+
+            t0 = t.reshape(3, 2)
+            t1 = t
+            t2 = torch.randn(4, 5)
+            nt = constructor([[t0, t1], [t2]])
+            self.assertEqual(nt.unsqueeze(0), constructor([[[t0, t1], [t2]]]))
+            self.assertEqual(nt.unsqueeze(
+                1), constructor([[[t0, t1]], [[t2]]]))
+            self.assertEqual(nt.unsqueeze(2), constructor(
+                [[t0.reshape(1, 3, 2), t1.reshape(1, 2, 3)], [t2.reshape(1, 4, 5)]]))
+            self.assertEqual(nt.unsqueeze(3), constructor(
+                [[t0.reshape(3, 1, 2), t1.reshape(2, 1, 3)], [t2.reshape(4, 1, 5)]]))
+            self.assertEqual(nt.unsqueeze(4), constructor(
+                [[t0.reshape(3, 2, 1), t1.reshape(2, 3, 1)], [t2.reshape(4, 5, 1)]]))
+
+            t = torch.randn(2, 3)
+            nt = constructor([t])
+            self.assertEqual(nt.unsqueeze(0), constructor([[t]]))
+            self.assertEqual(nt.unsqueeze(
+                1), constructor([t.reshape(1, 2, 3)]))
+            self.assertEqual(nt.unsqueeze(
+                2), constructor([t.reshape(2, 1, 3)]))
+            self.assertEqual(nt.unsqueeze(
+                3), constructor([t.reshape(2, 3, 1)]))
+            self.assertRaises(IndexError, lambda: nt.unsqueeze(4))
 
     def test_squeeze(self):
         for constructor in _iter_constructors():
