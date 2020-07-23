@@ -11,7 +11,7 @@ using namespace torch::nested_tensor;
 
 template <Tensor& (*func)(Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
-  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
+  if (is_nested_tensor_impl(self, other)) {
     apply(
         [](Tensor& tensor, const Tensor other) { func(tensor, other); },
         get_nested_tensor_structure(self),
@@ -31,12 +31,12 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
-  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
+  if (is_nested_tensor_impl(self, other)) {
     TORCH_CHECK(
         shape_matches(
             get_nested_tensor_structure(self),
             get_nested_tensor_structure(other)),
-        "binary requires shapes of arguments to match.");
+        "binary requires shapes of NestedTensor arguments to match.");
     return wrap_tensor_node(
         map([](Tensor self, Tensor other) { return func(self, other); },
             get_nested_tensor_structure(self),
@@ -54,22 +54,22 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
-  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(map(
+  if (is_nested_tensor_impl(self, other)) {
+    return wrap_tensor_node(map_nested_tensor(
         [&scalar](Tensor tensor, Tensor other) {
           return func(tensor, other, scalar);
         },
-        get_nested_tensor_structure(self),
-        get_nested_tensor_structure(other)));
+        self,
+        other));
   }
   if (is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(map(
+    return wrap_tensor_node(map_nested_tensor(
         [&self, &scalar](Tensor other) { return func(self, other, scalar); },
-        get_nested_tensor_structure(other)));
+        other));
   }
-  return wrap_tensor_node(
-      map([&other, &scalar](Tensor self) { return func(self, other, scalar); },
-          get_nested_tensor_structure(self)));
+  return wrap_tensor_node(map_nested_tensor(
+      [&other, &scalar](Tensor self) { return func(self, other, scalar); },
+      self));
 }
 
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
@@ -78,8 +78,7 @@ Tensor& NestedTensor_binary_out(
     const Tensor& self,
     const Tensor& other) {
   TORCH_CHECK(
-      is_nested_tensor_impl(result) && is_nested_tensor_impl(self) &&
-          is_nested_tensor_impl(other),
+      is_nested_tensor_impl(result, self, other),
       "binary_out doesn't support non-NT arguments.")
   apply(
       [](Tensor& result, Tensor& tensor, Tensor& other) {
@@ -92,12 +91,29 @@ Tensor& NestedTensor_binary_out(
 }
 
 Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
-  apply(
-      [&alpha](Tensor& tensor, Tensor& other) {
-        at::native::sub_(tensor, other, alpha);
-      },
-      get_nested_tensor_structure(self),
-      get_nested_tensor_structure(other));
+  if (is_nested_tensor_impl(self, other)) {
+    torch_check_tensor_shape_matches(self, other);
+    apply_nested_tensor(
+        [&alpha](Tensor& tensor, Tensor& other) {
+          at::native::sub_(tensor, other, alpha);
+        },
+        self,
+        other);
+    return self;
+  }
+  if (is_nested_tensor_impl(self)) {
+    torch_check_tensor_shape_matches(self);
+    apply_nested_tensor(
+        [&other, &alpha](Tensor& self) {
+          at::native::sub_(self, other, alpha);
+        },
+        self);
+    return self;
+  }
+  torch_check_tensor_shape_matches(other);
+  apply_nested_tensor(
+      [&self, &alpha](Tensor& other) { at::native::sub_(self, other, alpha); },
+      other);
   return self;
 }
 
@@ -106,13 +122,14 @@ Tensor& NestedTensor_sub_out(
     const Tensor& self,
     const Tensor& other,
     Scalar alpha) {
-  apply(
+  is_nested_tensor_impl(result, self, other);
+  apply_nested_tensor(
       [&alpha](Tensor& result, Tensor& tensor, Tensor& other) {
         return at::sub_out(result, tensor, other, alpha);
       },
-      get_nested_tensor_structure(result),
-      get_nested_tensor_structure(self),
-      get_nested_tensor_structure(other));
+      result,
+      self,
+      other);
   return result;
 }
 
@@ -120,21 +137,47 @@ Tensor& NestedTensor_pow_out_1(
     Tensor& result,
     const Tensor& base,
     const Tensor& exp) {
+  if (is_nested_tensor_impl(result, base, exp)) {
+    torch_check_tensor_shape_matches(result, base, exp);
+    apply(
+        [](Tensor& result, Tensor& base, Tensor& exp) {
+          return at::pow_out(result, base, exp);
+        },
+        get_nested_tensor_structure(result),
+        get_nested_tensor_structure(base),
+        get_nested_tensor_structure(exp));
+    return result;
+  }
+  if (is_nested_tensor_impl(result, base)) {
+    torch_check_tensor_shape_matches(result, base);
+    apply(
+        [&exp](Tensor& result, Tensor& base) {
+          return at::pow_out(result, base, exp);
+        },
+        get_nested_tensor_structure(result),
+        get_nested_tensor_structure(base));
+    return result;
+  }
+  TORCH_CHECK(
+      is_nested_tensor_impl(result, exp),
+      "At least one of base or exp needs to be a NestedTensor");
+  torch_check_tensor_shape_matches(result, exp);
   apply(
-      [](Tensor& result, Tensor& base, Tensor& exp) {
+      [&exp](Tensor& result, Tensor& base) {
         return at::pow_out(result, base, exp);
       },
       get_nested_tensor_structure(result),
-      get_nested_tensor_structure(base),
-      get_nested_tensor_structure(exp));
+      get_nested_tensor_structure(base));
   return result;
 }
 
 Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
+  is_nested_tensor_impl(base, other);
   return NestedTensor_pow_out_1(base, base, other);
 }
 
 Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
+  is_nested_tensor_impl(result, base);
   apply(
       [&exp](Tensor& result, Tensor& base) {
         return at::pow_out(result, base, exp);
@@ -145,12 +188,14 @@ Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
 }
 
 Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
+  is_nested_tensor_impl(base);
   return wrap_tensor_node(
       map([exp](Tensor base) { return at::pow(base, exp); },
           get_nested_tensor_structure(base)));
 }
 
 Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
+  is_nested_tensor_impl(result, exp);
   apply(
       [&base](Tensor& result, Tensor& exp) {
         return at::pow_out(result, base, exp);
@@ -161,6 +206,7 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
 }
 
 Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
+  is_nested_tensor_impl(exp);
   return wrap_tensor_node(
       map([&base](Tensor exp) { return at::pow(base, exp); },
           get_nested_tensor_structure(exp)));

@@ -14,5 +14,7 @@ from . import _C
 
 from . import nn
 
+# TODO: https://github.com/pytorch/pytorch/issues/34294
+# torch.cat does not call __torch_function__ properly
 from .nested.nested import _new_torch_stack as stack
 from .nested.nested import _new_torch_cat as cat

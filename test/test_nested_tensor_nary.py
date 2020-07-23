@@ -111,19 +111,37 @@ def _gen_test_binary(func):
         a = utils.gen_float_tensor(1, (2, 3))
         b = utils.gen_float_tensor(2, (2, 3))
         c = utils.gen_float_tensor(3, (2, 3))
+
         # The constructor is supposed to copy!
         a1 = nestedtensor.nested_tensor([a, b])
         a2 = nestedtensor.nested_tensor([b, c])
-        a1_l = nestedtensor.as_nested_tensor([a.clone(), b.clone()])
-        a2_l = nestedtensor.as_nested_tensor([b.clone(), c.clone()])
         a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
                                   getattr(torch, func)(b, c)])
-        a3_l = nestedtensor.as_nested_tensor(a3)
-        self.assertEqual(a3_l, getattr(torch, func)(a1_l, a2_l))
-        self.assertEqual(a3_l, getattr(torch, func)(a1, a2))
+        self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
+
+        # The constructor is supposed to copy!
+        a1 = nestedtensor.nested_tensor([a, b])
+        a2 = c
+        a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, a2),
+                                  getattr(torch, func)(b, a2)])
+        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        self.assertEqual(a3, getattr(a1, func)(a2))
+        self.assertEqual(a3, getattr(a1, func + "_")(a2))
+        self.assertEqual(a3, a1)
+
+        # The constructor is supposed to copy!
+        a1 = c
+        a2 = nestedtensor.nested_tensor([a, b])
+        a3 = nestedtensor.nested_tensor([getattr(torch, func)(c, a),
+                                  getattr(torch, func)(c, b)])
+        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        # TODO: This depends on https://github.com/pytorch/rfcs/pull/3
+        # RFC-0001: Add method __torch_function__ RFC.
+        self.assertRaises(TypeError, lambda: getattr(a1, func)(a2))
+        self.assertRaises(TypeError, lambda: getattr(a1, func + "_")(a2))
     return _test_binary
 
 
@@ -140,6 +158,7 @@ for func__ in get_unary_functions():
                 func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
 TestBinary = type('TestBinary', (DynamicClassBase,), {})
 for func in get_binary_functions():
+    print("func: ", func)
     setattr(TestBinary, "test_{0}".format(func),
             _gen_test_binary(func))
 

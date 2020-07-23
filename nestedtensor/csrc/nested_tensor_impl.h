@@ -1,6 +1,7 @@
 #pragma once
 #include <ATen/ATen.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
+#include <nestedtensor/csrc/utils/nested_node_functions.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -21,7 +22,61 @@ constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
 
 struct NestedTensorImpl;
 
-bool is_nested_tensor_impl(const at::Tensor tensor);
+template <class A>
+bool is_nested_tensor_impl(A tensor) {
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+}
+
+template <class A, class B>
+bool is_nested_tensor_impl(A first, B other) {
+  return is_nested_tensor_impl(first) && is_nested_tensor_impl(other);
+}
+
+template <class A, class B, class... C>
+bool is_nested_tensor_impl(A first, B second, C... other) {
+  return is_nested_tensor_impl(first, second) &&
+      is_nested_tensor_impl(other...);
+}
+
+template <class A>
+inline bool tensor_shape_matches(A a) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(a), "Can only compare shapes of NestedTensors.");
+  return true;
+}
+
+template <class A, class B>
+inline bool tensor_shape_matches(A a, B b) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(a, b), "Can only compare shapes of NestedTensors.");
+  return shape_matches(
+      get_nested_tensor_structure(a), get_nested_tensor_structure(b));
+}
+
+template <class A, class B, class... C>
+inline bool tensor_shape_matches(A a, B b, C... c) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(a, b, c...),
+      "Can only compare shapes of NestedTensors.");
+  return shape_matches(
+             get_nested_tensor_structure(a), get_nested_tensor_structure(b)) &&
+      tensor_shape_matches(b, c...);
+}
+
+template <class... A>
+inline void torch_check_tensor_shape_matches(A... a) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(a...), "Can only check shapes of NestedTensors.");
+  TORCH_CHECK(tensor_shape_matches(a...), "NestedTensor shapes don't match.");
+}
+
+template <class F, class... A>
+static inline void apply_nested_tensor(F&& fn, A... a) {
+  torch_check_tensor_shape_matches(a...);
+  apply(std::move(fn), get_nested_tensor_structure(a)...);
+}
+
+
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(
     const at::Tensor tensor);
@@ -29,6 +84,13 @@ torch::nested_tensor::TensorNode get_nested_tensor_structure(
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
+
+template <class F, class... A>
+static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
+  torch_check_tensor_shape_matches(a...);
+  return wrap_tensor_node(
+      map(std::move(fn), get_nested_tensor_structure(a)...));
+}
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(TensorNode structure);
