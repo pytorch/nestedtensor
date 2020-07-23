@@ -172,10 +172,6 @@ Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
   return wrap_tensor_node(std::move(_structure));
 }
 
-bool is_nested_tensor_impl(const at::Tensor tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
-}
-
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   if (!is_nested_tensor_impl(tensor)) {
     throw std::runtime_error("Function requires NestedTensorImpl");

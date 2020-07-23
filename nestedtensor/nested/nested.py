@@ -1,14 +1,11 @@
 import torch
 import numbers
-from functools import wraps
 from . import masking
-import collections
-import os
 
 from . import creation
 
 import nestedtensor
-import itertools
+
 
 def _new_torch_stack(tensors, dim=0, out=None):
     result = torch.ops.nestedtensor.stack(list(
@@ -37,6 +34,7 @@ def _wrap_result(result):
         else result
     )
 
+
 def _filter_impl(args, kwargs):
     if kwargs is None:
         kwargs = {}
@@ -46,18 +44,22 @@ def _filter_impl(args, kwargs):
     }
     return impl_args, impl_kwargs
 
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
             def _wrapped_fn(*args, **kwargs):
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
-                result = getattr(impl_args[0], name)(*(impl_args[1:]), **impl_kwargs)
+                result = getattr(impl_args[0], name)(
+                    *(impl_args[1:]), **impl_kwargs)
                 return _wrap_result(result)
             return _wrapped_fn
         return self.__dict__[name]
 
 # -------------------------NestedTensor core---------------------------
-class NestedTensor(metaclass = NestedTensorMeta):
+
+
+class NestedTensor(metaclass=NestedTensorMeta):
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its
@@ -101,14 +103,45 @@ class NestedTensor(metaclass = NestedTensorMeta):
             return _wrap_result(self._impl + other._impl)
         return _wrap_result(self._impl + other)
 
+    def __radd__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(self._impl + other)
+
     def __mul__(self, other):
         if isinstance(other, NestedTensor):
             return _wrap_result(self._impl * other._impl)
         return _wrap_result(self._impl * other)
 
+    def __rmul__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(self._impl * other)
+
+    def __sub__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl - other._impl)
+        return _wrap_result(self._impl - other)
+
+    def __rsub__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(other - self._impl)
+
+    def __truediv__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl / other._impl)
+        return _wrap_result(self._impl / other)
+
+    def __floordiv__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl // other._impl)
+        return _wrap_result(self._impl // other)
+
     def __pow__(self, *args, **kwargs):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
+
+    def __rpow__(self, exponent):
+        assert not isinstance(exponent, NestedTensor)
+        return _wrap_result(torch.pow(exponent, self._impl))
 
     @property
     def shape(self):
@@ -159,7 +192,8 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
+        nestedtensor._C.backward(
+            self._impl, gradient._impl, retain_graph, create_graph)
 
     def nested_dim(self):
         """
@@ -238,7 +272,8 @@ class NestedTensor(metaclass = NestedTensorMeta):
 
     # Might require nonzero
     def __bool__(self):
-        raise NotImplementedError("NestedTensor doesn't support function __bool__")
+        raise NotImplementedError(
+            "NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
          return _wrap_result(nestedtensor._C.get_item(self._impl, key))
