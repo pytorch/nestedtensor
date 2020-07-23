@@ -103,6 +103,10 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return _wrap_result(self._impl + other._impl)
         return _wrap_result(self._impl + other)
 
+    def __radd__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(self._impl + other)
+
     def __mul__(self, other):
         if isinstance(other, NestedTensor):
             return _wrap_result(self._impl * other._impl)
@@ -111,6 +115,15 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def __rmul__(self, other):
         assert not isinstance(other, NestedTensor)
         return _wrap_result(self._impl * other)
+
+    def __sub__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl - other._impl)
+        return _wrap_result(self._impl - other)
+
+    def __rsub__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(other - self._impl)
 
     def __truediv__(self, other):
         if isinstance(other, NestedTensor):
