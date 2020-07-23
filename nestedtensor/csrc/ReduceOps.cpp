@@ -7,23 +7,23 @@ namespace at {
 using namespace torch::nested_tensor;
 
 Tensor NestedTensor_cumsum(
-        const Tensor& self,
-        int64_t dim,
-        c10::optional<ScalarType> dtype) {
+    const Tensor& self,
+    int64_t dim,
+    c10::optional<ScalarType> dtype) {
   auto nt_impl = get_nested_tensor_impl(self);
   int64_t nested_dim = nt_impl->nested_dim();
   dim = maybe_wrap_dim(dim, nt_impl->dim());
   TORCH_CHECK(
-      dim >= nested_dim,
-      "cumsum of nested dimensions is not implemented yet.");
-  return wrap_tensor_node(
-      map([nested_dim, dim](at::Tensor tensor) {
-            return at::cumsum(tensor, dim - nested_dim); },
-          get_nested_tensor_structure(self)));
+      dim >= nested_dim, "cumsum of nested dimensions is not implemented yet.");
+  return wrap_tensor_node(map_nested_tensor(
+      [nested_dim, dim](at::Tensor tensor) {
+        return at::cumsum(tensor, dim - nested_dim);
+      },
+      self));
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-    m.impl_UNBOXED("cumsum", NestedTensor_cumsum);
+  m.impl_UNBOXED("cumsum", NestedTensor_cumsum);
 }
 
-}
+} // namespace at
