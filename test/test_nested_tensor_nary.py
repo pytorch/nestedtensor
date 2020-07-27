@@ -104,6 +104,13 @@ def _gen_test_unary(func__, nested_dim, device):
         _close(method(a1), a2)
         _close(method_inplace(a1), a2)
         _close(a1, a2)
+
+        a1 = nestedtensor.nested_tensor(data, requires_grad=True)
+        print(a1.requires_grad)
+        s = func(a1).sum()
+        s.backward()
+        print(a1.grad)
+
     return _test_unary
 
 
