@@ -205,8 +205,8 @@ class TestCase(TestCaseBase):
             if x.tensor_dim() != y.tensor_dim():
                 self.fail("Nested tensors  dimentionality don't match. {} != {}".format(x.tensor_dim(), y.tensor_dim()))
 
-            if x.is_pinned() != y.is_pinned():
-                self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(x.is_pinned(), y.is_pinned()))
+            # if x.is_pinned() != y.is_pinned():
+            #     self.fail("Nested tensors pinned memmory values don't match. {} != {}".format(x.is_pinned(), y.is_pinned()))
 
             if x.layout != y.layout:
                 self.fail("Nested tensors layouts don't match. {} != {}".format(x.layout, y.layout))
