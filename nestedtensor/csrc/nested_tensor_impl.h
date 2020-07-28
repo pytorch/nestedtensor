@@ -132,7 +132,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
       bool allow_tensor_metadata_change) const override;
 
   // TODO:
-  // void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
+  void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
   int64_t nested_dim() const {
     return get_structure().height();
   }
@@ -147,17 +147,19 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return wrap_tensor_node(
         map([](at::Tensor tensor) { return tensor.grad(); }, get_structure()));
   }
-  Tensor requires_grad_(bool requires_grad) {
-    apply(
-        [requires_grad](at::Tensor& tensor) -> void {
-          tensor.set_requires_grad(requires_grad);
-        },
-        get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(_structure);
-  }
-  bool requires_grad() const {
-    return _first_variable.requires_grad();
-  }
+  // Tensor requires_grad_(bool requires_grad) {
+  //   std::cout << "DHDHDHD" << std::endl;
+  //   apply(
+  //       [requires_grad](at::Tensor& tensor) -> void {
+  //         tensor.set_requires_grad(requires_grad);
+  //       },
+  //       get_structure());
+  //   return at::detail::make_tensor<NestedTensorImpl>(_structure);
+  // }
+  // bool requires_grad() const {
+  //   std::cout << "DllrallralDHDHD" << std::endl;
+  //   return _first_variable.requires_grad();
+  // }
   bool is_pinned() const {
     return _first_variable.is_pinned();
   }

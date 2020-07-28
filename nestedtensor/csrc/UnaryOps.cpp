@@ -152,6 +152,11 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       #NAME ".out",                                                         \
       NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
 
+#define UNARY_OP_FALLTHROUGH_INPLACE_METHOD(NAME)                   \
+  m.impl(#NAME, torch::CppFunction::makeFallthrough());     \
+  m.impl(#NAME "_", torch::CppFunction::makeFallthrough()); \
+  m.impl(#NAME ".out", torch::CppFunction::makeFallthrough());
+
 #define UNARY_OP(NAME)                                                      \
   m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
   m.impl_UNBOXED(                                                           \
@@ -160,15 +165,72 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       #NAME ".out",                                                         \
       NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
 
+#define UNARY_OP_FALLTHROUGH(NAME)                          \
+  m.impl(#NAME, torch::CppFunction::makeFallthrough());     \
+  m.impl(#NAME "_", torch::CppFunction::makeFallthrough()); \
+  m.impl(#NAME ".out", torch::CppFunction::makeFallthrough());
+
 #define UNARY_OP_NO_OUT(NAME)                                               \
   m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
   m.impl_UNBOXED(                                                           \
       #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>);
 
+#define UNARY_OP_FALLTHROUGH_NO_OUT(NAME)               \
+  m.impl(#NAME, torch::CppFunction::makeFallthrough()); \
+  m.impl(#NAME "_", torch::CppFunction::makeFallthrough());
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl("atan_", torch::CppFunction::makeFallthrough());
-  m.impl("atan", torch::CppFunction::makeFallthrough());
-  m.impl("atan.out", torch::CppFunction::makeFallthrough());
+  UNARY_OP_FALLTHROUGH(abs);
+  UNARY_OP_FALLTHROUGH(acos);
+  UNARY_OP_FALLTHROUGH(asin);
+  UNARY_OP_FALLTHROUGH(atan);
+  UNARY_OP_FALLTHROUGH(ceil);
+  UNARY_OP_FALLTHROUGH(cos);
+  UNARY_OP_FALLTHROUGH(cosh);
+  UNARY_OP_FALLTHROUGH_INPLACE_METHOD(digamma)
+  UNARY_OP_FALLTHROUGH(erf);
+  UNARY_OP_FALLTHROUGH(erfc);
+  UNARY_OP_FALLTHROUGH_INPLACE_METHOD(erfinv)
+  UNARY_OP_FALLTHROUGH(exp);
+  UNARY_OP_FALLTHROUGH(expm1);
+  UNARY_OP_FALLTHROUGH(floor);
+  // UNARY_OP_FALLTHROUGH(fill);
+  UNARY_OP_FALLTHROUGH(frac);
+  UNARY_OP_FALLTHROUGH_INPLACE_METHOD(lgamma)
+  UNARY_OP_FALLTHROUGH(log);
+  UNARY_OP_FALLTHROUGH(log10);
+  UNARY_OP_FALLTHROUGH(log1p);
+  UNARY_OP_FALLTHROUGH(log2);
+  // UNARY_OP_FALLTHROUGH(mvlgamma);
+  UNARY_OP_FALLTHROUGH(neg);
+  UNARY_OP_FALLTHROUGH(reciprocal);
+  UNARY_OP_FALLTHROUGH_NO_OUT(relu);
+  UNARY_OP_FALLTHROUGH(round);
+  UNARY_OP_FALLTHROUGH(rsqrt);
+  UNARY_OP_FALLTHROUGH(sigmoid);
+  UNARY_OP_FALLTHROUGH_INPLACE_METHOD(sign)
+  UNARY_OP_FALLTHROUGH(sin);
+  UNARY_OP_FALLTHROUGH(sinh);
+  UNARY_OP_FALLTHROUGH(sqrt);
+  UNARY_OP_FALLTHROUGH(tan);
+  UNARY_OP_FALLTHROUGH(tanh);
+  UNARY_OP_FALLTHROUGH(trunc);
+
+  // NOTE: mvlgamma doesn't have an out variant? why?
+  m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
+  m.impl_UNBOXED("mvlgamma_", NestedTensor_mvlgamma_);
+
+  m.impl_UNBOXED("clamp", NestedTensor_clamp);
+  m.impl_UNBOXED("clamp_", NestedTensor_clamp_);
+  m.impl_UNBOXED("clamp.out", NestedTensor_clamp_out);
+
+  m.impl_UNBOXED("clamp_min", NestedTensor_clamp_min);
+  m.impl_UNBOXED("clamp_min_", NestedTensor_clamp_min_);
+  m.impl_UNBOXED("clamp_min.out", NestedTensor_clamp_min_out);
+
+  m.impl_UNBOXED("clamp_max", NestedTensor_clamp_max);
+  m.impl_UNBOXED("clamp_max_", NestedTensor_clamp_max_);
+  m.impl_UNBOXED("clamp_max.out", NestedTensor_clamp_max_out);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
@@ -207,22 +269,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   UNARY_OP(tan);
   UNARY_OP(tanh);
   UNARY_OP(trunc);
-
-  // NOTE: mvlgamma doesn't have an out variant? why?
-  m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
-  m.impl_UNBOXED("mvlgamma_", NestedTensor_mvlgamma_);
-
-  m.impl_UNBOXED("clamp", NestedTensor_clamp);
-  m.impl_UNBOXED("clamp_", NestedTensor_clamp_);
-  m.impl_UNBOXED("clamp.out", NestedTensor_clamp_out);
-
-  m.impl_UNBOXED("clamp_min", NestedTensor_clamp_min);
-  m.impl_UNBOXED("clamp_min_", NestedTensor_clamp_min_);
-  m.impl_UNBOXED("clamp_min.out", NestedTensor_clamp_min_out);
-
-  m.impl_UNBOXED("clamp_max", NestedTensor_clamp_max);
-  m.impl_UNBOXED("clamp_max_", NestedTensor_clamp_max_);
-  m.impl_UNBOXED("clamp_max.out", NestedTensor_clamp_max_out);
 }
 
 } // namespace at

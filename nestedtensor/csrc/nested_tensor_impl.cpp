@@ -52,6 +52,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
 c10::intrusive_ptr<c10::TensorImpl> NestedTensorImpl::shallow_copy_and_detach(
     const c10::VariableVersion& version_counter,
     bool allow_tensor_metadata_change) const {
+  std::cout << "HDH SHALLOW" << std::endl;
   auto impl = c10::make_intrusive<NestedTensorImpl>(_structure);
   copy_tensor_metadata(
       /*src_impl=*/this,
@@ -59,6 +60,11 @@ c10::intrusive_ptr<c10::TensorImpl> NestedTensorImpl::shallow_copy_and_detach(
       /*version_counter=*/version_counter,
       /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
   return impl;
+}
+
+void NestedTensorImpl::shallow_copy_from(
+    const c10::intrusive_ptr<TensorImpl>& impl) {
+  TORCH_CHECK(false, "shallow_copy_from is not implemented.");
 }
 
 std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
@@ -101,9 +107,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
 
 NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     : TensorImpl(
-          c10::DispatchKeySet({NestedTensorKey_PreAutograd,
-                               DispatchKey::Autograd,
-                               NestedTensorKey}),
+          c10::DispatchKeySet({NestedTensorKey_PreAutograd, NestedTensorKey}),
           get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
                                     : at::ones({}).dtype(),
           get_first_leaf(structure) ? get_first_leaf(structure)->device()
@@ -455,7 +459,16 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
+void NestedTensor_backward(
+    const Tensor& self,
+    const Tensor& gradient,
+    c10::optional<bool> keep_graph,
+    bool create_graph) {
+  TORCH_CHECK(false, "backward not implemented.");
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  m.impl_UNBOXED("backward", NestedTensor_backward);
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);

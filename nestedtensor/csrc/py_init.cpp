@@ -146,27 +146,6 @@ static auto registry =
             [](Tensor tensor, c10::optional<int64_t> dim) {
               return get_nested_tensor_impl(tensor)->to_nested_tensor(dim);
             })
-        .op("nestedtensor::grad",
-            [](Tensor tensor) {
-              return get_nested_tensor_impl(tensor)->grad();
-            })
-        .op("nestedtensor::requires_grad",
-            [](Tensor tensor) {
-              return get_nested_tensor_impl(tensor)->requires_grad();
-            })
-        .op("nestedtensor::requires_grad_",
-            [](Tensor tensor, bool requires_grad) {
-              auto nt = get_nested_tensor_impl(tensor);
-              return nt->requires_grad_(requires_grad);
-            })
-        .op("nestedtensor::backward",
-            [](Tensor tensor,
-               Tensor gradient,
-               bool retain_graph,
-               bool create_graph) {
-              auto nt = get_nested_tensor_impl(tensor);
-              nt->backward(gradient, retain_graph, create_graph);
-            })
         .op("nestedtensor::sizes",
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->opt_sizes();
