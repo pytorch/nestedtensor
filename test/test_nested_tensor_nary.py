@@ -185,6 +185,15 @@ def _gen_test_binary_method(func):
         a3 = nestedtensor.nested_tensor([getattr(a1, "__" + func + "__")(a),
                                          getattr(a1, "__" + func + "__")(b)])
         self.assertEqual(a3, getattr(a2, "__r" + func + "__")(a1))
+
+        a1 = nestedtensor.nested_tensor([a, b], requires_grad=True)
+        a2 = nestedtensor.nested_tensor([b, c], requires_grad=True)
+        a3 = nestedtensor.nested_tensor([getattr(a, "__" + func + "__")(b),
+                                         getattr(b, "__" + func + "__")(c)])
+        print(a1.requires_grad)
+        print(a2.requires_grad)
+        print(a3.requires_grad)
+        self.assertEqual(a3, getattr(a1, "__" + func + "__")(a2))
     return _test_binary_method
 
 

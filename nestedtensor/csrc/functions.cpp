@@ -165,11 +165,12 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  return wrap_tensor_node(map(
+  auto out_node = map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
       },
-      get_nested_tensor_structure(self)));
+      self);
+  return wrap_tensor_node(std::move(out_node));
 }
 
 Tensor NestedTensor_softmax(
@@ -402,26 +403,37 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  // TODO: Composite op
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
+  // TODO: Composite op
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
+  // TODO: Composite op
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
+  // TODO: Composite op
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
+  // TODO: Composite op
+  m.impl_UNBOXED("reshape", NestedTensor_reshape);
+  // TODO: Composite op
+  m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
+  // TODO: Composite op
+  m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
+  // TODO: Composite op
+  m.impl_UNBOXED("matmul", NestedTensor_matmul);
+  m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
+  // TODO: Composite op
+  m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
+  m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
+  m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("sum", NestedTensor_sum);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
   m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
-  m.impl_UNBOXED("reshape", NestedTensor_reshape);
-  m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
-  m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
-  m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
-  // TODO: Composite op
-  // m.impl_UNBOXED("matmul", NestedTensor_matmul);
-  // m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
-  m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
-  m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
   m.impl_UNBOXED("stack", NestedTensor_stack);
   m.impl_UNBOXED("stack.out", NestedTensor_stack_out);
   m.impl_UNBOXED("cat", NestedTensor_cat);

@@ -4,7 +4,6 @@
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
 #include <torch/extension.h>
-#include <torch/csrc/jit/python/pybind_utils.h>
 
 namespace py = pybind11;
 
@@ -26,7 +25,6 @@ NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
     return NestedNode<py::object>(std::move(py_obj));
   }
 }
-
 
 bool _verify_variables(
     const int64_t dim,
@@ -177,8 +175,9 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   if (THPVariable_Check(py_obj.ptr())) {
     at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
     if (is_nested_tensor_impl(tensor)) {
-      auto tensor_data_structure = get_nested_tensor_impl(tensor)->get_structure();
-      return map([](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
+      return map(
+          [](at::Tensor a) { return c10::IValue(a); },
+          get_nested_tensor_structure(tensor));
     }
   }
   if (py::isinstance<py::sequence>(py_obj)) {
@@ -202,7 +201,8 @@ NestedTensorImpl _as_nested_tensor(py::sequence list) {
       all_same,
       "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
   TensorNode structure =
-      map([](c10::IValue a) { return a.toTensor().clone().detach(); }, ivalue_structure);
+      map([](c10::IValue a) { return a.toTensor().clone().detach(); },
+          ivalue_structure);
   if (auto first = get_first_leaf(structure)) {
     if (!_verify_variables(*first, structure)) {
       _verify_variables(*first, structure, true);
@@ -212,7 +212,8 @@ NestedTensorImpl _as_nested_tensor(py::sequence list) {
 }
 
 at::Tensor nested_tensor_impl(py::sequence list) {
-  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list)).contiguous();
+  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list))
+      .contiguous();
 }
 
 } // namespace nested_tensor

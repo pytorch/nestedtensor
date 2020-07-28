@@ -201,6 +201,22 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   UNARY_OP(tan);
   UNARY_OP(tanh);
   UNARY_OP(trunc);
+
+  // NOTE: mvlgamma doesn't have an out variant? why?
+  m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
+  m.impl_UNBOXED("mvlgamma_", NestedTensor_mvlgamma_);
+
+  m.impl_UNBOXED("clamp", NestedTensor_clamp);
+  m.impl_UNBOXED("clamp_", NestedTensor_clamp_);
+  m.impl_UNBOXED("clamp.out", NestedTensor_clamp_out);
+
+  m.impl_UNBOXED("clamp_min", NestedTensor_clamp_min);
+  m.impl_UNBOXED("clamp_min_", NestedTensor_clamp_min_);
+  m.impl_UNBOXED("clamp_min.out", NestedTensor_clamp_min_out);
+
+  m.impl_UNBOXED("clamp_max", NestedTensor_clamp_max);
+  m.impl_UNBOXED("clamp_max_", NestedTensor_clamp_max_);
+  m.impl_UNBOXED("clamp_max.out", NestedTensor_clamp_max_out);
 }
 
 } // namespace at

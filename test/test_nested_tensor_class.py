@@ -576,7 +576,7 @@ class TestNestedTensor(TestCase):
                    torch.randn(3, 8),
                    torch.randn(7, 8)]
         a1 = nestedtensor.nested_tensor(tensors, requires_grad=True)
-        self.assertRaises(RuntimeError, lambda: a1.grad)
+        self.assertIsNone(a1.grad)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_pin_memory(self):

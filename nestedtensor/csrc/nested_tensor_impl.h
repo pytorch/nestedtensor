@@ -18,14 +18,17 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-constexpr auto NestedTensorKey_PreAutograd = DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey_PreAutograd =
+    DispatchKey::PrivateUse1_PreAutograd;
 constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
 
 struct NestedTensorImpl;
 
 template <class A>
 bool is_nested_tensor_impl(A tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey) ||
+      tensor.unsafeGetTensorImpl()->key_set().has(
+          at::NestedTensorKey_PreAutograd);
 }
 
 template <class A, class B>
@@ -76,7 +79,6 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
-
 
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(
