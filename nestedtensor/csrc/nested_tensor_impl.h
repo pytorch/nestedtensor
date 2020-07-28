@@ -53,6 +53,7 @@ template <class A, class B>
 inline bool tensor_shape_matches(A a, B b) {
   TORCH_CHECK(
       is_nested_tensor_impl(a, b), "Can only compare shapes of NestedTensors.");
+  TORCH_CHECK(a.dim() == b.dim() , "NestedTensor dimension does not match.");
   return shape_matches(
       get_nested_tensor_structure(a), get_nested_tensor_structure(b));
 }
