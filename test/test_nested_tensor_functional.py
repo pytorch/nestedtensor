@@ -521,12 +521,12 @@ class TestFunctional(TestCase):
         t2 = torch.randn(3, 3, 2)
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
-        # self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
-        #                        lambda: nt.transpose(0, 2))
-        # self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
-        #                        lambda: nt.transpose(1, 3))
-        # self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
-        #                        lambda: nt.transpose(0, 1))
+        self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
+                               lambda: nt.transpose(0, 2))
+        self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
+                               lambda: nt.transpose(1, 3))
+        self.assertRaisesRegex(RuntimeError, "Transposition of nested dimensions is not implemented yet.",
+                               lambda: nt.transpose(0, 1))
         self.assertEqual(nt.transpose(2, 3), nt.transpose(3, 2))
         t = torch.randn(2, 3, 2, 4, 1)
         t_t = t.transpose(2, 3)
