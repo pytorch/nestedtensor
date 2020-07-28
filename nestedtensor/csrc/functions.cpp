@@ -402,7 +402,7 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);

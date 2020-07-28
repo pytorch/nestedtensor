@@ -183,7 +183,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        return _wrap_result(self._impl.grad())
+        return _wrap_result(self._impl.grad)
 
     def requires_grad_(self, requires_grad=True):
         """

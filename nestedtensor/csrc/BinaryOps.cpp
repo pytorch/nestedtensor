@@ -204,7 +204,7 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)

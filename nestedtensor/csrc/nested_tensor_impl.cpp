@@ -459,16 +459,11 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-void NestedTensor_backward(
-    const Tensor& self,
-    const Tensor& gradient,
-    c10::optional<bool> keep_graph,
-    bool create_graph) {
-  TORCH_CHECK(false, "backward not implemented.");
+TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
+  m.fallback(torch::CppFunction::makeFallthrough());
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("backward", NestedTensor_backward);
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);

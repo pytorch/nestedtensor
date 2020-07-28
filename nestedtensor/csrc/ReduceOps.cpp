@@ -22,7 +22,7 @@ Tensor NestedTensor_cumsum(
       self));
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("cumsum", NestedTensor_cumsum);
 }
 
