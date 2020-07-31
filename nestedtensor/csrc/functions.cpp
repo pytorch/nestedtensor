@@ -1,5 +1,6 @@
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
+#include <torch/csrc/autograd/autograd.h>
 #include <torch/extension.h>
 #include <torch/library.h>
 
@@ -91,7 +92,7 @@ struct NestedTensorFunction_batch_norm
     : public torch::autograd::Function<NestedTensorFunction_batch_norm> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      const Tensor& input,
+      const Tensor& input_,
       const c10::optional<Tensor>& weight /* optional */,
       const c10::optional<Tensor>& bias /* optional */,
       const c10::optional<Tensor>& running_mean /* optional */,
@@ -104,9 +105,16 @@ struct NestedTensorFunction_batch_norm
     // ctx->save_for_backward({bias});
     // ctx->save_for_backward({running_mean});
     // ctx->save_for_backward({running_var});
-    apply_nested_tensor([](Tensor& t) { t.requires_grad_(); }, input);
+    auto input = wrap_tensor_node(map_nested_tensor(
+        [](Tensor t) {
+          t.requires_grad_();
+          return t;
+        },
+        input_));
     auto result = wrap_tensor_node(map_nested_tensor(
         [&](at::Tensor t) {
+          AutoGradMode autogradmode(true);
+          t.requires_grad_();
           auto result = at::batch_norm(
                             t.unsqueeze(0),
                             optional_to_undefined(weight),
@@ -132,26 +140,13 @@ struct NestedTensorFunction_batch_norm
     at::Tensor result = saved[0];
     at::Tensor input = saved[1];
     at::Tensor grad_output = grad_output_[0];
-    apply_nested_tensor(
-        [](at::Tensor& t, at::Tensor& g) {
-          std::cout << "t: " << t << std::endl;
-          std::cout << "t.requires_grad(): " << t.requires_grad() << std::endl;
-          std::cout << "g: " << g << std::endl;
-          t.backward(g);
-          auto grad = t.grad();
-          std::cout << "grad: " << grad << std::endl;
-          return grad;
+    at::Tensor tensor = map_nested_tensor(
+        [](at::Tensor r, at::Tensor i, at::Tensor g) {
+          return torch::autograd::grad({r}, {i}, {g})[0];
         },
         result,
+        input,
         grad_output);
-    at::Tensor tensor = map_nested_tensor(
-        [](Tensor t) {
-          std::cout << "t_inp: " << t << std::endl;
-          std::cout << "t_inp.requires_grad(): " << t.requires_grad() << std::endl;
-          std::cout << "t_inp.grad(): " << t.grad() << std::endl;
-          return t.grad();
-        },
-        input);
     at::Tensor undef;
     torch::autograd::variable_list grad_inputs = {
         tensor, undef, undef, undef, undef, undef, undef, undef, undef};
@@ -185,35 +180,51 @@ struct NestedTensorFunction_sum
     : public torch::autograd::Function<NestedTensorFunction_sum> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      const Tensor& self,
+      const Tensor& input_,
       c10::optional<ScalarType> dtype) {
-    ctx->save_for_backward({self});
-    apply_nested_tensor([](Tensor& t) { t.requires_grad_(); }, self);
-    auto tensors = flatten(
-        map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-            get_nested_tensor_structure(self)));
-    if (tensors.size() == 0) {
-      if (dtype) {
-        return at::ones({0}, *dtype);
+    auto input = wrap_tensor_node(map_nested_tensor(
+        [](Tensor t) {
+          t.requires_grad_();
+          return t;
+        },
+        input_));
+    auto tensors = flatten(map(
+        [&dtype](at::Tensor tensor) {
+          AutoGradMode autogradmode(true);
+          return at::sum(tensor, dtype);
+        },
+        get_nested_tensor_structure(input)));
+    Tensor result;
+    {
+      AutoGradMode autogradmode(true);
+      if (tensors.size() == 0) {
+        if (dtype) {
+          return at::ones({0}, *dtype);
+        }
+        return at::ones({0});
       }
-      return at::ones({0});
+      auto all_tensor = at::stack(tensors.vec());
+      result = at::sum(all_tensor, dtype);
     }
-    auto all_tensor = at::stack(tensors.vec());
-    return at::sum(all_tensor, dtype);
+    ctx->save_for_backward({result, input});
+    return result.alias();
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
       torch::autograd::variable_list grad_output_) {
     auto saved = ctx->get_saved_variables();
-    at::Tensor self = saved[0];
+    at::Tensor result = saved[0];
+    at::Tensor input = saved[1];
     at::Tensor grad_output = grad_output_[0];
     Tensor undef;
+    // TODO:
+    // Flatten constituents and call grad on all of the variable lists at once
+    //
     at::Tensor tensor = wrap_tensor_node(map_nested_tensor(
-        [&](at::Tensor t) {
-          t.backward(grad_output.expand(t.sizes()));
-          return t.grad();
+        [&](Tensor i) {
+          return torch::autograd::grad({result}, {i}, {grad_output}, true)[0];
         },
-        self));
+        input));
     return {tensor, undef};
   }
 };
