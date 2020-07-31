@@ -29,6 +29,17 @@ class TestReduce(TestCase):
                                [torch.cumsum(t2, 1)]]), torch.cumsum(nt, 3))
         self.assertRaises(IndexError, lambda: torch.cumsum(nt, 4))
 
+    def test_sum(self):
+        t0 = torch.arange(9).reshape(3, 3).float()
+        t1 = torch.arange(6).reshape(2, 3).float()
+        t2 = torch.arange(9).reshape(3, 3).float()
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts, requires_grad=True)
+        t = nt.sum()
+        print(t)
+        t.backward()
+        print(nt.grad)
+
 
 if __name__ == "__main__":
     unittest.main()

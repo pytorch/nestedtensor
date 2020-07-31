@@ -89,6 +89,21 @@ at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 
+static inline c10::optional<Tensor> undefined_to_optional(const at::Tensor& tensor) {
+  if (tensor.defined()) {
+    return c10::optional<Tensor>(tensor);
+  }
+  return c10::nullopt;
+}
+
+static inline Tensor optional_to_undefined(const c10::optional<at::Tensor>& tensor) {
+  if (tensor) {
+    return *tensor;
+  }
+  Tensor undef;
+  return undef;
+}
+
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);

@@ -46,7 +46,6 @@ class TestFunctional(TestCase):
         self.assertEqual(True, nt_cont.is_contiguous())
 
     def test_nn_conv2d(self):
-        return
         inputs = [
             torch.randn(3, 500, 600),
             torch.randn(3, 128, 128)
@@ -109,7 +108,6 @@ class TestFunctional(TestCase):
             self.assertEqual(nt_res, tensor_res)
 
     def test_nn_batch_norm(self):
-        return
         inputs = [
             torch.tensor([[[-0.5000]], [[0.5000]]]),
             torch.tensor([[[-1.0000, 1.0000], [-0.2500, -0.5000]],
@@ -124,17 +122,20 @@ class TestFunctional(TestCase):
             t_res = batch_norm(inputs[i].unsqueeze(0).contiguous())
             tensor_res.append(t_res.squeeze(0))
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = batch_norm(nt)
-            self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res, requires_grad=True), nt_res)
+        nt = nestedtensor.nested_tensor(inputs, requires_grad=True)
+        print('nt.requires_grad: ', nt.requires_grad)
+        nt_res = batch_norm(nt)
+        print('nt_res.requires_grad: ', nt_res.requires_grad)
+        self.assertEqual(nestedtensor.nested_tensor(
+            tensor_res, requires_grad=True), nt_res)
 
     def test_nn_functional_batch_norm(self):
         inputs = [
-            torch.tensor([[[-0.5000]], [[0.5000]]]),
+            torch.tensor([[[-0.5000]], [[0.5000]]], requires_grad=True),
             torch.tensor([[[-1.0000, 1.0000], [-0.2500, -0.5000]],
-                          [[0.2500, 0.5000], [1.5000, -1.5000]]])
+                          [[0.2500, 0.5000], [1.5000, -1.5000]]], requires_grad=True)
         ]
+        inputs = [t.requires_grad_() for t in inputs]
 
         tensor_res = []
         running_mean = torch.rand(2)
@@ -143,11 +144,19 @@ class TestFunctional(TestCase):
             t_res = torch.nn.functional.batch_norm(
                 inputs[i].unsqueeze(0).contiguous(), running_mean, running_var)
             tensor_res.append(t_res.squeeze(0))
+            s = t_res.sum()
+            s.backward()
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = torch.nn.functional.batch_norm(
-                nt, running_mean, running_var)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+        nt = nestedtensor.nested_tensor(inputs, requires_grad=True)
+        nt_res = torch.nn.functional.batch_norm(
+            nt, running_mean, running_var)
+        self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
+        s = nt_res.sum()
+        s.backward()
+
+        print(inputs[0].grad)
+        print(inputs[1].grad)
+        print(nt.grad)
 
     def test_nn_max_pool2d(self):
         data = [
