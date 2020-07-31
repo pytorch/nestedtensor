@@ -88,6 +88,7 @@ Tensor NestedTensor_max_pool2d(
       get_nested_tensor_structure(self)));
 }
 
+// TODO: Turn this into a generic wrapper for all other operations
 struct NestedTensorFunction_batch_norm
     : public torch::autograd::Function<NestedTensorFunction_batch_norm> {
   static Tensor forward(
