@@ -100,13 +100,12 @@ struct NestedTensorFunction_batch_norm
       double momentum,
       double eps,
       bool cudnn_enabled) {
-    ctx->save_for_backward({input});
     // ctx->save_for_backward({weight});
     // ctx->save_for_backward({bias});
     // ctx->save_for_backward({running_mean});
     // ctx->save_for_backward({running_var});
     apply_nested_tensor([](Tensor& t) { t.requires_grad_(); }, input);
-    return wrap_tensor_node(map_nested_tensor(
+    auto result = wrap_tensor_node(map_nested_tensor(
         [&](at::Tensor t) {
           auto result = at::batch_norm(
                             t.unsqueeze(0),
@@ -122,20 +121,37 @@ struct NestedTensorFunction_batch_norm
           return result;
         },
         input));
+    ctx->save_for_backward({result, input});
+    return result;
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
       torch::autograd::variable_list grad_output_) {
     TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
     auto saved = ctx->get_saved_variables();
-    at::Tensor self = saved[0];
+    at::Tensor result = saved[0];
+    at::Tensor input = saved[1];
     at::Tensor grad_output = grad_output_[0];
-    at::Tensor tensor = wrap_tensor_node(map_nested_tensor(
-        [&](at::Tensor t, at::Tensor g) {
+    apply_nested_tensor(
+        [](at::Tensor& t, at::Tensor& g) {
+          std::cout << "t: " << t << std::endl;
+          std::cout << "t.requires_grad(): " << t.requires_grad() << std::endl;
+          std::cout << "g: " << g << std::endl;
           t.backward(g);
+          auto grad = t.grad();
+          std::cout << "grad: " << grad << std::endl;
+          return grad;
+        },
+        result,
+        grad_output);
+    at::Tensor tensor = map_nested_tensor(
+        [](Tensor t) {
+          std::cout << "t_inp: " << t << std::endl;
+          std::cout << "t_inp.requires_grad(): " << t.requires_grad() << std::endl;
+          std::cout << "t_inp.grad(): " << t.grad() << std::endl;
           return t.grad();
         },
-        self, grad_output));
+        input);
     at::Tensor undef;
     torch::autograd::variable_list grad_inputs = {
         tensor, undef, undef, undef, undef, undef, undef, undef, undef};

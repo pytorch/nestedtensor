@@ -143,6 +143,7 @@ class TestFunctional(TestCase):
         for i in range(2):
             t_res = torch.nn.functional.batch_norm(
                 inputs[i].unsqueeze(0).contiguous(), running_mean, running_var)
+            print(t_res)
             tensor_res.append(t_res.squeeze(0))
             s = t_res.sum()
             s.backward()
