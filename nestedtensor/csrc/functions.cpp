@@ -89,23 +89,13 @@ Tensor NestedTensor_max_pool2d(
 }
 
 // TODO: Turn this into a generic wrapper for all other operations
+template <typename F>
 struct NestedTensorFunction_batch_norm
-    : public torch::autograd::Function<NestedTensorFunction_batch_norm> {
+    : public torch::autograd::Function<NestedTensorFunction_batch_norm<F>> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      const Tensor& input_,
-      const c10::optional<Tensor>& weight /* optional */,
-      const c10::optional<Tensor>& bias /* optional */,
-      const c10::optional<Tensor>& running_mean /* optional */,
-      const c10::optional<Tensor>& running_var /* optional */,
-      bool training,
-      double momentum,
-      double eps,
-      bool cudnn_enabled) {
-    // ctx->save_for_backward({weight});
-    // ctx->save_for_backward({bias});
-    // ctx->save_for_backward({running_mean});
-    // ctx->save_for_backward({running_var});
+      F&& fn,
+      const Tensor& input_) {
     auto input = wrap_tensor_node(map_nested_tensor(
         [](Tensor t) {
           t.requires_grad_();
@@ -116,18 +106,7 @@ struct NestedTensorFunction_batch_norm
         [&](at::Tensor t) {
           AutoGradMode autogradmode(true);
           t.requires_grad_();
-          auto result = at::batch_norm(
-                            t.unsqueeze(0),
-                            optional_to_undefined(weight),
-                            optional_to_undefined(bias),
-                            optional_to_undefined(running_mean),
-                            optional_to_undefined(running_var),
-                            training,
-                            momentum,
-                            eps,
-                            cudnn_enabled)
-                            .squeeze(0);
-          return result;
+          return fn(t);
         },
         input));
     ctx->save_for_backward({result, input});
@@ -150,7 +129,7 @@ struct NestedTensorFunction_batch_norm
         grad_output);
     at::Tensor undef;
     torch::autograd::variable_list grad_inputs = {
-        tensor, undef, undef, undef, undef, undef, undef, undef, undef};
+        undef, tensor, undef, undef, undef, undef, undef, undef, undef, undef};
     return grad_inputs;
   }
 };
@@ -165,16 +144,21 @@ Tensor NestedTensor_batch_norm(
     double momentum,
     double eps,
     bool cudnn_enabled) {
-  return NestedTensorFunction_batch_norm::apply(
-      input,
-      undefined_to_optional(weight),
-      undefined_to_optional(bias),
-      undefined_to_optional(running_mean),
-      undefined_to_optional(running_var),
-      training,
-      momentum,
-      eps,
-      cudnn_enabled);
+  auto fn = [&](at::Tensor t) {
+    return at::batch_norm(
+               t.unsqueeze(0),
+               weight,
+               bias,
+               running_mean,
+               running_var,
+               training,
+               momentum,
+               eps,
+               cudnn_enabled)
+        .squeeze(0);
+  };
+  return NestedTensorFunction_batch_norm<decltype(fn)>::apply(
+      std::move(fn), input);
 }
 
 struct NestedTensorFunction_sum
