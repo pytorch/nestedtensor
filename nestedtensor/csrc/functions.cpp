@@ -129,7 +129,7 @@ struct NestedTensorFunction_batch_norm
         grad_output);
     at::Tensor undef;
     torch::autograd::variable_list grad_inputs = {
-        undef, tensor, undef, undef, undef, undef, undef, undef, undef, undef};
+        undef, tensor}; //, undef, undef, undef, undef, undef, undef, undef, undef};
     return grad_inputs;
   }
 };
