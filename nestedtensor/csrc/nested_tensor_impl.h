@@ -1,5 +1,6 @@
 #pragma once
 #include <ATen/ATen.h>
+#include <c10/util/Metaprogramming.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/autograd/autograd.h>
@@ -56,7 +57,7 @@ template <class A, class B>
 inline bool tensor_shape_matches(A a, B b) {
   TORCH_CHECK(
       is_nested_tensor_impl(a, b), "Can only compare shapes of NestedTensors.");
-  TORCH_CHECK(a.dim() == b.dim() , "NestedTensor dimension does not match.");
+  TORCH_CHECK(a.dim() == b.dim(), "NestedTensor dimension does not match.");
   return shape_matches(
       get_nested_tensor_structure(a), get_nested_tensor_structure(b));
 }
@@ -92,14 +93,16 @@ at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 
-static inline c10::optional<Tensor> undefined_to_optional(const at::Tensor& tensor) {
+static inline c10::optional<Tensor> undefined_to_optional(
+    const at::Tensor& tensor) {
   if (tensor.defined()) {
     return c10::optional<Tensor>(tensor);
   }
   return c10::nullopt;
 }
 
-static inline Tensor optional_to_undefined(const c10::optional<at::Tensor>& tensor) {
+static inline Tensor optional_to_undefined(
+    const c10::optional<at::Tensor>& tensor) {
   if (tensor) {
     return *tensor;
   }
@@ -115,27 +118,21 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
 }
 
 // TODO: Turn this into a generic wrapper for all other operations
-template <typename F>
+template <typename F, class... A>
 struct NestedTensorFunction_batch_norm
-    : public torch::autograd::Function<NestedTensorFunction_batch_norm<F>> {
+    : public torch::autograd::Function<NestedTensorFunction_batch_norm<F, A...>> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
       F&& fn,
-      const Tensor& input_) {
-    auto input = wrap_tensor_node(map_nested_tensor(
-        [](Tensor t) {
-          t.requires_grad_();
-          return t;
-        },
-        input_));
+      A... a) {
     auto result = wrap_tensor_node(map_nested_tensor(
         [&](at::Tensor t) {
           AutoGradMode autogradmode(true);
           t.requires_grad_();
           return fn(t);
         },
-        input));
-    ctx->save_for_backward({result, input});
+        a...));
+    ctx->save_for_backward({result, a...});
     return result;
   }
   static torch::autograd::variable_list backward(
@@ -158,6 +155,11 @@ struct NestedTensorFunction_batch_norm
     return grad_inputs;
   }
 };
+
+template <class F, class... A>
+static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
+  return NestedTensorFunction_batch_norm<F, A...>::apply(std::move(fn), a...);
+}
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(TensorNode structure);

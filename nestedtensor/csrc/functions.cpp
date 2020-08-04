@@ -25,7 +25,7 @@ Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
 Tensor NestedTensor_conv2d(
     const Tensor& input,
     const Tensor& weight,
-    const Tensor& bias,
+    const c10::optional<Tensor>& bias,
     IntArrayRef stride,
     IntArrayRef padding,
     IntArrayRef dilation,
@@ -90,29 +90,31 @@ Tensor NestedTensor_max_pool2d(
 
 Tensor NestedTensor_batch_norm(
     const Tensor& input,
-    const Tensor& weight /* optional */,
-    const Tensor& bias /* optional */,
-    const Tensor& running_mean /* optional */,
-    const Tensor& running_var /* optional */,
+    const c10::optional<Tensor>& weight /* optional */,
+    const c10::optional<Tensor>& bias /* optional */,
+    const c10::optional<Tensor>& running_mean /* optional */,
+    const c10::optional<Tensor>& running_var /* optional */,
     bool training,
     double momentum,
     double eps,
     bool cudnn_enabled) {
-  auto fn = [&](at::Tensor t) {
-    return at::batch_norm(
-               t.unsqueeze(0),
-               weight,
-               bias,
-               running_mean,
-               running_var,
-               training,
-               momentum,
-               eps,
-               cudnn_enabled)
-        .squeeze(0);
-  };
-  return NestedTensorFunction_batch_norm<decltype(fn)>::apply(
-      std::move(fn), input);
+  return autograd_map_nested_tensor(
+      [&](at::Tensor t) {
+        return at::batch_norm(
+                   t.unsqueeze(0),
+                   weight,
+                   bias,
+                   running_mean,
+                   running_var,
+                   training,
+                   momentum,
+                   eps,
+                   cudnn_enabled)
+            .squeeze(0);
+      },
+      input);
+  //   return NestedTensorFunction_batch_norm<decltype(fn)>::apply(
+  //       std::move(fn), input);
 }
 
 struct NestedTensorFunction_sum
@@ -237,8 +239,8 @@ Tensor NestedTensor_softmax(
 Tensor NestedTensor_layer_norm(
     const Tensor& input,
     IntArrayRef normalized_shape,
-    const Tensor& weight /* optional */,
-    const Tensor& bias /* optional */,
+    const c10::optional<Tensor>& weight /* optional */,
+    const c10::optional<Tensor>& bias /* optional */,
     double eps,
     bool /* cudnn_enable, deprecated */) {
   TORCH_CHECK(
