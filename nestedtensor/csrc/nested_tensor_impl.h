@@ -2,6 +2,9 @@
 #include <ATen/ATen.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
+#include <torch/csrc/autograd/autograd.h>
+#include <torch/extension.h>
+#include <torch/library.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -110,6 +113,51 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   return wrap_tensor_node(
       map(std::move(fn), get_nested_tensor_structure(a)...));
 }
+
+// TODO: Turn this into a generic wrapper for all other operations
+template <typename F>
+struct NestedTensorFunction_batch_norm
+    : public torch::autograd::Function<NestedTensorFunction_batch_norm<F>> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      F&& fn,
+      const Tensor& input_) {
+    auto input = wrap_tensor_node(map_nested_tensor(
+        [](Tensor t) {
+          t.requires_grad_();
+          return t;
+        },
+        input_));
+    auto result = wrap_tensor_node(map_nested_tensor(
+        [&](at::Tensor t) {
+          AutoGradMode autogradmode(true);
+          t.requires_grad_();
+          return fn(t);
+        },
+        input));
+    ctx->save_for_backward({result, input});
+    return result;
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
+    auto saved = ctx->get_saved_variables();
+    at::Tensor result = saved[0];
+    at::Tensor input = saved[1];
+    at::Tensor grad_output = grad_output_[0];
+    at::Tensor tensor = map_nested_tensor(
+        [](at::Tensor r, at::Tensor i, at::Tensor g) {
+          return torch::autograd::grad({r}, {i}, {g})[0];
+        },
+        result,
+        input,
+        grad_output);
+    at::Tensor undef;
+    torch::autograd::variable_list grad_inputs = {undef, tensor};
+    return grad_inputs;
+  }
+};
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(TensorNode structure);
