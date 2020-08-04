@@ -110,6 +110,32 @@ static inline Tensor optional_to_undefined(
   return undef;
 }
 
+template <size_t... indices>
+auto to_tuple(std::index_sequence<indices...>) {
+  return std::make_tuple(indices...);
+}
+
+template <typename T>
+std::vector<T> to_vector() {
+  return std::vector<T>();
+}
+
+template <typename T, typename Args>
+std::vector<T> to_vector(std::tuple<Args> args) {
+  auto result = to_vector<T>();
+  result.push_back(std::get<0>(args));
+  return result;
+}
+
+// template <typename T, typename... Args>
+// std::vector<T> to_vector(std::tuple<Args...> args) {
+//   auto result = to_vector<T>(c10::guts::tuple_take<
+//                           decltype(args),
+//                           std::tuple_size<decltype(args)>::value - 1>(args));
+//   result.push_back(std::get<std::tuple_size<decltype(args)>::value -
+//   1>(args)); return result;
+// }
+
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
@@ -120,11 +146,9 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
 // TODO: Turn this into a generic wrapper for all other operations
 template <typename F, class... A>
 struct NestedTensorFunction_batch_norm
-    : public torch::autograd::Function<NestedTensorFunction_batch_norm<F, A...>> {
-  static Tensor forward(
-      torch::autograd::AutogradContext* ctx,
-      F&& fn,
-      A... a) {
+    : public torch::autograd::Function<
+          NestedTensorFunction_batch_norm<F, A...>> {
+  static Tensor forward(torch::autograd::AutogradContext* ctx, F&& fn, A... a) {
     auto result = wrap_tensor_node(map_nested_tensor(
         [&](at::Tensor t) {
           AutoGradMode autogradmode(true);
@@ -132,7 +156,7 @@ struct NestedTensorFunction_batch_norm
           return fn(t);
         },
         a...));
-    ctx->save_for_backward({result, a...});
+    ctx->save_for_backward({a..., result});
     return result;
   }
   static torch::autograd::variable_list backward(
@@ -140,19 +164,26 @@ struct NestedTensorFunction_batch_norm
       torch::autograd::variable_list grad_output_) {
     TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
     auto saved = ctx->get_saved_variables();
-    at::Tensor result = saved[0];
-    at::Tensor input = saved[1];
-    at::Tensor grad_output = grad_output_[0];
-    at::Tensor tensor = map_nested_tensor(
-        [](at::Tensor r, at::Tensor i, at::Tensor g) {
-          return torch::autograd::grad({r}, {i}, {g})[0];
-        },
-        result,
-        input,
-        grad_output);
+    at::Tensor result = saved[saved.size() - 1];
+    auto input_grad_output = c10::guts::tuple_map(
+        to_tuple(std::index_sequence_for<A...>{}),
+        [&](int64_t i) { return std::make_tuple(saved[i], grad_output_[i]); });
+    auto grad_input_ = c10::guts::tuple_map(
+        std::move(input_grad_output),
+        [&](std::tuple<at::Tensor, at::Tensor>&& input_grad_output) {
+          return map_nested_tensor(
+              [](at::Tensor r, at::Tensor i, at::Tensor g) {
+                return torch::autograd::grad({r}, {i}, {g})[0];
+              },
+              result,
+              std::get<0>(input_grad_output),
+              std::get<1>(input_grad_output));
+        });
+    torch::autograd::variable_list grad_input =
+        to_vector<at::Tensor>(grad_input_);
     at::Tensor undef;
-    torch::autograd::variable_list grad_inputs = {undef, tensor};
-    return grad_inputs;
+    grad_input.insert(grad_input.begin(), undef);
+    return grad_input;
   }
 };
 
