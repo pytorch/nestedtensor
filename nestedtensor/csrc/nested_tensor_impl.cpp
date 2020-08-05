@@ -437,41 +437,109 @@ Tensor NestedTensor_squeeze(const Tensor& self) {
   return _NestedTensor_squeeze_(new_tensor, c10::nullopt);
 }
 
+torch::autograd::variable_list NestedTensor_squeeze_backward(
+    const Tensor& self,
+    torch::autograd::variable_list grad_output) {
+  auto self_impl = get_nested_tensor_impl(self);
+  auto opt_sizes = self_impl->opt_sizes();
+  auto result = grad_output[0];
+  for (int64_t dim = 0; dim < self.dim(); dim++) {
+    if (opt_sizes[dim] && (*opt_sizes[dim]) == 1) {
+      result = result.unsqueeze(dim);
+    }
+  }
+  return {result};
+}
+
 Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
   auto new_tensor = self.clone(c10::nullopt);
   return _NestedTensor_squeeze_(new_tensor, dim);
 }
 
+std::vector<at::Tensor> NestedTensor_squeeze_dim_backward(
+    const Tensor& self,
+    const Tensor& dim,
+    std::vector<at::Tensor> grad_output) {
+  Tensor undef;
+  return {self, undef};
+  // auto new_tensor = self.clone(c10::nullopt);
+  // return _NestedTensor_squeeze_(new_tensor, dim);
+}
+
+template<class A>
+void save_args(ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    A a) {
+  saved_data["0"] = a;
+}
+
+template<class A, class... Args>
+void save_args(ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    A a, 
+    Args... args) {
+  saved_data[std::to_string(sizeof...(Args))] = a;
+  save_args(saved_data, args);
+}
+
+template<class A, class... Args>
+A load_args(ska::flat_hash_map<std::string, at::IValue>& saved_data) {
+  return saved_data[std::to_string(sizeof...(Args))];
+}
+
+
+
 // TODO: Turn this into a generic wrapper for all other operations
-struct NestedTensorFunction_squeeze
-    : public torch::autograd::Function<NestedTensorFunction_squeeze> {
-  static Tensor forward(
-      torch::autograd::AutogradContext* ctx,
-      const Tensor& self) {
-    ctx->save_for_backward({self});
-    return NestedTensor_squeeze(self);
+template <class Fw, Fw fw, class Bw, Bw bw, class... Args>
+struct NestedTensorFunction_tie
+    : public torch::autograd::Function<
+          NestedTensorFunction_tie<Fw, fw, Bw, bw, Args...>> {
+  static Tensor forward(torch::autograd::AutogradContext* ctx, Args... args) {
+    save_args(ctx->saved_data, args...);
+    // ctx->save_for_backward({args...});
+    // return NestedTensor_squeeze(self);
+    return fw(args...);
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
       torch::autograd::variable_list grad_output_) {
     TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
-    auto saved = ctx->get_saved_variables();
-    at::Tensor self = saved[0];
-    auto self_impl = get_nested_tensor_impl(self);
-    auto opt_sizes = self_impl->opt_sizes();
-    auto result = self;
-    for (int64_t dim = 0; dim < self.dim(); dim++) {
-      if (opt_sizes[dim] && (*opt_sizes[dim]) == 1) {
-        result = result.unsqueeze(dim);
-      }
+    auto saved = load_args<Args...>(ctx->saved_data);
+    // at::Tensor self = saved[0];
+    if (saved.size() == 1) {
+      return bw(saved[0], grad_output_);
     }
-    return {result};
+    if (saved.size() == 2) {
+      return bw(saved[0], saved[1], grad_output_);
+    }
+    TORCH_CHECK(false, "Unsupported number of arguments.");
   }
 };
 
 Tensor NestedTensorAutograd_squeeze(const Tensor& self) {
-  return NestedTensorFunction_squeeze::apply(self);
+  return NestedTensorFunction_tie<
+      decltype(&NestedTensor_squeeze),
+      &NestedTensor_squeeze,
+      decltype(&NestedTensor_squeeze_backward),
+      &NestedTensor_squeeze_backward,
+      at::Tensor>::apply(self);
 }
+
+Tensor NestedTensorAutograd_squeeze_dim(const Tensor& self, int64_t dim) {
+  return NestedTensorFunction_tie<
+      decltype(&NestedTensor_squeeze_dim),
+      &NestedTensor_squeeze_dim,
+      decltype(&NestedTensor_squeeze_dim_backward),
+      &NestedTensor_squeeze_dim_backward,
+      at::Tensor,
+      at::Tensor>::apply(self, torch::tensor({dim}));
+}
+
+// Tensor NestedTensorAutograd_squeeze_(const Tensor& self) {
+//   return NestedTensorFunction_tie<
+//       decltype(&NestedTensor_squeeze_),
+//       &NestedTensor_squeeze_,
+//       decltype(&NestedTensor_squeeze__backward),
+//       &NestedTensor_squeeze__backward, at::Tensor>::apply(self);
+// }
 
 // Tensor NestedTensorAutograd_squeeze_dim(const Tensor& self, int64_t dim) {
 //   return NestedTensorFunction_squeeze::apply(self, dim);
@@ -505,15 +573,15 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // // TODO: Move above autograd or support storage
   m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
   m.impl_UNBOXED("squeeze", NestedTensorAutograd_squeeze);
+  m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
+  m.impl_UNBOXED("squeeze.dim", NestedTensorAutograd_squeeze_dim);
+  m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
   // m.impl_UNBOXED("squeeze.dim", NestedTensorAutograd_squeeze_dim);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
-  m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
-  m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
-  m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
-  m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
+  // m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
   m.impl_UNBOXED("select.int", NestedTensor_select);
   m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
