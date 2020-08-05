@@ -30,7 +30,7 @@ Tensor NestedTensor_conv2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     int64_t groups) {
-  return wrap_tensor_node(map(
+  return autograd_map_nested_tensor(
       [&weight, &bias, &stride, &padding, &dilation, groups](at::Tensor t) {
         return at::convolution(
                    t.unsqueeze(0),
@@ -44,7 +44,7 @@ Tensor NestedTensor_conv2d(
                    groups)
             .squeeze(0);
       },
-      get_nested_tensor_structure(input)));
+      input);
 }
 
 Tensor NestedTensor_max_pool2d(
@@ -229,11 +229,11 @@ Tensor NestedTensor_softmax(
       dim >= nested_dim,
       "Cannot apply softmax across nested dimensions ",
       std::to_string(dim));
-  return wrap_tensor_node(map(
+  return autograd_map_nested_tensor(
       [dim, nested_dim, dtype](const at::Tensor t) {
         return at::softmax(t, dim - nested_dim, dtype);
       },
-      get_nested_tensor_structure(input)));
+      input);
 }
 
 Tensor NestedTensor_layer_norm(
@@ -251,11 +251,11 @@ Tensor NestedTensor_layer_norm(
       input_data->opt_sizes()[input.dim() - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(input.dim() - 1));
-  return wrap_tensor_node(map(
+  return autograd_map_nested_tensor(
       [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
-      input_data->get_structure()));
+      input);
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
@@ -313,25 +313,24 @@ Tensor NestedTensor_any(const Tensor& self) {
 }
 
 Tensor NestedTensor__log_softmax(
-    const Tensor& input_,
+    const Tensor& input,
     const int64_t dim_,
     const bool half_to_float) {
-  auto self_impl = get_nested_tensor_impl(input_);
-  return wrap_tensor_node(
-      map([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); },
-          self_impl->get_structure()));
+  int64_t dim = maybe_wrap_dim(dim_, input.dim());
+  return autograd_map_nested_tensor(
+      [&](Tensor a) { return at::_log_softmax(a, dim, half_to_float); },
+      input);
 }
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(map(
+    return autograd_map_nested_tensor(
         [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
-        get_nested_tensor_structure(self),
-        get_nested_tensor_structure(other)));
+        self,
+        other);
   }
-  return wrap_tensor_node(
-      map([&other](Tensor tensor) { return at::matmul(tensor, other); },
-          get_nested_tensor_structure(self)));
+  return autograd_map_nested_tensor(
+      [&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
 }
 
 Tensor& NestedTensor_matmul_out(
@@ -349,29 +348,28 @@ Tensor& NestedTensor_matmul_out(
 }
 
 Tensor NestedTensor_pin_memory(const Tensor& self) {
-  return wrap_tensor_node(
-      map([](Tensor tensor) { return at::native::pin_memory(tensor); },
-          get_nested_tensor_structure(self)));
+  return autograd_map_nested_tensor(
+      [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
 }
 
 Tensor NestedTensor_flatten(
     const Tensor& self,
     int64_t start_dim,
     int64_t end_dim) {
-  auto self_data = get_nested_tensor_impl(self);
   start_dim = maybe_wrap_dim(start_dim, self.dim());
   end_dim = maybe_wrap_dim(end_dim, self.dim());
+  auto self_data = get_nested_tensor_impl(self);
   int64_t nested_dim = self_data->nested_dim();
   TORCH_CHECK(
       start_dim >= nested_dim, "Cannot flatten nested dimension ", start_dim);
   TORCH_CHECK(
       end_dim >= nested_dim, "Cannot flatten nested dimension ", end_dim);
-  return wrap_tensor_node(map(
+  return autograd_map_nested_tensor(
       [start_dim, end_dim, nested_dim](at::Tensor tensor) {
         return at::flatten(
             tensor, start_dim - nested_dim, end_dim - nested_dim);
       },
-      self_data->get_structure()));
+      self);
 }
 
 std::vector<Tensor> get_stack_inputs(TensorList tensors, int64_t dim) {

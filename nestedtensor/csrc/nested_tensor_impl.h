@@ -110,6 +110,20 @@ static inline Tensor optional_to_undefined(
   return undef;
 }
 
+template <class F>
+void apply_method(F&& fn) {}
+
+template <class F, class A>
+void apply_method(F&& fn, A a) {
+  fn(a);
+}
+
+template <class F, class A, class... B>
+void apply_method(F&& fn, A a, B... b) {
+  fn(a);
+  apply_method(fn, b...);
+}
+
 template <size_t... indices>
 auto to_tuple(std::index_sequence<indices...>) {
   return std::make_tuple(indices...);
@@ -124,6 +138,13 @@ template <typename T, typename Args>
 std::vector<T> to_vector(std::tuple<Args> args) {
   auto result = to_vector<T>();
   result.push_back(std::get<0>(args));
+  return result;
+}
+
+template <typename T, typename Args0, typename Args1>
+std::vector<T> to_vector(std::tuple<Args0, Args1> args) {
+  auto result = to_vector<T, Args0>(std::make_tuple(std::get<0>(args)));
+  result.push_back(std::get<1>(args));
   return result;
 }
 
@@ -149,13 +170,14 @@ struct NestedTensorFunction_batch_norm
     : public torch::autograd::Function<
           NestedTensorFunction_batch_norm<F, A...>> {
   static Tensor forward(torch::autograd::AutogradContext* ctx, F&& fn, A... a) {
-    auto result = wrap_tensor_node(map_nested_tensor(
-        [&](at::Tensor t) {
+    auto result = map_nested_tensor(
+        [&](A... t) {
           AutoGradMode autogradmode(true);
-          t.requires_grad_();
-          return fn(t);
+          apply_method([](at::Tensor t) { t.requires_grad_(); }, t...);
+          // t.requires_grad_()...;
+          return fn(t...);
         },
-        a...));
+        a...);
     ctx->save_for_backward({a..., result});
     return result;
   }
