@@ -113,8 +113,6 @@ Tensor NestedTensor_batch_norm(
             .squeeze(0);
       },
       input);
-  //   return NestedTensorFunction_batch_norm<decltype(fn)>::apply(
-  //       std::move(fn), input);
 }
 
 struct NestedTensorFunction_sum

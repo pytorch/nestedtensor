@@ -319,8 +319,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
+    //TODO: Disable this or add a check that makes sure it's Tensor shape compliant and act as a convenience function.
     return IntArrayRef(_sizes);
   }
+    //TODO: Throw an error if requested dimension is undefined
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 

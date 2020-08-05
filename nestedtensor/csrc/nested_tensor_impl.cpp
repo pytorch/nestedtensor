@@ -390,10 +390,7 @@ Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
   return self;
 }
 
-Tensor _NestedTensor_squeeze_(
-    Tensor self,
-    c10::optional<int64_t> dim_,
-    bool in_place) {
+Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
   auto self_impl = get_nested_tensor_impl(self);
   if (!dim_) {
     // TODO: First dimension is always ignored.
@@ -404,7 +401,7 @@ Tensor _NestedTensor_squeeze_(
       int64_t index = init_sizes.size() - i - 1;
       c10::optional<int64_t> s = init_sizes[index];
       if (s && ((*s) == 1)) {
-        self = _NestedTensor_squeeze_(self, index, in_place);
+        self = _NestedTensor_squeeze_(self, index);
       }
     }
     return self;
@@ -420,30 +417,65 @@ Tensor _NestedTensor_squeeze_(
         _squeeze_nested_dim(self_impl->get_structure(), dim));
   }
   int64_t height = self_impl->get_structure().height();
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [dim, height](at::Tensor tensor) { return tensor.squeeze(dim - height); },
       self);
 }
 
 Tensor& NestedTensor_squeeze_(Tensor& self) {
-  self = _NestedTensor_squeeze_(self, c10::nullopt, true);
+  self = _NestedTensor_squeeze_(self, c10::nullopt);
   return self;
 }
 
 Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
-  self = _NestedTensor_squeeze_(self, dim, true);
+  self = _NestedTensor_squeeze_(self, dim);
   return self;
 }
 
 Tensor NestedTensor_squeeze(const Tensor& self) {
   auto new_tensor = self.clone(c10::nullopt);
-  return _NestedTensor_squeeze_(new_tensor, c10::nullopt, false);
+  return _NestedTensor_squeeze_(new_tensor, c10::nullopt);
 }
 
 Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
   auto new_tensor = self.clone(c10::nullopt);
-  return _NestedTensor_squeeze_(new_tensor, dim, false);
+  return _NestedTensor_squeeze_(new_tensor, dim);
 }
+
+// TODO: Turn this into a generic wrapper for all other operations
+struct NestedTensorFunction_squeeze
+    : public torch::autograd::Function<NestedTensorFunction_squeeze> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      const Tensor& self) {
+    ctx->save_for_backward({self});
+    return NestedTensor_squeeze(self);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
+    auto saved = ctx->get_saved_variables();
+    at::Tensor self = saved[0];
+    auto self_impl = get_nested_tensor_impl(self);
+    auto opt_sizes = self_impl->opt_sizes();
+    auto result = self;
+    for (int64_t dim = 0; dim < self.dim(); dim++) {
+      if (opt_sizes[dim] && (*opt_sizes[dim]) == 1) {
+        result = result.unsqueeze(dim);
+      }
+    }
+    return {result};
+  }
+};
+
+Tensor NestedTensorAutograd_squeeze(const Tensor& self) {
+  return NestedTensorFunction_squeeze::apply(self);
+}
+
+// Tensor NestedTensorAutograd_squeeze_dim(const Tensor& self, int64_t dim) {
+//   return NestedTensorFunction_squeeze::apply(self, dim);
+// }
 
 Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   dim = maybe_wrap_dim(dim, self.dim() + 1);
@@ -472,14 +504,16 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("contiguous", NestedTensor_contiguous);
   // // TODO: Move above autograd or support storage
   m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
-  m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
-  m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
-  m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
-  m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
+  m.impl_UNBOXED("squeeze", NestedTensorAutograd_squeeze);
+  // m.impl_UNBOXED("squeeze.dim", NestedTensorAutograd_squeeze_dim);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
+  m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
+  m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
+  m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
+  m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
   m.impl_UNBOXED("select.int", NestedTensor_select);
   m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
