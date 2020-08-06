@@ -24,12 +24,12 @@ Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
 Tensor NestedTensor_conv2d(
     const Tensor& input,
     const Tensor& weight,
-    const Tensor& bias,
+    const c10::optional<Tensor>& bias,
     IntArrayRef stride,
     IntArrayRef padding,
     IntArrayRef dilation,
     int64_t groups) {
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [&weight, &bias, &stride, &padding, &dilation, groups](at::Tensor t) {
         return at::convolution(
                    t.unsqueeze(0),
@@ -43,7 +43,7 @@ Tensor NestedTensor_conv2d(
                    groups)
             .squeeze(0);
       },
-      get_nested_tensor_structure(input)));
+      input);
 }
 
 Tensor NestedTensor_max_pool2d(
@@ -89,10 +89,10 @@ Tensor NestedTensor_max_pool2d(
 
 Tensor NestedTensor_batch_norm(
     const Tensor& input,
-    const Tensor& weight /* optional */,
-    const Tensor& bias /* optional */,
-    const Tensor& running_mean /* optional */,
-    const Tensor& running_var /* optional */,
+    const c10::optional<Tensor>& weight,
+    const c10::optional<Tensor>& bias,
+    const c10::optional<Tensor>& running_mean,
+    const c10::optional<Tensor>& running_var,
     bool training,
     double momentum,
     double eps,
@@ -193,8 +193,8 @@ Tensor NestedTensor_softmax(
 Tensor NestedTensor_layer_norm(
     const Tensor& input,
     IntArrayRef normalized_shape,
-    const Tensor& weight /* optional */,
-    const Tensor& bias /* optional */,
+    const c10::optional<Tensor>& weight,
+    const c10::optional<Tensor>& bias,
     double eps,
     bool /* cudnn_enable, deprecated */) {
   TORCH_CHECK(
