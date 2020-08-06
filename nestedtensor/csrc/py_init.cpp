@@ -4,7 +4,9 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <nestedtensor/csrc/utils/python_nested_node.h>
 #include <torch/csrc/Size.h>
+#include <torch/csrc/autograd/python_variable_indexing.h>
 #include <torch/extension.h>
+#include <chrono>
 
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because
@@ -20,40 +22,10 @@ namespace py = pybind11;
 using namespace torch::nested_tensor;
 using namespace at;
 
-py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
-  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
-    if (dim == 0) {
-      return py::cast(s.degree());
-    }
-    // List of Tensors
-    if (s.height() == 1) {
-      std::vector<int64_t> result;
-      for (const auto& child : s.unbind()) {
-        result.push_back(child.payload().get(dim - 1));
-      }
-      return py::tuple(py::cast(result));
-    }
-    std::vector<py::object> result;
-    for (const auto& child : s.unbind()) {
-      result.emplace_back(self(self, child, dim - 1));
-    }
-    return py::tuple(py::cast(result));
-  };
-  return fn(fn, size_node, *index);
-}
-
 Tensor get_item(Tensor tensor, py::none key) {
-  if (is_nested_tensor_impl(tensor)) {
-    std::vector<TensorNode> result_nodes;
-    result_nodes.push_back(get_nested_tensor_structure(tensor));
-    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
-  }
-  std::vector<int64_t> new_sizes;
-  new_sizes.push_back(1);
-  for (size_t i = 0; i < tensor.dim(); i++) {
-    new_sizes.push_back(tensor.size(i));
-  }
-  return tensor.reshape(IntList(new_sizes));
+  std::vector<TensorNode> result_nodes;
+  result_nodes.push_back(get_nested_tensor_structure(tensor));
+  return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
 at::Tensor get_item(Tensor tensor, int64_t key_) {
@@ -72,13 +44,18 @@ at::Tensor get_item(Tensor tensor, py::slice slice) {
 
 at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   c10::optional<at::Tensor> first;
-  if (py::isinstance<py::none>(key[0])) {
+  if (!is_nested_tensor_impl(tensor)) {
+    auto wrapped_key = py::tuple(py::cast(key));
+    return THPVariable_Unpack(torch::autograd::THPVariable_getitem(
+        THPVariable_Wrap(tensor), wrapped_key.ptr()));
+  }
+  if (is_nested_tensor_impl(tensor) && py::isinstance<py::none>(key[0])) {
     first = get_item(tensor, py::cast<py::none>(key[0]));
   }
-  if (py::isinstance<py::int_>(key[0])) {
+  if (is_nested_tensor_impl(tensor) && py::isinstance<py::int_>(key[0])) {
     first = get_item(tensor, py::cast<int64_t>(key[0]));
   }
-  if (py::isinstance<py::slice>(key[0])) {
+  if (is_nested_tensor_impl(tensor) && py::isinstance<py::slice>(key[0])) {
     first = get_item(tensor, py::cast<py::slice>(key[0]));
   }
   TORCH_CHECK(
@@ -121,6 +98,29 @@ at::Tensor get_item(Tensor tensor, py::tuple key) {
   return result;
 }
 #endif
+
+py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
+  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
+    if (dim == 0) {
+      return py::cast(s.degree());
+    }
+    // List of Tensors
+    if (s.height() == 1) {
+      std::vector<int64_t> result;
+      for (const auto& child : s.unbind()) {
+        result.push_back(child.payload().get(dim - 1));
+      }
+      return py::tuple(py::cast(result));
+    }
+    std::vector<py::object> result;
+    for (const auto& child : s.unbind()) {
+      result.emplace_back(self(self, child, dim - 1));
+    }
+    return py::tuple(py::cast(result));
+  };
+  return fn(fn, size_node, *index);
+}
+
 
 namespace torch {
 namespace nested_tensor {
