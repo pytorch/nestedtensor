@@ -237,8 +237,8 @@ Tensor NestedTensor_softmax(
 Tensor NestedTensor_layer_norm(
     const Tensor& input,
     IntArrayRef normalized_shape,
-    const c10::optional<Tensor>& weight /* optional */,
-    const c10::optional<Tensor>& bias /* optional */,
+    const c10::optional<Tensor>& weight,
+    const c10::optional<Tensor>& bias,
     double eps,
     bool /* cudnn_enable, deprecated */) {
   TORCH_CHECK(

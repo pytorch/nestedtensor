@@ -104,21 +104,6 @@ using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
 
-inline std::vector<std::string> split_str(
-    std::string s,
-    std::string delimiter) {
-  std::vector<std::string> result;
-  size_t pos = 0;
-  std::string token;
-  while ((pos = s.find(delimiter)) != std::string::npos) {
-    token = s.substr(0, pos);
-    result.push_back(token);
-    s.erase(0, pos + delimiter.length());
-  }
-  result.push_back(s);
-  return result;
-}
-
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
   if (nested_node.is_leaf()) {

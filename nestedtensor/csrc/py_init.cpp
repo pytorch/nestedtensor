@@ -126,6 +126,21 @@ namespace torch {
 namespace nested_tensor {
 namespace {
 
+inline std::vector<std::string> split_str(
+    std::string s,
+    std::string delimiter) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+  std::string token;
+  while ((pos = s.find(delimiter)) != std::string::npos) {
+    token = s.substr(0, pos);
+    result.push_back(token);
+    s.erase(0, pos + delimiter.length());
+  }
+  result.push_back(s);
+  return result;
+}
+
 static auto registry =
     torch::RegisterOperators()
         .op("nestedtensor::is_nested_tensor_impl",
@@ -164,10 +179,9 @@ static auto registry =
               node,
               "nested_tensor",
               [](c10::IValue payload, const std::string& tabs) {
-                std::vector<std::string> tokens = split_str(
-                    THPUtils_unpackString(
-                        PyObject_Str(THPVariable_Wrap(payload.toTensor()))),
-                    "\n");
+                std::stringstream ss;
+                ss << payload.toTensor();
+                std::vector<std::string> tokens = split_str(ss.str(), "\n");
                 std::string result;
                 for (size_t i = 0; i < tokens.size(); i++) {
                   result = result + tabs + tokens[i];
