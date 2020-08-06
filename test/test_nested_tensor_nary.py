@@ -142,8 +142,9 @@ def _gen_test_binary(func):
         # TODO: This depends on https://github.com/pytorch/rfcs/pull/3
         # RFC-0001: Add method __torch_function__ RFC.
         # TODO: This causes a segfault likely due https://github.com/pytorch/pytorch/pull/37091
-        # self.assertRaises(TypeError, lambda: getattr(a1, func)(a2))
-        # self.assertRaises(TypeError, lambda: getattr(a1, func + "_")(a2))
+        self.assertEqual(a3, getattr(a1, func)(a2))
+        # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
+        self.assertRaises(RuntimeError, lambda: getattr(a1, func + "_")(a2))
     return _test_binary
 
 
