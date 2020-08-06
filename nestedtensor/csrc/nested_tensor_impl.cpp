@@ -543,10 +543,6 @@ Tensor NestedTensorAutograd_squeeze_dim(const Tensor& self, int64_t dim) {
 //       &NestedTensor_squeeze__backward, at::Tensor>::apply(self);
 // }
 
-// Tensor NestedTensorAutograd_squeeze_dim(const Tensor& self, int64_t dim) {
-//   return NestedTensorFunction_squeeze::apply(self, dim);
-// }
-
 Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   dim = maybe_wrap_dim(dim, self.dim() + 1);
   if (dim == 0) {
