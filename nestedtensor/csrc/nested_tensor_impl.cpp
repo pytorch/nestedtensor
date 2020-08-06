@@ -492,7 +492,10 @@ std::vector<at::Tensor> load_args(
     std::vector<at::Tensor> grad_output_,
     ska::flat_hash_map<std::string, at::IValue>& saved_data,
     std::index_sequence<I...>) {
-  return bw(load_arg(saved_data, I).to<std::tuple_element_t<I, std::tuple<Args...>>>()..., grad_output_);
+  return bw(
+      load_arg(saved_data, I)
+          .to<std::tuple_element_t<I, std::tuple<Args...>>>()...,
+      grad_output_);
 }
 
 // TODO: Turn this into a generic wrapper for all other operations
@@ -502,24 +505,14 @@ struct NestedTensorFunction_tie
           NestedTensorFunction_tie<Fw, fw, Bw, bw, Args...>> {
   static Tensor forward(torch::autograd::AutogradContext* ctx, Args... args) {
     save_args(ctx->saved_data, args...);
-    // ctx->save_for_backward({args...});
-    // return NestedTensor_squeeze(self);
     return fw(args...);
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
       torch::autograd::variable_list grad_output_) {
     TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
-    return load_args<Bw, bw, Args...>(grad_output_, ctx->saved_data, std::index_sequence_for<Args...>{});
-    // at::Tensor self = saved[0];
-    // return bw(saved..., grad_output_);
-    // if (saved.size() == 1) {
-    //   return bw(saved[0], grad_output_);
-    // }
-    // if (saved.size() == 2) {
-    //   return bw(saved[0], saved[1], grad_output_);
-    // }
-    // TORCH_CHECK(false, "Unsupported number of arguments.");
+    return load_args<Bw, bw, Args...>(
+        grad_output_, ctx->saved_data, std::index_sequence_for<Args...>{});
   }
 };
 
