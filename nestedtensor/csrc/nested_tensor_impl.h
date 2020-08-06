@@ -57,7 +57,10 @@ template <class A, class B>
 inline bool tensor_shape_matches(A a, B b) {
   TORCH_CHECK(
       is_nested_tensor_impl(a, b), "Can only compare shapes of NestedTensors.");
-  TORCH_CHECK(a.dim() == b.dim(), "NestedTensor dimension does not match.");
+  // TORCH_CHECK(
+  //     get_nested_tensor_impl(a)->nested_dim() !=
+  //         get_nested_tensor_impl(b)->nested_dim(),
+  //     "NestedTensor nested dimensions do not match.");
   return shape_matches(
       get_nested_tensor_structure(a), get_nested_tensor_structure(b));
 }
@@ -319,10 +322,11 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
-    //TODO: Disable this or add a check that makes sure it's Tensor shape compliant and act as a convenience function.
+    // TODO: Disable this or add a check that makes sure it's Tensor shape
+    // compliant and act as a convenience function.
     return IntArrayRef(_sizes);
   }
-    //TODO: Throw an error if requested dimension is undefined
+  // TODO: Throw an error if requested dimension is undefined
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
