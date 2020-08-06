@@ -458,7 +458,7 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
 
 std::vector<at::Tensor> NestedTensor_squeeze_dim_backward(
     const Tensor& self,
-    const Tensor& dim,
+    int64_t dim,
     std::vector<at::Tensor> grad_output) {
   Tensor undef;
   return {self, undef};
@@ -466,26 +466,34 @@ std::vector<at::Tensor> NestedTensor_squeeze_dim_backward(
   // return _NestedTensor_squeeze_(new_tensor, dim);
 }
 
-template<class A>
-void save_args(ska::flat_hash_map<std::string, at::IValue>& saved_data,
-    A a) {
+template <class A>
+void save_args(ska::flat_hash_map<std::string, at::IValue>& saved_data, A a) {
   saved_data["0"] = a;
 }
 
-template<class A, class... Args>
-void save_args(ska::flat_hash_map<std::string, at::IValue>& saved_data,
-    A a, 
+template <class A, class... Args>
+void save_args(
+    ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    A a,
     Args... args) {
   saved_data[std::to_string(sizeof...(Args))] = a;
-  save_args(saved_data, args);
+  save_args(saved_data, args...);
 }
 
-template<class A, class... Args>
-A load_args(ska::flat_hash_map<std::string, at::IValue>& saved_data) {
-  return saved_data[std::to_string(sizeof...(Args))];
+c10::IValue load_arg(
+    ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    size_t i) {
+  return saved_data[std::to_string(i)];
 }
 
-
+// TODO: Finish off this conversion
+template <class Bw, Bw bw, class... Args, size_t... I>
+std::vector<at::Tensor> load_args(
+    std::vector<at::Tensor> grad_output_,
+    ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    std::index_sequence<I...>) {
+  return bw(load_arg(saved_data, I).to<std::tuple_element_t<I, std::tuple<Args...>>>()..., grad_output_);
+}
 
 // TODO: Turn this into a generic wrapper for all other operations
 template <class Fw, Fw fw, class Bw, Bw bw, class... Args>
@@ -502,15 +510,16 @@ struct NestedTensorFunction_tie
       torch::autograd::AutogradContext* ctx,
       torch::autograd::variable_list grad_output_) {
     TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
-    auto saved = load_args<Args...>(ctx->saved_data);
+    return load_args<Bw, bw, Args...>(grad_output_, ctx->saved_data, std::index_sequence_for<Args...>{});
     // at::Tensor self = saved[0];
-    if (saved.size() == 1) {
-      return bw(saved[0], grad_output_);
-    }
-    if (saved.size() == 2) {
-      return bw(saved[0], saved[1], grad_output_);
-    }
-    TORCH_CHECK(false, "Unsupported number of arguments.");
+    // return bw(saved..., grad_output_);
+    // if (saved.size() == 1) {
+    //   return bw(saved[0], grad_output_);
+    // }
+    // if (saved.size() == 2) {
+    //   return bw(saved[0], saved[1], grad_output_);
+    // }
+    // TORCH_CHECK(false, "Unsupported number of arguments.");
   }
 };
 
@@ -530,7 +539,7 @@ Tensor NestedTensorAutograd_squeeze_dim(const Tensor& self, int64_t dim) {
       decltype(&NestedTensor_squeeze_dim_backward),
       &NestedTensor_squeeze_dim_backward,
       at::Tensor,
-      at::Tensor>::apply(self, torch::tensor({dim}));
+      int64_t>::apply(self, dim);
 }
 
 // Tensor NestedTensorAutograd_squeeze_(const Tensor& self) {
