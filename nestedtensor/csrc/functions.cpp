@@ -10,7 +10,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
@@ -72,7 +72,7 @@ Tensor NestedTensor_max_pool2d(
         .to_nested_tensor(self_impl->nested_dim() - 1);
   }
 
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&](at::Tensor t) {
         return at::max_pool2d(
                    t.unsqueeze(0),
@@ -187,7 +187,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
       },
@@ -206,7 +206,7 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  auto out_node = map_nested_tensor(
+  auto out_node = autograd_map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
       },

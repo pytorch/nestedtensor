@@ -144,14 +144,19 @@ class TestFunctional(TestCase):
             tensor_res.append(t_res.squeeze(0))
             s = t_res.sum()
             s.backward()
+        print(dir(t_res))
+        print(t_res._grad_fn)
+        print(dir(t_res._grad_fn))
+        print(t_res._grad_fn.next_functions)
 
         nt = nestedtensor.nested_tensor(inputs, requires_grad=True)
         nt_res = torch.nn.functional.batch_norm(
             nt, running_mean, running_var)
         self.assertEqual(nestedtensor.nested_tensor(
             tensor_res, requires_grad=True), nt_res)
-        s = nt_res.sum()
-        s.backward()
+        nt_res.backward(nt)
+        # s = nt_res.sum()
+        # s.backward()
 
         # print(inputs[0].grad)
         # print(inputs[1].grad)
