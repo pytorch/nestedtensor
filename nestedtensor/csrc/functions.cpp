@@ -10,15 +10,13 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return wrap_tensor_node(
-      map([&](const at::Tensor t) { return at::dropout(t, p, train); },
-          get_nested_tensor_structure(input)));
+  return map_nested_tensor(
+      [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
 Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  apply(
-      [&](at::Tensor t) { return at::dropout_(t, p, train); },
-      get_nested_tensor_structure(input));
+  apply_nested_tensor(
+      [&](at::Tensor t) { return at::dropout_(t, p, train); }, input);
   return input;
 }
 
@@ -74,7 +72,7 @@ Tensor NestedTensor_max_pool2d(
         .to_nested_tensor(self_impl->nested_dim() - 1);
   }
 
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [&](at::Tensor t) {
         return at::max_pool2d(
                    t.unsqueeze(0),
@@ -85,7 +83,7 @@ Tensor NestedTensor_max_pool2d(
                    ceil_mode)
             .squeeze(0);
       },
-      get_nested_tensor_structure(self)));
+      self);
 }
 
 Tensor NestedTensor_batch_norm(
@@ -121,12 +119,12 @@ struct NestedTensorFunction_sum
       torch::autograd::AutogradContext* ctx,
       const Tensor& input_,
       c10::optional<ScalarType> dtype) {
-    auto input = wrap_tensor_node(map_nested_tensor(
+    auto input = map_nested_tensor(
         [](Tensor t) {
           t.requires_grad_();
           return t;
         },
-        input_));
+        input_);
     auto tensors = flatten(map(
         [&dtype](at::Tensor tensor) {
           AutoGradMode autogradmode(true);
@@ -159,11 +157,11 @@ struct NestedTensorFunction_sum
     // TODO:
     // Flatten constituents and call grad on all of the variable lists at once
     //
-    at::Tensor tensor = wrap_tensor_node(map_nested_tensor(
+    at::Tensor tensor = map_nested_tensor(
         [&](Tensor i) {
           return torch::autograd::grad({result}, {i}, {grad_output}, true)[0];
         },
-        input));
+        input);
     return {tensor, undef};
   }
 };
@@ -189,11 +187,11 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
       },
-      get_nested_tensor_structure(self)));
+      self);
 }
 
 Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
@@ -316,8 +314,7 @@ Tensor NestedTensor__log_softmax(
     const bool half_to_float) {
   int64_t dim = maybe_wrap_dim(dim_, input.dim());
   return autograd_map_nested_tensor(
-      [&](Tensor a) { return at::_log_softmax(a, dim, half_to_float); },
-      input);
+      [&](Tensor a) { return at::_log_softmax(a, dim, half_to_float); }, input);
 }
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
