@@ -109,19 +109,17 @@ Tensor& NestedTensor_clamp_max_out(
     Tensor& result,
     const Tensor& self,
     Scalar min) {
-  apply(
+  apply_nested_tensor(
       [min](at::Tensor result, const at::Tensor tensor) {
         return at::clamp_max_out(result, tensor, min);
       },
-      get_nested_tensor_structure(result),
-      get_nested_tensor_structure(self));
+      result,
+      self);
   return result;
 }
 
 Tensor& NestedTensor_mvlgamma_(Tensor& self, int64_t p) {
-  apply(
-      [p](at::Tensor tensor) { tensor.mvlgamma_(p); },
-      get_nested_tensor_structure(self));
+  apply_nested_tensor([p](at::Tensor tensor) { tensor.mvlgamma_(p); }, self);
   return self;
 }
 
