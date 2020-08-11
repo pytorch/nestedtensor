@@ -337,6 +337,76 @@ struct NestedTensorImpl : public c10::TensorImpl {
   std::vector<int64_t> _sizes;
 };
 
+template <class A>
+inline void save_args(
+    ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    A a) {
+  saved_data["0"] = a;
+}
+
+template <class A, class... Args>
+inline void save_args(
+    ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    A a,
+    Args... args) {
+  saved_data[std::to_string(sizeof...(Args))] = a;
+  save_args(saved_data, args...);
+}
+
+c10::IValue inline load_arg(
+    ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    size_t i) {
+  return saved_data[std::to_string(i)];
+}
+
+// TODO: Finish off this conversion
+template <class Bw, Bw bw, class... Args, size_t... I>
+inline std::vector<at::Tensor> load_args(
+    std::vector<at::Tensor> grad_output_,
+    ska::flat_hash_map<std::string, at::IValue>& saved_data,
+    std::index_sequence<I...>) {
+  return bw(
+      load_arg(saved_data, I)
+          .to<std::tuple_element_t<I, std::tuple<Args...>>>()...,
+      grad_output_);
+}
+
+// TODO: Turn this into a generic wrapper for all other operations
+// TODO: Needs AutoGradMode etc.
+template <class Fw, Fw fw, class Bw, Bw bw, class... Args>
+struct NestedTensorFunction_tie
+    : public torch::autograd::Function<
+          NestedTensorFunction_tie<Fw, fw, Bw, bw, Args...>> {
+  static Tensor forward(torch::autograd::AutogradContext* ctx, Args... args) {
+    save_args(ctx->saved_data, args...);
+    return fw(args...);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad outputs.");
+    return load_args<Bw, bw, Args...>(
+        grad_output_, ctx->saved_data, std::index_sequence_for<Args...>{});
+  }
+};
+
+// TODO: Turn this into a generic wrapper for all other operations
+template <class Fw, Fw fw, class... Args>
+struct NestedTensorFunction_no_bw
+    : public torch::autograd::Function<
+          NestedTensorFunction_no_bw<Fw, fw, Args...>> {
+  static typename c10::guts::infer_function_traits<Fw>::type::return_type
+  forward(torch::autograd::AutogradContext* ctx, Args... args) {
+    return fw(args...);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(false, "Backward not implemented.");
+    return {};
+  }
+};
+
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor_impl(tensor);
   for (const auto& size : nt->opt_sizes()) {
