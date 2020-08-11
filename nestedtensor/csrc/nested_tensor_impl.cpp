@@ -238,9 +238,8 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return wrap_tensor_node(
-      map([](at::Tensor tensor) { return tensor.contiguous(); },
-          get_nested_tensor_structure(self)));
+  return map_nested_tensor(
+      [](at::Tensor tensor) { return tensor.contiguous(); }, self);
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -448,11 +447,11 @@ Tensor NestedTensor_slice(
 Tensor NestedTensor_clone(
     const Tensor& src,
     c10::optional<c10::MemoryFormat> optional_memory_format) {
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [&optional_memory_format](Tensor a) {
         return at::clone(a, optional_memory_format);
       },
-      get_nested_tensor_structure(src)));
+      src);
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
