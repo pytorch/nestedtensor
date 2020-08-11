@@ -90,10 +90,10 @@ Tensor NestedTensor_max_pool2d(
 
 Tensor NestedTensor_batch_norm(
     const Tensor& input,
-    const c10::optional<Tensor>& weight /* optional */,
-    const c10::optional<Tensor>& bias /* optional */,
-    const c10::optional<Tensor>& running_mean /* optional */,
-    const c10::optional<Tensor>& running_var /* optional */,
+    const c10::optional<Tensor>& weight,
+    const c10::optional<Tensor>& bias,
+    const c10::optional<Tensor>& running_mean,
+    const c10::optional<Tensor>& running_var,
     bool training,
     double momentum,
     double eps,
