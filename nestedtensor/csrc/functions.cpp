@@ -113,40 +113,6 @@ Tensor NestedTensor_batch_norm(
       input);
 }
 
-Tensor NestedTensorAutograd_batch_norm(
-    const Tensor& input,
-    const c10::optional<Tensor>& weight,
-    const c10::optional<Tensor>& bias,
-    const c10::optional<Tensor>& running_mean,
-    const c10::optional<Tensor>& running_var,
-    bool training,
-    double momentum,
-    double eps,
-    bool cudnn_enabled) {
-  return NestedTensorFunction_no_bw<
-      decltype(&NestedTensor_batch_norm),
-      &NestedTensor_batch_norm,
-      Tensor,
-      c10::optional<Tensor>,
-      c10::optional<Tensor>,
-      c10::optional<Tensor>,
-      c10::optional<Tensor>,
-      bool,
-      double,
-      double,
-      bool>::
-      apply(
-          input,
-          weight,
-          bias,
-          running_mean,
-          running_var,
-          training,
-          momentum,
-          eps,
-          cudnn_enabled);
-}
-
 struct NestedTensorFunction_sum
     : public torch::autograd::Function<NestedTensorFunction_sum> {
   static Tensor forward(
@@ -476,14 +442,11 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  // TODO: backward
-  m.impl_UNBOXED("batch_norm", NestedTensorAutograd_batch_norm);
+  // TODO: Composite op
+  m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
   m.impl_UNBOXED("sum", NestedTensor_sum);
-}
-
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   // TODO: Composite op
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   // TODO: Composite op
@@ -502,7 +465,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
   // TODO: Composite op
   m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
+}
 
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
