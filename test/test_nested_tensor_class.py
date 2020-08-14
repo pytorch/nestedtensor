@@ -618,6 +618,10 @@ class TestNestedTensor(TestCase):
     def test_getitem(self):
         a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
         nt = nestedtensor.nested_tensor([[a, b], [c]])
+        tmp = nt[0, :, 0]
+        self.assertEqual(tmp[0], a[:, 0])
+        self.assertEqual(tmp[1], b[:, 0])
+        self.assertEqual(nt[0, :, 0].contiguous(), ntnt([a[:, 0], b[:, 0]]))
         self.assertEqual(nt[None], ntnt([[[a, b], [c]]]))
         self.assertEqual(nt[0], ntnt([a, b]))
         self.assertEqual(nt[:], nt)
