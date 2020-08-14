@@ -31,8 +31,6 @@ Tensor get_item(Tensor tensor, py::none key) {
 at::Tensor get_item(Tensor tensor, int64_t key_) {
   std::vector<at::Tensor> unbound = unbind(tensor, 0);
   int64_t key = at::maybe_wrap_dim(key_, unbound.size());
-  // std::cout << "unbound.size(): " << unbound.size() << std::endl;
-  // std::cout << "key: " << key << std::endl;
   return unbound[key];
 }
 
