@@ -21,7 +21,13 @@ Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
 
 Tensor NestedTensor_embedding(const Tensor & weight, const Tensor & indices,
                  int64_t padding_idx, bool scale_grad_by_freq, bool sparse) {
-  return map_nested_tensor([&](at::Tensor i) { return at::embedding(weight, i, padding_idx, scale_grad_by_freq, sparse); }, indices);
+  if (is_nested_tensor_impl(weight)) {
+    //TODO: Needs test coverage
+    return map_nested_tensor([&](at::Tensor w, at::Tensor i) {
+        return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse); }, weight, indices);
+  }
+  return map_nested_tensor([&](at::Tensor i) {
+      return at::embedding(weight, i, padding_idx, scale_grad_by_freq, sparse); }, indices);
 }
 
 Tensor NestedTensor_conv2d(
