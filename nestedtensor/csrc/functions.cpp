@@ -9,9 +9,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return wrap_tensor_node(
-      map([&](const at::Tensor t) { return at::dropout(t, p, train); },
-          get_nested_tensor_structure(input)));
+  return map_nested_tensor([&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
 Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
@@ -19,6 +17,17 @@ Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
       [&](at::Tensor t) { return at::dropout_(t, p, train); },
       get_nested_tensor_structure(input));
   return input;
+}
+
+Tensor NestedTensor_embedding(const Tensor & weight, const Tensor & indices,
+                 int64_t padding_idx, bool scale_grad_by_freq, bool sparse) {
+  if (is_nested_tensor_impl(weight)) {
+    //TODO: Needs test coverage
+    return map_nested_tensor([&](at::Tensor w, at::Tensor i) {
+        return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse); }, weight, indices);
+  }
+  return map_nested_tensor([&](at::Tensor i) {
+      return at::embedding(weight, i, padding_idx, scale_grad_by_freq, sparse); }, indices);
 }
 
 Tensor NestedTensor_conv2d(
@@ -408,6 +417,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
+  m.impl_UNBOXED("embedding", NestedTensor_embedding);
   m.impl_UNBOXED("sum", NestedTensor_sum);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("any", NestedTensor_any);
