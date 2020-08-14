@@ -124,20 +124,6 @@ Tensor NestedTensor_batch_norm(
       get_nested_tensor_structure(input)));
 }
 
-Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-          get_nested_tensor_structure(self)));
-  if (tensors.size() == 0) {
-    if (dtype) {
-      return at::ones({0}, *dtype);
-    }
-    return at::ones({0});
-  }
-  auto all_tensor = at::stack(tensors.vec());
-  return at::sum(all_tensor, dtype);
-}
-
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   auto self_data = get_nested_tensor_impl(self);
   TORCH_CHECK(
@@ -418,7 +404,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("embedding", NestedTensor_embedding);
-  m.impl_UNBOXED("sum", NestedTensor_sum);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
