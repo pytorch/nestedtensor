@@ -31,7 +31,7 @@ Tensor get_item(Tensor tensor, py::none key) {
 at::Tensor get_item(Tensor tensor, int64_t key_) {
   std::vector<at::Tensor> unbound = unbind(tensor, 0);
   int64_t key = at::maybe_wrap_dim(key_, unbound.size());
-  return unbind(tensor, 0)[key];
+  return unbound[key];
 }
 
 #if (PYBIND11_VERSION_MAJOR >= 2 && PYBIND11_VERSION_MINOR >= 3)
@@ -43,15 +43,22 @@ at::Tensor get_item(Tensor tensor, py::slice slice) {
 }
 
 at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
+  if (key.size() == 0) {
+    return tensor;
+  }
   c10::optional<at::Tensor> first;
   if (!is_nested_tensor_impl(tensor)) {
     auto wrapped_key = py::tuple(py::cast(key));
     auto wrapped_tensor = THPVariable_Wrap(tensor);
     auto wrapped_result = torch::autograd::THPVariable_getitem(wrapped_tensor, wrapped_key.ptr());
-    Py_DECREF(wrapped_tensor);
     auto result = THPVariable_Unpack(wrapped_result);
+    Py_DECREF(wrapped_tensor);
     Py_DECREF(wrapped_result);
     return result;
+  }
+  std::vector<py::object> rest;
+  for (size_t i = 1; i < key.size(); i++) {
+    rest.push_back(key[i]);
   }
   if (is_nested_tensor_impl(tensor) && py::isinstance<py::none>(key[0])) {
     first = get_item(tensor, py::cast<py::none>(key[0]));
@@ -66,31 +73,25 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
       first,
       "First entry of tuple doesn't have accepted type. ",
       py::str(key[0]));
-  if (key.size() == 1) {
-    return *first;
-  }
-  std::vector<at::Tensor> unbound = (*first).unbind();
-  // TODO: Continue here
-  std::vector<py::object> entries;
-  for (size_t i = 1; i < key.size(); i++) {
-    entries.push_back(key[i]);
+  if (!is_nested_tensor_impl(*first)) {
+    return get_item(*first, rest);
   }
   std::vector<at::Tensor> result;
-  for (size_t i = 0; i < unbound.size(); i++) {
-    result.push_back(get_item(unbound[i], entries));
+  for (auto t : (*first).unbind()) {
+    result.push_back(get_item(t, rest));
   }
-  if (is_nested_tensor_impl(tensor)) {
-    std::vector<TensorNode> result_nodes;
-    for (size_t i = 0; i < result.size(); i++) {
-      if (is_nested_tensor_impl(result[i])) {
-        result_nodes.push_back(get_nested_tensor_structure(result[i]));
-      } else {
-        result_nodes.push_back(TensorNode(std::move(result[i])));
-      }
+  int64_t nested_dim = get_nested_tensor_impl(*first)->nested_dim();
+  std::vector<TensorNode> result_nodes;
+  if (nested_dim == 1) {
+    for (auto t: result) {
+      result_nodes.push_back(TensorNode(std::move(t)));
     }
-    return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+  } else {
+    for (auto t: result) {
+      result_nodes.push_back(get_nested_tensor_structure(t));
+    }
   }
-  return at::stack(TensorList(result));
+  return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
 at::Tensor get_item(Tensor tensor, py::tuple key) {
