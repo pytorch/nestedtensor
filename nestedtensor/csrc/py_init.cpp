@@ -50,9 +50,7 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   }
   c10::optional<at::Tensor> first;
   if (!is_nested_tensor_impl(tensor)) {
-    // std::cout << "tensor: " << py::str(py::cast(tensor)) << std::endl;
     auto wrapped_key = py::tuple(py::cast(key));
-    // std::cout << py::str(wrapped_key) << std::endl;
     auto wrapped_tensor = THPVariable_Wrap(tensor);
     auto wrapped_result = torch::autograd::THPVariable_getitem(wrapped_tensor, wrapped_key.ptr());
     auto result = THPVariable_Unpack(wrapped_result);
@@ -96,18 +94,6 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
     }
   }
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
-  // if (is_nested_tensor_impl(tensor)) {
-  //   std::vector<TensorNode> result_nodes;
-  //   for (size_t i = 0; i < result.size(); i++) {
-  //     if (is_nested_tensor_impl(result[i])) {
-  //       result_nodes.push_back(get_nested_tensor_structure(result[i]));
-  //     } else {
-  //       result_nodes.push_back(TensorNode(std::move(result[i])));
-  //     }
-  //   }
-  //   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
-  // }
-  // return at::stack(TensorList(result));
 }
 
 at::Tensor get_item(Tensor tensor, py::tuple key) {
