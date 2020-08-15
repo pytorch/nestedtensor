@@ -14,20 +14,23 @@ ntnt = nestedtensor.nested_tensor
 
 class TestReduce(TestCase):
 
-    def test_cumsum(self):
-        t0 = torch.arange(9).reshape(3, 3)
-        t1 = torch.arange(6).reshape(2, 3)
-        t2 = torch.arange(9).reshape(3, 3)
+    def _test_reduce_dim(self, fn):
+        t0 = torch.arange(9).float().reshape(3, 3)
+        t1 = torch.arange(6).float().reshape(2, 3)
+        t2 = torch.arange(9).float().reshape(3, 3)
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
 
-        self.assertRaises(RuntimeError, lambda: torch.cumsum(nt, 0))
-        self.assertRaises(RuntimeError, lambda: torch.cumsum(nt, 1))
-        self.assertEqual(ntnt([[torch.cumsum(t0, 0), torch.cumsum(t1, 0)],
-                               [torch.cumsum(t2, 0)]]), torch.cumsum(nt, 2))
-        self.assertEqual(ntnt([[torch.cumsum(t0, 1), torch.cumsum(t1, 1)],
-                               [torch.cumsum(t2, 1)]]), torch.cumsum(nt, 3))
-        self.assertRaises(IndexError, lambda: torch.cumsum(nt, 4))
+        self.assertRaises(RuntimeError, lambda: fn(nt, 0))
+        self.assertRaises(RuntimeError, lambda: fn(nt, 1))
+        self.assertEqual(ntnt([[fn(t0, 0), fn(t1, 0)],
+                               [fn(t2, 0)]]), fn(nt, 2))
+        self.assertEqual(ntnt([[fn(t0, 1), fn(t1, 1)],
+                               [fn(t2, 1)]]), fn(nt, 3))
+        self.assertRaises(IndexError, lambda: fn(nt, 4))
+
+    def test_cumsum(self):
+        self._test_reduce_dim(torch.cumsum)
 
     def _test_allreduce(self, fn):
         t0 = torch.randn(3, 3, requires_grad=True)
@@ -46,9 +49,11 @@ class TestReduce(TestCase):
 
     def test_sum(self):
         self._test_allreduce(lambda x: x.sum())
+        self._test_reduce_dim(torch.sum)
 
     def test_mean(self):
         self._test_allreduce(lambda x: x.mean())
+        self._test_reduce_dim(torch.mean)
 
     def test_prod(self):
         self._test_allreduce(lambda x: x.prod())
