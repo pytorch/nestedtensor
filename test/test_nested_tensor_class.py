@@ -290,6 +290,8 @@ class TestNestedTensor(TestCase):
                               torch.tensor([0, 1])], dtype=torch.bool)
             self.assertEqual((a1 == 2), a2)
             self.assertEqual((a1 != 2), a3)
+            self.assertEqual((a1 == 2.0), a2)
+            self.assertEqual((a1 != 2.0), a3)
 
     def test_dim(self):
         for constructor in _iter_constructors():
