@@ -25,6 +25,13 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
   return self;
 }
 
+template <Tensor (*func)(const Tensor&, Scalar)>
+Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
+  return wrap_tensor_node(
+      map_nested_tensor([&other](Tensor self) { return func(self, other); },
+          self));
+}
+
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self, other)) {
@@ -220,6 +227,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
 
   m.impl_UNBOXED("eq.Tensor", NestedTensor_binary<at::eq>);
   m.impl_UNBOXED("ne.Tensor", NestedTensor_binary<at::ne>);
+  m.impl_UNBOXED("eq.Scalar", NestedTensor_binary_scalar<at::eq>);
+  m.impl_UNBOXED("ne.Scalar", NestedTensor_binary_scalar<at::ne>);
 
   m.impl_UNBOXED("atan2", NestedTensor_binary<at::atan2>);
   m.impl_UNBOXED("atan2_", NestedTensor_binary_<at::native::atan2_>);
