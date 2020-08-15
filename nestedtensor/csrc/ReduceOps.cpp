@@ -15,11 +15,11 @@ Tensor NestedTensor_cumsum(
   dim = maybe_wrap_dim(dim, nt_impl->dim());
   TORCH_CHECK(
       dim >= nested_dim, "cumsum of nested dimensions is not implemented yet.");
-  return wrap_tensor_node(map_nested_tensor(
+  return map_nested_tensor(
       [nested_dim, dim](at::Tensor tensor) {
         return at::cumsum(tensor, dim - nested_dim);
       },
-      self));
+      self);
 }
 
 #define REDUCE_DIM_LIST_FUNC(NAME, FUNC, MSG)                                 \

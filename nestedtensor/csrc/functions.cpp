@@ -82,7 +82,7 @@ Tensor NestedTensor_max_pool2d(
         .to_nested_tensor(self_impl->nested_dim() - 1);
   }
 
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [&](at::Tensor t) {
         return at::max_pool2d(
                    t.unsqueeze(0),
@@ -93,7 +93,7 @@ Tensor NestedTensor_max_pool2d(
                    ceil_mode)
             .squeeze(0);
       },
-      get_nested_tensor_structure(self)));
+      self);
 }
 
 Tensor NestedTensor_batch_norm(
@@ -106,7 +106,7 @@ Tensor NestedTensor_batch_norm(
     double momentum,
     double eps,
     bool cudnn_enabled) {
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [&](at::Tensor t) {
         auto result = at::batch_norm(
                           t.unsqueeze(0),
@@ -121,7 +121,7 @@ Tensor NestedTensor_batch_norm(
                           .squeeze(0);
         return result;
       },
-      get_nested_tensor_structure(input)));
+      input);
 }
 
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
@@ -141,11 +141,11 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
       },
-      get_nested_tensor_structure(self)));
+      self);
 }
 
 Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
@@ -160,11 +160,11 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
       },
-      get_nested_tensor_structure(self)));
+      self);
 }
 
 Tensor NestedTensor_softmax(
@@ -178,11 +178,11 @@ Tensor NestedTensor_softmax(
       dim >= nested_dim,
       "Cannot apply softmax across nested dimensions ",
       std::to_string(dim));
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [dim, nested_dim, dtype](const at::Tensor t) {
         return at::softmax(t, dim - nested_dim, dtype);
       },
-      get_nested_tensor_structure(input)));
+      input);
 }
 
 Tensor NestedTensor_layer_norm(
@@ -200,11 +200,11 @@ Tensor NestedTensor_layer_norm(
       input_data->opt_sizes()[input.dim() - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(input.dim() - 1));
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
-      input_data->get_structure()));
+      input);
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
@@ -262,45 +262,38 @@ Tensor NestedTensor_any(const Tensor& self) {
 }
 
 Tensor NestedTensor__log_softmax(
-    const Tensor& input_,
+    const Tensor& self,
     const int64_t dim_,
     const bool half_to_float) {
-  auto self_impl = get_nested_tensor_impl(input_);
-  return wrap_tensor_node(
-      map([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); },
-          self_impl->get_structure()));
+  return map_nested_tensor([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
 }
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(map(
+    return map_nested_tensor(
         [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
-        get_nested_tensor_structure(self),
-        get_nested_tensor_structure(other)));
+        self,
+        other);
   }
-  return wrap_tensor_node(
-      map([&other](Tensor tensor) { return at::matmul(tensor, other); },
-          get_nested_tensor_structure(self)));
+  return map_nested_tensor([&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
 }
 
 Tensor& NestedTensor_matmul_out(
     Tensor& result,
     const Tensor& self,
     const Tensor& other) {
-  apply(
+  apply_nested_tensor(
       [](Tensor& result, Tensor& tensor, Tensor& other) {
         return at::matmul_out(result, tensor, other);
       },
-      get_nested_tensor_structure(result),
-      get_nested_tensor_structure(self),
-      get_nested_tensor_structure(other));
+      result,
+      self,
+      other);
   return result;
 }
 
 Tensor NestedTensor_pin_memory(const Tensor& self) {
-  return wrap_tensor_node(
-      map([](Tensor tensor) { return at::native::pin_memory(tensor); },
-          get_nested_tensor_structure(self)));
+  return map_nested_tensor([](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
 }
 
 Tensor NestedTensor_flatten(
@@ -315,12 +308,12 @@ Tensor NestedTensor_flatten(
       start_dim >= nested_dim, "Cannot flatten nested dimension ", start_dim);
   TORCH_CHECK(
       end_dim >= nested_dim, "Cannot flatten nested dimension ", end_dim);
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [start_dim, end_dim, nested_dim](at::Tensor tensor) {
         return at::flatten(
             tensor, start_dim - nested_dim, end_dim - nested_dim);
       },
-      self_data->get_structure()));
+      self);
 }
 
 std::vector<Tensor> get_stack_inputs(TensorList tensors, int64_t dim) {
