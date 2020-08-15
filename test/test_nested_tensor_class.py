@@ -282,6 +282,15 @@ class TestNestedTensor(TestCase):
             self.assertTrue(not (a1 != a2).any())
             self.assertTrue(not (a1 == a3).any())
 
+            a1 = constructor([torch.tensor([1, 2]),
+                              torch.tensor([2, 8])])
+            a2 = constructor([torch.tensor([0, 1]),
+                              torch.tensor([1, 0])], dtype=torch.bool)
+            a3 = constructor([torch.tensor([1, 0]),
+                              torch.tensor([0, 1])], dtype=torch.bool)
+            self.assertEqual((a1 == 2), a2)
+            self.assertEqual((a1 != 2), a3)
+
     def test_dim(self):
         for constructor in _iter_constructors():
             a1 = constructor([])
