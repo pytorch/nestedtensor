@@ -95,10 +95,14 @@ class NestedTensor(metaclass=NestedTensorMeta):
     # --- magic methods ---
 
     def __eq__(self, other):
-        return _wrap_result(self._impl.__eq__(other._impl))
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl.__eq__(other._impl))
+        return _wrap_result(self._impl.__eq__(other))
 
     def __ne__(self, other):
-        return _wrap_result(self._impl.__ne__(other._impl))
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl.__ne__(other._impl))
+        return _wrap_result(self._impl.__ne__(other))
 
     def __add__(self, other):
         if isinstance(other, NestedTensor):
