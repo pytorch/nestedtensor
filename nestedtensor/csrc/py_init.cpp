@@ -206,15 +206,25 @@ static auto registry =
               "nested_tensor",
               [](c10::IValue payload, const std::string& tabs) {
                 std::stringstream ss;
-                ss << payload.toTensor();
+                ss << payload;
                 std::vector<std::string> tokens = split_str(ss.str(), "\n");
+                size_t data_lines = tokens.size() - 1;
                 std::string result;
-                for (size_t i = 0; i < tokens.size(); i++) {
-                  result = result + tabs + tokens[i];
-                  if (i < tokens.size() - 1) {
-                    result = result + "\n";
-                  }
+                size_t max_lines = 3;
+                size_t i = 0;
+                for (; i < std::min(max_lines, data_lines); i++) {
+                  result += "\n";
+                  result += tabs + tokens[i];
                 }
+                if (2 * max_lines < data_lines) {
+                  i = std::max(i, data_lines - max_lines);
+                  result += "\n" + tabs + "...";
+                }
+                for (; i < data_lines; i++) {
+                  result += "\n";
+                  result += tabs + tokens[i];
+                }
+                result += "\n" + tabs + tokens[data_lines];
                 return result;
               });
         });
