@@ -27,45 +27,38 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
 
 template <Tensor (*func)(const Tensor&, Scalar)>
 Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
-  return wrap_tensor_node(
-      map_nested_tensor([&other](Tensor self) { return func(self, other); },
-          self));
+  return map_nested_tensor([&other](Tensor self) { return func(self, other); }, self);
 }
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self, other)) {
-    return wrap_tensor_node(
-        map_nested_tensor([](Tensor self, Tensor other) { return func(self, other); },
-            self,
-            other));
+    return map_nested_tensor([](Tensor self, Tensor other) { return func(self, other); }, self, other);
   }
   if (is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(
-        map_nested_tensor([&self](Tensor other) { return func(self, other); }, other));
+    return map_nested_tensor([&self](Tensor other) { return func(self, other); }, other);
   }
-  return wrap_tensor_node(
-      map_nested_tensor([&other](Tensor self) { return func(self, other); }, self));
+  return map_nested_tensor([&other](Tensor self) { return func(self, other); }, self);
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
   if (is_nested_tensor_impl(self, other)) {
-    return wrap_tensor_node(map_nested_tensor(
+    return map_nested_tensor(
         [&scalar](Tensor tensor, Tensor other) {
           return func(tensor, other, scalar);
         },
         self,
-        other));
+        other);
   }
   if (is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(map_nested_tensor(
+    return map_nested_tensor(
         [&self, &scalar](Tensor other) { return func(self, other, scalar); },
-        other));
+        other);
   }
-  return wrap_tensor_node(map_nested_tensor(
+  return map_nested_tensor(
       [&other, &scalar](Tensor self) { return func(self, other, scalar); },
-      self));
+      self);
 }
 
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
@@ -185,8 +178,7 @@ Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
 
 Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
   is_nested_tensor_impl(base);
-  return wrap_tensor_node(
-      map_nested_tensor([exp](Tensor base) { return at::pow(base, exp); }, base));
+  return map_nested_tensor([exp](Tensor base) { return at::pow(base, exp); }, base);
 }
 
 Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
@@ -202,8 +194,7 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
 
 Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
   is_nested_tensor_impl(exp);
-  return wrap_tensor_node(
-      map_nested_tensor([&base](Tensor exp) { return at::pow(base, exp); }, exp));
+  return map_nested_tensor([&base](Tensor exp) { return at::pow(base, exp); }, exp);
 }
 
 #define BINARY_OP(NAME)                                                        \
