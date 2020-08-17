@@ -221,7 +221,8 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return map_nested_tensor([](at::Tensor tensor) { return tensor.contiguous(); }, self);
+  return map_nested_tensor(
+      [](at::Tensor tensor) { return tensor.contiguous(); }, self);
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -364,10 +365,10 @@ Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
   TORCH_CHECK(
       shape_matches(self_data->nested_size(), src_data->nested_size()),
       "self and source don't match in shape");
-  apply(
+  apply_nested_tensor(
       [](at::Tensor& self, at::Tensor& source) { return self.copy_(source); },
-      self_data->get_structure(),
-      src_data->get_structure());
+      self,
+      src);
   return self;
 }
 
@@ -398,7 +399,9 @@ Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
         _squeeze_nested_dim(self_impl->get_structure(), dim));
   }
   int64_t height = self_impl->get_structure().height();
-  return map_nested_tensor([dim, height](at::Tensor tensor) { return tensor.squeeze(dim - height); }, self);
+  return map_nested_tensor(
+      [dim, height](at::Tensor tensor) { return tensor.squeeze(dim - height); },
+      self);
 }
 
 Tensor& NestedTensor_squeeze_(Tensor& self) {
