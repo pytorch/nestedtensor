@@ -59,6 +59,66 @@ struct NestedNode {
   int64_t _height;
 };
 
+template <>
+struct NestedNode<at::Tensor> {
+  // NestedNode() : _is_leaf(false), _height(1) {}
+  NestedNode<at::Tensor>() = delete;
+  NestedNode<at::Tensor>(std::vector<NestedNode<at::Tensor>>&& children)
+      : _is_leaf(false), _children(children), _height(1) {
+    for (const auto& child : children) {
+      if (child.height() + 1 > _height) {
+        _height = child.height() + 1;
+      }
+    }
+  }
+  // NestedNode(NestedNode&) = delete;
+  // NestedNode(const NestedNode&) = delete;
+  // NestedNode& operator=(NestedNode) = delete;
+  NestedNode<at::Tensor>(at::Tensor&& payload)
+      : _is_leaf(true), _payload(payload), _height(0) {}
+  NestedNode<at::Tensor>(
+      NestedNode<at::Tensor>&& structure,
+      at::Tensor&& buffer)
+      : _is_leaf(structure._is_leaf),
+        _children(structure._children),
+        _payload(structure._payload),
+        _height(structure._height),
+        _buffer(buffer) {}
+  inline bool is_leaf() const {
+    return _is_leaf;
+  }
+  inline size_t degree() const {
+    return _children.size();
+  }
+  inline int64_t height() const {
+    return _height;
+  }
+  inline const std::vector<NestedNode<at::Tensor>> unbind() const {
+    return _children;
+  }
+  inline NestedNode<at::Tensor> children(size_t i) const {
+    return _children[i];
+  }
+  inline const at::Tensor& payload() const {
+    return _payload;
+  }
+  inline at::Tensor& payload() {
+    return _payload;
+  }
+  inline c10::optional<at::Tensor> buffer() {
+    return _buffer;
+  }
+
+ private:
+  bool _is_leaf;
+  std::vector<NestedNode<at::Tensor>> _children;
+  // TODO: Make this const?
+  // _VariableNode _variable_node;
+  at::Tensor _payload;
+  int64_t _height;
+  c10::optional<at::Tensor> _buffer;
+};
+
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
@@ -143,8 +203,9 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
     const std::vector<R>& content,
     int64_t index) {
   if (structure.is_leaf()) {
+    at::Tensor tmp = content[index];
     return std::pair<int64_t, NestedNode<R>>(
-        index + 1, NestedNode<R>(content[index]));
+        index + 1, NestedNode<R>(std::move(tmp)));
 
   } else {
     std::vector<NestedNode<R>> result;
@@ -259,6 +320,98 @@ static inline void apply(F&& fn, NestedNode<A>... nested_node) {
           std::remove_reference_t,
           typename c10::guts::infer_function_traits<F>::type::
               parameter_types>>::function(std::move(fn), nested_node...);
+}
+
+namespace impl {
+
+inline c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
+  std::vector<int64_t> stride(size.size());
+  int64_t p = 1;
+  size_t p_i = size.size();
+  for (size_t i = 0; i < size.size(); i++) {
+    p_i--;
+    stride[p_i] = p;
+    p *= size[p_i];
+  }
+  return c10::List<int64_t>(stride);
+}
+
+inline int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
+  // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
+  // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
+  // but carry 0 memory.
+  if (size.size() == 0) {
+    return 1;
+  }
+  return size[0] * stride[0];
+}
+
+inline TensorNode build_structure(
+    at::Tensor&& buffer,
+    const SizeNode& nested_size,
+    const SizeNode& nested_stride) {
+  std::vector<int64_t> split_sizes = flatten(
+      map([](c10::List<int64_t> a,
+             c10::List<int64_t> b) { return num_memory(a, b); },
+          nested_size,
+          nested_stride));
+  std::vector<int64_t> nonzero_split_sizes;
+  for (size_t i = 0; i < split_sizes.size(); i++) {
+    if (split_sizes[i] > 0) {
+      nonzero_split_sizes.push_back(split_sizes[i]);
+    }
+  }
+  std::vector<at::Tensor> buffers_;
+  if (nonzero_split_sizes.size() > 0) {
+    buffers_ =
+        at::split_with_sizes(buffer, c10::IntArrayRef(nonzero_split_sizes), 0);
+  }
+  std::vector<at::Tensor> buffers;
+  int64_t index = 0;
+  for (size_t i = 0; i < split_sizes.size(); i++) {
+    if (split_sizes[i] > 0) {
+      buffers.push_back(buffers_[index]);
+      index++;
+    } else {
+      buffers.push_back(at::empty({}, buffer.options()));
+    }
+  }
+  TensorNode tmp = unflatten(nested_size, std::move(buffers));
+  TensorNode result = map(
+      [](at::Tensor buffer,
+         c10::List<int64_t> size,
+         c10::List<int64_t> stride) {
+        return at::as_strided(
+            buffer,
+            c10::IntArrayRef(size.vec()),
+            c10::IntArrayRef(stride.vec()));
+      },
+      tmp,
+      nested_size,
+      nested_stride);
+  return TensorNode(std::move(result), std::move(buffer));
+}
+
+inline TensorNode build_structure(
+    at::Tensor&& buffer,
+    const SizeNode& nested_size) {
+  SizeNode nested_stride = map(
+      [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
+  return build_structure(std::move(buffer), nested_size, nested_stride);
+}
+} // namespace impl
+
+inline TensorNode pack(TensorNode&& structure) {
+  TensorNode flat_structure =
+      map([](at::Tensor tensor) { return tensor.reshape({-1}); }, structure);
+  auto nested_size =
+      map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+          structure);
+  auto tensors = flatten(flat_structure);
+  if (tensors.size() == 0) {
+    return impl::build_structure(at::ones({0}), nested_size);
+  }
+  return impl::build_structure(at::cat(tensors, 0), nested_size);
 }
 
 } // namespace nested_tensor
