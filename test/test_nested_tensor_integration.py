@@ -90,8 +90,8 @@ class TestIntegration(TestCase):
         nt_tr1 = tr1.clone().detach()
         nt_tr2 = tr2.clone().detach()
 
-        nt_input = nestedtensor.nested_tensor([nt_t1, nt_t2], requires_grad=True)
-        nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
+        nt_input = nestedtensor.nested_tensor([nt_t1, nt_t2]) #, requires_grad=True)
+        nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2]) #, requires_grad=True)
         confmat2 = ConfusionMatrix(num_classes)
 
         output2 = model(nt_input)
