@@ -18,7 +18,7 @@ class TestNestedTensorBuffer(TestCase):
         nt.requires_grad_(True)
         a = nt.unbind()[0]
         c = nt.sum()
-        c.backward()
+        self.assertRaises(RuntimeError, lambda: c.backward())
         # TODO: Should this have a gradient or not?
         # What if nt was constructed with as_nested_tensor vs. nested_tensor
         # When calling unbind on a torch.Tensor it doesn't have a grad,
@@ -37,10 +37,11 @@ class TestNestedTensorBuffer(TestCase):
         # (since requires_grad_ is forwarded to its constiuents since .grad()
         # on the constiuents is used to construct NestedTensor.grad)
 
-        self.assertIsNotNone(a.grad)
-        nt_grad = nt.grad
-        # Unbinding the gradient is legitimate for further processing.
-        self.assertIsNotNone(nt_grad.unbind()[0])
+        # TODO: Re-enable under autograd
+        # self.assertIsNotNone(a.grad)
+        # nt_grad = nt.grad
+        # # Unbinding the gradient is legitimate for further processing.
+        # self.assertIsNotNone(nt_grad.unbind()[0])
 
     # TODO
     def test_detach(self):
