@@ -60,7 +60,7 @@ Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
     }
     return at::ones({0});
   }
-  auto all_tensor = at::stack(tensors.vec());
+  auto all_tensor = at::stack(tensors);
   return at::sum(all_tensor, dtype);
 }
 
@@ -74,7 +74,7 @@ Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
     }
     return at::ones({0});
   }
-  auto all_tensor = at::stack(tensors.vec());
+  auto all_tensor = at::stack(tensors);
   return at::mean(all_tensor, dtype);
 }
 
@@ -88,7 +88,7 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
     }
     return at::ones({1});
   }
-  auto all_tensor = at::stack(tensors.vec());
+  auto all_tensor = at::stack(tensors);
   return at::prod(all_tensor, dtype);
 }
 
