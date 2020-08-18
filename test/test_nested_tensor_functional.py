@@ -16,6 +16,9 @@ def _iter_constructors():
     yield nestedtensor.nested_tensor
 
 
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+
+
 class TestFunctional(TestCase):
     def test_nll_loss(self):
         utils.gen_float_tensor(1, (40, 5))
@@ -59,12 +62,11 @@ class TestFunctional(TestCase):
             t_res = conv2d(inputs[i].unsqueeze(0).contiguous())
             tensor_res.append(t_res.squeeze(0))
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = conv2d(nt)
-            # self.assertEqual(nestedtensor.nested_tensor(
-            #     tensor_res, requires_grad=True), nt_res)
-            self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res), nt_res)
+        nt = ntnt(inputs)
+        nt_res = conv2d(nt)
+        self.assertEqual(ntnt(tensor_res), nt_res)
+        # self.assertEqual(nestedtensor.nested_tensor(
+        #     tensor_res), nt_res)
 
         # some of optional params
         conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, bias=False)
@@ -73,12 +75,12 @@ class TestFunctional(TestCase):
             t_res = conv2d(inputs[i].unsqueeze(0).contiguous())
             tensor_res.append(t_res.squeeze(0))
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = conv2d(nt)
-            # self.assertEqual(nestedtensor.nested_tensor(
-            #     tensor_res, requires_grad=True), nt_res)
-            self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res), nt_res)
+        nt = ntnt(inputs)
+        nt_res = conv2d(nt)
+        self.assertEqual(nestedtensor.nested_tensor(
+            tensor_res, requires_grad=True), nt_res)
+        # self.assertEqual(nestedtensor.nested_tensor(
+        #     tensor_res), nt_res)
 
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
@@ -87,7 +89,6 @@ class TestFunctional(TestCase):
         y = emb(x)
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
-
 
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)

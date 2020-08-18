@@ -11,6 +11,9 @@ import utils
 import torchvision
 
 
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+
+
 class ConfusionMatrix(object):
     def __init__(self, num_classes):
         self.num_classes = num_classes
@@ -71,6 +74,7 @@ class TestIntegration(TestCase):
         model = torchvision.models.segmentation.__dict__[model_name](
             num_classes=num_classes, aux_loss=aux_loss, pretrained=True
         )
+        # print(model)
         model.eval()
 
         # tensor run
@@ -90,12 +94,16 @@ class TestIntegration(TestCase):
         nt_tr1 = tr1.clone().detach()
         nt_tr2 = tr2.clone().detach()
 
-        nt_input = nestedtensor.nested_tensor([nt_t1, nt_t2]) #, requires_grad=True)
-        nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2]) #, requires_grad=True)
+        nt_input = ntnt([nt_t1, nt_t2])
+        nt_target = ntnt([nt_tr1, nt_tr2])
         confmat2 = ConfusionMatrix(num_classes)
 
         output2 = model(nt_input)
         output2 = output2["out"]
+        print("nt_input.requires_grad")
+        print(nt_input.requires_grad)
+        print("output2.requires_grad")
+        print(output2.requires_grad)
 
         for a, b in zip(nt_target, output2):
             confmat2.update(a.flatten(), b.argmax(0).flatten())
