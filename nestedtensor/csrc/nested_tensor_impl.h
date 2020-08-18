@@ -2,6 +2,11 @@
 #include <ATen/ATen.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
+#include <c10/util/Metaprogramming.h>
+#include <torch/csrc/autograd/autograd.h>
+#include <torch/extension.h>
+#include <torch/library.h>
+
 
 namespace torch {
 namespace nested_tensor {
@@ -90,6 +95,110 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
   return wrap_tensor_node(
       map(std::move(fn), get_nested_tensor_structure(a)...));
+}
+
+// The approach here is quite "simple". There are six different stages to this.
+// 1. We take the input NestedTensor whose constituents are, by design, required to not track gradients.
+// Only the NestedTensor as a whole is allowed to track that information.
+// 2. We take that NestedTensor and create a copy, i.e. a new NestedTensor, where the gradients do track
+// gradients. This is not a valid NestedTensor outside the context of this function and in the future we 
+// might decide to pick a different container, maybe even a flat list, for this purpose.
+// 3. We set these constiuents of the new NestedTensor to track gradients. A very important point here is
+// that within a custom autograd Function AutoGradMode is *disabled*, because we're defining a new elementary
+// operation within the Autograd graph and aren't appending to it. We're effectively creating a subgraph
+// for the purpose of this operation here that isn't connect to the overall graph that corresponds to
+// NestedTensor operations.
+// 4. We apply the differentiable function that was passed as an argument to each constiuents of the NestedTensor
+// from step 3 again while enabling AutoGradMode. We will again get a NestedTensor where the constituents track
+// gradients. To make sure we actually return a valid NestedTensor we detach this information for our return
+// value and save the NestedTensor from this step only for the backward pass.
+// 5. This step does the actual detach of the constituents
+// 6. This step then returns the NestedTensor from step 5.
+template <typename F, class... A>
+struct NestedTensorFunction_mapper
+    : public torch::autograd::Function<NestedTensorFunction_mapper<F, A...>> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      F&& fn,
+      // 1. Original NestedTensors
+      A... input) {
+    auto input_tuple = std::tuple<A...>(input...);
+    auto autograd_input_tuple_ =
+        c10::guts::tuple_map(std::move(input_tuple), [](at::Tensor t) {
+          apply_nested_tensor(
+              [](at::Tensor& ti) {
+                TORCH_CHECK(
+                    !ti.requires_grad(),
+                    "Input constituents shouldn't require gradients.");
+              },
+              t);
+          if (t.requires_grad()) {
+            return map_nested_tensor(
+                // 2. Constituents of NestedTensors
+                [](at::Tensor ti) {
+                  AutoGradMode autogradmode(true);
+                  // TODO: Don't apply this if the corresponding NestedTensor
+                  // doesn't require a gradient.
+                  ti.requires_grad_();
+                  // 3. Alias to constituents that do requires gradients
+                  return ti;
+                },
+                t);
+          }
+          return t;
+        });
+    auto autograd_input_tuple = autograd_input_tuple_;
+
+    // 4. Output of differentiable function given Tensor from step 3.
+    at::Tensor autograd_output = c10::guts::apply(
+        [&fn](A... a) {
+          return map_nested_tensor(
+              [&](A... t) {
+                AutoGradMode autogradmode(true);
+                return fn(t...);
+              },
+              a...);
+        },
+        std::move(autograd_input_tuple_));
+    ctx->saved_data["0"] = autograd_input_tuple;
+    ctx->saved_data["1"] = autograd_output;
+
+    // 5. Constituents of output NestedTensor
+    auto output = map_nested_tensor(
+        [](at::Tensor t) { return t.detach(); }, autograd_output);
+
+    // 6. Output NestedTensor
+    return output;
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      // TODO: To prevent double backward (for now) check that grad_output
+      // doesn't require gradients.
+      torch::autograd::variable_list grad_output_) {
+    std::cout << "grad_output_.size(): " << grad_output_.size() << std::endl;
+    auto autograd_input_tuple = ctx->saved_data["0"].toTuple();
+    auto autograd_output = ctx->saved_data["1"].toTensor();
+    auto grad_input = map_nested_tensor(
+        [](at::Tensor r, at::Tensor i, at::Tensor g) {
+          // TODO: Might have to retain graph in many to one settings.
+          return torch::autograd::grad({r}, {i}, {g})[0];
+        },
+        autograd_output,
+        //        autograd_input_tuple[0].toTensor(),
+        autograd_input_tuple->elements()[0].toTensor(),
+        grad_output_[0]);
+
+    at::Tensor undef;
+    // at::Tensor grad_input;
+    // grad_input.insert(grad_input.begin(), undef);
+    // return grad_input;
+    return {undef, grad_input};
+  }
+};
+
+template <class F, class... A>
+static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
+  return NestedTensorFunction_mapper<F, A...>::apply(std::move(fn), a...);
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {

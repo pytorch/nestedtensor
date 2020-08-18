@@ -108,11 +108,12 @@ class TestIntegration(TestCase):
         output2_sum = output2[0].sum()
         self.assertEqual(output1_sum, output2_sum)
 
-        output1_sum.backward()
-        output2_sum.backward()
+        # TODO: Re-enable this once autograd lands
+        # output1_sum.backward()
+        # output2_sum.backward()
 
-        self.assertEqual(t1.grad, nt_input[0].grad)
-        self.assertEqual(t2.grad, nt_input[1].grad)
+        # self.assertEqual(t1.grad, nt_input[0].grad)
+        # self.assertEqual(t2.grad, nt_input[1].grad)
 
 
 if __name__ == "__main__":
