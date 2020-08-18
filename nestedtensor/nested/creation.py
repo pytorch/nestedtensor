@@ -4,10 +4,15 @@ import numbers
 from . import nested
 from nestedtensor import _C
 
+
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     """
     Arguments match torch.tensor
     """
+    if requires_grad:
+        raise NotImplementedError(
+            "NestedTensor temporarily does not support autograd. Please use an older commit.")
+
     result = nested.NestedTensor(_C.nested_tensor_impl(data))
 
     if dtype is not None or device is not None:
@@ -20,6 +25,9 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
+    if requires_grad:
+        raise NotImplementedError(
+            "NestedTensor temporarily does not support autograd. Please use an older commit.")
     # TODO: Needs tests to check failure cases
     if not isinstance(data, nested.NestedTensor):
         data = nested_tensor(data, dtype, device, requires_grad, pin_memory)

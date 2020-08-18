@@ -61,8 +61,10 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = conv2d(nt)
+            # self.assertEqual(nestedtensor.nested_tensor(
+            #     tensor_res, requires_grad=True), nt_res)
             self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res, requires_grad=True), nt_res)
+                tensor_res), nt_res)
 
         # some of optional params
         conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, bias=False)
@@ -73,8 +75,10 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = conv2d(nt)
+            # self.assertEqual(nestedtensor.nested_tensor(
+            #     tensor_res, requires_grad=True), nt_res)
             self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res, requires_grad=True), nt_res)
+                tensor_res), nt_res)
 
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
@@ -133,8 +137,10 @@ class TestFunctional(TestCase):
 
         for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
             nt_res = batch_norm(nt)
+            # self.assertEqual(nestedtensor.nested_tensor(
+            #     tensor_res, requires_grad=True), nt_res)
             self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res, requires_grad=True), nt_res)
+                tensor_res), nt_res)
 
     def test_nn_functional_batch_norm(self):
         inputs = [
