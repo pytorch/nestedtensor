@@ -9,25 +9,37 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return map_nested_tensor([&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
+  return map_nested_tensor(
+      [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
 Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  apply(
-      [&](at::Tensor t) { return at::dropout_(t, p, train); },
-      get_nested_tensor_structure(input));
+  apply_nested_tensor(
+      [&](at::Tensor t) { return at::dropout_(t, p, train); }, input);
   return input;
 }
 
-Tensor NestedTensor_embedding(const Tensor & weight, const Tensor & indices,
-                 int64_t padding_idx, bool scale_grad_by_freq, bool sparse) {
+Tensor NestedTensor_embedding(
+    const Tensor& weight,
+    const Tensor& indices,
+    int64_t padding_idx,
+    bool scale_grad_by_freq,
+    bool sparse) {
   if (is_nested_tensor_impl(weight)) {
-    //TODO: Needs test coverage
-    return map_nested_tensor([&](at::Tensor w, at::Tensor i) {
-        return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse); }, weight, indices);
+    // TODO: Needs test coverage
+    return map_nested_tensor(
+        [&](at::Tensor w, at::Tensor i) {
+          return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse);
+        },
+        weight,
+        indices);
   }
-  return map_nested_tensor([&](at::Tensor i) {
-      return at::embedding(weight, i, padding_idx, scale_grad_by_freq, sparse); }, indices);
+  return map_nested_tensor(
+      [&](at::Tensor i) {
+        return at::embedding(
+            weight, i, padding_idx, scale_grad_by_freq, sparse);
+      },
+      indices);
 }
 
 Tensor NestedTensor_conv2d(
@@ -209,15 +221,15 @@ Tensor NestedTensor_layer_norm(
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   if (is_nested_tensor_impl(other)) {
-    apply(
+    apply_nested_tensor(
         [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
-        get_nested_tensor_structure(self),
-        get_nested_tensor_structure(other));
+        self,
+        other);
     return self;
   }
-  apply(
+  apply_nested_tensor(
       [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
-      get_nested_tensor_structure(self));
+      self);
   return self;
 }
 
@@ -265,7 +277,8 @@ Tensor NestedTensor__log_softmax(
     const Tensor& self,
     const int64_t dim_,
     const bool half_to_float) {
-  return map_nested_tensor([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
+  return map_nested_tensor(
+      [&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
 }
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
@@ -275,7 +288,8 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
         self,
         other);
   }
-  return map_nested_tensor([&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
+  return map_nested_tensor(
+      [&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
 }
 
 Tensor& NestedTensor_matmul_out(
@@ -293,7 +307,8 @@ Tensor& NestedTensor_matmul_out(
 }
 
 Tensor NestedTensor_pin_memory(const Tensor& self) {
-  return map_nested_tensor([](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
+  return map_nested_tensor(
+      [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
 }
 
 Tensor NestedTensor_flatten(
