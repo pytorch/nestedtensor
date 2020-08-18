@@ -218,6 +218,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // via unbind.
 
   m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
+  m.def("constiuent_requires_grad", [](at::Tensor t) { 
+      apply_nested_tensor([](at::Tensor & t) {TORCH_CHECK(!t.requires_grad(), "constiuent requires gradient.");}, t); });
 
   // Need to overwrite because
   // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480

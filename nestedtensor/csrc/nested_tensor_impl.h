@@ -122,9 +122,9 @@ struct NestedTensorFunction_mapper
       F&& fn,
       // 1. Original NestedTensors
       A... input) {
-    auto input_tuple = std::tuple<A...>(input...);
+    std::cout << "Calling: " << typeid(F).name() << std::endl;
     auto autograd_input_tuple_ =
-        c10::guts::tuple_map(std::move(input_tuple), [](at::Tensor t) {
+        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
           apply_nested_tensor(
               [](at::Tensor& ti) {
                 TORCH_CHECK(
@@ -139,7 +139,7 @@ struct NestedTensorFunction_mapper
                   AutoGradMode autogradmode(true);
                   // TODO: Don't apply this if the corresponding NestedTensor
                   // doesn't require a gradient.
-                  ti.requires_grad_();
+                  ti.alias().requires_grad_();
                   // 3. Alias to constituents that do requires gradients
                   return ti;
                 },
@@ -148,6 +148,18 @@ struct NestedTensorFunction_mapper
           return t;
         });
     auto autograd_input_tuple = autograd_input_tuple_;
+
+    auto tmp1 =
+        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
+          apply_nested_tensor(
+              [](at::Tensor& ti) {
+                TORCH_CHECK(
+                    !ti.requires_grad(),
+                    "Input constituents shouldn't require gradients.");
+              },
+              t);
+          return t;
+        });
 
     // 4. Output of differentiable function given Tensor from step 3.
     at::Tensor autograd_output = c10::guts::apply(
@@ -160,12 +172,38 @@ struct NestedTensorFunction_mapper
               a...);
         },
         std::move(autograd_input_tuple_));
+
+    auto tmp2 =
+        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
+          apply_nested_tensor(
+              [](at::Tensor& ti) {
+                TORCH_CHECK(
+                    !ti.requires_grad(),
+                    "Input constituents shouldn't require gradients.");
+              },
+              t);
+          return t;
+        });
+
     ctx->saved_data["0"] = autograd_input_tuple;
     ctx->saved_data["1"] = autograd_output;
 
     // 5. Constituents of output NestedTensor
     auto output = map_nested_tensor(
         [](at::Tensor t) { return t.detach(); }, autograd_output);
+
+    auto tmp3 =
+        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
+          apply_nested_tensor(
+              [](at::Tensor& ti) {
+                TORCH_CHECK(
+                    !ti.requires_grad(),
+                    "Input constituents shouldn't require gradients.");
+              },
+              t);
+          return t;
+        });
+
 
     // 6. Output NestedTensor
     return output;

@@ -101,6 +101,7 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       _nested_size(map(
           [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           _structure)) {
+  // apply([](at::Tensor& tensor) { TORCH_CHECK(!tensor.requires_grad(), "Input tensornode requires gradient."); }, structure);
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")

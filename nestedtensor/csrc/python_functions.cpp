@@ -71,7 +71,7 @@ NestedTensorImpl interpolate(NestedTensorImpl* input,
     // Either scale factor or size can be passed
     if (scale_factor.has_value()) {
       options = options.scale_factor(scale_factor.value().vec());
-      TensorNode res = map(
+      TensorNode res = autograd_map_nested_tensor(
         [&options](at::Tensor input_tensor) {
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
@@ -91,6 +91,7 @@ NestedTensorImpl interpolate(NestedTensorImpl* input,
         throw std::runtime_error( "Interpolate has to take either 1 size tuple or same amount as leaves in Nested Tensor.");
       }
 
+      //TODO: Continue
       if (size.value().size() == 1) {
         TensorNode res = map(
           [&options, &size](at::Tensor input_tensor) {

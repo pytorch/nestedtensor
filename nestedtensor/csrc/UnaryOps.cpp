@@ -133,13 +133,33 @@ Tensor NestedTensor_relu(const Tensor& self) {
       [](at::Tensor tensor) { return at::relu(tensor); }, self);
 }
 
+struct NestedTensorFunction_relu_
+    : public torch::autograd::Function<NestedTensorFunction_relu_> {
+  static Tensor forward(torch::autograd::AutogradContext* ctx, Tensor& self) {
+    apply_nested_tensor([](at::Tensor& t) { at::relu_(t); }, self);
+    ctx->saved_data["0"] = self;
+    ctx->mark_dirty({self});
+    return self;
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      // TODO: To prevent double backward (for now) check that grad_output
+      // doesn't require gradients.
+      torch::autograd::variable_list grad_output) {
+    auto result = ctx->saved_data["0"].toTensor();
+    auto grad = grad_output[0];
+    return {map_nested_tensor(
+        [](at::Tensor r, at::Tensor g) { 
+        TORCH_CHECK(!g.requires_grad(), "NestedTensor relu_ doesn't support double backward.");
+        return threshold_backward(g, r, 0); },
+        result,
+        grad)};
+  }
+};
+
 Tensor& NestedTensor_relu_(Tensor& self) {
-  // TORCH_CHECK(false, "In-place operation is currently not supported.");
+  NestedTensorFunction_relu_::apply(self);
   return self;
-  // auto result = autograd_map_nested_tensor([](at::Tensor& tensor) { return at::relu(tensor); }, self);
-  // self.copy_(result);
-  // return self;
-  // return self;
 }
 
 #define UNARY_OP_INPLACE_METHOD(NAME)                                       \

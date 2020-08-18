@@ -50,7 +50,12 @@ Tensor NestedTensor_conv2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     int64_t groups) {
-  return autograd_map_nested_tensor(
+  apply_nested_tensor(
+      [](at::Tensor& t) {
+        TORCH_CHECK(!t.requires_grad(), "Has a gradient somehow1");
+      },
+      input);
+  auto result = autograd_map_nested_tensor(
       [&weight, &bias, &stride, &padding, &dilation, groups](at::Tensor t) {
         return at::convolution(
                    t.unsqueeze(0),
@@ -65,6 +70,12 @@ Tensor NestedTensor_conv2d(
             .squeeze(0);
       },
       input);
+  apply_nested_tensor(
+      [](at::Tensor& t) {
+        TORCH_CHECK(!t.requires_grad(), "Has a gradient somehow2");
+      },
+      input);
+  return result;
 }
 
 Tensor NestedTensor_max_pool2d(
@@ -98,7 +109,7 @@ Tensor NestedTensor_batch_norm(
     double momentum,
     double eps,
     bool cudnn_enabled) {
-  return autograd_map_nested_tensor(
+  auto result = autograd_map_nested_tensor(
       [&](at::Tensor t) {
         auto result = at::batch_norm(
                           t.unsqueeze(0),
@@ -114,6 +125,12 @@ Tensor NestedTensor_batch_norm(
         return result;
       },
       input);
+  apply_nested_tensor(
+      [](at::Tensor& t) {
+        TORCH_CHECK(!t.requires_grad(), "output requires grad!");
+      },
+      result);
+  return result;
 }
 
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
@@ -199,18 +216,59 @@ Tensor NestedTensor_layer_norm(
       input);
 }
 
-Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  if (is_nested_tensor_impl(other)) {
-    apply_nested_tensor(
-        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
-        self,
-        other);
+struct NestedTensorFunction_add_
+    : public torch::autograd::Function<NestedTensorFunction_add_> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      Tensor& self,
+      const Tensor& other,
+      Scalar alpha) {
+    if (is_nested_tensor_impl(other)) {
+      apply_nested_tensor(
+          [&](at::Tensor& s, Tensor o) { at::native::add_(s, o, alpha); },
+          self,
+          other);
+    } else {
+      apply_nested_tensor(
+          [&](at::Tensor& s) { at::native::add_(s, other, alpha); }, self);
+    }
+    ctx->saved_data["0"] = alpha;
+    ctx->mark_dirty({self});
     return self;
   }
-  apply_nested_tensor(
-      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
-      self);
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      // TODO: To prevent double backward (for now) check that grad_output
+      // doesn't require gradients.
+      torch::autograd::variable_list grad_output) {
+    auto alpha = ctx->saved_data["0"].toScalar();
+    auto grad = grad_output[0];
+    return {map_nested_tensor(
+        [&](at::Tensor g) {
+          TORCH_CHECK(
+              !g.requires_grad(),
+              "NestedTensor add_ doesn't support double backward.");
+          return g * alpha;
+        },
+        grad)};
+  }
+};
+
+Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
+  std::cout << "NestedTensor_add_ NestedTensor_add_" << std::endl;
+  NestedTensorFunction_add_::apply(self, other, alpha);
   return self;
+  // if (is_nested_tensor_impl(other)) {
+  //   apply_nested_tensor(
+  //       [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
+  //       self,
+  //       other);
+  //   return self;
+  // }
+  // apply_nested_tensor(
+  //     [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
+  //     self);
+  // return self;
 }
 
 Tensor NestedTensor_all(const Tensor& self) {
@@ -263,12 +321,12 @@ Tensor NestedTensor__log_softmax(
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
         self,
         other);
   }
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
 }
 

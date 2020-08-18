@@ -74,7 +74,7 @@ class TestIntegration(TestCase):
         model = torchvision.models.segmentation.__dict__[model_name](
             num_classes=num_classes, aux_loss=aux_loss, pretrained=True
         )
-        # print(model)
+        print(model)
         model.eval()
 
         # tensor run
@@ -82,11 +82,11 @@ class TestIntegration(TestCase):
         t_target = torch.stack([tr1, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        output1 = model(t_input)
-        output1 = output1["out"]
+        # output1 = model(t_input)
+        # output1 = output1["out"]
 
-        confmat.update(t_target.flatten(), output1.argmax(1).flatten())
-        confmat.reduce_from_all_processes()
+        # confmat.update(t_target.flatten(), output1.argmax(1).flatten())
+        # confmat.reduce_from_all_processes()
 
         # nt run
         nt_t1 = t1.clone().detach()
@@ -112,9 +112,9 @@ class TestIntegration(TestCase):
         self.assertEqual(confmat.mat, confmat2.mat)
 
         # grad test
-        output1_sum = output1[0].sum()
+        # output1_sum = output1[0].sum()
         output2_sum = output2[0].sum()
-        self.assertEqual(output1_sum, output2_sum)
+        # self.assertEqual(output1_sum, output2_sum)
 
         # TODO: Re-enable this once autograd lands
         # output1_sum.backward()

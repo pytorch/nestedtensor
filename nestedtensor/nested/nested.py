@@ -107,6 +107,13 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return _wrap_result(self._impl.__ne__(other._impl))
         return _wrap_result(self._impl.__ne__(other))
 
+    def __iadd__(self, other):
+        if isinstance(other, NestedTensor):
+            self._impl += other._impl
+            return self
+        self._impl += other
+        return self
+
     def __add__(self, other):
         if isinstance(other, NestedTensor):
             return _wrap_result(self._impl + other._impl)
@@ -231,6 +238,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     def to(self, *args, **kwargs):
         # TODO: to is currently not supported by impls due to argparsing.
+        print("HERE1")
         new_tensors = [t.to(*args, **kwargs) for t in self.unbind()]
         # TODO: Make contiguous by default? Heavy operation...
         # NOTE: Needs grad support, which nestedtensor.nested_tensor
@@ -287,6 +295,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
+        print("HERE2")
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
