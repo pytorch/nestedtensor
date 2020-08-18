@@ -40,53 +40,13 @@ struct NestedNode {
   inline const std::vector<NestedNode<T>> unbind() const {
     return _children;
   }
-
-  template <typename A>
-  friend inline c10::optional<A> get_first_leaf(NestedNode<A>);
-
-  template <class F, class A, class TypeList>
-  friend class _map;
-
-  template <class F, class... B>
-  friend inline NestedNode<
-      typename c10::guts::infer_function_traits<F>::type::return_type>
-  map(F&&, const NestedNode<B>&...);
-
-  template <typename A>
-  friend inline c10::List<A> flatten(NestedNode<A>);
-
-  template <class R, class A>
-  friend inline std::pair<int64_t, NestedNode<R>> _unflatten(
-      const NestedNode<A>&,
-      const c10::List<R>&,
-      int64_t);
-
-  template <class R, class A>
-  friend inline NestedNode<R> unflatten(NestedNode<A>, c10::List<R>);
-
-  template <class A>
-  friend inline NestedNode<std::vector<A>> zip(
-      const std::vector<NestedNode<A>>& structures);
-
-  template <typename F, typename A, typename... B>
-  friend inline A reduce(NestedNode<B>..., F, A);
-
-  template <class F, class TypeList>
-  friend class _apply;
-
-  template <class F, class... A>
-  friend inline void
-  apply(F&&, NestedNode<A>...);
-
   inline NestedNode<T> children(size_t i) const {
     return _children[i];
   }
-
   inline const T& payload() const {
     return _payload;
   }
-
-  inline T payload() {
+  inline T& payload() {
     return _payload;
   }
 
@@ -161,16 +121,17 @@ map(F&& fn, const NestedNode<B>&... nested_node) {
 }
 
 template <typename A>
-inline c10::List<A> flatten(NestedNode<A> nested_node) {
+inline std::vector<A> flatten(NestedNode<A> nested_node) {
   if (nested_node.is_leaf()) {
-    c10::List<A> result;
+    std::vector<A> result;
     result.push_back(nested_node.payload());
     return result;
   } else {
-    c10::List<A> result;
+    std::vector<A> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
-      c10::List<A> tmp = flatten<A>(nested_node.children(i));
-      result.append(std::move(tmp));
+      for (auto tmp : flatten<A>(nested_node.children(i))) {
+        result.push_back(std::move(tmp));
+      }
     }
     return result;
   }
@@ -179,7 +140,7 @@ inline c10::List<A> flatten(NestedNode<A> nested_node) {
 template <class R, class A>
 inline std::pair<int64_t, NestedNode<R>> _unflatten(
     const NestedNode<A>& structure,
-    const c10::List<R>& content,
+    const std::vector<R>& content,
     int64_t index) {
   if (structure.is_leaf()) {
     return std::pair<int64_t, NestedNode<R>>(
@@ -201,7 +162,9 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
 // matter. This function uses structure and content to create a new NestedNode
 // with the same shape as structure and content distributed in-order
 template <class R, class A>
-inline NestedNode<R> unflatten(NestedNode<A> structure, c10::List<R> content) {
+inline NestedNode<R> unflatten(
+    NestedNode<A> structure,
+    std::vector<R> content) {
   auto _result = _unflatten<R, A>(structure, content, 0);
   return std::get<1>(_result);
 }
@@ -271,15 +234,13 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
  public:
   // NOTE: We must move F to avoid copying objects if it is a lambda with
   // captures.
-  static void function(
-      F&& fn,
-      NestedNode<Args>... nested_node) {
+  static void function(F&& fn, NestedNode<Args>... nested_node) {
     auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
     if (first_node.is_leaf()) {
-      std::forward<F>(fn)(nested_node._payload...);
+      std::forward<F>(fn)(nested_node.payload()...);
     } else {
       for (size_t i = 0; i < first_node.degree(); i++) {
-        function(std::forward<F>(fn), nested_node._children[i]...);
+        function(std::forward<F>(fn), nested_node.children(i)...);
       }
     }
   };
