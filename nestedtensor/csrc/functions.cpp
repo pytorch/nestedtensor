@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#include <c10/core/CompileTimeFunctionPointer.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -405,8 +406,29 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
+template <class F, F func, class R, class TypeList>
+struct _Function_no_bw
+    : public torch::autograd::Function<_Function_no_bw<F, func, R, TypeList>> {
+};
+
+template <class F, F func, class R, class... Args>
+struct _Function_no_bw<F, func, R, c10::guts::typelist::typelist<Args...>>
+    : public torch::autograd::Function<_Function_no_bw<F, func, R, Args...>> {
+  static typename c10::guts::infer_function_traits<F>::type::return_type forward(
+      torch::autograd::AutogradContext* ctx,
+      Args... args) {
+    return (*func)(args...);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(false, "Backward not implemented for ", typeid(F).name());
+    return {};
+  }
+};
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
+  m.impl_UNBOXED("conv2d", TORCH_FN((_Function_no_bw<TORCH_FN_TYPE(NestedTensor_conv2d)>::apply)));
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
