@@ -151,32 +151,117 @@ struct NestedTensorFunction_batch_norm
       // doesn't require gradients.
       torch::autograd::variable_list grad_output) {
     auto weight = ctx->saved_data["0"].toTensor();
+    // std::cout << "weight: " << weight << std::endl;
     auto bias = ctx->saved_data["1"].toTensor();
+    // std::cout << "bias: " << bias << std::endl;
     auto autograd_output = ctx->saved_data["2"].toTensor();
     auto autograd_input = ctx->saved_data["3"].toTensor();
     auto weight_grad = torch::zeros_like(weight);
     auto bias_grad = torch::zeros_like(bias);
-    at::Tensor grad = map_nested_tensor(
-        [&](at::Tensor r, at::Tensor i, at::Tensor g) {
-          // TODO: Might have to retain graph in many to one settings.
-        std::cout << "callin grad on batchnorm " << std::endl;
-          // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt, false, true);
-          std::cout << "g.defined(): " << g.defined() << std::endl;
-          auto result = torch::autograd::grad({r}, {i, weight, bias}, {g});
-          weight_grad.add_(result[1]);
-          bias_grad.add_(result[2]);
-          return result[0];
-        },
-        autograd_output,
-        autograd_input,
-        grad_output[0]);
+    bool grad_undefined = false;
+    bool weight_grad_undefined = false;
+    bool bias_grad_undefined = false;
+
+    at::Tensor grad;
     TORCH_CHECK(grad_output.size() == 1, "not supported 0");
+    if (is_nested_tensor_impl(grad_output[0])) {
+      grad = map_nested_tensor(
+          [&](at::Tensor r, at::Tensor i, at::Tensor g) {
+            // TODO: Might have to retain graph in many to one settings.
+            std::cout << "callin grad on batchnorm " << std::endl;
+            std::cout << "g.defined(): " << g.defined() << std::endl;
+            std::cout << "i.defined(): " << i.defined() << std::endl;
+            std::cout << "r.defined(): " << r.defined() << std::endl;
+            auto result = torch::autograd::grad(
+                {r}, {i, weight, bias}, {g}, c10::nullopt, false, true);
+            // auto result = torch::autograd::grad({r}, {i, weight, bias}, {g});
+            std::cout << "result[0].defined(): " << result[0].defined()
+                      << std::endl;
+            std::cout << "result[1].defined(): " << result[1].defined()
+                      << std::endl;
+            std::cout << "result[2].defined(): " << result[2].defined()
+                      << std::endl;
+            // std::cout << "result[1]: " << result[1] << std::endl;
+            if (!result[1].defined()) {
+              weight_grad_undefined = true;
+            } else {
+              // TORCH_CHECK(!weight_grad_undefined, "it was undefined once
+              // 0".);
+              weight_grad.add_(result[1]);
+            }
+            if (!result[2].defined()) {
+              bias_grad_undefined = true;
+            } else {
+              // TORCH_CHECK(!bias_grad_undefined, "it was undefined once 1".);
+              bias_grad.add_(result[2]);
+            }
+            if (!result[0].defined()) {
+              grad_undefined = true;
+              std::cout << "grad is undefined" << std::endl;
+              // TODO: NestedTensor doesn't support undefined devices yet.
+              return torch::ones({0});
+            }
+            return result[0];
+          },
+          autograd_output,
+          autograd_input,
+          grad_output[0]);
+    } else {
+      grad = map_nested_tensor(
+          [&](at::Tensor r, at::Tensor i) {
+            // TODO: Might have to retain graph in many to one settings.
+            std::cout << "callin grad on batchnorm " << std::endl;
+            // std::cout << "g.defined(): " << g.defined() << std::endl;
+            std::cout << "i.defined(): " << i.defined() << std::endl;
+            std::cout << "r.defined(): " << r.defined() << std::endl;
+            auto result = torch::autograd::grad(
+                {r}, {i, weight, bias}, {grad_output[0]}, c10::nullopt, false, true);
+            // auto result = torch::autograd::grad({r}, {i, weight, bias}, {g});
+            std::cout << "result[0].defined(): " << result[0].defined()
+                      << std::endl;
+            std::cout << "result[1].defined(): " << result[1].defined()
+                      << std::endl;
+            std::cout << "result[2].defined(): " << result[2].defined()
+                      << std::endl;
+            // std::cout << "result[1]: " << result[1] << std::endl;
+            if (!result[1].defined()) {
+              weight_grad_undefined = true;
+            } else {
+              // TORCH_CHECK(!weight_grad_undefined, "it was undefined once
+              // 0".);
+              weight_grad.add_(result[1]);
+            }
+            if (!result[2].defined()) {
+              bias_grad_undefined = true;
+            } else {
+              // TORCH_CHECK(!bias_grad_undefined, "it was undefined once 1".);
+              bias_grad.add_(result[2]);
+            }
+            if (!result[0].defined()) {
+              grad_undefined = true;
+              std::cout << "grad is undefined" << std::endl;
+              // TODO: NestedTensor doesn't support undefined devices yet.
+              return torch::ones({0});
+            }
+            return result[0];
+          },
+          autograd_output,
+          autograd_input);
+    }
 
     at::Tensor undef;
     // at::Tensor grad_input;
     // grad_input.insert(grad_input.begin(), undef);
     // return grad_input;
-    return {grad, weight_grad, bias_grad, undef, undef, undef, undef, undef, undef};
+    return {grad_undefined ? undef : grad,
+            weight_grad_undefined ? undef : weight_grad,
+            bias_grad_undefined ? undef : bias_grad,
+            undef,
+            undef,
+            undef,
+            undef,
+            undef,
+            undef};
   }
 };
 

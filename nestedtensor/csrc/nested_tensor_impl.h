@@ -1,12 +1,11 @@
 #pragma once
 #include <ATen/ATen.h>
+#include <c10/util/Metaprogramming.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
-#include <c10/util/Metaprogramming.h>
 #include <torch/csrc/autograd/autograd.h>
 #include <torch/extension.h>
 #include <torch/library.h>
-
 
 namespace torch {
 namespace nested_tensor {
@@ -81,7 +80,6 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
 
-
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(
     const at::Tensor tensor);
@@ -98,20 +96,25 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
 }
 
 // The approach here is quite "simple". There are six different stages to this.
-// 1. We take the input NestedTensor whose constituents are, by design, required to not track gradients.
-// Only the NestedTensor as a whole is allowed to track that information.
-// 2. We take that NestedTensor and create a copy, i.e. a new NestedTensor, where the gradients do track
-// gradients. This is not a valid NestedTensor outside the context of this function and in the future we 
-// might decide to pick a different container, maybe even a flat list, for this purpose.
-// 3. We set these constiuents of the new NestedTensor to track gradients. A very important point here is
-// that within a custom autograd Function AutoGradMode is *disabled*, because we're defining a new elementary
-// operation within the Autograd graph and aren't appending to it. We're effectively creating a subgraph
-// for the purpose of this operation here that isn't connect to the overall graph that corresponds to
-// NestedTensor operations.
-// 4. We apply the differentiable function that was passed as an argument to each constiuents of the NestedTensor
-// from step 3 again while enabling AutoGradMode. We will again get a NestedTensor where the constituents track
-// gradients. To make sure we actually return a valid NestedTensor we detach this information for our return
-// value and save the NestedTensor from this step only for the backward pass.
+// 1. We take the input NestedTensor whose constituents are, by design, required
+// to not track gradients. Only the NestedTensor as a whole is allowed to track
+// that information.
+// 2. We take that NestedTensor and create a copy, i.e. a new NestedTensor,
+// where the gradients do track gradients. This is not a valid NestedTensor
+// outside the context of this function and in the future we might decide to
+// pick a different container, maybe even a flat list, for this purpose.
+// 3. We set these constiuents of the new NestedTensor to track gradients. A
+// very important point here is that within a custom autograd Function
+// AutoGradMode is *disabled*, because we're defining a new elementary operation
+// within the Autograd graph and aren't appending to it. We're effectively
+// creating a subgraph for the purpose of this operation here that isn't connect
+// to the overall graph that corresponds to NestedTensor operations.
+// 4. We apply the differentiable function that was passed as an argument to
+// each constiuents of the NestedTensor from step 3 again while enabling
+// AutoGradMode. We will again get a NestedTensor where the constituents track
+// gradients. To make sure we actually return a valid NestedTensor we detach
+// this information for our return value and save the NestedTensor from this
+// step only for the backward pass.
 // 5. This step does the actual detach of the constituents
 // 6. This step then returns the NestedTensor from step 5.
 template <typename F, class... A>
@@ -133,18 +136,18 @@ struct NestedTensorFunction_mapper
               },
               t);
           // if (t.requires_grad()) {
-            return map_nested_tensor(
-                // 2. Constituents of NestedTensors
-                [](at::Tensor ti) {
-                  AutoGradMode autogradmode(true);
-                  // TODO: Don't apply this if the corresponding NestedTensor
-                  // doesn't require a gradient.
-                  auto alias = ti.alias();
-                  alias.requires_grad_();
-                  // 3. Alias to constituents that do requires gradients
-                  return alias;
-                },
-                t);
+          return map_nested_tensor(
+              // 2. Constituents of NestedTensors
+              [](at::Tensor ti) {
+                AutoGradMode autogradmode(true);
+                // TODO: Don't apply this if the corresponding NestedTensor
+                // doesn't require a gradient.
+                auto alias = ti.alias();
+                alias.requires_grad_();
+                // 3. Alias to constituents that do requires gradients
+                return alias;
+              },
+              t);
           // }
           // return t;
         });
@@ -157,7 +160,11 @@ struct NestedTensorFunction_mapper
               [&](A... t) {
                 AutoGradMode autogradmode(true);
                 auto result = fn(t...);
-                TORCH_CHECK(result.requires_grad(), "fn ", typeid(F).name(), " doesn't seem differentiable.");
+                TORCH_CHECK(
+                    result.requires_grad(),
+                    "fn ",
+                    typeid(F).name(),
+                    " doesn't seem differentiable.");
                 return result;
               },
               a...);
@@ -182,21 +189,48 @@ struct NestedTensorFunction_mapper
     // std::cout << "grad_output_.size(): " << grad_output_.size() << std::endl;
     auto autograd_input_tuple = ctx->saved_data["0"].toTuple();
     auto autograd_output = ctx->saved_data["1"].toTensor();
-    auto grad_input = map_nested_tensor(
-        [](at::Tensor r, at::Tensor i, at::Tensor g) {
-          // TODO: Might have to retain graph in many to one settings.
-        std::cout << "callin grad: " << typeid(F).name() << std::endl;
-          // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt, false, true);
-          auto result = torch::autograd::grad({r}, {i}, {g});
-          TORCH_CHECK(result.size() == 1, "not supported 2");
-          return result[0];
-        },
-        autograd_output,
-        //        autograd_input_tuple[0].toTensor(),
-        autograd_input_tuple->elements()[0].toTensor(),
-        grad_output_[0]);
+    std::cout << "isntimpl 0: " << is_nested_tensor_impl(autograd_output)
+              << std::endl;
+    std::cout << "isntimpl 1: "
+              << is_nested_tensor_impl(
+                     autograd_input_tuple->elements()[0].toTensor())
+              << std::endl;
+    std::cout << "isntimpl 2: " << is_nested_tensor_impl(grad_output_[0])
+              << std::endl;
     TORCH_CHECK(grad_output_.size() == 1, "not supported 0");
-    TORCH_CHECK(autograd_input_tuple->elements().size() == 1, "not supported 1");
+    TORCH_CHECK(
+        autograd_input_tuple->elements().size() == 1, "not supported 1");
+    at::Tensor grad_input;
+    if (is_nested_tensor_impl(grad_output_[0])) {
+      grad_input = map_nested_tensor(
+          [](at::Tensor r, at::Tensor i, at::Tensor g) {
+            // TODO: Might have to retain graph in many to one settings.
+            std::cout << "callin grad: " << typeid(F).name() << std::endl;
+            // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt,
+            // false, true);
+            auto result = torch::autograd::grad({r}, {i}, {g});
+            TORCH_CHECK(result.size() == 1, "not supported 2");
+            return result[0];
+          },
+          autograd_output,
+          //        autograd_input_tuple[0].toTensor(),
+          autograd_input_tuple->elements()[0].toTensor(),
+          grad_output_[0]);
+    } else {
+      grad_input = map_nested_tensor(
+          [&](at::Tensor r, at::Tensor i) {
+            // TODO: Might have to retain graph in many to one settings.
+            std::cout << "callin grad: " << typeid(F).name() << std::endl;
+            // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt,
+            // false, true);
+            auto result = torch::autograd::grad({r}, {i}, {grad_output_[0]});
+            TORCH_CHECK(result.size() == 1, "not supported 2");
+            return result[0];
+          },
+          autograd_output,
+          //        autograd_input_tuple[0].toTensor(),
+          autograd_input_tuple->elements()[0].toTensor());
+    }
 
     at::Tensor undef;
     // at::Tensor grad_input;
@@ -256,6 +290,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
   Tensor to_nested_tensor(c10::optional<int64_t> dim);
   Tensor grad() {
+    std::cout << "GRADGRAD" << std::endl;
     auto fn = [](at::Tensor leaf, bool input) {
       return input && leaf.grad().defined();
     };

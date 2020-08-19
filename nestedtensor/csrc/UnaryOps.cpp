@@ -136,9 +136,13 @@ Tensor NestedTensor_relu(const Tensor& self) {
 struct NestedTensorFunction_relu_
     : public torch::autograd::Function<NestedTensorFunction_relu_> {
   static Tensor forward(torch::autograd::AutogradContext* ctx, Tensor& self) {
+    std::cout << "HERE0" << std::endl;
     apply_nested_tensor([](at::Tensor& t) { at::relu_(t); }, self);
+    std::cout << "HERE1" << std::endl;
     ctx->saved_data["0"] = self;
+    std::cout << "HERE2" << std::endl;
     ctx->mark_dirty({self});
+    std::cout << "HERE3" << std::endl;
     return self;
   }
   static torch::autograd::variable_list backward(
@@ -148,13 +152,27 @@ struct NestedTensorFunction_relu_
       torch::autograd::variable_list grad_output) {
     auto result = ctx->saved_data["0"].toTensor();
     auto grad = grad_output[0];
+    if (is_nested_tensor_impl(grad)) {
+      return {map_nested_tensor(
+          [](at::Tensor r, at::Tensor g) {
+            std::cout << "callin grad on relu_" << std::endl;
+            TORCH_CHECK(
+                !g.requires_grad(),
+                "NestedTensor relu_ doesn't support double backward.");
+            return threshold_backward(g, r, 0);
+          },
+          result,
+          grad)};
+    }
+    TORCH_CHECK(
+        !grad.requires_grad(),
+        "NestedTensor relu_ doesn't support double backward.");
     return {map_nested_tensor(
-        [](at::Tensor r, at::Tensor g) { 
-      std::cout << "callin grad on relu_" << std::endl;
-        TORCH_CHECK(!g.requires_grad(), "NestedTensor relu_ doesn't support double backward.");
-        return threshold_backward(g, r, 0); },
-        result,
-        grad)};
+        [&](at::Tensor r) {
+          std::cout << "callin grad on relu_" << std::endl;
+          return threshold_backward(grad, r, 0);
+        },
+        result)};
   }
 };
 
