@@ -82,8 +82,8 @@ class TestIntegration(TestCase):
         t_target = torch.stack([tr1, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        # output1 = model(t_input)
-        # output1 = output1["out"]
+        output1 = model(t_input)
+        output1 = output1["out"]
 
         # confmat.update(t_target.flatten(), output1.argmax(1).flatten())
         # confmat.reduce_from_all_processes()
@@ -105,23 +105,25 @@ class TestIntegration(TestCase):
         print("output2.requires_grad")
         print(output2.requires_grad)
 
-        for a, b in zip(nt_target, output2):
-            confmat2.update(a.flatten(), b.argmax(0).flatten())
+        # for a, b in zip(nt_target, output2):
+        #     confmat2.update(a.flatten(), b.argmax(0).flatten())
 
-        confmat2.reduce_from_all_processes()
-        self.assertEqual(confmat.mat, confmat2.mat)
+        # confmat2.reduce_from_all_processes()
+        # self.assertEqual(confmat.mat, confmat2.mat)
 
         # grad test
-        # output1_sum = output1[0].sum()
-        output2_sum = output2[0].sum()
-        # self.assertEqual(output1_sum, output2_sum)
+        output1_sum = output1.sum()
+        output2_sum = output2.sum()
+        print('output2_sum.requires_grad')
+        print(output2_sum.requires_grad)
+        self.assertEqual(output1_sum, output2_sum)
 
         # TODO: Re-enable this once autograd lands
-        # output1_sum.backward()
-        # output2_sum.backward()
+        output1_sum.backward()
+        output2_sum.backward()
 
-        # self.assertEqual(t1.grad, nt_input[0].grad)
-        # self.assertEqual(t2.grad, nt_input[1].grad)
+        self.assertEqual(t1.grad, nt_input[0].grad)
+        self.assertEqual(t2.grad, nt_input[1].grad)
 
 
 if __name__ == "__main__":

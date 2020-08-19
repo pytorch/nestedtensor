@@ -50,18 +50,43 @@ REDUCE_DIM_LIST_FUNC(mean_dim, at::mean, "mean");
 REDUCE_DIM_LIST_FUNC(sum_dim, at::sum, "sum");
 #undef REDUCE_DIM_LIST_FUNC
 
-Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-          get_nested_tensor_structure(self)));
-  if (tensors.size() == 0) {
-    if (dtype) {
-      return at::ones({0}, *dtype);
+struct NestedTensorFunction_sum
+    : torch::autograd::Function<NestedTensorFunction_sum> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      const Tensor& self,
+      c10::optional<ScalarType> dtype) {
+    auto tensors = flatten(
+        map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
+            get_nested_tensor_structure(self)));
+    if (tensors.size() == 0) {
+      if (dtype) {
+        return at::ones({0}, *dtype);
+      }
+      return at::ones({0});
     }
-    return at::ones({0});
+    auto all_tensor = at::stack(tensors);
+    ctx->saved_data["0"] = self;
+    return at::sum(all_tensor, dtype);
   }
-  auto all_tensor = at::stack(tensors);
-  return at::sum(all_tensor, dtype);
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      // TODO: To prevent double backward (for now) check that grad_output
+      // doesn't require gradients.
+      torch::autograd::variable_list grad_output) {
+    at::Tensor self = ctx->saved_data["0"].toTensor();
+    auto grad = grad_output[0];
+    TORCH_CHECK(
+        !grad.requires_grad(),
+        "NestedTensor sum doesn't support double backward.");
+    at::Tensor undef;
+    return {map_nested_tensor(
+        [&](at::Tensor s) { return grad.expand(s.sizes()); }, self), undef};
+  }
+};
+
+Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
+  return NestedTensorFunction_sum::apply(self, dtype);
 }
 
 Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
