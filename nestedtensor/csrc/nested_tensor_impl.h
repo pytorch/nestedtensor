@@ -1,6 +1,6 @@
 #pragma once
-#include <c10/core/CompileTimeFunctionPointer.h>
 #include <ATen/ATen.h>
+#include <c10/core/CompileTimeFunctionPointer.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
@@ -78,7 +78,6 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
-
 
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(
@@ -252,8 +251,16 @@ struct _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>
 template <class FuncPtr, class ParameterTypes>
 struct _Function_no_bw_wrapper {};
 
+// you have to create a wrapper struct to create a version of apply that only
+// accepts the arguments defined in forward. torch::autograd::Function::apply
+// accepts any arguments regardless of what signature
+// torch::autograd::Function::forward has and therefore you can't resolve it's
+// signature. Instead you'd expect apply to have the exact same signature as
+// forward
 template <class FuncPtr, class... Parameters>
-struct _Function_no_bw_wrapper<FuncPtr, c10::guts::typelist::typelist<Parameters...>> {
+struct _Function_no_bw_wrapper<
+    FuncPtr,
+    c10::guts::typelist::typelist<Parameters...>> {
   using AutogradFunction =
       _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>;
   using ReturnType = typename c10::guts::infer_function_traits_t<
@@ -268,7 +275,8 @@ constexpr auto no_bw(FuncPtr /*func_ptr*/) {
   using function_traits =
       c10::guts::infer_function_traits_t<typename FuncPtr::FuncType>;
   using parameter_types = typename function_traits::parameter_types;
-  using AutogradFunctionWrapper = _Function_no_bw_wrapper<FuncPtr, parameter_types>;
+  using AutogradFunctionWrapper =
+      _Function_no_bw_wrapper<FuncPtr, parameter_types>;
   // return TORCH_FN(&AutogradFunctionWrapper::apply);
   return &AutogradFunctionWrapper::apply;
 }

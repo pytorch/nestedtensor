@@ -37,12 +37,12 @@ class TestReduce(TestCase):
         t1 = torch.randn(2, 3, requires_grad=True)
         t2 = torch.randn(3, 3, requires_grad=True)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts) #, requires_grad=True)
+        nt = nestedtensor.nested_tensor(ts, requires_grad=True)
         t = fn(nt)
         a = torch.stack([fn(t0), fn(t1), fn(t2)])
         self.assertEqual(t, fn(a))
         fn(a).backward()
-        self.assertRaises(RuntimeError, lambda: t.backward())
+        t.backward()
         # TODO: Re-enable under autograd
         # self.assertEqual(nt.grad[0][0], t0.grad)
         # self.assertEqual(nt.grad[0][1], t1.grad)
