@@ -65,6 +65,8 @@ class TestFunctional(TestCase):
         nt = ntnt(inputs)
         nt_res = conv2d(nt)
         self.assertEqual(ntnt(tensor_res), nt_res)
+        nt_res.sum().backward()
+        print(nt.grad)
         # self.assertEqual(nestedtensor.nested_tensor(
         #     tensor_res), nt_res)
 
@@ -240,9 +242,11 @@ class TestFunctional(TestCase):
             t_res = relu(inputs[i].unsqueeze(0).contiguous())
             tensor_res.append(t_res.squeeze(0))
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = relu(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+        nt = ntnt(inputs)
+        print(nt.requires_grad)
+        nt_res = relu(nt)
+        print(nt_res.requires_grad)
+        self.assertEqual(ntnt(tensor_res), nt_res)
 
     def test_nn_functional_relu(self):
         inputs = [

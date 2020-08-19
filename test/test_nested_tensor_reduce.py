@@ -10,7 +10,7 @@ import random
 
 import utils
 
-ntnt = nestedtensor.nested_tensor
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 class TestReduce(TestCase):
 
@@ -19,7 +19,10 @@ class TestReduce(TestCase):
         t1 = torch.arange(6).float().reshape(2, 3)
         t2 = torch.arange(9).float().reshape(3, 3)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
+
+        print(nt.requires_grad)
+        print(fn(nt, 2).requires_grad)
 
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))
         self.assertRaises(RuntimeError, lambda: fn(nt, 1))
@@ -37,20 +40,21 @@ class TestReduce(TestCase):
         t1 = torch.randn(2, 3, requires_grad=True)
         t2 = torch.randn(3, 3, requires_grad=True)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts) #, requires_grad=True)
+        # nt = nestedtensor.nested_tensor(ts) #, requires_grad=True)
+        nt = ntnt(ts)
         t = fn(nt)
         a = torch.stack([fn(t0), fn(t1), fn(t2)])
         self.assertEqual(t, fn(a))
         fn(a).backward()
-        self.assertRaises(RuntimeError, lambda: t.backward())
+        t.backward()
         # TODO: Re-enable under autograd
-        # self.assertEqual(nt.grad[0][0], t0.grad)
-        # self.assertEqual(nt.grad[0][1], t1.grad)
-        # self.assertEqual(nt.grad[1][0], t2.grad)
+        self.assertEqual(nt.grad[0][0], t0.grad)
+        self.assertEqual(nt.grad[0][1], t1.grad)
+        self.assertEqual(nt.grad[1][0], t2.grad)
 
     def test_sum(self):
         self._test_allreduce(lambda x: x.sum())
-        self._test_reduce_dim(torch.sum)
+        # self._test_reduce_dim(torch.sum)
 
     def test_mean(self):
         self._test_allreduce(lambda x: x.mean())

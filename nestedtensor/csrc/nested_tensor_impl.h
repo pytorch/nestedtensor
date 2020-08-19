@@ -132,34 +132,23 @@ struct NestedTensorFunction_mapper
                     "Input constituents shouldn't require gradients.");
               },
               t);
-          if (t.requires_grad()) {
+          // if (t.requires_grad()) {
             return map_nested_tensor(
                 // 2. Constituents of NestedTensors
                 [](at::Tensor ti) {
                   AutoGradMode autogradmode(true);
                   // TODO: Don't apply this if the corresponding NestedTensor
                   // doesn't require a gradient.
-                  ti.alias().requires_grad_();
+                  auto alias = ti.alias();
+                  alias.requires_grad_();
                   // 3. Alias to constituents that do requires gradients
-                  return ti;
+                  return alias;
                 },
                 t);
-          }
-          return t;
+          // }
+          // return t;
         });
     auto autograd_input_tuple = autograd_input_tuple_;
-
-    auto tmp1 =
-        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
-          apply_nested_tensor(
-              [](at::Tensor& ti) {
-                TORCH_CHECK(
-                    !ti.requires_grad(),
-                    "Input constituents shouldn't require gradients.");
-              },
-              t);
-          return t;
-        });
 
     // 4. Output of differentiable function given Tensor from step 3.
     at::Tensor autograd_output = c10::guts::apply(
@@ -167,23 +156,13 @@ struct NestedTensorFunction_mapper
           return map_nested_tensor(
               [&](A... t) {
                 AutoGradMode autogradmode(true);
-                return fn(t...);
+                auto result = fn(t...);
+                TORCH_CHECK(result.requires_grad(), "fn ", typeid(F).name(), " doesn't seem differentiable.");
+                return result;
               },
               a...);
         },
         std::move(autograd_input_tuple_));
-
-    auto tmp2 =
-        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
-          apply_nested_tensor(
-              [](at::Tensor& ti) {
-                TORCH_CHECK(
-                    !ti.requires_grad(),
-                    "Input constituents shouldn't require gradients.");
-              },
-              t);
-          return t;
-        });
 
     ctx->saved_data["0"] = autograd_input_tuple;
     ctx->saved_data["1"] = autograd_output;
@@ -191,19 +170,6 @@ struct NestedTensorFunction_mapper
     // 5. Constituents of output NestedTensor
     auto output = map_nested_tensor(
         [](at::Tensor t) { return t.detach(); }, autograd_output);
-
-    auto tmp3 =
-        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
-          apply_nested_tensor(
-              [](at::Tensor& ti) {
-                TORCH_CHECK(
-                    !ti.requires_grad(),
-                    "Input constituents shouldn't require gradients.");
-              },
-              t);
-          return t;
-        });
-
 
     // 6. Output NestedTensor
     return output;
@@ -219,12 +185,18 @@ struct NestedTensorFunction_mapper
     auto grad_input = map_nested_tensor(
         [](at::Tensor r, at::Tensor i, at::Tensor g) {
           // TODO: Might have to retain graph in many to one settings.
-          return torch::autograd::grad({r}, {i}, {g})[0];
+        std::cout << "callin grad: " << typeid(F).name() << std::endl;
+          // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt, false, true);
+          auto result = torch::autograd::grad({r}, {i}, {g});
+          TORCH_CHECK(result.size() == 1, "not supported 2");
+          return result[0];
         },
         autograd_output,
         //        autograd_input_tuple[0].toTensor(),
         autograd_input_tuple->elements()[0].toTensor(),
         grad_output_[0]);
+    TORCH_CHECK(grad_output_.size() == 1, "not supported 0");
+    TORCH_CHECK(autograd_input_tuple->elements().size() == 1, "not supported 1");
 
     at::Tensor undef;
     // at::Tensor grad_input;
@@ -273,6 +245,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
         get_structure(),
         get_nested_tensor_impl(gradient)->get_structure());
   }
+  c10::intrusive_ptr<c10::TensorImpl> shallow_copy_and_detach(
+      const c10::VariableVersion& version_counter,
+      bool allow_tensor_metadata_change) const override;
+
+  // TODO:
+  void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
   int64_t nested_dim() const {
     return get_structure().height();
   }
@@ -286,17 +264,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
     }
     return wrap_tensor_node(
         map([](at::Tensor tensor) { return tensor.grad(); }, get_structure()));
-  }
-  Tensor requires_grad_(bool requires_grad) {
-    apply(
-        [requires_grad](at::Tensor& tensor) -> void {
-          tensor.set_requires_grad(requires_grad);
-        },
-        get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(_structure);
-  }
-  bool requires_grad() const {
-    return _first_variable.requires_grad();
   }
   bool is_pinned() const {
     return _first_variable.is_pinned();
