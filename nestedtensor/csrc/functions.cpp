@@ -156,15 +156,16 @@ struct NestedTensorFunction_batch_norm
     auto autograd_input = ctx->saved_data["3"].toTensor();
     auto weight_grad = torch::zeros_like(weight);
     auto bias_grad = torch::zeros_like(bias);
-    apply_nested_tensor(
-        [&](at::Tensor& r, at::Tensor& i, at::Tensor& g) {
+    at::Tensor grad = map_nested_tensor(
+        [&](at::Tensor r, at::Tensor i, at::Tensor g) {
           // TODO: Might have to retain graph in many to one settings.
         std::cout << "callin grad on batchnorm " << std::endl;
           // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt, false, true);
-          auto result = torch::autograd::grad({r}, {weight, bias}, {g});
+          std::cout << "g.defined(): " << g.defined() << std::endl;
+          auto result = torch::autograd::grad({r}, {i, weight, bias}, {g});
           weight_grad.add_(result[1]);
           bias_grad.add_(result[2]);
-          // return result[0];
+          return result[0];
         },
         autograd_output,
         autograd_input,
@@ -175,7 +176,7 @@ struct NestedTensorFunction_batch_norm
     // at::Tensor grad_input;
     // grad_input.insert(grad_input.begin(), undef);
     // return grad_input;
-    return {undef, weight_grad, bias_grad, undef, undef, undef, undef, undef, undef};
+    return {grad, weight_grad, bias_grad, undef, undef, undef, undef, undef, undef};
   }
 };
 

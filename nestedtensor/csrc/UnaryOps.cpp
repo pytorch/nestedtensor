@@ -150,6 +150,7 @@ struct NestedTensorFunction_relu_
     auto grad = grad_output[0];
     return {map_nested_tensor(
         [](at::Tensor r, at::Tensor g) { 
+      std::cout << "callin grad on relu_" << std::endl;
         TORCH_CHECK(!g.requires_grad(), "NestedTensor relu_ doesn't support double backward.");
         return threshold_backward(g, r, 0); },
         result,
