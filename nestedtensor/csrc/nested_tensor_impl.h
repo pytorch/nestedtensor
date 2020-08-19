@@ -1,7 +1,10 @@
 #pragma once
+#include <c10/core/CompileTimeFunctionPointer.h>
 #include <ATen/ATen.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
+#include <torch/extension.h>
+#include <torch/library.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -221,6 +224,53 @@ inline std::ostream& operator<<(
   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
   out << std::endl;
   return out;
+}
+
+template <class FuncPtr, class ParameterTypes>
+struct _Function_no_bw {};
+
+template <class FuncPtr, class... Parameters>
+struct _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>
+    : public torch::autograd::Function<_Function_no_bw<
+          FuncPtr,
+          c10::guts::typelist::typelist<Parameters...>>> {
+  using ReturnType = typename c10::guts::infer_function_traits_t<
+      typename FuncPtr::FuncType>::return_type;
+  static ReturnType forward(
+      torch::autograd::AutogradContext* ctx,
+      Parameters... args) {
+    return (*FuncPtr::func_ptr())(std::forward<Parameters>(args)...);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(false, "Backward not implemented for ", typeid(FuncPtr).name());
+    return {};
+  }
+};
+
+template <class FuncPtr, class ParameterTypes>
+struct _Function_no_bw_wrapper {};
+
+template <class FuncPtr, class... Parameters>
+struct _Function_no_bw_wrapper<FuncPtr, c10::guts::typelist::typelist<Parameters...>> {
+  using AutogradFunction =
+      _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>;
+  using ReturnType = typename c10::guts::infer_function_traits_t<
+      typename FuncPtr::FuncType>::return_type;
+  static ReturnType apply(Parameters... args) {
+    return AutogradFunction::apply(args...);
+  }
+};
+
+template <class FuncPtr>
+constexpr auto no_bw(FuncPtr /*func_ptr*/) {
+  using function_traits =
+      c10::guts::infer_function_traits_t<typename FuncPtr::FuncType>;
+  using parameter_types = typename function_traits::parameter_types;
+  using AutogradFunctionWrapper = _Function_no_bw_wrapper<FuncPtr, parameter_types>;
+  // return TORCH_FN(&AutogradFunctionWrapper::apply);
+  return &AutogradFunctionWrapper::apply;
 }
 
 } // namespace at
