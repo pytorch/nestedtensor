@@ -74,7 +74,7 @@ class TestIntegration(TestCase):
         model = torchvision.models.segmentation.__dict__[model_name](
             num_classes=num_classes, aux_loss=aux_loss, pretrained=True
         )
-        print(model)
+        # print(model)
         model.eval()
 
         # tensor run
@@ -100,10 +100,10 @@ class TestIntegration(TestCase):
 
         output2 = model(nt_input)
         output2 = output2["out"]
-        print("nt_input.requires_grad")
-        print(nt_input.requires_grad)
-        print("output2.requires_grad")
-        print(output2.requires_grad)
+        # print("nt_input.requires_grad")
+        # print(nt_input.requires_grad)
+        # print("output2.requires_grad")
+        # print(output2.requires_grad)
 
         # for a, b in zip(nt_target, output2):
         #     confmat2.update(a.flatten(), b.argmax(0).flatten())
@@ -114,8 +114,8 @@ class TestIntegration(TestCase):
         # grad test
         output1_sum = output1.sum()
         output2_sum = output2.sum()
-        print('output2_sum.requires_grad')
-        print(output2_sum.requires_grad)
+        # print('output2_sum.requires_grad')
+        # print(output2_sum.requires_grad)
         self.assertEqual(output1_sum, output2_sum)
 
         # TODO: Re-enable this once autograd lands

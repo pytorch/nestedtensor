@@ -18,7 +18,7 @@ class TestNestedTensorBuffer(TestCase):
         nt.requires_grad_(True)
         a = nt.unbind()[0]
         c = nt.sum()
-        self.assertRaises(RuntimeError, lambda: c.backward())
+        c.backward()
         # TODO: Should this have a gradient or not?
         # What if nt was constructed with as_nested_tensor vs. nested_tensor
         # When calling unbind on a torch.Tensor it doesn't have a grad,

@@ -122,7 +122,7 @@ struct NestedTensorFunction_mapper
       F&& fn,
       // 1. Original NestedTensors
       A... input) {
-    std::cout << "Calling: " << typeid(F).name() << std::endl;
+    // std::cout << "Calling: " << typeid(F).name() << std::endl;
     auto autograd_input_tuple_ =
         c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
           apply_nested_tensor(
@@ -213,7 +213,7 @@ struct NestedTensorFunction_mapper
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output_) {
-    std::cout << "grad_output_.size(): " << grad_output_.size() << std::endl;
+    // std::cout << "grad_output_.size(): " << grad_output_.size() << std::endl;
     auto autograd_input_tuple = ctx->saved_data["0"].toTuple();
     auto autograd_output = ctx->saved_data["1"].toTensor();
     auto grad_input = map_nested_tensor(
