@@ -289,17 +289,17 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return get_structure().height();
   }
   Tensor to_nested_tensor(c10::optional<int64_t> dim);
-  Tensor grad() {
-    std::cout << "GRADGRAD" << std::endl;
-    auto fn = [](at::Tensor leaf, bool input) {
-      return input && leaf.grad().defined();
-    };
-    if (!reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true)) {
-      throw std::runtime_error("Grad is undefined");
-    }
-    return wrap_tensor_node(
-        map([](at::Tensor tensor) { return tensor.grad(); }, get_structure()));
-  }
+  // Tensor grad() {
+  //   std::cout << "GRADGRAD" << std::endl;
+  //   auto fn = [](at::Tensor leaf, bool input) {
+  //     return input && leaf.grad().defined();
+  //   };
+  //   if (!reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true)) {
+  //     throw std::runtime_error("Grad is undefined");
+  //   }
+  //   return wrap_tensor_node(
+  //       map([](at::Tensor tensor) { return tensor.grad(); }, get_structure()));
+  // }
   bool is_pinned() const {
     return _first_variable.is_pinned();
   }
