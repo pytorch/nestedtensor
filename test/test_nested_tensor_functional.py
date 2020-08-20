@@ -131,7 +131,7 @@ class TestFunctional(TestCase):
                           [[0.2500, 0.5000], [1.5000, -1.5000]]])
         ]
 
-        batch_norm = torch.nn.BatchNorm2d(2, 1e-05, 0.1)
+        batch_norm = torch.nn.BatchNorm2d(2, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
         batch_norm = batch_norm.eval()
 
         tensor_res = []
@@ -145,9 +145,12 @@ class TestFunctional(TestCase):
         #     tensor_res, requires_grad=True), nt_res)
         self.assertEqual(ntnt(tensor_res), nt_res)
         print(nt_res)
+        print(list(p.grad for (n, p) in batch_norm.named_parameters()))
+        print(nt.grad)
         s = nt_res.sum()
         s.backward()
         print(nt.grad)
+        print(list(p.grad for (n, p) in batch_norm.named_parameters()))
 
     def test_nn_functional_batch_norm(self):
         inputs = [
