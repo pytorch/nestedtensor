@@ -72,34 +72,41 @@ class TestIntegration(TestCase):
         model_name = "fcn_resnet101"
         num_classes = 21
         aux_loss = "store_true"
-        model = torchvision.models.segmentation.__dict__[model_name](
+        model0 = torchvision.models.segmentation.__dict__[model_name](
             num_classes=num_classes, aux_loss=aux_loss, pretrained=True
         )
-        print(model)
-        model.eval()
+        model0.eval()
+
 
         # tensor run
-        t_input = torch.stack([t1, t2])
-        t_target = torch.stack([tr1, tr2])
+        t_input = torch.stack([t1]) #, t2])
+        t_target = torch.stack([tr1]) #, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        output1 = model(t_input)
+        output1 = model0(t_input)
         output1 = output1["out"]
+        output1_sum = output1.sum()
+        output1_sum.backward()
 
         # confmat.update(t_target.flatten(), output1.argmax(1).flatten())
         # confmat.reduce_from_all_processes()
 
         # nt run
+
+        model1 = torchvision.models.segmentation.__dict__[model_name](
+            num_classes=num_classes, aux_loss=aux_loss, pretrained=True
+        )
+        model1.eval()
         nt_t1 = t1.clone().detach()
         nt_t2 = t2.clone().detach()
         nt_tr1 = tr1.clone().detach()
         nt_tr2 = tr2.clone().detach()
 
-        nt_input = ntnt([nt_t1, nt_t2])
-        nt_target = ntnt([nt_tr1, nt_tr2])
+        nt_input = ntnt([nt_t1]) # , nt_t2])
+        nt_target = ntnt([nt_tr1]) # , nt_tr2])
         confmat2 = ConfusionMatrix(num_classes)
 
-        output2 = model(nt_input)
+        output2 = model1(nt_input)
         output2 = output2["out"]
         # print("nt_input.requires_grad")
         # print(nt_input.requires_grad)
@@ -113,7 +120,6 @@ class TestIntegration(TestCase):
         # self.assertEqual(confmat.mat, confmat2.mat)
 
         # grad test
-        output1_sum = output1.sum()
         output2_sum = output2.sum()
         print('output1_sum')
         print(output1_sum)
@@ -122,12 +128,19 @@ class TestIntegration(TestCase):
         print('output2_sum.requires_grad')
         print(output2_sum.requires_grad)
         self.assertEqual(output1_sum, output2_sum)
-
-        # TODO: Re-enable this once autograd lands
-        output1_sum.backward()
         output2_sum.backward()
-        print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model.named_parameters()))))
-        print(nt_input.grad)
+        print(model1)
+
+        a = list(model0.named_parameters())
+        b = list(model1.named_parameters())
+        for (n0, p0), (n1, p1) in zip(a, b):
+            print((n0, n1))
+            if (p1.grad is None):
+                print("IS NONE")
+                continue
+            self.assertEqual(p0.grad, p1.grad)
+        # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model0.named_parameters()))))
+        # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model1.named_parameters()))))
 
         self.assertEqual(t1.grad, nt_input.grad[0])
         self.assertEqual(t2.grad, nt_input.grad[1])

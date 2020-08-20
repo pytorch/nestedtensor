@@ -236,24 +236,24 @@ class TestFunctional(TestCase):
     def test_nn_relu(self):
         def _test(relu):
             inputs = [
-                torch.randn(3, 500, 600),
-                torch.randn(3, 128, 128)
+                torch.randn(3, 500, 600, requires_grad=True),
+                torch.randn(3, 128, 128, requires_grad=True)
             ]
 
             tensor_res = []
             for i in range(2):
                 t_res = relu(inputs[i].unsqueeze(0).contiguous())
                 tensor_res.append(t_res.squeeze(0))
+                tensor_res[i].sum().backward()
 
             nt = ntnt(inputs)
-            print(nt.requires_grad)
             nt_res = relu(nt)
-            print(nt_res.requires_grad)
             self.assertEqual(ntnt(tensor_res), nt_res)
             nt_res.sum().backward()
-            print(nt.grad)
+            self.assertEqual(inputs[0].grad, nt.grad[0])
+            self.assertEqual(inputs[1].grad, nt.grad[1])
         _test(torch.nn.ReLU())
-        _test(torch.nn.ReLU(inplace=True))
+        # _test(torch.nn.ReLU(inplace=True))
 
     def test_nn_functional_relu(self):
         inputs = [

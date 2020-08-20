@@ -117,6 +117,12 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
 // step only for the backward pass.
 // 5. This step does the actual detach of the constituents
 // 6. This step then returns the NestedTensor from step 5.
+//
+// NOTE: This doesn't account for propagating gradients to gradient carrying
+// functions caught in the closure of func. For example, batchnorm will want
+// to get gradients for its weight and bias. If they are regular Tensors
+// they won't be given as inputs and their gradients won't be propagated
+// by this mapper.
 template <typename F, class... A>
 struct NestedTensorFunction_mapper
     : public torch::autograd::Function<NestedTensorFunction_mapper<F, A...>> {
@@ -186,17 +192,8 @@ struct NestedTensorFunction_mapper
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output_) {
-    // std::cout << "grad_output_.size(): " << grad_output_.size() << std::endl;
     auto autograd_input_tuple = ctx->saved_data["0"].toTuple();
     auto autograd_output = ctx->saved_data["1"].toTensor();
-    std::cout << "isntimpl 0: " << is_nested_tensor_impl(autograd_output)
-              << std::endl;
-    std::cout << "isntimpl 1: "
-              << is_nested_tensor_impl(
-                     autograd_input_tuple->elements()[0].toTensor())
-              << std::endl;
-    std::cout << "isntimpl 2: " << is_nested_tensor_impl(grad_output_[0])
-              << std::endl;
     TORCH_CHECK(grad_output_.size() == 1, "not supported 0");
     TORCH_CHECK(
         autograd_input_tuple->elements().size() == 1, "not supported 1");
@@ -204,38 +201,25 @@ struct NestedTensorFunction_mapper
     if (is_nested_tensor_impl(grad_output_[0])) {
       grad_input = map_nested_tensor(
           [](at::Tensor r, at::Tensor i, at::Tensor g) {
-            // TODO: Might have to retain graph in many to one settings.
-            std::cout << "callin grad: " << typeid(F).name() << std::endl;
-            // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt,
-            // false, true);
             auto result = torch::autograd::grad({r}, {i}, {g});
             TORCH_CHECK(result.size() == 1, "not supported 2");
             return result[0];
           },
           autograd_output,
-          //        autograd_input_tuple[0].toTensor(),
           autograd_input_tuple->elements()[0].toTensor(),
           grad_output_[0]);
     } else {
       grad_input = map_nested_tensor(
           [&](at::Tensor r, at::Tensor i) {
-            // TODO: Might have to retain graph in many to one settings.
-            std::cout << "callin grad: " << typeid(F).name() << std::endl;
-            // auto result = torch::autograd::grad({r}, {i}, {g}, c10::nullopt,
-            // false, true);
             auto result = torch::autograd::grad({r}, {i}, {grad_output_[0]});
             TORCH_CHECK(result.size() == 1, "not supported 2");
             return result[0];
           },
           autograd_output,
-          //        autograd_input_tuple[0].toTensor(),
           autograd_input_tuple->elements()[0].toTensor());
     }
 
     at::Tensor undef;
-    // at::Tensor grad_input;
-    // grad_input.insert(grad_input.begin(), undef);
-    // return grad_input;
     return {undef, grad_input};
   }
 };
