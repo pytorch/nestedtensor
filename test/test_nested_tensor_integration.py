@@ -138,6 +138,8 @@ class TestIntegration(TestCase):
             if (p1.grad is None):
                 print("IS NONE")
                 continue
+            print(p0.grad)
+            print(p1.grad)
             self.assertEqual(p0.grad, p1.grad)
         # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model0.named_parameters()))))
         # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model1.named_parameters()))))
