@@ -11,7 +11,6 @@ namespace at {
 
 using namespace torch::nested_tensor;
 using namespace c10;
-using namespace torch::autograd;
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.

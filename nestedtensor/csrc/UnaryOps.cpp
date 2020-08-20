@@ -128,56 +128,6 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       [p](at::Tensor tensor) { return at::mvlgamma(tensor, p); }, self);
 }
 
-Tensor NestedTensor_relu(const Tensor& self) {
-  return autograd_map_nested_tensor(
-      [](at::Tensor tensor) { return at::relu(tensor); }, self);
-}
-
-struct NestedTensorFunction_relu_
-    : public torch::autograd::Function<NestedTensorFunction_relu_> {
-  static Tensor forward(torch::autograd::AutogradContext* ctx, Tensor& self) {
-    ctx->saved_data["0"] = self.clone();
-    apply_nested_tensor([](at::Tensor& t) { at::relu_(t); }, self);
-    ctx->mark_dirty({self});
-    return self;
-  }
-  static torch::autograd::variable_list backward(
-      torch::autograd::AutogradContext* ctx,
-      // TODO: To prevent double backward (for now) check that grad_output
-      // doesn't require gradients.
-      torch::autograd::variable_list grad_output) {
-    auto result = ctx->saved_data["0"].toTensor();
-    auto grad = grad_output[0];
-    if (is_nested_tensor_impl(grad)) {
-      return {map_nested_tensor(
-          [](at::Tensor r, at::Tensor g) {
-            TORCH_CHECK(
-                !g.requires_grad(),
-                "NestedTensor relu_ doesn't support double backward.");
-            auto res = threshold_backward(g, r, 0);
-            std::cout << "res0: " << res.sum() << std::endl;
-            return res;
-          },
-          result,
-          grad)};
-    }
-    TORCH_CHECK(
-        !grad.requires_grad(),
-        "NestedTensor relu_ doesn't support double backward.");
-    return {map_nested_tensor(
-        [&](at::Tensor r) {
-          auto res = threshold_backward(grad, r, 0);
-          std::cout << "res1: " << res.sum() << std::endl;
-          return res;
-        },
-        result)};
-  }
-};
-
-Tensor& NestedTensor_relu_(Tensor& self) {
-  NestedTensorFunction_relu_::apply(self);
-  return self;
-}
 
 #define UNARY_OP_INPLACE_METHOD(NAME)                                       \
   m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
@@ -238,9 +188,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(tan);
   UNARY_OP(tanh);
   UNARY_OP(trunc);
-
-  m.impl_UNBOXED("relu", NestedTensor_relu);
-  m.impl_UNBOXED("relu_", NestedTensor_relu_);
 
   // NOTE: mvlgamma doesn't have an out variant? why?
   m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
