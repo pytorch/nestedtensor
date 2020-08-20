@@ -126,9 +126,11 @@ class TestIntegration(TestCase):
         # TODO: Re-enable this once autograd lands
         output1_sum.backward()
         output2_sum.backward()
+        print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model.named_parameters()))))
+        print(nt_input.grad)
 
-        self.assertEqual(t1.grad, nt_input[0].grad)
-        self.assertEqual(t2.grad, nt_input[1].grad)
+        self.assertEqual(t1.grad, nt_input.grad[0])
+        self.assertEqual(t2.grad, nt_input.grad[1])
 
 
 if __name__ == "__main__":
