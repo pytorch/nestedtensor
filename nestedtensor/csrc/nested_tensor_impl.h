@@ -277,7 +277,6 @@ constexpr auto no_bw(FuncPtr /*func_ptr*/) {
   using parameter_types = typename function_traits::parameter_types;
   using AutogradFunctionWrapper =
       _Function_no_bw_wrapper<FuncPtr, parameter_types>;
-  // return TORCH_FN(&AutogradFunctionWrapper::apply);
   return &AutogradFunctionWrapper::apply;
 }
 

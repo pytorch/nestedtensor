@@ -406,26 +406,26 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", no_bw(TORCH_FN(NestedTensor_conv2d)));
-  m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
-  m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  m.impl_UNBOXED("dropout", NestedTensor_dropout);
-  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
-  m.impl_UNBOXED("embedding", NestedTensor_embedding);
-  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
-  m.impl_UNBOXED("any", NestedTensor_any);
-  m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
-  m.impl_UNBOXED("reshape", NestedTensor_reshape);
-  m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
-  m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
-  m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
-  m.impl_UNBOXED("matmul", NestedTensor_matmul);
-  m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
-  m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
-  m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
-  m.impl_UNBOXED("stack", NestedTensor_stack);
-  m.impl_UNBOXED("stack.out", NestedTensor_stack_out);
-  m.impl_UNBOXED("cat", NestedTensor_cat);
-  m.impl_UNBOXED("cat.out", NestedTensor_cat_out);
+  m.impl_UNBOXED("batch_norm", no_bw(TORCH_FN(NestedTensor_batch_norm)));
+  m.impl_UNBOXED("max_pool2d", no_bw(TORCH_FN(NestedTensor_max_pool2d)));
+  m.impl_UNBOXED("dropout", no_bw(TORCH_FN(NestedTensor_dropout)));
+  m.impl_UNBOXED("dropout_", no_bw(TORCH_FN(NestedTensor_dropout_)));
+  m.impl_UNBOXED("embedding", no_bw(TORCH_FN(NestedTensor_embedding)));
+  m.impl_UNBOXED("add_.Tensor", no_bw(TORCH_FN(NestedTensor_add_)));
+  m.impl_UNBOXED("any", no_bw(TORCH_FN(NestedTensor_any)));
+  m.impl_UNBOXED("all", no_bw(TORCH_FN(NestedTensor_all)));
+  m.impl_UNBOXED("_log_softmax", no_bw(TORCH_FN(NestedTensor__log_softmax)));
+  m.impl_UNBOXED("reshape", no_bw(TORCH_FN(NestedTensor_reshape)));
+  m.impl_UNBOXED("transpose.int", no_bw(TORCH_FN(NestedTensor_transpose)));
+  m.impl_UNBOXED("softmax.int", no_bw(TORCH_FN(NestedTensor_softmax)));
+  m.impl_UNBOXED("layer_norm", no_bw(TORCH_FN(NestedTensor_layer_norm)));
+  m.impl_UNBOXED("matmul", no_bw(TORCH_FN(NestedTensor_matmul)));
+  m.impl_UNBOXED("matmul.out", no_bw(TORCH_FN(NestedTensor_matmul_out)));
+  m.impl_UNBOXED("pin_memory", no_bw(TORCH_FN(NestedTensor_pin_memory)));
+  m.impl_UNBOXED("flatten.using_ints", no_bw(TORCH_FN(NestedTensor_flatten)));
+  m.impl_UNBOXED("stack", no_bw(TORCH_FN(NestedTensor_stack)));
+  m.impl_UNBOXED("stack.out", no_bw(TORCH_FN(NestedTensor_stack_out)));
+  m.impl_UNBOXED("cat", no_bw(TORCH_FN(NestedTensor_cat)));
+  m.impl_UNBOXED("cat.out", no_bw(TORCH_FN(NestedTensor_cat_out)));
 }
 } // namespace at
