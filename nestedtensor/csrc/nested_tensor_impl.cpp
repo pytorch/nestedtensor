@@ -10,6 +10,8 @@
 namespace at {
 
 using namespace torch::nested_tensor;
+using namespace c10;
+using namespace torch::autograd;
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
@@ -118,7 +120,8 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       _nested_size(map(
           [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           _structure)) {
-  // apply([](at::Tensor& tensor) { TORCH_CHECK(!tensor.requires_grad(), "Input tensornode requires gradient."); }, structure);
+  // apply([](at::Tensor& tensor) { TORCH_CHECK(!tensor.requires_grad(), "Input
+  // tensornode requires gradient."); }, structure);
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")
@@ -456,6 +459,16 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
         get_nested_tensor_structure(at::unsqueeze(unbound[i], dim - 1)));
   }
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
+}
+
+void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
+  std::cerr << "Calling fallback for " << op.schema() << std::endl;
+  c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::PrivateUse1_PreAutograd);
+  op.callBoxed(stack);
+}
+
+TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
+  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
