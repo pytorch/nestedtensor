@@ -292,21 +292,21 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("embedding", NestedTensor_embedding);
-  m.impl_UNBOXED("any", NestedTensor_any);
-  m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
-  m.impl_UNBOXED("reshape", NestedTensor_reshape);
-  m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
-  m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
-  m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
-  m.impl_UNBOXED("matmul", NestedTensor_matmul);
-  m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
-  m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
-  m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
-  m.impl_UNBOXED("stack", NestedTensor_stack);
-  m.impl_UNBOXED("stack.out", NestedTensor_stack_out);
-  m.impl_UNBOXED("cat", NestedTensor_cat);
-  m.impl_UNBOXED("cat.out", NestedTensor_cat_out);
+  // m.impl_UNBOXED("embedding", NestedTensor_embedding);
+  // m.impl_UNBOXED("any", NestedTensor_any);
+  // m.impl_UNBOXED("all", NestedTensor_all);
+  // m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
+  // m.impl_UNBOXED("reshape", NestedTensor_reshape);
+  // m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
+  // m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
+  // m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
+  // m.impl_UNBOXED("matmul", NestedTensor_matmul);
+  // m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
+  // m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
+  // m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
+  // m.impl_UNBOXED("stack", NestedTensor_stack);
+  // m.impl_UNBOXED("stack.out", NestedTensor_stack_out);
+  // m.impl_UNBOXED("cat", NestedTensor_cat);
+  // m.impl_UNBOXED("cat.out", NestedTensor_cat_out);
 }
 } // namespace at

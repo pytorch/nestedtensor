@@ -48,43 +48,6 @@ class TestFunctional(TestCase):
         nt_cont = relu(nt)
         self.assertEqual(True, nt_cont.is_contiguous())
 
-    def test_nn_conv2d(self):
-        inputs = [
-            torch.randn(3, 50, 60),
-            torch.randn(3, 18, 18)
-        ]
-
-        # most of optional params
-        conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1), padding=(
-            4, 2), padding_mode='zeros', dilation=1, groups=1, bias=True)
-        tensor_res = []
-        for i in range(2):
-            t_res = conv2d(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        nt = ntnt(inputs)
-        nt_res = conv2d(nt)
-        self.assertEqual(ntnt(tensor_res), nt_res)
-        nt_res.sum().backward()
-        print(nt.grad)
-        # self.assertEqual(nestedtensor.nested_tensor(
-        #     tensor_res), nt_res)
-
-        # some of optional params
-        conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, bias=False)
-        tensor_res = []
-        for i in range(2):
-            t_res = conv2d(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        nt = ntnt(inputs)
-        nt_res = conv2d(nt)
-        self.assertEqual(ntnt(tensor_res), nt_res)
-        nt_res.sum().backward()
-        print(nt.grad)
-        # self.assertEqual(nestedtensor.nested_tensor(
-        #     tensor_res), nt_res)
-
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
         x = nestedtensor.nested_tensor(inputs)

@@ -203,38 +203,37 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
   m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  BINARY_OP(div)
-  BINARY_OP(mul)
-  BINARY_OP(remainder)
+  // BINARY_OP(div)
+  // BINARY_OP(mul)
+  // BINARY_OP(remainder)
 
-  // floor_divide has an inconsistent signature
-  m.impl_UNBOXED("floor_divide", NestedTensor_binary<at::floor_divide>);
-  m.impl_UNBOXED(
-      "floor_divide_.Tensor", NestedTensor_binary_<at::native::floor_divide_>);
-  m.impl_UNBOXED(
-      "floor_divide.out", NestedTensor_binary_out<at::floor_divide_out>);
+  // // floor_divide has an inconsistent signature
+  // m.impl_UNBOXED("floor_divide", NestedTensor_binary<at::floor_divide>);
+  // m.impl_UNBOXED(
+  //     "floor_divide_.Tensor", NestedTensor_binary_<at::native::floor_divide_>);
+  // m.impl_UNBOXED(
+  //     "floor_divide.out", NestedTensor_binary_out<at::floor_divide_out>);
 
-  m.impl_UNBOXED("add.Tensor", NestedTensor_binary<Scalar, at::add>);
 
-  m.impl_UNBOXED("eq.Tensor", NestedTensor_binary<at::eq>);
-  m.impl_UNBOXED("ne.Tensor", NestedTensor_binary<at::ne>);
-  m.impl_UNBOXED("eq.Scalar", NestedTensor_binary_scalar<at::eq>);
-  m.impl_UNBOXED("ne.Scalar", NestedTensor_binary_scalar<at::ne>);
+  // m.impl_UNBOXED("eq.Tensor", NestedTensor_binary<at::eq>);
+  // m.impl_UNBOXED("ne.Tensor", NestedTensor_binary<at::ne>);
+  // m.impl_UNBOXED("eq.Scalar", NestedTensor_binary_scalar<at::eq>);
+  // m.impl_UNBOXED("ne.Scalar", NestedTensor_binary_scalar<at::ne>);
 
-  m.impl_UNBOXED("atan2", NestedTensor_binary<at::atan2>);
-  m.impl_UNBOXED("atan2_", NestedTensor_binary_<at::native::atan2_>);
-  m.impl_UNBOXED("atan2.out", NestedTensor_binary_out<at::atan2_out>);
+  // m.impl_UNBOXED("atan2", NestedTensor_binary<at::atan2>);
+  // m.impl_UNBOXED("atan2_", NestedTensor_binary_<at::native::atan2_>);
+  // m.impl_UNBOXED("atan2.out", NestedTensor_binary_out<at::atan2_out>);
 
-  m.impl_UNBOXED("sub.Tensor", NestedTensor_binary<Scalar, at::sub>);
-  m.impl_UNBOXED("sub_.Tensor", NestedTensor_sub_);
-  m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
+  // m.impl_UNBOXED("sub.Tensor", NestedTensor_binary<Scalar, at::sub>);
+  // m.impl_UNBOXED("sub_.Tensor", NestedTensor_sub_);
+  // m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
 
-  m.impl_UNBOXED("pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
-  m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
-  m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
-  m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
-  m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
-  m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
-  m.impl_UNBOXED("pow.Scalar", NestedTensor_pow_3);
+  // m.impl_UNBOXED("pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
+  // m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
+  // m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
+  // m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
+  // m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
+  // m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
+  // m.impl_UNBOXED("pow.Scalar", NestedTensor_pow_3);
 }
 } // namespace at

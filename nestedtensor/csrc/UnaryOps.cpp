@@ -154,56 +154,56 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  UNARY_OP(abs);
-  UNARY_OP(acos);
-  UNARY_OP(asin);
-  UNARY_OP(atan);
-  UNARY_OP(ceil);
-  UNARY_OP(cos);
-  UNARY_OP(cosh);
-  UNARY_OP_INPLACE_METHOD(digamma)
-  UNARY_OP(erf);
-  UNARY_OP(erfc);
-  UNARY_OP_INPLACE_METHOD(erfinv)
-  UNARY_OP(exp);
-  UNARY_OP(expm1);
-  UNARY_OP(floor);
-  // UNARY_OP(fill);
-  UNARY_OP(frac);
-  UNARY_OP_INPLACE_METHOD(lgamma)
-  UNARY_OP(log);
-  UNARY_OP(log10);
-  UNARY_OP(log1p);
-  UNARY_OP(log2);
-  // UNARY_OP(mvlgamma);
-  UNARY_OP(neg);
-  UNARY_OP(reciprocal);
-  UNARY_OP(round);
-  UNARY_OP(rsqrt);
-  UNARY_OP(sigmoid);
-  UNARY_OP_INPLACE_METHOD(sign)
-  UNARY_OP(sin);
-  UNARY_OP(sinh);
-  UNARY_OP(sqrt);
-  UNARY_OP(tan);
-  UNARY_OP(tanh);
-  UNARY_OP(trunc);
+  // UNARY_OP(abs);
+  // UNARY_OP(acos);
+  // UNARY_OP(asin);
+  // UNARY_OP(atan);
+  // UNARY_OP(ceil);
+  // UNARY_OP(cos);
+  // UNARY_OP(cosh);
+  // UNARY_OP_INPLACE_METHOD(digamma)
+  // UNARY_OP(erf);
+  // UNARY_OP(erfc);
+  // UNARY_OP_INPLACE_METHOD(erfinv)
+  // UNARY_OP(exp);
+  // UNARY_OP(expm1);
+  // UNARY_OP(floor);
+  // // UNARY_OP(fill);
+  // UNARY_OP(frac);
+  // UNARY_OP_INPLACE_METHOD(lgamma)
+  // UNARY_OP(log);
+  // UNARY_OP(log10);
+  // UNARY_OP(log1p);
+  // UNARY_OP(log2);
+  // // UNARY_OP(mvlgamma);
+  // UNARY_OP(neg);
+  // UNARY_OP(reciprocal);
+  // UNARY_OP(round);
+  // UNARY_OP(rsqrt);
+  // UNARY_OP(sigmoid);
+  // UNARY_OP_INPLACE_METHOD(sign)
+  // UNARY_OP(sin);
+  // UNARY_OP(sinh);
+  // UNARY_OP(sqrt);
+  // UNARY_OP(tan);
+  // UNARY_OP(tanh);
+  // UNARY_OP(trunc);
 
-  // NOTE: mvlgamma doesn't have an out variant? why?
-  m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
-  m.impl_UNBOXED("mvlgamma_", NestedTensor_mvlgamma_);
+  // // NOTE: mvlgamma doesn't have an out variant? why?
+  // m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
+  // m.impl_UNBOXED("mvlgamma_", NestedTensor_mvlgamma_);
 
-  m.impl_UNBOXED("clamp", NestedTensor_clamp);
-  m.impl_UNBOXED("clamp_", NestedTensor_clamp_);
-  m.impl_UNBOXED("clamp.out", NestedTensor_clamp_out);
+  // m.impl_UNBOXED("clamp", NestedTensor_clamp);
+  // m.impl_UNBOXED("clamp_", NestedTensor_clamp_);
+  // m.impl_UNBOXED("clamp.out", NestedTensor_clamp_out);
 
-  m.impl_UNBOXED("clamp_min", NestedTensor_clamp_min);
-  m.impl_UNBOXED("clamp_min_", NestedTensor_clamp_min_);
-  m.impl_UNBOXED("clamp_min.out", NestedTensor_clamp_min_out);
+  // m.impl_UNBOXED("clamp_min", NestedTensor_clamp_min);
+  // m.impl_UNBOXED("clamp_min_", NestedTensor_clamp_min_);
+  // m.impl_UNBOXED("clamp_min.out", NestedTensor_clamp_min_out);
 
-  m.impl_UNBOXED("clamp_max", NestedTensor_clamp_max);
-  m.impl_UNBOXED("clamp_max_", NestedTensor_clamp_max_);
-  m.impl_UNBOXED("clamp_max.out", NestedTensor_clamp_max_out);
+  // m.impl_UNBOXED("clamp_max", NestedTensor_clamp_max);
+  // m.impl_UNBOXED("clamp_max_", NestedTensor_clamp_max_);
+  // m.impl_UNBOXED("clamp_max.out", NestedTensor_clamp_max_out);
 }
 
 } // namespace at

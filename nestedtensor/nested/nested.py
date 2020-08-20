@@ -276,8 +276,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def __torch_function__(self, func, types, args=(), kwargs=None):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
-        if func is torch.nn.functional.interpolate:
-            return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
+        # if func is torch.nn.functional.interpolate:
+        #     return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         # Need a specialized implementation to dodge call to view in nll_loss
         if func is torch.nn.functional.cross_entropy:
             return _wrap_result(
