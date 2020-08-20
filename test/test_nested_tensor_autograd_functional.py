@@ -48,6 +48,8 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1), padding=(
             4, 2), padding_mode='zeros', dilation=1, groups=1, bias=False))
         _test(lambda: torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1)))
+        _test(lambda: torch.nn.Conv2d(
+            3, 33, kernel_size=(1, 1), stride=(1, 1), bias=False))
 
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
@@ -57,7 +59,7 @@ class TestAutogradFunctional(TestCase):
             ]
 
             batch_norm = BatchNorm2d()
-            # batch_norm.eval()
+            batch_norm.eval()
 
             tensor_res = []
             for i in range(2):
@@ -79,12 +81,53 @@ class TestAutogradFunctional(TestCase):
             map(self.assertEqual, zip(layer_grad0, layer_grad1))
             self.assertEqual(nt.grad[0], inputs[0].grad)
             self.assertEqual(nt.grad[1], inputs[1].grad)
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True))
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False))
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=False))
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=True, track_running_stats=True))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=True, track_running_stats=True).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=False, track_running_stats=False))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=False, track_running_stats=False).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=True, track_running_stats=False))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=True, track_running_stats=False).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=False, track_running_stats=True))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=False, track_running_stats=True).eval())
         _test(lambda: torch.nn.BatchNorm2d(3))
 
+    def test_nn_relu(self):
+        def _test(ReLU):
+            inputs = [
+                torch.randn(3, 500, 600, requires_grad=True),
+                torch.randn(3, 128, 128, requires_grad=True)
+            ]
+
+            relu = ReLU()
+            tensor_res = []
+            for i in range(2):
+                t_res = relu(inputs[i].unsqueeze(0).contiguous())
+                tensor_res.append(t_res.squeeze(0))
+                tensor_res[i].sum().backward()
+            print(list(relu.named_parameters()))
+            layer_grad0 = [p.grad for (n, p) in relu.named_parameters()]
+            print(list(p.sum() for p in layer_grad0))
+
+            nt = ntnt(inputs)
+            nt_res = relu(nt)
+            nt_res.sum().backward()
+            layer_grad1 = [p.grad for (n, p) in relu.named_parameters()]
+            print(list(p.sum() for p in layer_grad1))
+
+            self.assertEqual(ntnt(tensor_res), nt_res)
+            map(self.assertEqual, zip(layer_grad0, layer_grad1))
+            self.assertEqual(inputs[0].grad, nt.grad[0])
+            self.assertEqual(inputs[1].grad, nt.grad[1])
+        _test(lambda: torch.nn.ReLU())
+        # _test(lambda: torch.nn.ReLU(inplace=True))
 
 
 if __name__ == "__main__":

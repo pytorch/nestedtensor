@@ -432,6 +432,7 @@ struct NestedTensorFunction_batch_norm
           },
           autograd_output,
           autograd_input);
+      exit(1);
     }
 
     at::Tensor undef;
