@@ -452,8 +452,8 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 
 // void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
 //   std::cerr << "Calling fallback for " << op.schema() << std::endl;
-//   c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::PrivateUse1_PreAutograd);
-//   op.callBoxed(stack);
+//   c10::impl::ExcludeDispatchKeyGuard
+//   guard(c10::DispatchKey::PrivateUse1_PreAutograd); op.callBoxed(stack);
 // }
 
 TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {

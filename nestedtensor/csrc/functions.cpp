@@ -163,6 +163,7 @@ Tensor NestedTensor__log_softmax(
 }
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
+  AutoGradMode autogradmode(false);
   if (is_nested_tensor_impl(other)) {
     return map_nested_tensor(
         [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
@@ -177,6 +178,7 @@ Tensor& NestedTensor_matmul_out(
     Tensor& result,
     const Tensor& self,
     const Tensor& other) {
+  AutoGradMode autogradmode(false);
   apply_nested_tensor(
       [](Tensor& result, Tensor& tensor, Tensor& other) {
         return at::matmul_out(result, tensor, other);
