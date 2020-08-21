@@ -22,7 +22,12 @@ Tensor& NestedTensor_unary_(Tensor& self) {
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
+  auto structure = get_nested_tensor_structure(self);
+  if (structure.buffer()) {
+    ((*structure.buffer()).*func)();
+  } else {
+    apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
+  }
   return self;
 }
 
