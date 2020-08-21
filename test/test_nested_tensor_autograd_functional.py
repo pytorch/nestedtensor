@@ -146,36 +146,42 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(inputs0.grad.sum(),
                          inputs1.grad.sum() + inputs1.grad.sum())
 
-    def test_integration(self):
+    def test_resnet_bottleneck(self):
         import torchvision
-        torch.manual_seed(1010)
-        inputs_ = [
-            torch.randn(256, 50, 60, requires_grad=True),
-            # torch.randn(256, 18, 18, requires_grad=True)
-        ]
-        inputs = ntnt(inputs_)
-        b = torchvision.models.resnet.Bottleneck(256, 64)  # .eval()
-        # a = torchvision.models.segmentation.fcn.FCNHead(256, 21).eval()
-        print(b)
-        # print(a)
+        def _test(Bottleneck):
+            inputs_ = [
+                torch.randn(256, 50, 60, requires_grad=True)
+            ]
+            inputs = ntnt(inputs_)
 
-        # a(b(inputs)).sum().backward()
-        b(inputs).sum().backward()
-        print(inputs.grad.sum())
-        print(list((n, p.grad.sum()) for (n, p) in b.named_parameters()))
-        # print(list(p.grad.sum() for (n, p) in a.named_parameters()))
+            b = Bottleneck()
+            b(inputs).sum().backward()
+            g0 = list(p.grad for (n, p) in b.named_parameters())
 
-        # b = torchvision.models.resnet.Bottleneck(256, 64)# .eval()
-        b.zero_grad()
-        # a = torchvision.models.segmentation.fcn.FCNHead(256, 21).eval()
-        print(b)
-        # print(a)
+            b.zero_grad()
+            b(inputs_[0].unsqueeze(0)).sum().backward()
+            g1 = list(p.grad for (n, p) in b.named_parameters())
 
-        # a(b(inputs_[0].unsqueeze(0))).sum().backward()
-        b(inputs_[0].unsqueeze(0)).sum().backward()
-        print(inputs_[0].grad.sum())
-        print(list((n, p.grad.sum()) for (n, p) in b.named_parameters()))
-        # print(list(p.grad.sum() for (n, p) in a.named_parameters()))
+            map(self.assertEqual, zip(g0, g1))
+
+            inputs_ = [
+                torch.randn(256, 50, 60, requires_grad=True),
+                torch.randn(256, 18, 18, requires_grad=True)
+            ]
+            inputs = ntnt(inputs_)
+            b = torchvision.models.resnet.Bottleneck(256, 64)  # .eval()
+            b(inputs).sum().backward()
+
+            b.zero_grad()
+            b(inputs_[0].unsqueeze(0)).sum().backward()
+
+            b.zero_grad()
+            b(inputs_[1].unsqueeze(0)).sum().backward()
+
+            self.assertEqual(inputs_[0].grad, inputs.grad[0])
+            self.assertEqual(inputs_[1].grad, inputs.grad[1])
+        _test(lambda: torchvision.models.resnet.Bottleneck(256, 64))
+        _test(lambda: torchvision.models.resnet.Bottleneck(256, 64).eval())
 
 
 if __name__ == "__main__":

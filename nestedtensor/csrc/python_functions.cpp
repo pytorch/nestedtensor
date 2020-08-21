@@ -18,7 +18,6 @@ at::Tensor cross_entropy(
     c10::optional<int64_t>& ignore_index,
     c10::optional<bool>& reduce, // TODO: use
     c10::optional<std::string>& reduction) {
-  std::cout << "CALLED" << std::endl;
   F::CrossEntropyFuncOptions::reduction_t redct;
   if (reduction.value() == "mean" || reduction.value() == "none") {
     redct = torch::kMean;
@@ -52,7 +51,6 @@ at::Tensor interpolate(
     c10::optional<at::ArrayRef<double>> scale_factor,
     c10::optional<std::string> mode,
     c10::optional<bool> align_corners) {
-  TORCH_CHECK(input.requires_grad(), "FAIL");
   F::InterpolateFuncOptions::mode_t int_mode;
   if (mode.value() == "nearest" || mode.value() == "none") {
     int_mode = torch::kNearest;
