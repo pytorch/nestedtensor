@@ -77,7 +77,7 @@ at::Tensor interpolate(
   // Either scale factor or size can be passed
   if (scale_factor.has_value()) {
     options = options.scale_factor(scale_factor.value().vec());
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [&options](at::Tensor input_tensor) {
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
@@ -98,7 +98,7 @@ at::Tensor interpolate(
     }
 
     if (size.value().size() == 1) {
-      return map_nested_tensor(
+      return autograd_map_nested_tensor(
           [&options, &size](at::Tensor input_tensor) {
             options = options.size(size.value()[0]);
             return F::interpolate(input_tensor.unsqueeze(0), options)
@@ -107,7 +107,7 @@ at::Tensor interpolate(
           input);
     } else {
       int size_i = 0;
-      return map_nested_tensor(
+      return autograd_map_nested_tensor(
           [&options, &size_i, &size](at::Tensor input_tensor) {
             options = options.size(size.value()[size_i]);
             size_i++;
