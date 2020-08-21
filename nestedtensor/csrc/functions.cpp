@@ -162,47 +162,15 @@ Tensor NestedTensor__log_softmax(
       [&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
 }
 
-struct NestedTensorFunction_matmul
-    : public torch::autograd::Function<NestedTensorFunction_matmul> {
-  static Tensor forward(
-      torch::autograd::AutogradContext* ctx,
-      const Tensor& self,
-      const Tensor& other) {
-    at::Tensor result;
-    if (is_nested_tensor_impl(other)) {
-      result = map_nested_tensor(
-          [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
-          self,
-          other);
-    } else {
-      result = map_nested_tensor(
-          [&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
-    }
-    ctx->save_for_backward({self, other, result});
-    return result;
-  }
-  static torch::autograd::variable_list backward(
-      torch::autograd::AutogradContext* ctx,
-      torch::autograd::variable_list grad_output_) {
-    auto saved = ctx->get_saved_variables();
-    at::Tensor self = saved[0];
-    at::Tensor other = saved[0];
-    at::Tensor result = saved[0];
-    at::Tensor undef;
-    // TODO:
-    // Flatten constituents and call grad on all of the variable lists at once
-    //
-    // at::Tensor tensor = map_nested_tensor(
-    //     [&](Tensor i) {
-    //       return torch::autograd::grad({result}, {i}, {grad_output}, true)[0];
-    //     },
-    //     input);
-    return {undef, undef};
-  }
-};
-
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
-  return NestedTensorFunction_matmul::apply(self, other);
+  if (is_nested_tensor_impl(other)) {
+    return map_nested_tensor(
+        [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
+        self,
+        other);
+  }
+  return map_nested_tensor(
+      [&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
 }
 
 Tensor& NestedTensor_matmul_out(
