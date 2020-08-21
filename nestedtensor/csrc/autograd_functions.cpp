@@ -443,6 +443,11 @@ Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
+Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
+  throw std::runtime_error("dropout_ is not implemented");
+  return input;
+}
+
 struct NestedTensorFunction_sum
     : public torch::autograd::Function<NestedTensorFunction_sum> {
   static Tensor forward(
@@ -567,6 +572,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
+  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {

@@ -87,7 +87,6 @@ class TestFunctional(TestCase):
                 nt, weight, bias, (2, 2), (3, 3), (1, 1), 1).unbind()]
             self.assertEqual(nt_res, tensor_res)
 
-
     @unittest.skip("Not fully implemented")
     def test_nn_functional_batch_norm(self):
         inputs = [
@@ -240,13 +239,13 @@ class TestFunctional(TestCase):
                 inputs[i].unsqueeze(0).contiguous())
             tensor_res.append(t_res.squeeze(0))
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = torch.nn.functional.dropout(nt)
-            torch.nn.functional.dropout(nt, inplace=True)
-            self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res).size(), nt_res.size())
+        nt = ntnt(inputs)
+        nt_res = torch.nn.functional.dropout(nt)
+        self.assertRaisesRegex(RuntimeError, "dropout_ is not implemented",
+                               lambda: torch.nn.functional.dropout(nt, inplace=True))
+        self.assertEqual(ntnt(tensor_res).size(), nt_res.size())
 
-    @unittest.skip("Not implemented")
+    @ unittest.skip("Not implemented")
     def test_nn_functional_interpolate(self):
         inputs = [
             torch.randn(3, 200, 300),
