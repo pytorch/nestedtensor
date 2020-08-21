@@ -87,33 +87,6 @@ class TestFunctional(TestCase):
                 nt, weight, bias, (2, 2), (3, 3), (1, 1), 1).unbind()]
             self.assertEqual(nt_res, tensor_res)
 
-    def test_nn_batch_norm(self):
-        inputs = [
-            torch.tensor([[[-0.5000]], [[0.5000]]]),
-            torch.tensor([[[-1.0000, 1.0000], [-0.2500, -0.5000]],
-                          [[0.2500, 0.5000], [1.5000, -1.5000]]])
-        ]
-
-        batch_norm = torch.nn.BatchNorm2d(2, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-        batch_norm = batch_norm.eval()
-
-        tensor_res = []
-        for i in range(2):
-            t_res = batch_norm(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        nt = ntnt(inputs)
-        nt_res = batch_norm(nt)
-        # self.assertEqual(nestedtensor.nested_tensor(
-        #     tensor_res, requires_grad=True), nt_res)
-        self.assertEqual(ntnt(tensor_res), nt_res)
-        print(nt_res)
-        print(list(p.grad for (n, p) in batch_norm.named_parameters()))
-        print(nt.grad)
-        s = nt_res.sum()
-        s.backward()
-        print(nt.grad)
-        print(list(p.grad for (n, p) in batch_norm.named_parameters()))
 
     def test_nn_functional_batch_norm(self):
         inputs = [
@@ -198,28 +171,6 @@ class TestFunctional(TestCase):
         torch.nn.functional.relu_(nt1)
         self.assertEqual(nt1, expected_nt)
         self.assertNotEqual(t_clone, expected_t)
-
-    def test_nn_relu(self):
-        def _test(relu):
-            inputs = [
-                torch.randn(3, 500, 600, requires_grad=True),
-                torch.randn(3, 128, 128, requires_grad=True)
-            ]
-
-            tensor_res = []
-            for i in range(2):
-                t_res = relu(inputs[i].unsqueeze(0).contiguous())
-                tensor_res.append(t_res.squeeze(0))
-                tensor_res[i].sum().backward()
-
-            nt = ntnt(inputs)
-            nt_res = relu(nt)
-            self.assertEqual(ntnt(tensor_res), nt_res)
-            nt_res.sum().backward()
-            self.assertEqual(inputs[0].grad, nt.grad[0])
-            self.assertEqual(inputs[1].grad, nt.grad[1])
-        _test(torch.nn.ReLU())
-        # _test(torch.nn.ReLU(inplace=True))
 
     def test_nn_functional_relu(self):
         inputs = [

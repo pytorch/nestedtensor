@@ -115,8 +115,8 @@ struct NestedTensorFunction_mapper
         [](at::Tensor r, at::Tensor i, at::Tensor g) {
           auto result = torch::autograd::grad({r}, {i}, {g});
           TORCH_CHECK(result.size() == 1, "not supported 2");
-          std::cout << "result[0].sum() " << result[0].sum() << " of "
-                    << typeid(F).name() << std::endl;
+          // std::cout << "result[0].sum() " << result[0].sum() << " of "
+          //           << typeid(F).name() << std::endl;
           return result[0];
         },
         autograd_output,
