@@ -60,6 +60,7 @@ class TestIntegration(TestCase):
         not utils.internet_on(), "Cannot reach internet to download reference model."
     )
     def test_segmentation_pretrained_test_only(self):
+        torch.manual_seed(1010)
         t1 = torch.randn(3, 2, 2, requires_grad=True)
         t2 = torch.randn(3, 2, 2, requires_grad=True)
         tr1 = torch.randn(2, 2, requires_grad=True)

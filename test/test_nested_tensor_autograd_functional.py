@@ -169,7 +169,7 @@ class TestAutogradFunctional(TestCase):
                 torch.randn(256, 18, 18, requires_grad=True)
             ]
             inputs = ntnt(inputs_)
-            b = torchvision.models.resnet.Bottleneck(256, 64)  # .eval()
+            b.zero_grad()
             b(inputs).sum().backward()
 
             b.zero_grad()
@@ -182,6 +182,44 @@ class TestAutogradFunctional(TestCase):
             self.assertEqual(inputs_[1].grad, inputs.grad[1])
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64))
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64).eval())
+
+    def test_resnet_classification(self):
+        import torchvision
+        def _test(FCNHead):
+            inputs_ = [
+                torch.randn(256, 50, 60, requires_grad=True)
+            ]
+            inputs = ntnt(inputs_)
+
+            b = FCNHead()
+            list(b.children())[3].eval() # dropout is stochastic otherwise
+            b(inputs).sum().backward()
+            g0 = list(p.grad for (n, p) in b.named_parameters())
+
+            b.zero_grad()
+            b(inputs_[0].unsqueeze(0)).sum().backward()
+            g1 = list(p.grad for (n, p) in b.named_parameters())
+
+            map(self.assertEqual, zip(g0, g1))
+
+            inputs_ = [
+                torch.randn(256, 50, 60, requires_grad=True),
+                torch.randn(256, 18, 18, requires_grad=True)
+            ]
+            inputs = ntnt(inputs_)
+            b.zero_grad()
+            b(inputs).sum().backward()
+
+            b.zero_grad()
+            b(inputs_[0].unsqueeze(0)).sum().backward()
+
+            b.zero_grad()
+            b(inputs_[1].unsqueeze(0)).sum().backward()
+
+            self.assertEqual(inputs_[0].grad, inputs.grad[0])
+            self.assertEqual(inputs_[1].grad, inputs.grad[1])
+        _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64))
+        _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64).eval())
 
 
 if __name__ == "__main__":
