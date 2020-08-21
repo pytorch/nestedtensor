@@ -80,8 +80,8 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("cumsum", NestedTensor_cumsum);
-  m.impl_UNBOXED("mean.dim", NestedTensor_mean_dim);
   m.impl_UNBOXED("sum.dim_IntList", NestedTensor_sum_dim);
+  m.impl_UNBOXED("mean.dim", NestedTensor_mean_dim);
   m.impl_UNBOXED("mean", NestedTensor_mean);
   m.impl_UNBOXED("prod", NestedTensor_prod);
 }
