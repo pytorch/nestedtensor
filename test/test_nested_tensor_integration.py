@@ -128,7 +128,7 @@ class TestIntegration(TestCase):
         print('output2_sum.requires_grad')
         print(output2_sum.requires_grad)
         self.assertEqual(output1_sum, output2_sum)
-        print(model1)
+        # print(model1)
         output2_sum.backward()
 
         a = list(model0.named_parameters())

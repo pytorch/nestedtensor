@@ -115,7 +115,9 @@ class NestedTensor(metaclass=NestedTensorMeta):
     #     return self
 
     def __add__(self, other):
+        print("HEDHDH")
         if isinstance(other, NestedTensor):
+            print("aAa")
             return _wrap_result(self._impl + other._impl)
         return _wrap_result(self._impl + other)
 
@@ -274,6 +276,9 @@ class NestedTensor(metaclass=NestedTensorMeta):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
+        print("func: ", func)
+        if "boolean_dispatch" in str(func):
+            import pdb; pdb.set_trace()
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
         # if func is torch.nn.functional.interpolate:
