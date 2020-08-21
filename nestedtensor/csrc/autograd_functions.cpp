@@ -50,7 +50,7 @@ struct NestedTensorFunction_mapper
               [](at::Tensor& ti) {
                 TORCH_CHECK(
                     !ti.requires_grad(),
-                    "Input constituents shouldn't require gradients.");
+                    "autograd_mapper input's constituents shouldn't require gradients.");
               },
               t);
           // if (t.requires_grad()) {
@@ -94,7 +94,7 @@ struct NestedTensorFunction_mapper
 
     // 5. Constituents of output NestedTensor
     auto output = map_nested_tensor(
-        [](at::Tensor t) { return t.detach(); }, autograd_output);
+        [](at::Tensor t) { return t.alias().detach(); }, autograd_output);
 
     // 6. Output NestedTensor
     return output;
