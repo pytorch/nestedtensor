@@ -11,9 +11,6 @@ import utils
 import torchvision
 
 
-def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-
-
 class ConfusionMatrix(object):
     def __init__(self, num_classes):
         self.num_classes = num_classes
@@ -63,7 +60,6 @@ class TestIntegration(TestCase):
         not utils.internet_on(), "Cannot reach internet to download reference model."
     )
     def test_segmentation_pretrained_test_only(self):
-        torch.manual_seed(0)
         t1 = torch.randn(3, 2, 2, requires_grad=True)
         t2 = torch.randn(3, 2, 2, requires_grad=True)
         tr1 = torch.randn(2, 2, requires_grad=True)
@@ -72,82 +68,52 @@ class TestIntegration(TestCase):
         model_name = "fcn_resnet101"
         num_classes = 21
         aux_loss = "store_true"
-        model0 = torchvision.models.segmentation.__dict__[model_name](
+        model = torchvision.models.segmentation.__dict__[model_name](
             num_classes=num_classes, aux_loss=aux_loss, pretrained=True
         )
-        model0.eval()
-
+        model.eval()
 
         # tensor run
-        t_input = torch.stack([t1]) #, t2])
-        t_target = torch.stack([tr1]) #, tr2])
+        t_input = torch.stack([t1, t2])
+        t_target = torch.stack([tr1, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        output1 = model0(t_input)
+        output1 = model(t_input)
         output1 = output1["out"]
-        output1_sum = output1.sum()
-        output1_sum.backward()
 
-        # confmat.update(t_target.flatten(), output1.argmax(1).flatten())
-        # confmat.reduce_from_all_processes()
+        confmat.update(t_target.flatten(), output1.argmax(1).flatten())
+        confmat.reduce_from_all_processes()
 
         # nt run
-
-        model1 = torchvision.models.segmentation.__dict__[model_name](
-            num_classes=num_classes, aux_loss=aux_loss, pretrained=True
-        )
-        model1.eval()
         nt_t1 = t1.clone().detach()
         nt_t2 = t2.clone().detach()
         nt_tr1 = tr1.clone().detach()
         nt_tr2 = tr2.clone().detach()
 
-        nt_input = ntnt([nt_t1]) # , nt_t2])
-        nt_target = ntnt([nt_tr1]) # , nt_tr2])
+        nt_input = nestedtensor.nested_tensor([nt_t1, nt_t2], requires_grad=True)
+        nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
         confmat2 = ConfusionMatrix(num_classes)
 
-        output2 = model1(nt_input)
+        output2 = model(nt_input)
         output2 = output2["out"]
-        # print("nt_input.requires_grad")
-        # print(nt_input.requires_grad)
-        # print("output2.requires_grad")
-        # print(output2.requires_grad)
 
-        # for a, b in zip(nt_target, output2):
-        #     confmat2.update(a.flatten(), b.argmax(0).flatten())
+        for a, b in zip(nt_target, output2):
+            confmat2.update(a.flatten(), b.argmax(0).flatten())
 
-        # confmat2.reduce_from_all_processes()
-        # self.assertEqual(confmat.mat, confmat2.mat)
+        confmat2.reduce_from_all_processes()
+        self.assertEqual(confmat.mat, confmat2.mat)
 
         # grad test
+        output1_sum = output1.sum()
         output2_sum = output2.sum()
-        # print('output1_sum')
-        # print(output1_sum)
-        # print('output2_sum')
-        # print(output2_sum)
-        # print('output2_sum.requires_grad')
-        # print(output2_sum.requires_grad)
         self.assertEqual(output1_sum, output2_sum)
-        # print(model1)
+
+        output1_sum.backward()
         output2_sum.backward()
 
-        a = list(model0.named_parameters())
-        b = list(model1.named_parameters())
-        for (n0, p0), (n1, p1) in zip(a, b):
-            # print((n0, n1))
-            if (p1.grad is None) and (p0.grad is not None):
-                # print("IS NONE")
-                continue
-            if p0.grad is None:
-                continue
-            # print("p0gradsum: ", p0.grad.sum())
-            # print("p1gradsum: ", p1.grad.sum())
-            self.assertEqual(p0.grad, p1.grad)
-        # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model0.named_parameters()))))
-        # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model1.named_parameters()))))
-
+        # TODO: Re-enable under autograd support
         self.assertEqual(t1.grad, nt_input.grad[0])
-        # self.assertEqual(t2.grad, nt_input.grad[1])
+        self.assertEqual(t2.grad, nt_input.grad[1])
 
 
 if __name__ == "__main__":
