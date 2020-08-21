@@ -107,17 +107,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return _wrap_result(self._impl.__ne__(other._impl))
         return _wrap_result(self._impl.__ne__(other))
 
-    def __iadd__(self, other):
-        print("HEDHDH")
-        if isinstance(other, NestedTensor):
-            self._impl += other._impl
-            return self
-        self._impl += other
-        return self
-
     def __add__(self, other):
         if isinstance(other, NestedTensor):
-            # print("aAa")
             return _wrap_result(self._impl + other._impl)
         return _wrap_result(self._impl + other)
 

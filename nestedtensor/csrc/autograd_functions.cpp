@@ -486,7 +486,7 @@ Tensor NestedTensor_max_pool2d(
 }
 
 Tensor NestedTensor_relu(const Tensor& self) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](at::Tensor tensor) {
         auto res = at::relu(tensor);
         std::cout << "res.sum(): " << res.sum() << std::endl;
@@ -495,35 +495,59 @@ Tensor NestedTensor_relu(const Tensor& self) {
       self);
 }
 
-struct NestedTensorFunction_relu_
-    : public torch::autograd::Function<NestedTensorFunction_relu_> {
-  static Tensor forward(torch::autograd::AutogradContext* ctx, Tensor& self) {
-    apply_nested_tensor([](at::Tensor& t) { at::relu_(t); }, self);
-    ctx->mark_dirty({self});
-    ctx->saved_data["0"] = self;
-    return self;
-  }
-  static torch::autograd::variable_list backward(
-      torch::autograd::AutogradContext* ctx,
-      torch::autograd::variable_list grad_output) {
-    auto autograd_input = ctx->saved_data["0"].toTensor();
-    auto grad = grad_output[0];
-    return {map_nested_tensor(
-        [](at::Tensor i, at::Tensor g) {
-          TORCH_CHECK(
-              !g.requires_grad(),
-              "NestedTensor relu_ doesn't support double backward.");
-          return threshold_backward(g, i, 0);
-        },
-        autograd_input,
-        grad)};
-  }
-};
-
 Tensor& NestedTensor_relu_(Tensor& self) {
-  NestedTensorFunction_relu_::apply(self);
+  apply_nested_tensor(
+      [](at::Tensor& tensor) {
+        at::relu_(tensor);
+        //        auto res = at::relu(tensor);
+        //        std::cout << "res.sum(): " << res.sum() << std::endl;
+        //        return res;
+      },
+      self);
   return self;
 }
+
+Tensor NestedTensor_threshold_backward(
+    const Tensor& grad,
+    const Tensor& self,
+    Scalar threshold) {
+  return map_nested_tensor(
+      [&](at::Tensor g, at::Tensor s) {
+        return threshold_backward(g, s, threshold);
+      },
+      grad,
+      self);
+}
+
+// struct NestedTensorFunction_relu_
+//     : public torch::autograd::Function<NestedTensorFunction_relu_> {
+//   static Tensor forward(torch::autograd::AutogradContext* ctx, Tensor& self) {
+//     apply_nested_tensor([](at::Tensor& t) { at::relu_(t); }, self);
+//     // ctx->mark_dirty({self});
+//     ctx->saved_data["0"] = self;
+//     return self;
+//   }
+//   static torch::autograd::variable_list backward(
+//       torch::autograd::AutogradContext* ctx,
+//       torch::autograd::variable_list grad_output) {
+//     auto autograd_input = ctx->saved_data["0"].toTensor();
+//     auto grad = grad_output[0];
+//     return {map_nested_tensor(
+//         [](at::Tensor i, at::Tensor g) {
+//           TORCH_CHECK(
+//               !g.requires_grad(),
+//               "NestedTensor relu_ doesn't support double backward.");
+//           return threshold_backward(g, i, 0);
+//         },
+//         autograd_input,
+//         grad)};
+//   }
+// };
+// 
+// Tensor& NestedTensor_relu_(Tensor& self) {
+//   NestedTensorFunction_relu_::apply(self);
+//   return self;
+// }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
   // return autograd_map_nested_tensor(
@@ -595,18 +619,18 @@ struct NestedTensorFunction_sum
   }
 };
 
-struct NestedTensorFunction_add_
-    : public torch::autograd::Function<NestedTensorFunction_add_> {
+struct NestedTensorFunction_add
+    : public torch::autograd::Function<NestedTensorFunction_add> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      Tensor& self,
+      const Tensor& self,
       const Tensor& other,
       Scalar alpha) {
     // if (is_nested_tensor_impl(other)) {
-    ctx->mark_dirty({self});
-    apply_nested_tensor(
-        [&](at::Tensor& s, Tensor o) { return s.add_(o, alpha); }, self, other);
-    return self;
+    return map_nested_tensor(
+        [&](at::Tensor s, Tensor o) { return at::add(s, o, alpha); },
+        self,
+        other);
     // }
     // return map_nested_tensor(
     //     [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
@@ -636,9 +660,8 @@ struct NestedTensorFunction_add_
   }
 };
 
-Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  NestedTensorFunction_add_::apply(self, other, alpha);
-  return self;
+Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
+  return NestedTensorFunction_add::apply(self, other, alpha);
 }
 
 Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
@@ -678,14 +701,18 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  m.impl_UNBOXED("relu", NestedTensor_relu);
-  m.impl_UNBOXED("relu_", NestedTensor_relu_);
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
-  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
+  m.impl_UNBOXED("add.Tensor", NestedTensor_add);
   m.impl_UNBOXED("upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   m.impl_UNBOXED("clone", NestedTensor_clone);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  m.impl_UNBOXED("relu", NestedTensor_relu);
+  m.impl_UNBOXED("relu_", NestedTensor_relu_);
+  m.impl_UNBOXED("threshold_backward", NestedTensor_threshold_backward);
 }
 
 } // namespace at

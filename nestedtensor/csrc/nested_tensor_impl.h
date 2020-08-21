@@ -22,13 +22,17 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey_PreAutograd =
+    DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
 
 struct NestedTensorImpl;
 
 template <class A>
 bool is_nested_tensor_impl(A tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey) ||
+      tensor.unsafeGetTensorImpl()->key_set().has(
+          at::NestedTensorKey_PreAutograd);
 }
 
 template <class A, class B>
@@ -148,7 +152,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
   //     throw std::runtime_error("Grad is undefined");
   //   }
   //   return wrap_tensor_node(
-  //       map([](at::Tensor tensor) { return tensor.grad(); }, get_structure()));
+  //       map([](at::Tensor tensor) { return tensor.grad(); },
+  //       get_structure()));
   // }
   bool is_pinned() const {
     return _first_variable.is_pinned();
@@ -276,6 +281,5 @@ constexpr auto no_bw(FuncPtr /*func_ptr*/) {
       _Function_no_bw_wrapper<FuncPtr, parameter_types>;
   return &AutogradFunctionWrapper::apply;
 }
-
 
 } // namespace at
