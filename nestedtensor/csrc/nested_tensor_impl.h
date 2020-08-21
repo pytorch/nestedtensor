@@ -85,8 +85,7 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
-torch::nested_tensor::TensorNode get_nested_tensor_structure(
-    const at::Tensor tensor);
+torch::nested_tensor::TensorNode get_nested_tensor_structure(at::Tensor tensor);
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);

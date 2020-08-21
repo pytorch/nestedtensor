@@ -9,21 +9,13 @@ import random
 RAND_INTS = [random.randint(10, 30) for _ in range(2000)]
 RAND_INTS = [random.randint(100, 300) for _ in range(20)]
 
-# _model_name = "fcn_resnet101"
-# _num_classes = 21
-# _aux_loss = "store_true"
-# MODEL = torchvision.models.segmentation.__dict__[_model_name](
-#     num_classes=_num_classes, aux_loss=_aux_loss, pretrained=True
-# ).cuda()
-
 backbone = torchvision.models.resnet.__dict__['resnet50'](
     pretrained=True,
     replace_stride_with_dilation=[False, True, True])
 
 return_layers = {'layer4': 'out'}
-MODEL = torchvision.models._utils.IntermediateLayerGetter(backbone, return_layers=return_layers).cuda()
-print(MODEL)
-
+MODEL = torchvision.models._utils.IntermediateLayerGetter(
+    backbone, return_layers=return_layers).cuda()
 
 
 def gen_t_loop_segmentation():
@@ -45,6 +37,5 @@ def gen_nt_segmentation():
 
 
 if __name__ == "__main__":
-    # print(utils.benchmark_fn(gen_t_cos()))
     print(utils.benchmark_fn(gen_t_loop_segmentation()))
     print(utils.benchmark_fn(gen_nt_segmentation()))

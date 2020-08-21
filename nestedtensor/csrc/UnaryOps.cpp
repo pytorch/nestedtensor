@@ -10,7 +10,12 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
+  auto structure = get_nested_tensor_structure(self);
+  if (structure.buffer()) {
+    func(*structure.buffer());
+  } else {
+    apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
+  }
   return self;
 }
 
