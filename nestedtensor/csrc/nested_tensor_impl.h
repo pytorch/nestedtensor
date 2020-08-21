@@ -1,7 +1,11 @@
 #pragma once
 #include <ATen/ATen.h>
+#include <c10/util/Metaprogramming.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
+#include <torch/csrc/autograd/autograd.h>
+#include <torch/extension.h>
+#include <torch/library.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -18,13 +22,17 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey_PreAutograd =
+    DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
 
 struct NestedTensorImpl;
 
 template <class A>
 bool is_nested_tensor_impl(A tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey) ||
+      tensor.unsafeGetTensorImpl()->key_set().has(
+          at::NestedTensorKey_PreAutograd);
 }
 
 template <class A, class B>
@@ -76,7 +84,6 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
 
-
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(
     const at::Tensor tensor);
@@ -126,31 +133,16 @@ struct NestedTensorImpl : public c10::TensorImpl {
         get_structure(),
         get_nested_tensor_impl(gradient)->get_structure());
   }
+  c10::intrusive_ptr<c10::TensorImpl> shallow_copy_and_detach(
+      const c10::VariableVersion& version_counter,
+      bool allow_tensor_metadata_change) const override;
+
+  // TODO:
+  void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
   int64_t nested_dim() const {
     return get_structure().height();
   }
   Tensor to_nested_tensor(c10::optional<int64_t> dim);
-  Tensor grad() {
-    auto fn = [](at::Tensor leaf, bool input) {
-      return input && leaf.grad().defined();
-    };
-    if (!reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true)) {
-      throw std::runtime_error("Grad is undefined");
-    }
-    return wrap_tensor_node(
-        map([](at::Tensor tensor) { return tensor.grad(); }, get_structure()));
-  }
-  Tensor requires_grad_(bool requires_grad) {
-    apply(
-        [requires_grad](at::Tensor& tensor) -> void {
-          tensor.set_requires_grad(requires_grad);
-        },
-        get_structure());
-    return at::detail::make_tensor<NestedTensorImpl>(_structure);
-  }
-  bool requires_grad() const {
-    return _first_variable.requires_grad();
-  }
   bool is_pinned() const {
     return _first_variable.is_pinned();
   }
@@ -221,6 +213,61 @@ inline std::ostream& operator<<(
   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
   out << std::endl;
   return out;
+}
+
+template <class FuncPtr, class ParameterTypes>
+struct _Function_no_bw {};
+
+template <class FuncPtr, class... Parameters>
+struct _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>
+    : public torch::autograd::Function<_Function_no_bw<
+          FuncPtr,
+          c10::guts::typelist::typelist<Parameters...>>> {
+  using ReturnType = typename c10::guts::infer_function_traits_t<
+      typename FuncPtr::FuncType>::return_type;
+  static ReturnType forward(
+      torch::autograd::AutogradContext* ctx,
+      Parameters... args) {
+    return (*FuncPtr::func_ptr())(std::forward<Parameters>(args)...);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(false, "Backward not implemented for ", typeid(FuncPtr).name());
+    return {};
+  }
+};
+
+template <class FuncPtr, class ParameterTypes>
+struct _Function_no_bw_wrapper {};
+
+// you have to create a wrapper struct to create a version of apply that only
+// accepts the arguments defined in forward. torch::autograd::Function::apply
+// accepts any arguments regardless of what signature
+// torch::autograd::Function::forward has and therefore you can't resolve it's
+// signature. Instead you'd expect apply to have the exact same signature as
+// forward
+template <class FuncPtr, class... Parameters>
+struct _Function_no_bw_wrapper<
+    FuncPtr,
+    c10::guts::typelist::typelist<Parameters...>> {
+  using AutogradFunction =
+      _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>;
+  using ReturnType = typename c10::guts::infer_function_traits_t<
+      typename FuncPtr::FuncType>::return_type;
+  static ReturnType apply(Parameters... args) {
+    return AutogradFunction::apply(args...);
+  }
+};
+
+template <class FuncPtr>
+constexpr auto no_bw(FuncPtr /*func_ptr*/) {
+  using function_traits =
+      c10::guts::infer_function_traits_t<typename FuncPtr::FuncType>;
+  using parameter_types = typename function_traits::parameter_types;
+  using AutogradFunctionWrapper =
+      _Function_no_bw_wrapper<FuncPtr, parameter_types>;
+  return &AutogradFunctionWrapper::apply;
 }
 
 } // namespace at

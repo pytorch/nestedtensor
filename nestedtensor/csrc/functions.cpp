@@ -8,17 +8,6 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return map_nested_tensor(
-      [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
-}
-
-Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  apply_nested_tensor(
-      [&](at::Tensor t) { return at::dropout_(t, p, train); }, input);
-  return input;
-}
-
 Tensor NestedTensor_embedding(
     const Tensor& weight,
     const Tensor& indices,
@@ -40,100 +29,6 @@ Tensor NestedTensor_embedding(
             weight, i, padding_idx, scale_grad_by_freq, sparse);
       },
       indices);
-}
-
-Tensor NestedTensor_conv2d(
-    const Tensor& input,
-    const Tensor& weight,
-    const c10::optional<Tensor>& bias,
-    IntArrayRef stride,
-    IntArrayRef padding,
-    IntArrayRef dilation,
-    int64_t groups) {
-  return map_nested_tensor(
-      [&weight, &bias, &stride, &padding, &dilation, groups](at::Tensor t) {
-        return at::convolution(
-                   t.unsqueeze(0),
-                   weight,
-                   bias,
-                   stride,
-                   padding,
-                   dilation,
-                   false,
-                   {{0, 0}},
-                   groups)
-            .squeeze(0);
-      },
-      input);
-}
-
-Tensor NestedTensor_max_pool2d(
-    const Tensor& self,
-    IntArrayRef kernel_size,
-    IntArrayRef stride,
-    IntArrayRef padding,
-    IntArrayRef dilation,
-    bool ceil_mode) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto tensor_node = get_nested_tensor_structure(self);
-
-  if (is_tensor_shape(self)) {
-    std::vector<at::Tensor> tensors;
-    for (auto tn : tensor_node.unbind()) {
-      tensors.push_back(tn.payload());
-    }
-
-    auto res_ = at::max_pool2d(
-        at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
-    std::vector<at::Tensor> res = res_.unbind();
-    std::vector<TensorNode> result;
-    for (size_t i = 0; i < res.size(); i++) {
-      result.push_back(TensorNode(std::move(res[i])));
-    }
-    return NestedTensorImpl(TensorNode(std::move(result)))
-        .to_nested_tensor(self_impl->nested_dim() - 1);
-  }
-
-  return map_nested_tensor(
-      [&](at::Tensor t) {
-        return at::max_pool2d(
-                   t.unsqueeze(0),
-                   kernel_size,
-                   stride,
-                   padding,
-                   dilation,
-                   ceil_mode)
-            .squeeze(0);
-      },
-      self);
-}
-
-Tensor NestedTensor_batch_norm(
-    const Tensor& input,
-    const c10::optional<Tensor>& weight,
-    const c10::optional<Tensor>& bias,
-    const c10::optional<Tensor>& running_mean,
-    const c10::optional<Tensor>& running_var,
-    bool training,
-    double momentum,
-    double eps,
-    bool cudnn_enabled) {
-  return map_nested_tensor(
-      [&](at::Tensor t) {
-        auto result = at::batch_norm(
-                          t.unsqueeze(0),
-                          weight,
-                          bias,
-                          running_mean,
-                          running_var,
-                          training,
-                          momentum,
-                          eps,
-                          cudnn_enabled)
-                          .squeeze(0);
-        return result;
-      },
-      input);
 }
 
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
@@ -217,20 +112,6 @@ Tensor NestedTensor_layer_norm(
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
       input);
-}
-
-Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  if (is_nested_tensor_impl(other)) {
-    apply_nested_tensor(
-        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
-        self,
-        other);
-    return self;
-  }
-  apply_nested_tensor(
-      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
-      self);
-  return self;
 }
 
 Tensor NestedTensor_all(const Tensor& self) {
@@ -438,13 +319,7 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
-  m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
-  m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  m.impl_UNBOXED("dropout", NestedTensor_dropout);
-  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("embedding", NestedTensor_embedding);
-  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
   m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);

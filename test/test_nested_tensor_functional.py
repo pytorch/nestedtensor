@@ -16,6 +16,9 @@ def _iter_constructors():
     yield nestedtensor.nested_tensor
 
 
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+
+
 class TestFunctional(TestCase):
     def test_nll_loss(self):
         utils.gen_float_tensor(1, (40, 5))
@@ -45,37 +48,6 @@ class TestFunctional(TestCase):
         nt_cont = relu(nt)
         self.assertEqual(True, nt_cont.is_contiguous())
 
-    def test_nn_conv2d(self):
-        inputs = [
-            torch.randn(3, 500, 600),
-            torch.randn(3, 128, 128)
-        ]
-
-        # most of optional params
-        conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1), padding=(
-            4, 2), padding_mode='zeros', dilation=1, groups=1, bias=True)
-        tensor_res = []
-        for i in range(2):
-            t_res = conv2d(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = conv2d(nt)
-            self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res, requires_grad=True), nt_res)
-
-        # some of optional params
-        conv2d = torch.nn.Conv2d(3, 33, kernel_size=3, bias=False)
-        tensor_res = []
-        for i in range(2):
-            t_res = conv2d(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = conv2d(nt)
-            self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res, requires_grad=True), nt_res)
-
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
         x = nestedtensor.nested_tensor(inputs)
@@ -83,7 +55,6 @@ class TestFunctional(TestCase):
         y = emb(x)
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
-
 
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
@@ -116,26 +87,8 @@ class TestFunctional(TestCase):
                 nt, weight, bias, (2, 2), (3, 3), (1, 1), 1).unbind()]
             self.assertEqual(nt_res, tensor_res)
 
-    def test_nn_batch_norm(self):
-        inputs = [
-            torch.tensor([[[-0.5000]], [[0.5000]]]),
-            torch.tensor([[[-1.0000, 1.0000], [-0.2500, -0.5000]],
-                          [[0.2500, 0.5000], [1.5000, -1.5000]]])
-        ]
 
-        batch_norm = torch.nn.BatchNorm2d(2, 1e-05, 0.1)
-        batch_norm = batch_norm.eval()
-
-        tensor_res = []
-        for i in range(2):
-            t_res = batch_norm(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = batch_norm(nt)
-            self.assertEqual(nestedtensor.nested_tensor(
-                tensor_res, requires_grad=True), nt_res)
-
+    @unittest.skip("Not fully implemented")
     def test_nn_functional_batch_norm(self):
         inputs = [
             torch.tensor([[[-0.5000]], [[0.5000]]]),
@@ -220,23 +173,6 @@ class TestFunctional(TestCase):
         self.assertEqual(nt1, expected_nt)
         self.assertNotEqual(t_clone, expected_t)
 
-    def test_nn_relu(self):
-        inputs = [
-            torch.randn(3, 500, 600),
-            torch.randn(3, 128, 128)
-        ]
-
-        relu = torch.nn.ReLU()
-
-        tensor_res = []
-        for i in range(2):
-            t_res = relu(inputs[i].unsqueeze(0).contiguous())
-            tensor_res.append(t_res.squeeze(0))
-
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = relu(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
-
     def test_nn_functional_relu(self):
         inputs = [
             torch.randn(3, 500, 600),
@@ -310,6 +246,7 @@ class TestFunctional(TestCase):
             self.assertEqual(nestedtensor.nested_tensor(
                 tensor_res).size(), nt_res.size())
 
+    @unittest.skip("Not implemented")
     def test_nn_functional_interpolate(self):
         inputs = [
             torch.randn(3, 200, 300),
