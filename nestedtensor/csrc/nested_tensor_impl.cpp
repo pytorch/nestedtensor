@@ -462,16 +462,16 @@ TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  // m.impl_UNBOXED("copy_", NestedTensor_copy_);
-  // m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
-  // m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
-  // m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
-  // m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
+  m.impl_UNBOXED("copy_", NestedTensor_copy_);
+  m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
+  m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
+  m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
+  m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
   m.impl_UNBOXED("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
   m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
   m.impl_UNBOXED("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
-  // m.impl_UNBOXED("select.int", NestedTensor_select);
-  // m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
-  // m.impl_UNBOXED("unsqueeze", NestedTensor_unsqueeze);
+  m.impl_UNBOXED("select.int", NestedTensor_select);
+  m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
+  m.impl_UNBOXED("unsqueeze", NestedTensor_unsqueeze);
 }
 } // namespace at
