@@ -450,15 +450,15 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
-  std::cerr << "Calling fallback for " << op.schema() << std::endl;
-  c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::PrivateUse1_PreAutograd);
-  op.callBoxed(stack);
-}
-
-TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
-  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
-}
+// void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
+//   std::cerr << "Calling fallback for " << op.schema() << std::endl;
+//   c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::PrivateUse1_PreAutograd);
+//   op.callBoxed(stack);
+// }
+// 
+// TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
+//   m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
+// }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // m.impl_UNBOXED("copy_", NestedTensor_copy_);

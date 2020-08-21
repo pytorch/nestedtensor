@@ -100,34 +100,36 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torch.nn.BatchNorm2d(3))
 
     def test_nn_relu(self):
-        def _test(ReLU):
-            inputs = [
-                torch.randn(3, 500, 600, requires_grad=True),
-                torch.randn(3, 128, 128, requires_grad=True)
-            ]
+        inputs = [
+            torch.randn(3, 500, 600, requires_grad=True),
+            torch.randn(3, 128, 128, requires_grad=True)
+        ]
 
-            relu = ReLU()
-            tensor_res = []
-            for i in range(2):
-                t_res = relu(inputs[i].unsqueeze(0).contiguous())
-                tensor_res.append(t_res.squeeze(0))
-                tensor_res[i].sum().backward()
-            print(list(relu.named_parameters()))
-            layer_grad0 = [p.grad for (n, p) in relu.named_parameters()]
-            print(list(p.sum() for p in layer_grad0))
+        relu = torch.nn.ReLU()
+        relu_ = torch.nn.ReLU(inplace=True)
+        tensor_res = []
+        for i in range(2):
+            t_res = relu(inputs[i].unsqueeze(0).contiguous())
+            t_res = relu_(t_res)
+            t_res = relu_(t_res)
+            tensor_res.append(t_res.squeeze(0))
+            tensor_res[i].sum().backward()
+        print(list(relu.named_parameters()))
+        layer_grad0 = [p.grad for (n, p) in relu.named_parameters()]
+        print(list(p.sum() for p in layer_grad0))
 
-            nt = ntnt(inputs)
-            nt_res = relu(nt)
-            nt_res.sum().backward()
-            layer_grad1 = [p.grad for (n, p) in relu.named_parameters()]
-            print(list(p.sum() for p in layer_grad1))
+        nt = ntnt(inputs)
+        nt_res = relu(nt)
+        nt_res = relu_(nt_res)
+        nt_res = relu_(nt_res)
+        nt_res.sum().backward()
+        layer_grad1 = [p.grad for (n, p) in relu.named_parameters()]
+        print(list(p.sum() for p in layer_grad1))
 
-            self.assertEqual(ntnt(tensor_res), nt_res)
-            map(self.assertEqual, zip(layer_grad0, layer_grad1))
-            self.assertEqual(inputs[0].grad, nt.grad[0])
-            self.assertEqual(inputs[1].grad, nt.grad[1])
-        _test(lambda: torch.nn.ReLU())
-        # _test(lambda: torch.nn.ReLU(inplace=True))
+        self.assertEqual(ntnt(tensor_res), nt_res)
+        map(self.assertEqual, zip(layer_grad0, layer_grad1))
+        self.assertEqual(inputs[0].grad, nt.grad[0])
+        self.assertEqual(inputs[1].grad, nt.grad[1])
 
     def test_add(self):
         inputs0_ = [
@@ -158,6 +160,7 @@ class TestAutogradFunctional(TestCase):
 
     def test_integration(self):
         import torchvision
+        torch.manual_seed(1010)
         inputs_ = [
             torch.randn(256, 50, 60, requires_grad=True),
             # torch.randn(256, 18, 18, requires_grad=True)

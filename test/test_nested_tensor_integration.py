@@ -121,12 +121,12 @@ class TestIntegration(TestCase):
 
         # grad test
         output2_sum = output2.sum()
-        print('output1_sum')
-        print(output1_sum)
-        print('output2_sum')
-        print(output2_sum)
-        print('output2_sum.requires_grad')
-        print(output2_sum.requires_grad)
+        # print('output1_sum')
+        # print(output1_sum)
+        # print('output2_sum')
+        # print(output2_sum)
+        # print('output2_sum.requires_grad')
+        # print(output2_sum.requires_grad)
         self.assertEqual(output1_sum, output2_sum)
         # print(model1)
         output2_sum.backward()
@@ -138,9 +138,11 @@ class TestIntegration(TestCase):
             if (p1.grad is None) and (p0.grad is not None):
                 print("IS NONE")
                 continue
+            if p0.grad is None:
+                continue
             print("p0gradsum: ", p0.grad.sum())
             print("p1gradsum: ", p1.grad.sum())
-            # self.assertNotEqual(p0.grad, p1.grad)
+            self.assertEqual(p0.grad, p1.grad)
         # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model0.named_parameters()))))
         # print(list(filter(lambda x: x is not None, iter(n if p.grad is None else None for (n, p) in model1.named_parameters()))))
 
