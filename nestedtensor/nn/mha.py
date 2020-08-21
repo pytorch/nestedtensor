@@ -108,6 +108,8 @@ def multi_head_attention_forward(query,                           # type: Nested
     attn_output_weights = torch.matmul(q, k.transpose(2, 3))
     attn_output_weights = F.softmax(
         attn_output_weights, dim=-1)
+    print('attn_output_weights.requires_grad')
+    print(attn_output_weights.requires_grad)
     attn_output_weights = F.dropout(
         attn_output_weights, p=dropout_p, training=training)
     attn_output = torch.matmul(attn_output_weights, v)
