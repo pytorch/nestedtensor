@@ -486,7 +486,7 @@ Tensor NestedTensor_relu(const Tensor& self) {
 struct NestedTensorFunction_relu_
     : public torch::autograd::Function<NestedTensorFunction_relu_> {
   static Tensor forward(torch::autograd::AutogradContext* ctx, Tensor& self) {
-    ctx->saved_data["0"] = self; //.clone();
+    ctx->saved_data["0"] = map_nested_tensor([](at::Tensor t) { return at::relu(t); }, self);
     apply_nested_tensor([](at::Tensor& t) { at::relu_(t); }, self);
     ctx->mark_dirty({self});
     return self;
@@ -504,7 +504,7 @@ struct NestedTensorFunction_relu_
             TORCH_CHECK(
                 !g.requires_grad(),
                 "NestedTensor relu_ doesn't support double backward.");
-            auto res = threshold_backward(r, g, 0);
+            auto res = at::threshold_backward(g, r, 0);
             std::cout << "res0: " << res.sum() << std::endl;
             return res;
           },

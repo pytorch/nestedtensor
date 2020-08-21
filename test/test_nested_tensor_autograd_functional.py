@@ -160,7 +160,7 @@ class TestAutogradFunctional(TestCase):
         import torchvision
         inputs_ = [
             torch.randn(256, 50, 60, requires_grad=True),
-            torch.randn(256, 18, 18, requires_grad=True)
+            # torch.randn(256, 18, 18, requires_grad=True)
         ]
         inputs = ntnt(inputs_)
         b = torchvision.models.resnet.Bottleneck(256, 64)# .eval()
@@ -174,7 +174,8 @@ class TestAutogradFunctional(TestCase):
         print(list((n, p.grad.sum()) for (n, p) in b.named_parameters()))
         # print(list(p.grad.sum() for (n, p) in a.named_parameters()))
 
-        b = torchvision.models.resnet.Bottleneck(256, 64)# .eval()
+        # b = torchvision.models.resnet.Bottleneck(256, 64)# .eval()
+        b.zero_grad()
         # a = torchvision.models.segmentation.fcn.FCNHead(256, 21).eval()
         print(b)
         # print(a)
