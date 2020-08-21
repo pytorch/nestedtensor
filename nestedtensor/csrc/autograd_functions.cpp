@@ -280,16 +280,16 @@ struct NestedTensorFunction_batch_norm
         [&](at::Tensor t) {
           AutoGradMode autogradmode(true);
           return at::native::batch_norm(
-                         t.unsqueeze(0),
-                         *weight,
-                         *bias,
-                         *running_mean,
-                         *running_var,
-                         training,
-                         momentum,
-                         eps,
-                         cudnn_enabled)
-                         .squeeze(0);
+                     t.unsqueeze(0),
+                     *weight,
+                     *bias,
+                     *running_mean,
+                     *running_var,
+                     training,
+                     momentum,
+                     eps,
+                     cudnn_enabled)
+              .squeeze(0);
         },
         autograd_input);
     ctx->saved_data["0"] = weight;
@@ -439,7 +439,7 @@ Tensor NestedTensor_threshold_backward(
 }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
@@ -569,8 +569,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  m.impl_UNBOXED("dropout", NestedTensor_dropout);
-  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
   m.impl_UNBOXED("upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   m.impl_UNBOXED("clone", NestedTensor_clone);
@@ -579,6 +577,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("add.Tensor", NestedTensor_add);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
+  m.impl_UNBOXED("dropout", NestedTensor_dropout);
+  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("relu", NestedTensor_relu);
   m.impl_UNBOXED("relu_", NestedTensor_relu_);
   m.impl_UNBOXED("threshold_backward", NestedTensor_threshold_backward);

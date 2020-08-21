@@ -31,12 +31,6 @@ Tensor NestedTensor_embedding(
       indices);
 }
 
-Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  apply_nested_tensor(
-      [&](at::Tensor t) { return at::dropout_(t, p, train); }, input);
-  return input;
-}
-
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   auto self_data = get_nested_tensor_impl(self);
   TORCH_CHECK(
@@ -296,7 +290,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("embedding", NestedTensor_embedding);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
   m.impl_UNBOXED("reshape", NestedTensor_reshape);
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
