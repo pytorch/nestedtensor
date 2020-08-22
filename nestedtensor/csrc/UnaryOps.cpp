@@ -10,19 +10,35 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
+  auto structure = get_nested_tensor_structure(self);
+  if (structure.buffer()) {
+    func(*structure.buffer());
+  } else {
+    apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
+  }
   return self;
 }
 
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
+  auto structure = get_nested_tensor_structure(self);
+  if (structure.buffer()) {
+    ((*structure.buffer()).*func)();
+  } else {
+    apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
+  }
   return self;
 }
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
+  auto impl = get_nested_tensor_impl(self);
+  auto structure = get_nested_tensor_structure(self);
+  if (structure.buffer()) {
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        func(*structure.buffer()), impl->nested_size()));
+  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return func(tensor); }, self);
 }
@@ -127,7 +143,6 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
   return map_nested_tensor(
       [p](at::Tensor tensor) { return at::mvlgamma(tensor, p); }, self);
 }
-
 
 #define UNARY_OP_INPLACE_METHOD(NAME)                                       \
   m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
