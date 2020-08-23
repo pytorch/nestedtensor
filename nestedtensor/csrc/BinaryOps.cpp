@@ -34,7 +34,6 @@ Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self, other)) {
-    std::cout << "HEEHE0" << std::endl;
     return map_nested_tensor(
         [](Tensor self, Tensor other) { return func(self, other); },
         self,

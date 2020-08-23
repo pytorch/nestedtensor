@@ -386,28 +386,21 @@ struct NestedTensorFunction_sum
 
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
   if (is_nested_tensor_impl(self, other)) {
-    std::cout << "0" << std::endl;
     return map_nested_tensor(
         [&](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
         self,
         other);
   }
   if (is_nested_tensor_impl(other)) {
-    std::cout << "1" << std::endl;
     return map_nested_tensor(
         [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
   }
-  // if (is_packed(self)) {
-  //   if (self.dim() == 3)
-  // }
-  std::cout << "2" << std::endl;
   return map_nested_tensor(
       [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   if (is_nested_tensor_impl(self, other)) {
-    std::cout << "00" << std::endl;
     apply_nested_tensor(
         [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
     return self;
