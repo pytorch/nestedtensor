@@ -56,6 +56,9 @@ std::vector<int64_t> _grad_input_padding(
   return result_size;
 }
 
+// Transliteration of
+// https://github.com/pytorch/pytorch/blob/1f0cfbaaad09921f588adf549751041b8cb2e283/torch/nn/grad.py#L129
+// into C++
 at::Tensor _conv2d_grad_input(
     const Tensor& grad_output,
     const Tensor& input,
@@ -85,30 +88,9 @@ at::Tensor _conv2d_grad_input(
   return grad_input;
 }
 
-//    in_channels = input.shape[1]
-//    out_channels = grad_output.shape[1]
-//    min_batch = input.shape[0]
-//
-//    grad_output = grad_output.contiguous().repeat(1, in_channels // groups, 1,
-//                                                  1)
-//    grad_output = grad_output.contiguous().view(
-//        grad_output.shape[0] * grad_output.shape[1], 1, grad_output.shape[2],
-//        grad_output.shape[3])
-//
-//    input = input.contiguous().view(1, input.shape[0] * input.shape[1],
-//                                    input.shape[2], input.shape[3])
-//
-//    grad_weight = torch.conv2d(input, grad_output, None, dilation, padding,
-//                               stride, in_channels * min_batch)
-//
-//    grad_weight = grad_weight.contiguous().view(
-//        min_batch, grad_weight.shape[1] // min_batch, grad_weight.shape[2],
-//        grad_weight.shape[3])
-//
-//    return grad_weight.sum(dim=0).view(
-//        in_channels // groups, out_channels,
-//        grad_weight.shape[2], grad_weight.shape[3]).transpose(0, 1).narrow(
-//            2, 0, weight_size[2]).narrow(3, 0, weight_size[3])
+// Transliteration of
+// https://github.com/pytorch/pytorch/blob/1f0cfbaaad09921f588adf549751041b8cb2e283/torch/nn/grad.py#L170
+// into C++
 at::Tensor _conv2d_grad_weight(
     const Tensor& grad_output_,
     const Tensor& input_,
