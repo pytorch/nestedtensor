@@ -198,9 +198,9 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
 }
 
 #define BINARY_OP(NAME)                                                        \
-  m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
-  m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
-  m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
+  nt_impl(m, #NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
+  nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
+  nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   BINARY_OP(div)
@@ -208,32 +208,32 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   BINARY_OP(remainder)
 
   // floor_divide has an inconsistent signature
-  m.impl_UNBOXED("floor_divide", NestedTensor_binary<at::floor_divide>);
-  m.impl_UNBOXED(
+  nt_impl(m, "floor_divide", NestedTensor_binary<at::floor_divide>);
+  nt_impl(m, 
       "floor_divide_.Tensor", NestedTensor_binary_<at::native::floor_divide_>);
-  m.impl_UNBOXED(
+  nt_impl(m, 
       "floor_divide.out", NestedTensor_binary_out<at::floor_divide_out>);
 
 
-  m.impl_UNBOXED("eq.Tensor", NestedTensor_binary<at::eq>);
-  m.impl_UNBOXED("ne.Tensor", NestedTensor_binary<at::ne>);
-  m.impl_UNBOXED("eq.Scalar", NestedTensor_binary_scalar<at::eq>);
-  m.impl_UNBOXED("ne.Scalar", NestedTensor_binary_scalar<at::ne>);
+  nt_impl(m, "eq.Tensor", NestedTensor_binary<at::eq>);
+  nt_impl(m, "ne.Tensor", NestedTensor_binary<at::ne>);
+  nt_impl(m, "eq.Scalar", NestedTensor_binary_scalar<at::eq>);
+  nt_impl(m, "ne.Scalar", NestedTensor_binary_scalar<at::ne>);
 
-  m.impl_UNBOXED("atan2", NestedTensor_binary<at::atan2>);
-  m.impl_UNBOXED("atan2_", NestedTensor_binary_<at::native::atan2_>);
-  m.impl_UNBOXED("atan2.out", NestedTensor_binary_out<at::atan2_out>);
+  nt_impl(m, "atan2", NestedTensor_binary<at::atan2>);
+  nt_impl(m, "atan2_", NestedTensor_binary_<at::native::atan2_>);
+  nt_impl(m, "atan2.out", NestedTensor_binary_out<at::atan2_out>);
 
-  m.impl_UNBOXED("sub.Tensor", NestedTensor_binary<Scalar, at::sub>);
-  m.impl_UNBOXED("sub_.Tensor", NestedTensor_sub_);
-  m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
+  nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
+  nt_impl(m, "sub_.Tensor", NestedTensor_sub_);
+  nt_impl(m, "sub.out", NestedTensor_sub_out);
 
-  m.impl_UNBOXED("pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
-  m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
-  m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
-  m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
-  m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
-  m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
-  m.impl_UNBOXED("pow.Scalar", NestedTensor_pow_3);
+  nt_impl(m, "pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
+  nt_impl(m, "pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
+  nt_impl(m, "pow_.Tensor", NestedTensor_pow__1);
+  nt_impl(m, "pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
+  nt_impl(m, "pow.Tensor_Scalar", NestedTensor_pow_2);
+  nt_impl(m, "pow.Scalar_out", NestedTensor_pow_out_3);
+  nt_impl(m, "pow.Scalar", NestedTensor_pow_3);
 }
 } // namespace at

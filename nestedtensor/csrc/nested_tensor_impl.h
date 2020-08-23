@@ -269,6 +269,29 @@ constexpr auto no_bw(FuncPtr /*func_ptr*/) {
   return &AutogradFunctionWrapper::apply;
 }
 
+template <class FuncPtr, class ParameterTypes>
+struct _Function_trace_wrapper {};
+
+template <class FuncPtr, class... Parameters>
+struct _Function_trace_wrapper<
+    FuncPtr,
+    c10::guts::typelist::typelist<Parameters...>> {
+  using ReturnType = typename c10::guts::infer_function_traits_t<
+      typename FuncPtr::FuncType>::return_type;
+  static ReturnType apply(Parameters... args) {
+    std::cerr << "Calling " << typeid(FuncPtr).name() << std::endl;
+    return (*FuncPtr::func_ptr())(args...);
+  }
+};
+
+template <class FuncPtr>
+constexpr auto trace(FuncPtr /*func_ptr*/) {
+  using function_traits =
+      c10::guts::infer_function_traits_t<typename FuncPtr::FuncType>;
+  using parameter_types = typename function_traits::parameter_types;
+  return &_Function_trace_wrapper<FuncPtr, parameter_types>::apply;
+}
+
 // The approach here is quite "simple". There are six different stages to this.
 // 1. We take the input NestedTensor whose constituents are, by design, required
 // to not track gradients. Only the NestedTensor as a whole is allowed to track
@@ -390,5 +413,11 @@ template <class F, class... A>
 static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
   return NestedTensorFunction_mapper<F, A...>::apply(std::move(fn), a...);
 }
+
+// #define nt_impl(M, NAME, FUNC) \
+//   M.impl_UNBOXED(NAME, trace(TORCH_FN(FUNC)))
+
+#define nt_impl(M, NAME, FUNC) \
+  M.impl_UNBOXED(NAME, FUNC)
 
 } // namespace at

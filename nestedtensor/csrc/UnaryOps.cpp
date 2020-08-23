@@ -144,29 +144,36 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       [p](at::Tensor tensor) { return at::mvlgamma(tensor, p); }, self);
 }
 
-#define UNARY_OP_INPLACE_METHOD(NAME)                                       \
-  m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
-  m.impl_UNBOXED(                                                           \
-      #NAME "_",                                                            \
-      NestedTensor_unary_method_<                                           \
-          decltype(&at::Tensor::NAME##_),                                   \
-          &at::Tensor::NAME##_>);                                           \
-  m.impl_UNBOXED(                                                           \
-      #NAME ".out",                                                         \
-      NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
+#define UNARY_OP_INPLACE_METHOD(NAME)                                     \
+  nt_impl(m, #NAME, (NestedTensor_unary<decltype(&at::NAME), at::NAME>)); \
+  nt_impl(                                                                \
+      m,                                                                  \
+      #NAME "_",                                                          \
+      (NestedTensor_unary_method_<                                        \
+          decltype(&at::Tensor::NAME##_),                                 \
+          &at::Tensor::NAME##_>));                                        \
+  nt_impl(                                                                \
+      m,                                                                  \
+      #NAME ".out",                                                       \
+      (NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>));
 
-#define UNARY_OP(NAME)                                                      \
-  m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
-  m.impl_UNBOXED(                                                           \
-      #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>); \
-  m.impl_UNBOXED(                                                           \
-      #NAME ".out",                                                         \
-      NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
+#define UNARY_OP(NAME)                                                    \
+  nt_impl(m, #NAME, (NestedTensor_unary<decltype(&at::NAME), at::NAME>)); \
+  nt_impl(                                                                \
+      m,                                                                  \
+      #NAME "_",                                                          \
+      (NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>));        \
+  nt_impl(                                                                \
+      m,                                                                  \
+      #NAME ".out",                                                       \
+      (NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>));
 
-#define UNARY_OP_NO_OUT(NAME)                                               \
-  m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
-  m.impl_UNBOXED(                                                           \
-      #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>);
+#define UNARY_OP_NO_OUT(NAME)                                             \
+  nt_impl(m, #NAME, (NestedTensor_unary<decltype(&at::NAME), at::NAME>)); \
+  nt_impl(                                                                \
+      m,                                                                  \
+      #NAME "_",                                                          \
+      (NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>));
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(abs);
@@ -205,20 +212,20 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(trunc);
 
   // NOTE: mvlgamma doesn't have an out variant? why?
-  m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
-  m.impl_UNBOXED("mvlgamma_", NestedTensor_mvlgamma_);
+  nt_impl(m, "mvlgamma", NestedTensor_mvlgamma);
+  nt_impl(m, "mvlgamma_", NestedTensor_mvlgamma_);
 
-  m.impl_UNBOXED("clamp", NestedTensor_clamp);
-  m.impl_UNBOXED("clamp_", NestedTensor_clamp_);
-  m.impl_UNBOXED("clamp.out", NestedTensor_clamp_out);
+  nt_impl(m, "clamp", NestedTensor_clamp);
+  nt_impl(m, "clamp_", NestedTensor_clamp_);
+  nt_impl(m, "clamp.out", NestedTensor_clamp_out);
 
-  m.impl_UNBOXED("clamp_min", NestedTensor_clamp_min);
-  m.impl_UNBOXED("clamp_min_", NestedTensor_clamp_min_);
-  m.impl_UNBOXED("clamp_min.out", NestedTensor_clamp_min_out);
+  nt_impl(m, "clamp_min", NestedTensor_clamp_min);
+  nt_impl(m, "clamp_min_", NestedTensor_clamp_min_);
+  nt_impl(m, "clamp_min.out", NestedTensor_clamp_min_out);
 
-  m.impl_UNBOXED("clamp_max", NestedTensor_clamp_max);
-  m.impl_UNBOXED("clamp_max_", NestedTensor_clamp_max_);
-  m.impl_UNBOXED("clamp_max.out", NestedTensor_clamp_max_out);
+  nt_impl(m, "clamp_max", NestedTensor_clamp_max);
+  nt_impl(m, "clamp_max_", NestedTensor_clamp_max_);
+  nt_impl(m, "clamp_max.out", NestedTensor_clamp_max_out);
 }
 
 } // namespace at

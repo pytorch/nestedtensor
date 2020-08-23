@@ -443,22 +443,22 @@ Tensor NestedTensor_clone(
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
-  m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
-  m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  m.impl_UNBOXED("sum", NestedTensor_sum);
-  // m.impl_UNBOXED("upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
-  m.impl_UNBOXED("clone", NestedTensor_clone);
-  m.impl_UNBOXED("dropout", NestedTensor_dropout);
-  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
+  nt_impl(m, "conv2d", NestedTensor_conv2d);
+  nt_impl(m, "batch_norm", NestedTensor_batch_norm);
+  nt_impl(m, "max_pool2d", NestedTensor_max_pool2d);
+  nt_impl(m, "sum", NestedTensor_sum);
+  // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
+  nt_impl(m, "clone", NestedTensor_clone);
+  nt_impl(m, "dropout", NestedTensor_dropout);
+  nt_impl(m, "dropout_", NestedTensor_dropout_);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  m.impl_UNBOXED("add.Tensor", NestedTensor_add);
-  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
-  m.impl_UNBOXED("relu", NestedTensor_relu);
-  m.impl_UNBOXED("relu_", NestedTensor_relu_);
-  m.impl_UNBOXED("threshold_backward", NestedTensor_threshold_backward);
+  nt_impl(m, "add.Tensor", NestedTensor_add);
+  nt_impl(m, "add_.Tensor", NestedTensor_add_);
+  nt_impl(m, "relu", NestedTensor_relu);
+  nt_impl(m, "relu_", NestedTensor_relu_);
+  nt_impl(m, "threshold_backward", NestedTensor_threshold_backward);
 }
 
 } // namespace at

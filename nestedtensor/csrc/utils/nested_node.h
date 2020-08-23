@@ -83,7 +83,11 @@ struct NestedNode<at::Tensor> {
         _children(structure._children),
         _payload(structure._payload),
         _height(structure._height),
-        _buffer(buffer) {}
+        _buffer(buffer) {
+    TORCH_CHECK(
+        buffer.dim() == 1,
+        "Buffer needs to be a flat vector, i.e. Tensor of dim 1.")
+  }
   inline bool is_leaf() const {
     return _is_leaf;
   }

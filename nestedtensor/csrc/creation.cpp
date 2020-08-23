@@ -212,7 +212,7 @@ NestedTensorImpl _as_nested_tensor(py::sequence list) {
 }
 
 at::Tensor nested_tensor_impl(py::sequence list) {
-  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list)).contiguous();
+  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list)); //.contiguous();
 }
 
 } // namespace nested_tensor
