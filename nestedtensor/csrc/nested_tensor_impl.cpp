@@ -251,8 +251,8 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return map_nested_tensor(
-      [](at::Tensor tensor) { return tensor.contiguous(); }, self);
+  return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
+  //    [](at::Tensor tensor) { return tensor.contiguous(); }, self);
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {

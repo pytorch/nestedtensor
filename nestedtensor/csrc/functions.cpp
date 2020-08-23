@@ -48,6 +48,20 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
+  if (is_packed(self)) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed reshape" << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    auto self_buffer = (*self_structure.buffer());
+    return wrap_tensor_node(TensorNode(
+        map(
+            [target_shape](const at::Tensor t) {
+              return at::reshape(t, IntArrayRef(target_shape));
+            },
+            self_structure),
+        std::move(self_buffer)));
+  }
   return map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
@@ -67,6 +81,20 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
+  if (is_packed(self)) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed transpose" << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    auto self_buffer = (*self_structure.buffer());
+    return wrap_tensor_node(TensorNode(
+        map(
+            [dim0, dim1, nested_dim](const at::Tensor t) {
+              return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
+            },
+            self_structure),
+        std::move(self_buffer)));
+  }
   return map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
@@ -177,7 +205,7 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
         impl_self->opt_sizes()[self.dim() - 1] == other.size(self.dim() - 2)) {
       SizeNode new_nested_size = map(
           [&](c10::List<int64_t> self_size) {
-            c10::List<int64_t> new_size {self_size[0], other.size(1)};
+            c10::List<int64_t> new_size{self_size[0], other.size(1)};
             return std::move(new_size);
           },
           impl_self->nested_size());

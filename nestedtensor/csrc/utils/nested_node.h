@@ -109,6 +109,9 @@ struct NestedNode<at::Tensor> {
   inline at::Tensor& payload() {
     return _payload;
   }
+  inline const c10::optional<at::Tensor>& buffer() const {
+    return _buffer;
+  }
   inline c10::optional<at::Tensor>& buffer() {
     return _buffer;
   }

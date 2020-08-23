@@ -440,16 +440,16 @@ class TestFunctional(TestCase):
     def test_mha(self):
         embed_dim = 2
         num_heads = 2
-        mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
+        # mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
         query = torch.randn(3, 1, embed_dim)
         key = torch.randn(2, 1, embed_dim)
         value = torch.randn(2, 1, embed_dim)
-        attn_output, _ = mha(query, key, value)
+        # attn_output, _ = mha(query, key, value)
         nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
-        nt_mha.in_proj_weight = mha.in_proj_weight
-        nt_mha.in_proj_bias = mha.in_proj_bias
-        nt_mha.out_proj.weight = mha.out_proj.weight
-        nt_mha.out_proj.bias = mha.out_proj.bias
+        # nt_mha.in_proj_weight = mha.in_proj_weight
+        # nt_mha.in_proj_bias = mha.in_proj_bias
+        # nt_mha.out_proj.weight = mha.out_proj.weight
+        # nt_mha.out_proj.bias = mha.out_proj.bias
         query_nt = nestedtensor.nested_tensor([query.squeeze(1)])
         key_nt = nestedtensor.nested_tensor([key.squeeze(1)])
         value_nt = nestedtensor.nested_tensor([value.squeeze(1)])

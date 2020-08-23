@@ -7,6 +7,8 @@
 #include <torch/extension.h>
 #include <torch/library.h>
 
+// #define TRACEPACKED 1
+
 namespace torch {
 namespace nested_tensor {
 
@@ -71,11 +73,64 @@ inline bool tensor_shape_matches(A a, B b, C... c) {
       tensor_shape_matches(b, c...);
 }
 
+template <class A>
+inline bool nested_size_matches(A a) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(a), "Can only compare shapes of NestedTensors.");
+  return true;
+}
+
+template <class A, class B>
+inline bool nested_size_matches(A a, B b) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(a, b), "Can only compare shapes of NestedTensors.");
+  auto nested_size_a = get_nested_tensor_impl(a)->nested_size();
+  auto nested_size_b = get_nested_tensor_impl(b)->nested_size();
+  if (!shape_matches(nested_size_a, nested_size_b)) {
+    return false;
+  }
+  auto bools = map(
+      [](c10::List<int64_t> a, c10::List<int64_t> b) {
+        if (a.size() != b.size()) {
+          return false;
+        }
+        for (int64_t i = 0; i < a.size(); i++) {
+          if (a[i] != b[i]) {
+            return false;
+          }
+        }
+        return true;
+      },
+      nested_size_a,
+      nested_size_b);
+  return all(bools);
+}
+
+template <class A, class B, class... C>
+inline bool nested_size_matches(A a, B b, C... c) {
+  return nested_size_matches(a, b) && nested_size_matches(b, c...);
+}
+
 template <class... A>
 inline void torch_check_tensor_shape_matches(A... a) {
   TORCH_CHECK(
       is_nested_tensor_impl(a...), "Can only check shapes of NestedTensors.");
   TORCH_CHECK(tensor_shape_matches(a...), "NestedTensor shapes don't match.");
+}
+
+template <class A>
+bool is_packed(A tensor) {
+  return get_nested_tensor_structure(tensor).buffer().has_value();
+}
+
+template <class A, class B>
+bool is_packed(A first, B other) {
+  return is_packed(first) && is_packed(other);
+}
+
+template <class A, class B, class... C>
+bool is_packed(A first, B second, C... other) {
+  return is_packed(first, second) && is_packed(other...);
 }
 
 template <class F, class... A>
@@ -114,10 +169,11 @@ struct NestedTensorImpl : public c10::TensorImpl {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
     // buffer. For this to be contiguous not only the individuals Tensors have
     // to be but also the buffer.
-    auto fn = [](at::Tensor leaf, bool input) {
-      return input && leaf.is_contiguous();
-    };
-    return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
+    // auto fn = [](at::Tensor leaf, bool input) {
+    //   return input && leaf.is_contiguous();
+    // };
+    // return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
+    return get_structure().buffer().has_value();
   }
   TensorNode& get_structure() {
     return _structure;
@@ -279,7 +335,7 @@ struct _Function_trace_wrapper<
   using ReturnType = typename c10::guts::infer_function_traits_t<
       typename FuncPtr::FuncType>::return_type;
   static ReturnType apply(Parameters... args) {
-    std::cerr << "Calling " << typeid(FuncPtr).name() << std::endl;
+    std::cout << "Calling " << typeid(FuncPtr).name() << std::endl;
     return (*FuncPtr::func_ptr())(args...);
   }
 };
@@ -414,10 +470,10 @@ static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
   return NestedTensorFunction_mapper<F, A...>::apply(std::move(fn), a...);
 }
 
-// #define nt_impl(M, NAME, FUNC) \
-//   M.impl_UNBOXED(NAME, trace(TORCH_FN(FUNC)))
-
-#define nt_impl(M, NAME, FUNC) \
-  M.impl_UNBOXED(NAME, FUNC)
+#ifdef TRACEPACKED
+#define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, trace(TORCH_FN(FUNC)))
+#else
+#define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, FUNC)
+#endif
 
 } // namespace at
