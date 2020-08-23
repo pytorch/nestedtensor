@@ -48,6 +48,20 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
+  if (is_packed(self)) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed reshape" << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    auto self_buffer = (*self_structure.buffer());
+    return wrap_tensor_node(TensorNode(
+        map(
+            [target_shape](const at::Tensor t) {
+              return at::reshape(t, IntArrayRef(target_shape));
+            },
+            self_structure),
+        std::move(self_buffer)));
+  }
   return map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
@@ -67,6 +81,20 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
+  if (is_packed(self)) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed transpose" << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    auto self_buffer = (*self_structure.buffer());
+    return wrap_tensor_node(TensorNode(
+        map(
+            [dim0, dim1, nested_dim](const at::Tensor t) {
+              return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
+            },
+            self_structure),
+        std::move(self_buffer)));
+  }
   return map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
@@ -169,6 +197,27 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
         [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
         self,
         other);
+  }
+  auto impl_self = get_nested_tensor_impl(self);
+  auto structure_self = get_nested_tensor_structure(self);
+  if (structure_self.buffer()) {
+    if (self.dim() == 3 && other.dim() == 2 &&
+        impl_self->opt_sizes()[self.dim() - 1] == other.size(self.dim() - 2)) {
+#ifdef TRACEPACKED
+      std::cout << "calling packed matmul" << std::endl;
+#endif
+      SizeNode new_nested_size = map(
+          [&](c10::List<int64_t> self_size) {
+            c10::List<int64_t> new_size{self_size[0], other.size(1)};
+            return std::move(new_size);
+          },
+          impl_self->nested_size());
+      return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+          at::matmul(
+              (*structure_self.buffer()).reshape({-1, other.size(0)}), other)
+              .reshape(-1),
+          new_nested_size));
+    }
   }
   return map_nested_tensor(
       [&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
@@ -289,21 +338,22 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("embedding", NestedTensor_embedding);
-  m.impl_UNBOXED("any", NestedTensor_any);
-  m.impl_UNBOXED("all", NestedTensor_all);
-  m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
-  m.impl_UNBOXED("reshape", NestedTensor_reshape);
-  m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
-  m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
-  m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
-  m.impl_UNBOXED("matmul", NestedTensor_matmul);
-  m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
-  m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
-  m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
-  m.impl_UNBOXED("stack", NestedTensor_stack);
-  m.impl_UNBOXED("stack.out", NestedTensor_stack_out);
-  m.impl_UNBOXED("cat", NestedTensor_cat);
-  m.impl_UNBOXED("cat.out", NestedTensor_cat_out);
+  nt_impl(m, "embedding", NestedTensor_embedding);
+  nt_impl(m, "any", NestedTensor_any);
+  nt_impl(m, "all", NestedTensor_all);
+  nt_impl(m, "_log_softmax", NestedTensor__log_softmax);
+  nt_impl(m, "reshape", NestedTensor_reshape);
+  nt_impl(m, "transpose.int", NestedTensor_transpose);
+  nt_impl(m, "softmax.int", NestedTensor_softmax);
+  nt_impl(m, "layer_norm", NestedTensor_layer_norm);
+  // nt_impl(m, "matmul", no_bw(TORCH_FN(NestedTensor_matmul);
+  nt_impl(m, "matmul", NestedTensor_matmul);
+  nt_impl(m, "matmul.out", NestedTensor_matmul_out);
+  nt_impl(m, "pin_memory", NestedTensor_pin_memory);
+  nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
+  nt_impl(m, "stack", NestedTensor_stack);
+  nt_impl(m, "stack.out", NestedTensor_stack_out);
+  nt_impl(m, "cat", NestedTensor_cat);
+  nt_impl(m, "cat.out", NestedTensor_cat_out);
 }
 } // namespace at

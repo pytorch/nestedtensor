@@ -121,6 +121,13 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
           _structure)) {
   // apply([](at::Tensor& tensor) { TORCH_CHECK(!tensor.requires_grad(), "Input
   // tensornode requires gradient."); }, structure);
+#ifdef TRACEPACKED
+  if (_structure.buffer()) {
+    std::cout << "structure is packed" << std::endl;
+  } else {
+    std::cout << "structure is  not packed" << std::endl;
+  }
+#endif
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")
@@ -207,6 +214,9 @@ TensorNode get_nested_tensor_structure(at::Tensor tensor) {
 }
 
 at::Tensor wrap_tensor_node(TensorNode&& result) {
+#ifdef TRACEPACKED
+  std::cout << "wrap_tensor_node" << std::endl;
+#endif
   if (result.is_leaf()) {
     return result.payload();
   }
@@ -241,8 +251,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return map_nested_tensor(
-      [](at::Tensor tensor) { return tensor.contiguous(); }, self);
+  return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -450,28 +459,36 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-// void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
-//   std::cerr << "Calling fallback for " << op.schema() << std::endl;
-//   c10::impl::ExcludeDispatchKeyGuard
-//   guard(c10::DispatchKey::PrivateUse1_PreAutograd); op.callBoxed(stack);
-// }
+#ifdef TRACEPACKED
+void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
+  std::cerr << "Calling fallback for " << op.schema() << std::endl;
+  c10::impl::ExcludeDispatchKeyGuard guard(
+      c10::DispatchKey::PrivateUse1_PreAutograd);
+  op.callBoxed(stack);
+}
+#endif
 
 TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
-  // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
+#ifdef TRACEPACKED
+  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
+#else
   m.fallback(torch::CppFunction::makeFallthrough());
+#endif
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("copy_", NestedTensor_copy_);
-  m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
-  m.impl_UNBOXED("squeeze_.dim", NestedTensor_squeeze__dim);
-  m.impl_UNBOXED("squeeze", NestedTensor_squeeze);
-  m.impl_UNBOXED("squeeze.dim", NestedTensor_squeeze_dim);
-  m.impl_UNBOXED("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
-  m.impl_UNBOXED("is_pinned", NestedTensor_is_pinned);
-  m.impl_UNBOXED("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
-  m.impl_UNBOXED("select.int", NestedTensor_select);
-  m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
-  m.impl_UNBOXED("unsqueeze", NestedTensor_unsqueeze);
+  nt_impl(m, "copy_", NestedTensor_copy_);
+  nt_impl(m, "squeeze_", NestedTensor_squeeze_);
+  nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
+  nt_impl(m, "squeeze", NestedTensor_squeeze);
+  nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
+  // nt_impl("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
+  nt_impl(m, "contiguous", NestedTensor_contiguous);
+  nt_impl(m, "is_pinned", NestedTensor_is_pinned);
+  // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
+  nt_impl(m, "unbind.int", NestedTensor_unbind);
+  nt_impl(m, "select.int", NestedTensor_select);
+  nt_impl(m, "slice.Tensor", NestedTensor_slice);
+  nt_impl(m, "unsqueeze", NestedTensor_unsqueeze);
 }
 } // namespace at

@@ -221,6 +221,28 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64))
         _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64).eval())
 
+    def test_mha(self):
+        embed_dim = 2
+        num_heads = 2
+        mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
+        query = torch.randn(3, 1, embed_dim)
+        key = torch.randn(2, 1, embed_dim)
+        value = torch.randn(2, 1, embed_dim)
+        attn_output, _ = mha(query, key, value)
+        nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
+        nt_mha.in_proj_weight = mha.in_proj_weight
+        nt_mha.in_proj_bias = mha.in_proj_bias
+        nt_mha.out_proj.weight = mha.out_proj.weight
+        nt_mha.out_proj.bias = mha.out_proj.bias
+        query_nt = ntnt([query.squeeze(1)])
+        key_nt = ntnt([key.squeeze(1)])
+        value_nt = ntnt([value.squeeze(1)])
+        nt_attn_output, _ = nt_mha(
+            query_nt, key_nt, value_nt, need_weights=False)
+        # nt_attn_output.sum().backward()
+        # For regular tensors the batch dimension is along dimension 1
+        self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -294,16 +294,28 @@ Tensor NestedTensor_max_pool2d(
       self);
 }
 
+// Registered below autograd
 Tensor NestedTensor_relu(const Tensor& self) {
+  auto impl = get_nested_tensor_impl(self);
+  auto structure = get_nested_tensor_structure(self);
+  if (structure.buffer()) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed relu" << std::endl;
+#endif
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        at::relu(*structure.buffer()), impl->nested_size()));
+  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::relu(tensor); }, self);
 }
 
+// Registered below autograd
 Tensor& NestedTensor_relu_(Tensor& self) {
   apply_nested_tensor([](at::Tensor& tensor) { at::relu_(tensor); }, self);
   return self;
 }
 
+// Registered below autograd
 Tensor NestedTensor_threshold_backward(
     const Tensor& grad,
     const Tensor& self,
@@ -405,6 +417,14 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
         [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
     return self;
   }
+  if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed add_" << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    (*self_structure.buffer()).reshape({-1, other.size(0)}).add_(other);
+    return self;
+  }
   apply_nested_tensor([&](at::Tensor& s) { s.add_(other, alpha); }, self);
   return self;
 }
@@ -443,22 +463,22 @@ Tensor NestedTensor_clone(
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
-  m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
-  m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
-  m.impl_UNBOXED("sum", NestedTensor_sum);
-  // m.impl_UNBOXED("upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
-  m.impl_UNBOXED("clone", NestedTensor_clone);
-  m.impl_UNBOXED("dropout", NestedTensor_dropout);
-  m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
+  nt_impl(m, "conv2d", NestedTensor_conv2d);
+  nt_impl(m, "batch_norm", NestedTensor_batch_norm);
+  nt_impl(m, "max_pool2d", NestedTensor_max_pool2d);
+  nt_impl(m, "sum", NestedTensor_sum);
+  // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
+  nt_impl(m, "clone", NestedTensor_clone);
+  nt_impl(m, "dropout", NestedTensor_dropout);
+  nt_impl(m, "dropout_", NestedTensor_dropout_);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  m.impl_UNBOXED("add.Tensor", NestedTensor_add);
-  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
-  m.impl_UNBOXED("relu", NestedTensor_relu);
-  m.impl_UNBOXED("relu_", NestedTensor_relu_);
-  m.impl_UNBOXED("threshold_backward", NestedTensor_threshold_backward);
+  nt_impl(m, "add.Tensor", NestedTensor_add);
+  nt_impl(m, "add_.Tensor", NestedTensor_add_);
+  nt_impl(m, "relu", NestedTensor_relu);
+  nt_impl(m, "relu_", NestedTensor_relu_);
+  nt_impl(m, "threshold_backward", NestedTensor_threshold_backward);
 }
 
 } // namespace at
