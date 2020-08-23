@@ -252,7 +252,6 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
   return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
-  //    [](at::Tensor tensor) { return tensor.contiguous(); }, self);
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -460,16 +459,21 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-// void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
-//   std::cerr << "Calling fallback for " << op.schema() << std::endl;
-//   c10::impl::ExcludeDispatchKeyGuard guard(
-//       c10::DispatchKey::PrivateUse1_PreAutograd);
-//   op.callBoxed(stack);
-// }
+#ifdef TRACEPACKED
+void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
+  std::cerr << "Calling fallback for " << op.schema() << std::endl;
+  c10::impl::ExcludeDispatchKeyGuard guard(
+      c10::DispatchKey::PrivateUse1_PreAutograd);
+  op.callBoxed(stack);
+}
+#endif
 
 TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
-  // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
+#ifdef TRACEPACKED
+  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
+#else
   m.fallback(torch::CppFunction::makeFallthrough());
+#endif
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {

@@ -203,13 +203,15 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   if (structure_self.buffer()) {
     if (self.dim() == 3 && other.dim() == 2 &&
         impl_self->opt_sizes()[self.dim() - 1] == other.size(self.dim() - 2)) {
+#ifdef TRACEPACKED
+      std::cout << "calling packed matmul" << std::endl;
+#endif
       SizeNode new_nested_size = map(
           [&](c10::List<int64_t> self_size) {
             c10::List<int64_t> new_size{self_size[0], other.size(1)};
             return std::move(new_size);
           },
           impl_self->nested_size());
-      // std::cout << "calling optim matmul" << std::endl;
       return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
           at::matmul(
               (*structure_self.buffer()).reshape({-1, other.size(0)}), other)

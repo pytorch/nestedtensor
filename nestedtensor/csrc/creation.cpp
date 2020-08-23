@@ -202,7 +202,7 @@ NestedTensorImpl _as_nested_tensor(py::sequence list) {
       all_same,
       "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
   TensorNode structure =
-      pack(map([](c10::IValue a) { return a.toTensor().clone().detach(); }, ivalue_structure));
+      map([](c10::IValue a) { return a.toTensor().clone().detach(); }, ivalue_structure);
   if (auto first = get_first_leaf(structure)) {
     if (!_verify_variables(*first, structure)) {
       _verify_variables(*first, structure, true);
@@ -212,7 +212,7 @@ NestedTensorImpl _as_nested_tensor(py::sequence list) {
 }
 
 at::Tensor nested_tensor_impl(py::sequence list) {
-  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list)); //.contiguous();
+  return at::detail::make_tensor<NestedTensorImpl>(_as_nested_tensor(list)).contiguous();
 }
 
 } // namespace nested_tensor

@@ -417,10 +417,6 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
         [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
     return self;
   }
-  //    std::cout << "01" << std::endl;
-  //    std::cout << "self.dim(): " << self.dim() << std::endl;
-  //    std::cout << "other.dim(): " << other.dim() << std::endl;
-  //    std::cout << "other: " << other << std::endl;
   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
 #ifdef TRACEPACKED
     std::cout << "calling packed add_" << std::endl;

@@ -169,11 +169,11 @@ struct NestedTensorImpl : public c10::TensorImpl {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
     // buffer. For this to be contiguous not only the individuals Tensors have
     // to be but also the buffer.
-    // auto fn = [](at::Tensor leaf, bool input) {
-    //   return input && leaf.is_contiguous();
-    // };
-    // return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
-    return get_structure().buffer().has_value();
+    auto fn = [](at::Tensor leaf, bool input) {
+      return input && leaf.is_contiguous();
+    };
+    return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true) &&
+        get_structure().buffer().has_value();
   }
   TensorNode& get_structure() {
     return _structure;
