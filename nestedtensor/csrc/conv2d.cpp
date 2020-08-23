@@ -53,14 +53,14 @@ std::vector<int64_t> _grad_input_padding(
     IntArrayRef padding,
     IntArrayRef kernel_size,
     IntArrayRef dilation) {
-  std::cout << "grad_output.sizes(): " << grad_output.sizes() << std::endl;
-  std::cout << "input_size_: " << input_size_ << std::endl;
-  std::cout << "stride: " << stride << std::endl;
-  std::cout << "padding: " << stride << std::endl;
-  std::cout << "kernel_size: " << kernel_size << std::endl;
-  std::cout << "dilation: " << dilation << std::endl;
+  // std::cout << "grad_output.sizes(): " << grad_output.sizes() << std::endl;
+  // std::cout << "input_size_: " << input_size_ << std::endl;
+  // std::cout << "stride: " << stride << std::endl;
+  // std::cout << "padding: " << stride << std::endl;
+  // std::cout << "kernel_size: " << kernel_size << std::endl;
+  // std::cout << "dilation: " << dilation << std::endl;
   int64_t k = grad_output.dim() - 2;
-  std::cout << "k: " << k << std::endl;
+  // std::cout << "k: " << k << std::endl;
 
   std::vector<int64_t> input_size;
 
@@ -228,7 +228,7 @@ struct NestedTensorFunction_conv2d
     ctx->saved_data["4"] = stride.vec();
     ctx->saved_data["5"] = padding.vec();
     ctx->saved_data["6"] = groups;
-    std::cout << "fw dilation: " << dilation << std::endl;
+    // std::cout << "fw dilation: " << dilation << std::endl;
     ctx->saved_data["7"] = dilation.vec();
     auto autograd_input = map_nested_tensor(
         [](at::Tensor ti) {
@@ -279,7 +279,7 @@ struct NestedTensorFunction_conv2d
     auto padding = ctx->saved_data["5"].toIntList().vec();
     auto groups = ctx->saved_data["6"].toInt();
     auto dilation = ctx->saved_data["7"].toIntList().vec();
-    std::cout << "bw dilation: " << dilation << std::endl;
+    // std::cout << "bw dilation: " << dilation << std::endl;
 
     auto weight_grad = torch::zeros_like(weight);
     c10::optional<at::Tensor> bias_grad;
