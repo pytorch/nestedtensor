@@ -222,18 +222,19 @@ struct NestedTensorFunction_conv2d
                 IntArrayRef(padding),
                 IntArrayRef(kernel_size),
                 IntArrayRef(dilation));
-            result.push_back(at::conv_transpose2d(
+            auto grad_input = at::conv_transpose2d(
                                  g_,
                                  weight,
-                                 *bias,
+                                 c10::nullopt, //*bias,
                                  IntArrayRef(stride),
                                  IntArrayRef(padding),
                                  IntArrayRef(grad_input_padding),
                                  groups,
                                  IntArrayRef(dilation))
-                                 .squeeze(0));
-            // result = torch::autograd::grad(
-            //     {r}, {i, weight, *bias}, {g}, c10::nullopt, false, true);
+                                 .squeeze(0);
+            result = torch::autograd::grad(
+                {r}, {i, weight, *bias}, {g}, c10::nullopt, false, true);
+            TORCH_CHECK(at::allclose(grad_input, result[0]), "grad input was computed incorrectly.");
           } else {
             result = torch::autograd::grad(
                 {r}, {i, weight}, {g}, c10::nullopt, false, true);
