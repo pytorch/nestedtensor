@@ -114,6 +114,104 @@ std::vector<int64_t> _grad_input_padding(
   }
   return result_size;
 }
+
+at::Tensor _conv2d_grad_input(
+    const Tensor& grad_output,
+    const Tensor& input,
+    const Tensor& weight,
+    const c10::optional<Tensor>& bias,
+    IntArrayRef stride,
+    IntArrayRef padding,
+    IntArrayRef dilation,
+    int64_t groups) {
+  std::vector<int64_t> kernel_size{weight.size(2), weight.size(3)};
+  auto grad_input_padding = _grad_input_padding(
+      grad_output,
+      input.sizes(),
+      IntArrayRef(stride),
+      IntArrayRef(padding),
+      IntArrayRef(kernel_size),
+      IntArrayRef(dilation));
+  auto grad_input = at::conv_transpose2d(
+      grad_output,
+      weight,
+      c10::nullopt, //*bias,
+      IntArrayRef(stride),
+      IntArrayRef(padding),
+      IntArrayRef(grad_input_padding),
+      groups,
+      IntArrayRef(dilation));
+  return grad_input;
+}
+
+//    in_channels = input.shape[1]
+//    out_channels = grad_output.shape[1]
+//    min_batch = input.shape[0]
+//
+//    grad_output = grad_output.contiguous().repeat(1, in_channels // groups, 1,
+//                                                  1)
+//    grad_output = grad_output.contiguous().view(
+//        grad_output.shape[0] * grad_output.shape[1], 1, grad_output.shape[2],
+//        grad_output.shape[3])
+//
+//    input = input.contiguous().view(1, input.shape[0] * input.shape[1],
+//                                    input.shape[2], input.shape[3])
+//
+//    grad_weight = torch.conv2d(input, grad_output, None, dilation, padding,
+//                               stride, in_channels * min_batch)
+//
+//    grad_weight = grad_weight.contiguous().view(
+//        min_batch, grad_weight.shape[1] // min_batch, grad_weight.shape[2],
+//        grad_weight.shape[3])
+//
+//    return grad_weight.sum(dim=0).view(
+//        in_channels // groups, out_channels,
+//        grad_weight.shape[2], grad_weight.shape[3]).transpose(0, 1).narrow(
+//            2, 0, weight_size[2]).narrow(3, 0, weight_size[3])
+at::Tensor _conv2d_grad_weight(
+    const Tensor& grad_output_,
+    const Tensor& input_,
+    const Tensor& weight,
+    const c10::optional<Tensor>& bias,
+    IntArrayRef stride,
+    IntArrayRef padding,
+    IntArrayRef dilation,
+    int64_t groups) {
+  int64_t in_channels = input_.size(1);
+  int64_t out_channels = grad_output_.size(1);
+  int64_t min_batch = input_.size(0);
+  auto weight_size = weight.sizes();
+  at::Tensor grad_output =
+      grad_output_.contiguous().repeat({1, in_channels / groups, 1, 1});
+  grad_output =
+      grad_output.contiguous().view({grad_output.size(0) * grad_output.size(1),
+                                     1,
+                                     grad_output.size(2),
+                                     grad_output.size(3)});
+  at::Tensor input = input_.contiguous().view(
+      {1, input_.size(0) * input_.size(1), input_.size(2), input_.size(3)});
+  at::Tensor grad_weight = at::conv2d(
+      input,
+      grad_output,
+      c10::nullopt,
+      dilation,
+      padding,
+      stride,
+      in_channels * min_batch);
+  grad_weight = grad_weight.contiguous().view({min_batch,
+                                               grad_weight.size(1) / min_batch,
+                                               grad_weight.size(2),
+                                               grad_weight.size(3)});
+  return grad_weight.sum(0)
+      .view({in_channels / groups,
+             out_channels,
+             grad_weight.size(2),
+             grad_weight.size(3)})
+      .transpose(0, 1)
+      .narrow(2, 0, weight_size[2])
+      .narrow(3, 0, weight_size[3]);
+}
+
 } // namespace impl
 
 struct NestedTensorFunction_conv2d
@@ -198,46 +296,43 @@ struct NestedTensorFunction_conv2d
         [&](at::Tensor r, at::Tensor i, at::Tensor g) {
           // TODO: Might have to retain graph in many to one settings.
           std::vector<at::Tensor> result;
-          if (bias) {
-            // >>> input = torch.randn(1,1,3,3, requires_grad=True)
-            // >>> weight = torch.randn(1,1,1,2, requires_grad=True)
-            // >>> output = F.conv2d(input, weight)
-            // >>> grad_output = torch.randn(output.shape)
-            // >>> grad_input = torch.autograd.grad(output, input, grad_output)
-            // >>> F.grad.conv2d_input(input.shape, weight, grad_output)
-            // at::Tensor conv_transpose2d(
-            //     const Tensor& input, const Tensor& weight, const Tensor&
-            //     bias, IntArrayRef stride, IntArrayRef padding, IntArrayRef
-            //     output_padding, int64_t groups, IntArrayRef dilation) {
-            std::cout << "has bias with sizes " << (*bias).sizes() << std::endl;
-            std::cout << "i.sizes(): " << i.sizes() << std::endl;
+          // if (bias) {
+          //   // >>> input = torch.randn(1,1,3,3, requires_grad=True)
+          //   // >>> weight = torch.randn(1,1,1,2, requires_grad=True)
+          //   // >>> output = F.conv2d(input, weight)
+          //   // >>> grad_output = torch.randn(output.shape)
+          //   // >>> grad_input = torch.autograd.grad(output, input, grad_output)
+          //   // >>> F.grad.conv2d_input(input.shape, weight, grad_output)
+          //   // at::Tensor conv_transpose2d(
+          //   //     const Tensor& input, const Tensor& weight, const Tensor&
+          //   //     bias, IntArrayRef stride, IntArrayRef padding, IntArrayRef
+          //   //     output_padding, int64_t groups, IntArrayRef dilation) {
+          //   std::cout << "has bias with sizes " << (*bias).sizes() << std::endl;
+          //   std::cout << "i.sizes(): " << i.sizes() << std::endl;
+          //   auto i_ = i.unsqueeze(0);
+          //   auto g_ = g.unsqueeze(0);
+          //   result = torch::autograd::grad(
+          //       {r}, {i, weight, *bias}, {g}, c10::nullopt, false, true);
+          //   // TORCH_CHECK(
+          //   //     at::allclose(grad_input, result[0]),
+          //   //     "grad input was computed incorrectly.");
+          //   // TORCH_CHECK(
+          //   //     at::allclose(grad_weight, result[1]),
+          //   //     "grad wight was computed incorrectly.");
+          // } else {
             auto i_ = i.unsqueeze(0);
             auto g_ = g.unsqueeze(0);
-
-            std::vector<int64_t> kernel_size{weight.size(2), weight.size(3)};
-            auto grad_input_padding = impl::_grad_input_padding(
-                g_,
-                i_.sizes(),
-                IntArrayRef(stride),
-                IntArrayRef(padding),
-                IntArrayRef(kernel_size),
-                IntArrayRef(dilation));
-            auto grad_input = at::conv_transpose2d(
-                                 g_,
-                                 weight,
-                                 c10::nullopt, //*bias,
-                                 IntArrayRef(stride),
-                                 IntArrayRef(padding),
-                                 IntArrayRef(grad_input_padding),
-                                 groups,
-                                 IntArrayRef(dilation))
-                                 .squeeze(0);
-            result = torch::autograd::grad(
-                {r}, {i, weight, *bias}, {g}, c10::nullopt, false, true);
-            TORCH_CHECK(at::allclose(grad_input, result[0]), "grad input was computed incorrectly.");
-          } else {
-            result = torch::autograd::grad(
-                {r}, {i, weight}, {g}, c10::nullopt, false, true);
+            result.push_back(
+                impl::_conv2d_grad_input(
+                    g_, i_, weight, bias, stride, padding, dilation, groups)
+                    .squeeze(0));
+            result.push_back(impl::_conv2d_grad_weight(
+                g_, i_, weight, bias, stride, padding, dilation, groups));
+            // result = torch::autograd::grad(
+            //     {r}, {i, weight}, {g}, c10::nullopt, false, true);
+          // }
+          if (bias) {
+            result.push_back(g.sum(1).sum(1));
           }
           if (!result[1].defined()) {
             weight_grad_undefined = true;
