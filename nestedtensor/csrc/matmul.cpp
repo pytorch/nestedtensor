@@ -29,9 +29,6 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
           [&](c10::List<int64_t> self_size, c10::List<int64_t> other_size) {
             c10::List<int64_t> new_size{
                 self_size[0], self_size[1], other_size[2]};
-            // std::cout << "self_size[0]: " << self_size[0];
-            // std::cout << " - self_size[1]: " << self_size[1];
-            // std::cout << " - other_size[2]: " << other_size[2] << std::endl;
             return std::move(new_size);
           },
           impl_self->nested_size(),
