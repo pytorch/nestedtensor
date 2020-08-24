@@ -162,7 +162,7 @@ struct NestedTensorFunction_conv2d
                      groups)
               .squeeze(0);
         },
-        input).contiguous();
+        input);
     ctx->saved_data["0"] = weight;
     ctx->saved_data["1"] = bias;
     ctx->saved_data["2"] = output;

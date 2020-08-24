@@ -190,54 +190,6 @@ Tensor NestedTensor__log_softmax(
       [&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
 }
 
-Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
-  AutoGradMode autogradmode(false);
-  if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
-        [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
-        self,
-        other);
-  }
-  auto impl_self = get_nested_tensor_impl(self);
-  auto structure_self = get_nested_tensor_structure(self);
-  if (structure_self.buffer()) {
-    if (self.dim() == 3 && other.dim() == 2 &&
-        impl_self->opt_sizes()[self.dim() - 1] == other.size(self.dim() - 2)) {
-#ifdef TRACEPACKED
-      std::cout << "calling packed matmul" << std::endl;
-#endif
-      SizeNode new_nested_size = map(
-          [&](c10::List<int64_t> self_size) {
-            c10::List<int64_t> new_size{self_size[0], other.size(1)};
-            return std::move(new_size);
-          },
-          impl_self->nested_size());
-      return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-          at::matmul(
-              (*structure_self.buffer()).reshape({-1, other.size(0)}), other)
-              .reshape(-1),
-          new_nested_size));
-    }
-  }
-  return map_nested_tensor(
-      [&other](Tensor tensor) { return at::matmul(tensor, other); }, self);
-}
-
-Tensor& NestedTensor_matmul_out(
-    Tensor& result,
-    const Tensor& self,
-    const Tensor& other) {
-  AutoGradMode autogradmode(false);
-  apply_nested_tensor(
-      [](Tensor& result, Tensor& tensor, Tensor& other) {
-        return at::matmul_out(result, tensor, other);
-      },
-      result,
-      self,
-      other);
-  return result;
-}
-
 Tensor NestedTensor_pin_memory(const Tensor& self) {
   return map_nested_tensor(
       [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
@@ -346,9 +298,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "transpose.int", NestedTensor_transpose);
   nt_impl(m, "softmax.int", NestedTensor_softmax);
   nt_impl(m, "layer_norm", NestedTensor_layer_norm);
-  // nt_impl(m, "matmul", no_bw(TORCH_FN(NestedTensor_matmul);
-  nt_impl(m, "matmul", NestedTensor_matmul);
-  nt_impl(m, "matmul.out", NestedTensor_matmul_out);
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
   nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
   nt_impl(m, "stack", NestedTensor_stack);

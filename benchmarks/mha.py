@@ -33,4 +33,4 @@ def gen_nt_segmentation():
 
 if __name__ == "__main__":
     print(utils.benchmark_fn(gen_nt_segmentation()))
-    print(utils.benchmark_fn(gen_t_loop_segmentation()))
+    # print(utils.benchmark_fn(gen_t_loop_segmentation()))
