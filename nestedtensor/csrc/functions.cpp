@@ -192,19 +192,100 @@ Tensor NestedTensor__log_softmax(
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   AutoGradMode autogradmode(false);
+  auto impl_self = get_nested_tensor_impl(self);
+  auto structure_self = get_nested_tensor_structure(self);
   if (is_nested_tensor_impl(other)) {
+    auto impl_other = get_nested_tensor_impl(other);
+    auto structure_other = get_nested_tensor_structure(other);
+    std::cout << self.dim() << std::endl;
+    std::cout << other.dim() << std::endl;
+    std::cout << *impl_self->opt_sizes()[0] << std::endl;
+    std::cout << *impl_other->opt_sizes()[0] << std::endl;
+    std::cout << *impl_self->opt_sizes()[1] << std::endl;
+    std::cout << *impl_other->opt_sizes()[1] << std::endl;
+    std::cout << *impl_self->opt_sizes()[3] << std::endl;
+    std::cout << *impl_other->opt_sizes()[2] << std::endl;
+    std::cout << (*impl_self->opt_sizes()[0] == *impl_other->opt_sizes()[0])
+              << std::endl;
+    std::cout << (*impl_self->opt_sizes()[1] == *impl_other->opt_sizes()[1])
+              << std::endl;
+    std::cout << (*impl_self->opt_sizes()[3] == *impl_other->opt_sizes()[2])
+              << std::endl;
+    if (structure_self.buffer() && structure_other.buffer() &&
+        self.dim() == 4 && other.dim() == 4 && impl_self->opt_sizes()[0] &&
+        impl_other->opt_sizes()[0] && impl_self->opt_sizes()[1] &&
+        impl_other->opt_sizes()[1] && impl_self->opt_sizes()[3] &&
+        impl_other->opt_sizes()[2] &&
+        (*impl_self->opt_sizes()[0] == *impl_other->opt_sizes()[0]) &&
+        (*impl_self->opt_sizes()[1] == *impl_other->opt_sizes()[1]) &&
+        (*impl_self->opt_sizes()[3] == *impl_other->opt_sizes()[2])) {
+#ifdef TRACEPACKED
+      std::cout << "calling packed NT x NT matmul" << std::endl;
+#endif
+      SizeNode new_nested_size = map(
+          [&](c10::List<int64_t> self_size, c10::List<int64_t> other_size) {
+            c10::List<int64_t> new_size{
+                self_size[0], self_size[1], other_size[2]};
+            std::cout << "self_size[0]: " << self_size[0];
+            std::cout << " - self_size[1]: " << self_size[1];
+            std::cout << " - other_size[2]: " << other_size[2] << std::endl;
+            return std::move(new_size);
+          },
+          impl_self->nested_size(),
+          impl_other->nested_size());
+      TensorNode transposed = 
+          map(
+              [](at::Tensor t) {
+                auto ti = t.transpose(1, 2).transpose(0, 1);
+                std::cout << "ti.sizes(): " << ti.sizes() << std::endl;
+                std::cout << "ti.strides(): " << ti.strides() << std::endl;
+                return ti;
+              },
+              structure_other);
+      TensorNode transposed0 = 
+          map(
+              [](at::Tensor t) {
+                auto ai = t;
+                std::cout << "ai.sizes(): " << ai.sizes() << std::endl;
+                std::cout << "ai.strides(): " << ai.strides() << std::endl;
+                return ai;
+              },
+              structure_self);
+      std::cout << "structure_self_buffer.sizes(): " << (*structure_self.buffer()).sizes() << std::endl;
+      std::cout << "structure_other_buffer.sizes(): " << (*structure_other.buffer()).sizes() << std::endl;
+      auto matmul_self_buffer =
+          (*structure_self.buffer()).reshape({
+             // ((*impl_self->opt_sizes()[0]) * (*impl_self->opt_sizes()[1])), 
+             -1,
+             // (*impl_self->opt_sizes()[0]), 
+              1, *impl_self->opt_sizes()[3]});
+      auto matmul_other_buffer =
+          (*structure_other.buffer())
+              .reshape({
+                 // ((*impl_self->opt_sizes()[0]) * (*impl_self->opt_sizes()[1])), 
+                 -1, 
+                 // (*impl_self->opt_sizes()[0]), 
+                  1, *impl_self->opt_sizes()[3]}).transpose(1, 2);
+      std::cout << "matmul_self_buffer.sizes(): " << matmul_self_buffer.sizes() << std::endl;
+      std::cout << "matmul_other_buffer.sizes(): " << matmul_other_buffer.sizes() << std::endl;
+      auto new_buffer =
+          at::matmul(matmul_self_buffer, matmul_other_buffer);
+      std::cout << "new_buffer.sizes(): " << new_buffer.sizes() << std::endl;
+      new_buffer = new_buffer.reshape({-1});
+      return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+          std::move(new_buffer), new_nested_size));
+    }
     return map_nested_tensor(
         [](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
         self,
         other);
   }
-  auto impl_self = get_nested_tensor_impl(self);
-  auto structure_self = get_nested_tensor_structure(self);
   if (structure_self.buffer()) {
-    if (self.dim() == 3 && other.dim() == 2 &&
+    if (self.dim() == 3 && other.dim() == 2 && impl_self->opt_sizes()[0] &&
+        impl_self->opt_sizes()[2] &&
         impl_self->opt_sizes()[self.dim() - 1] == other.size(self.dim() - 2)) {
 #ifdef TRACEPACKED
-      std::cout << "calling packed matmul" << std::endl;
+      std::cout << "calling packed NT x T matmul" << std::endl;
 #endif
       SizeNode new_nested_size = map(
           [&](c10::List<int64_t> self_size) {

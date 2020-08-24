@@ -7,7 +7,7 @@
 #include <torch/extension.h>
 #include <torch/library.h>
 
-// #define TRACEPACKED 1
+#define TRACEPACKED 1
 
 namespace torch {
 namespace nested_tensor {
