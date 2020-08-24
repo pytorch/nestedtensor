@@ -107,16 +107,16 @@ def multi_head_attention_forward(query,                           # type: Nested
     if v is not None:
         v = v.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
     k = k.transpose(2, 3)
-    print(q.nested_size())
-    print(k.nested_size())
+    # print(q.nested_size())
+    # print(k.nested_size())
 
     attn_output_weights = torch.matmul(q, k)
     attn_output_weights = F.softmax(
         attn_output_weights, dim=-1)
     attn_output_weights = F.dropout(
         attn_output_weights, p=dropout_p, training=training)
-    print(attn_output_weights.nested_size())
-    print(v.nested_size())
+    # print(attn_output_weights.nested_size())
+    # print(v.nested_size())
     attn_output = torch.matmul(attn_output_weights, v)
     attn_output = attn_output.transpose(1, 2).reshape(-1, -1, embed_dim)
     attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)

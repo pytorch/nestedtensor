@@ -445,8 +445,8 @@ class TestFunctional(TestCase):
         key = torch.randn(2, 1, embed_dim)
         value = torch.randn(2, 1, embed_dim)
         query0 = torch.randn(3, 1, embed_dim)
-        key0 = torch.randn(4, 1, embed_dim)
-        value0 = torch.randn(5, 1, embed_dim)
+        key0 = torch.randn(3, 1, embed_dim)
+        value0 = torch.randn(3, 1, embed_dim)
         # attn_output, _ = mha(query, key, value)
         nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
         # nt_mha.in_proj_weight = mha.in_proj_weight
