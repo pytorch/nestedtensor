@@ -459,21 +459,16 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-#ifdef TRACEPACKED
-void traceFallback(const c10::OperatorHandle& op, Stack* stack) {
-  std::cerr << "Calling fallback for " << op.schema() << std::endl;
+void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
+  std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
       c10::DispatchKey::PrivateUse1_PreAutograd);
   op.callBoxed(stack);
 }
-#endif
 
 TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
-#ifdef TRACEPACKED
-  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallback>());
-#else
+  // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
   m.fallback(torch::CppFunction::makeFallthrough());
-#endif
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {

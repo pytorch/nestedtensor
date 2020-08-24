@@ -148,6 +148,8 @@ struct NestedTensorFunction_conv2d
       IntArrayRef padding,
       IntArrayRef dilation,
       int64_t groups) {
+    // The final call to .contiguous is of questionable general value
+    // but in the context of DETR we'll make it the default.
     at::Tensor output = map_nested_tensor(
         [&](at::Tensor t) {
           return at::conv2d(
@@ -160,7 +162,7 @@ struct NestedTensorFunction_conv2d
                      groups)
               .squeeze(0);
         },
-        input);
+        input).contiguous();
     ctx->saved_data["0"] = weight;
     ctx->saved_data["1"] = bias;
     ctx->saved_data["2"] = output;
