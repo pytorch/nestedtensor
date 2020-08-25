@@ -33,6 +33,7 @@ at::Tensor min_mha(
   TORCH_CHECK(value.dim() == 3, "value needs to be 3 dim.");
   int64_t edim = query.size(2);
 
+  //TODO: Use addmm!
   auto q = at::matmul(query, at::slice(in_proj_weight, 0, 0, edim));
   auto k = at::matmul(key, at::slice(in_proj_weight, 0, edim, 2 * edim));
   auto v = at::matmul(value, at::slice(in_proj_weight, 0, 2 * edim));

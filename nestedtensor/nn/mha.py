@@ -69,10 +69,10 @@ def multi_head_attention_forward(query,                           # type: Nested
     head_dim = embed_dim // num_heads
     assert head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
     scaling = float(head_dim) ** -0.5
-    # print(query.nested_size())
-    # print(key.nested_size())
-    # print(value.nested_size())
-    # print(in_proj_bias.size())
+    print(query.nested_size())
+    print(key.nested_size())
+    print(value.nested_size())
+    print(in_proj_bias.size())
 
     return torch.ops.nestedtensor.min_mha(num_heads,
                                           head_dim,
