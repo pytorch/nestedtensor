@@ -206,11 +206,6 @@ Tensor NestedTensor_threshold_backward(
 }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  if (is_packed(input)) {
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        at::dropout(*get_nested_tensor_structure(input).buffer(), p, train),
-        get_nested_tensor_impl(input)->nested_size()));
-  }
   return autograd_map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
