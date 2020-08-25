@@ -224,6 +224,7 @@ class TestAutogradFunctional(TestCase):
     def test_mha(self):
         embed_dim = 2
         num_heads = 2
+        torch.manual_seed(1010)
         mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
         query = torch.randn(3, 1, embed_dim)
         key = torch.randn(2, 1, embed_dim)
@@ -241,6 +242,8 @@ class TestAutogradFunctional(TestCase):
             query_nt, key_nt, value_nt, need_weights=False)
         # nt_attn_output.sum().backward()
         # For regular tensors the batch dimension is along dimension 1
+        print(attn_output.sum())
+        print(nt_attn_output.sum())
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
 

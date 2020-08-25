@@ -8,7 +8,7 @@ import random
 # Performance tanks hard for lots of small Tensors as expected
 random.seed(1010)
 RAND_INTS = [random.randint(10, 30) for _ in range(2000)]
-RAND_INTS = [random.randint(100, 300) for _ in range(2)]
+RAND_INTS = [random.randint(100, 300) for _ in range(20)]
 
 # (26, None, 256) (26, None, 256) (26, None, 256) torch.Size([256, 256]) torch.Size([256])
 MODEL0 = torch.nn.MultiheadAttention(256, 8, dropout=0.1).cuda()
@@ -34,4 +34,4 @@ def gen_nt_segmentation():
 
 if __name__ == "__main__":
     print(utils.benchmark_fn(gen_nt_segmentation()))
-    # print(utils.benchmark_fn(gen_t_loop_segmentation()))
+    print(utils.benchmark_fn(gen_t_loop_segmentation()))

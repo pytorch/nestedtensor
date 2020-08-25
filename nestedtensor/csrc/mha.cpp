@@ -33,27 +33,45 @@ at::Tensor min_mha(
   TORCH_CHECK(value.dim() == 3, "value needs to be 3 dim.");
   int64_t edim = query.size(2);
 
-  //TODO: Use addmm!
-  auto q = at::matmul(query, at::slice(in_proj_weight, 0, 0, edim));
-  auto k = at::matmul(key, at::slice(in_proj_weight, 0, edim, 2 * edim));
-  auto v = at::matmul(value, at::slice(in_proj_weight, 0, 2 * edim));
+  at::Tensor q, k, v;
+  // TODO: Use addmm!
+  // if input.dim() == 2 and bias is not None:
+  //     # fused op is marginally faster
+  //     ret = torch.addmm(bias, input, weight.t())
   if (in_proj_bias) {
-    q = q + at::slice(*in_proj_bias, 0, 0, edim);
-    k = k + at::slice(*in_proj_bias, 0, edim, 2 * edim);
-    v = v + at::slice(*in_proj_bias, 0, 2 * edim);
+    q = at::addmm(
+        at::slice(*in_proj_bias, 0, 0, edim),
+        query,
+        at::slice(in_proj_weight, 0, 0, edim).t(),
+        scaling,
+        scaling);
+    k = at::addmm(
+        at::slice(*in_proj_bias, 0, edim, 2 * edim),
+        key,
+        at::slice(in_proj_weight, 0, edim, 2 * edim).t());
+    v = at::addmm(
+        at::slice(*in_proj_bias, 0, 2 * edim),
+        value,
+        at::slice(in_proj_weight, 0, 2 * edim).t());
+    //    q = q + at::slice(*in_proj_bias, 0, 0, edim);
+    //    k = k + at::slice(*in_proj_bias, 0, edim, 2 * edim);
+    //    v = v + at::slice(*in_proj_bias, 0, 2 * edim);
+  } else {
+    q = at::matmul(query, at::slice(in_proj_weight, 0, 0, edim).t());
+    k = at::matmul(key, at::slice(in_proj_weight, 0, edim, 2 * edim).t());
+    v = at::matmul(value, at::slice(in_proj_weight, 0, 2 * edim).t());
+    q = at::mul(q, torch::tensor({scaling}, q.options()));
   }
-
-  q = at::mul(q, torch::tensor({scaling}, q.options()));
 
   q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   v = v.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   auto attn_output_weights = at::matmul(q, k.transpose(2, 3));
-  attn_output_weights = at::softmax(attn_output_weights, -1).contiguous();
+  attn_output_weights = at::softmax(attn_output_weights, -1);
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
   auto attn_output = at::matmul(attn_output_weights, v);
-  attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim}).contiguous();
-  attn_output = at::matmul(attn_output, out_proj_weight);
+  attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
+  attn_output = at::matmul(attn_output, out_proj_weight.t());
   attn_output += out_proj_bias;
   return attn_output;
 }
