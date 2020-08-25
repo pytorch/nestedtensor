@@ -36,7 +36,6 @@ class FrozenBatchNorm2d(torch.nn.Module):
             missing_keys, unexpected_keys, error_msgs)
 
     def forward(self, x):
-        print("DHDHDH")
         # move reshapes to the beginning
         # to make it fuser-friendly
         w = self.weight.reshape(1, -1, 1, 1)
@@ -46,9 +45,14 @@ class FrozenBatchNorm2d(torch.nn.Module):
         eps = 1e-5
         scale = w * (rv + eps).rsqrt()
         bias = b - rm * scale
+        # print(scale.size())
+        # print(bias.size())
+        # print(type(scale))
+        # print(type(bias))
+        # print(x.nested_size())
         return (x * scale + bias).squeeze(1)
 
-MODEL = FrozenBatchNorm2d(64)
+MODEL = FrozenBatchNorm2d(64).cuda()
 
 def gen_t_loop_frozenbatchnorm2d():
     tensors = [torch.rand(64, i, 256).cuda() for i in RAND_INTS]

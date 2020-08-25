@@ -43,14 +43,18 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
     return map_nested_tensor(
         [&self](Tensor other) { return func(self, other); }, other);
   }
-  if (is_packed(self) && (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed binary " << typeid(func).name() << std::endl;
-#endif
+  if (is_packed(self)) {
     auto self_structure = get_nested_tensor_structure(self);
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        func((*self_structure.buffer()), other),
-        get_nested_tensor_impl(self)->nested_size()));
+    auto self_impl = get_nested_tensor_impl(self);
+    if (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1)) {
+#ifdef TRACEPACKED
+      std::cout << "calling packed binary NT x T 0-dim / 1-dim 1-numel"
+                << typeid(func).name() << std::endl;
+#endif
+      return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+          func((*self_structure.buffer()), other),
+          get_nested_tensor_impl(self)->nested_size()));
+    }
   }
   return map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);

@@ -32,10 +32,5 @@ def gen_nt_mha():
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     print(utils.benchmark_fn(gen_nt_mha()))
     print(utils.benchmark_fn(gen_t_loop_mha()))
-=======
-    print(utils.benchmark_fn(gen_nt_segmentation()))
-    print(utils.benchmark_fn(gen_t_loop_segmentation()))
->>>>>>> master
