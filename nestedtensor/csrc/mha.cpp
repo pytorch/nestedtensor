@@ -34,10 +34,6 @@ at::Tensor min_mha(
   int64_t edim = query.size(2);
 
   at::Tensor q, k, v;
-  // TODO: Use addmm!
-  // if input.dim() == 2 and bias is not None:
-  //     # fused op is marginally faster
-  //     ret = torch.addmm(bias, input, weight.t())
   if (in_proj_bias) {
     q = at::addmm(
         at::slice(*in_proj_bias, 0, 0, edim),
@@ -53,9 +49,6 @@ at::Tensor min_mha(
         at::slice(*in_proj_bias, 0, 2 * edim),
         value,
         at::slice(in_proj_weight, 0, 2 * edim).t());
-    //    q = q + at::slice(*in_proj_bias, 0, 0, edim);
-    //    k = k + at::slice(*in_proj_bias, 0, edim, 2 * edim);
-    //    v = v + at::slice(*in_proj_bias, 0, 2 * edim);
   } else {
     q = at::matmul(query, at::slice(in_proj_weight, 0, 0, edim).t());
     k = at::matmul(key, at::slice(in_proj_weight, 0, edim, 2 * edim).t());
