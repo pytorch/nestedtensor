@@ -47,9 +47,6 @@ def multi_head_attention_forward(query,                           # type: Nested
     assert isinstance(query, nestedtensor.NestedTensor)
     assert isinstance(key, nestedtensor.NestedTensor)
     assert isinstance(value, nestedtensor.NestedTensor)
-    query = query.contiguous()
-    key = key.contiguous()
-    value = value.contiguous()
     assert torch.is_tensor(out_proj_weight)
     assert torch.is_tensor(out_proj_bias)
 
