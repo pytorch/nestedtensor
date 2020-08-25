@@ -31,10 +31,11 @@ at::Tensor min_mha(
   TORCH_CHECK(query.dim() == 3, "query needs to be 3 dim.");
   TORCH_CHECK(key.dim() == 3, "key needs to be 3 dim.");
   TORCH_CHECK(value.dim() == 3, "value needs to be 3 dim.");
+  TORCH_CHECK(in_proj_bias, "Input projection bias needs to be defined.");
   int64_t edim = query.size(2);
 
   at::Tensor q, k, v;
-  if (in_proj_bias) {
+  // if (in_proj_bias) {
     q = at::addmm(
         at::slice(*in_proj_bias, 0, 0, edim),
         query,
@@ -49,12 +50,12 @@ at::Tensor min_mha(
         at::slice(*in_proj_bias, 0, 2 * edim),
         value,
         at::slice(in_proj_weight, 0, 2 * edim).t());
-  } else {
-    q = at::matmul(query, at::slice(in_proj_weight, 0, 0, edim).t());
-    k = at::matmul(key, at::slice(in_proj_weight, 0, edim, 2 * edim).t());
-    v = at::matmul(value, at::slice(in_proj_weight, 0, 2 * edim).t());
-    q = at::mul(q, torch::tensor({scaling}, q.options()));
-  }
+  // } else {
+  //   q = at::matmul(query, at::slice(in_proj_weight, 0, 0, edim).t());
+  //   k = at::matmul(key, at::slice(in_proj_weight, 0, edim, 2 * edim).t());
+  //   v = at::matmul(value, at::slice(in_proj_weight, 0, 2 * edim).t());
+  //   q = at::mul(q, torch::tensor({scaling}, q.options()));
+  // }
 
   q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);

@@ -43,7 +43,8 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
     return map_nested_tensor(
         [&self](Tensor other) { return func(self, other); }, other);
   }
-  if (is_packed(self) && (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
+  if (is_packed(self) &&
+      (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
 #ifdef TRACEPACKED
     std::cout << "calling packed binary " << typeid(func).name() << std::endl;
 #endif
@@ -56,8 +57,29 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
       [&other](Tensor self) { return func(self, other); }, self);
 }
 
+template <Tensor (*func)(const Tensor&, c10::Scalar)>
+Tensor NestedTensor_binary_scalar_packed(
+    const Tensor& self,
+    c10::Scalar other) {
+  if (is_packed(self)) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed binary " << typeid(func).name() << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        func((*self_structure.buffer()), other),
+        get_nested_tensor_impl(self)->nested_size(),
+        get_nested_tensor_impl(self)->nested_stride()));
+  }
+  return map_nested_tensor(
+      [&other](Tensor self) { return func(self, other); }, self);
+}
+
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
-Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
+Tensor NestedTensor_binary_scalar(
+    const Tensor& self,
+    const Tensor& other,
+    S scalar) {
   if (is_nested_tensor_impl(self, other)) {
     return map_nested_tensor(
         [&scalar](Tensor tensor, Tensor other) {
@@ -214,9 +236,9 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
       [&base](Tensor exp) { return at::pow(base, exp); }, exp);
 }
 
-#define BINARY_OP(NAME)                                                    \
-  nt_impl(m, #NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
-  nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
+#define BINARY_OP(NAME)                                                     \
+  nt_impl(m, #NAME ".Tensor", NestedTensor_binary<at::NAME>);               \
+  nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>);  \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {

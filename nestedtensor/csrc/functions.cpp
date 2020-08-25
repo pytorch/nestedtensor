@@ -48,21 +48,21 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
-  if (is_packed(self)) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed reshape" << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    auto self_buffer = (*self_structure.buffer());
-    return wrap_tensor_node(TensorNode(
-        map(
-            [target_shape](const at::Tensor t) {
-              return at::reshape(t, IntArrayRef(target_shape));
-            },
-            self_structure),
-        std::move(self_buffer)));
-  }
-  return map_nested_tensor(
+//   if (is_packed(self)) {
+// #ifdef TRACEPACKED
+//     std::cout << "calling packed reshape" << std::endl;
+// #endif
+//     auto self_structure = get_nested_tensor_structure(self);
+//     auto self_buffer = (*self_structure.buffer());
+//     return wrap_tensor_node(TensorNode(
+//         map(
+//             [target_shape](const at::Tensor t) {
+//               return at::reshape(t, IntArrayRef(target_shape));
+//             },
+//             self_structure),
+//         std::move(self_buffer)));
+//   }
+  return autograd_map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
       },
@@ -81,21 +81,21 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  if (is_packed(self)) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed transpose" << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    auto self_buffer = (*self_structure.buffer());
-    return wrap_tensor_node(TensorNode(
-        map(
-            [dim0, dim1, nested_dim](const at::Tensor t) {
-              return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
-            },
-            self_structure),
-        std::move(self_buffer)));
-  }
-  return map_nested_tensor(
+//   if (is_packed(self)) {
+// #ifdef TRACEPACKED
+//     std::cout << "calling packed transpose" << std::endl;
+// #endif
+//     auto self_structure = get_nested_tensor_structure(self);
+//     auto self_buffer = (*self_structure.buffer());
+//     return wrap_tensor_node(TensorNode(
+//         map(
+//             [dim0, dim1, nested_dim](const at::Tensor t) {
+//               return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
+//             },
+//             self_structure),
+//         std::move(self_buffer)));
+//   }
+  return autograd_map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
       },
@@ -113,7 +113,7 @@ Tensor NestedTensor_softmax(
       dim >= nested_dim,
       "Cannot apply softmax across nested dimensions ",
       std::to_string(dim));
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [dim, nested_dim, dtype](const at::Tensor t) {
         return at::softmax(t, dim - nested_dim, dtype);
       },
