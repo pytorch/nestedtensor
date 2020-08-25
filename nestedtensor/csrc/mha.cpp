@@ -64,8 +64,7 @@ at::Tensor min_mha(
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
   auto attn_output = at::matmul(attn_output_weights, v);
   attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
-  attn_output = at::matmul(attn_output, out_proj_weight.t());
-  attn_output += out_proj_bias;
+  attn_output = at::addmm(out_proj_bias, attn_output, out_proj_weight.t());
   return attn_output;
 }
 
