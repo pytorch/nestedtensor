@@ -70,50 +70,18 @@ def multi_head_attention_forward(query,                           # type: Nested
     assert head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
     scaling = float(head_dim) ** -0.5
 
-
-    # This is inline in_proj function with in_proj_weight and in_proj_bias
-    _b = in_proj_bias
-    _start = 0
-    _end = embed_dim
-    _w = in_proj_weight[_start:_end, :]
-    if _b is not None:
-        _b = _b[_start:_end]
-    q = F.linear(query, _w, _b)
-
-    # This is inline in_proj function with in_proj_weight and in_proj_bias
-    _b = in_proj_bias
-    _start = embed_dim
-    _end = embed_dim * 2
-    _w = in_proj_weight[_start:_end, :]
-    if _b is not None:
-        _b = _b[_start:_end]
-    k = F.linear(key, _w, _b)
-
-    # This is inline in_proj function with in_proj_weight and in_proj_bias
-    _b = in_proj_bias
-    _start = embed_dim * 2
-    _end = None
-    _w = in_proj_weight[_start:, :]
-    if _b is not None:
-        _b = _b[_start:]
-    v = F.linear(value, _w, _b)
-    q = q * scaling
-
-    # NOTE: This is usually contiguous plus a view
-    q = q.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
-    if k is not None:
-        k = k.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
-    if v is not None:
-        v = v.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
-    attn_output_weights = torch.matmul(q, k.transpose(2, 3))
-    attn_output_weights = F.softmax(
-        attn_output_weights, dim=-1)
-    attn_output_weights = F.dropout(
-        attn_output_weights, p=dropout_p, training=training)
-    attn_output = torch.matmul(attn_output_weights, v)
-    attn_output = attn_output.transpose(1, 2).reshape(-1, -1, embed_dim)
-    attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)
-    return attn_output, None
+    return torch.ops.nestedtensor.min_mha(num_heads,
+                                          head_dim,
+                                          dropout_p,
+                                          training,
+                                          query._impl,
+                                          key._impl,
+                                          value._impl,
+                                          in_proj_weight,
+                                          in_proj_bias,
+                                          scaling,
+                                          out_proj_weight,
+                                          out_proj_bias), None
 
 
 class MultiheadAttention(Module):

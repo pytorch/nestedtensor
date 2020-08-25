@@ -43,7 +43,7 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
     return map_nested_tensor(
         [&self](Tensor other) { return func(self, other); }, other);
   }
-  if (is_packed(self) && other.dim() == 0) {
+  if (is_packed(self) && (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
 #ifdef TRACEPACKED
     std::cout << "calling packed binary " << typeid(func).name() << std::endl;
 #endif

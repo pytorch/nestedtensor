@@ -95,7 +95,53 @@ Tensor& NestedTensor_matmul_out(
   return result;
 }
 
+Tensor NestedTensor_addmm(
+    const Tensor& input,
+    const Tensor& self,
+    const Tensor& other,
+    c10::Scalar alpha,
+    c10::Scalar beta) {
+  AutoGradMode autogradmode(false);
+  TORCH_CHECK(!is_nested_tensor_impl(input), "input must be Tensor");
+  TORCH_CHECK(!is_nested_tensor_impl(other), "other must be Tensor");
+  TORCH_CHECK(is_nested_tensor_impl(self), "self must be NestedTensor");
+  // TORCH_CHECK(alpha == 1, "alpha must be 1.");
+  // TORCH_CHECK(beta == 1, "beta must be 1.");
+  auto impl_self = get_nested_tensor_impl(self);
+  auto structure_self = get_nested_tensor_structure(self);
+  if (structure_self.buffer()) {
+    if (self.dim() == 3 && other.dim() == 2 && impl_self->opt_sizes()[0] &&
+        impl_self->opt_sizes()[2] &&
+        impl_self->opt_sizes()[self.dim() - 1] == other.size(self.dim() - 2)) {
+#ifdef TRACEPACKED
+      std::cout << "calling packed T x NT x T addmm" << std::endl;
+#endif
+      SizeNode new_nested_size = map(
+          [&](c10::List<int64_t> self_size) {
+            c10::List<int64_t> new_size{self_size[0], other.size(1)};
+            return std::move(new_size);
+          },
+          impl_self->nested_size());
+      return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+          at::addmm(
+              input,
+              (*structure_self.buffer()).reshape({-1, other.size(0)}),
+              other,
+              alpha,
+              beta)
+              .reshape(-1),
+          new_nested_size));
+    }
+  }
+  return map_nested_tensor(
+      [&](Tensor tensor) {
+        return at::addmm(input, tensor, other, alpha, beta);
+      },
+      self);
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  nt_impl(m, "addmm", NestedTensor_addmm);
   // nt_impl(m, "matmul", no_bw(TORCH_FN(NestedTensor_matmul);
   nt_impl(m, "matmul", NestedTensor_matmul);
   nt_impl(m, "matmul.out", NestedTensor_matmul_out);
