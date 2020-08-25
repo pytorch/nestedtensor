@@ -7,6 +7,7 @@
 #include <torch/csrc/autograd/python_variable_indexing.h>
 #include <torch/extension.h>
 #include <chrono>
+#include <nestedtensor/csrc/mha.h>
 
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because

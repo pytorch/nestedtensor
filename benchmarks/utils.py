@@ -28,6 +28,9 @@ def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0, cuda=False)
         if use_cprofile:
             pr.enable()
         fn()
+        # if t > 1:
+        #     import sys; sys.exit(1)
+        # import sys; sys.exit(1)
         if cuda:
             torch.cuda.synchronize()
         if use_cprofile:

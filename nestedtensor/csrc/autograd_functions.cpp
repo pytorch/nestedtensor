@@ -206,6 +206,11 @@ Tensor NestedTensor_threshold_backward(
 }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
+  if (is_packed(input)) {
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        at::dropout(*get_nested_tensor_structure(input).buffer(), p, train),
+        get_nested_tensor_impl(input)->nested_size()));
+  }
   return autograd_map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
@@ -283,6 +288,19 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
   if (is_nested_tensor_impl(other)) {
     return map_nested_tensor(
         [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
+  }
+  if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed add" << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    auto self_impl = get_nested_tensor_impl(self);
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        (*self_structure.buffer())
+            .reshape({-1, other.size(0)})
+            .add(other)
+            .reshape({-1}),
+        self_impl->nested_size()));
   }
   return map_nested_tensor(
       [&](at::Tensor s) { return at::add(s, other, alpha); }, self);

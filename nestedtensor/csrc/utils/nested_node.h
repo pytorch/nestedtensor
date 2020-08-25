@@ -402,6 +402,7 @@ inline TensorNode build_structure(
 inline TensorNode build_structure(
     at::Tensor&& buffer,
     const SizeNode& nested_size) {
+  TORCH_CHECK(buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
   SizeNode nested_stride = map(
       [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
   return build_structure(std::move(buffer), nested_size, nested_stride);
