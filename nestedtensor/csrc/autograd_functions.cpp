@@ -58,7 +58,7 @@ struct NestedTensorFunction_batch_norm
                      cudnn_enabled)
               .squeeze(0);
         },
-        autograd_input);
+        autograd_input).contiguous();
     ctx->saved_data["0"] = weight;
     ctx->saved_data["1"] = bias;
     ctx->saved_data["2"] = autograd_output;

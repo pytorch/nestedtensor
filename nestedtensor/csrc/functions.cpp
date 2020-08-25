@@ -139,7 +139,7 @@ Tensor NestedTensor_layer_norm(
       [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
-      input);
+      input).contiguous();
 }
 
 Tensor NestedTensor_all(const Tensor& self) {

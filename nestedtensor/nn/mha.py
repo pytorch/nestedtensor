@@ -49,6 +49,9 @@ def multi_head_attention_forward(query,                           # type: Nested
     assert isinstance(value, nestedtensor.NestedTensor)
     assert torch.is_tensor(out_proj_weight)
     assert torch.is_tensor(out_proj_bias)
+    query = query.contiguous()
+    key = key.contiguous()
+    value = value.contiguous()
 
     # TODO: Explicitly unsupported flags
     assert not use_separate_proj_weight
