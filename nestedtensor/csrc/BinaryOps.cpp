@@ -216,6 +216,7 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
 
 #define BINARY_OP(NAME)                                                    \
   nt_impl(m, #NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
+  nt_impl(m, #NAME ".Scalar", NestedTensor_binary_scalar<at::NAME>);              \
   nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 

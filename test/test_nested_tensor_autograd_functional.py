@@ -226,9 +226,9 @@ class TestAutogradFunctional(TestCase):
         num_heads = 2
         torch.manual_seed(1010)
         mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
-        query = torch.randn(3, 1, embed_dim)
-        key = torch.randn(2, 1, embed_dim)
-        value = torch.randn(2, 1, embed_dim)
+        query = torch.randn(3, 1, embed_dim, requires_grad=True)
+        key = torch.randn(2, 1, embed_dim, requires_grad=True)
+        value = torch.randn(2, 1, embed_dim, requires_grad=True)
         attn_output, _ = mha(query, key, value)
         nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
         nt_mha.in_proj_weight = mha.in_proj_weight
@@ -242,8 +242,18 @@ class TestAutogradFunctional(TestCase):
             query_nt, key_nt, value_nt, need_weights=False)
         # nt_attn_output.sum().backward()
         # For regular tensors the batch dimension is along dimension 1
-        print(attn_output.sum())
-        print(nt_attn_output.sum())
+        scalar1 = attn_output.sum()
+        scalar2 = nt_attn_output.sum()
+        print(scalar1)
+        print(scalar2)
+        scalar1.backward()
+        scalar2.backward()
+        print(query.grad)
+        print(key.grad)
+        print(value.grad)
+        print(query_nt.grad)
+        print(key_nt.grad)
+        print(value_nt.grad)
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
 
