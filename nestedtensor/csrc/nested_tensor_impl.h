@@ -172,8 +172,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
     auto fn = [](at::Tensor leaf, bool input) {
       return input && leaf.is_contiguous();
     };
-    return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
-    // && get_structure().buffer().has_value();
+    return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true) &&
+        get_structure().buffer().has_value();
   }
   TensorNode& get_structure() {
     return _structure;
@@ -181,14 +181,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
   const TensorNode& get_structure() const {
     return _structure;
   }
-  // void backward(Tensor gradient, bool retain_graph, bool create_graph) {
-  //   apply(
-  //       [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
-  //           -> void { tensor1.backward(tensor2, retain_graph, create_graph);
-  //           },
-  //       get_structure(),
-  //       get_nested_tensor_impl(gradient)->get_structure());
-  // }
   c10::intrusive_ptr<c10::TensorImpl> shallow_copy_and_detach(
       const c10::VariableVersion& version_counter,
       bool allow_tensor_metadata_change) const override;
@@ -444,9 +436,6 @@ struct NestedTensorFunction_mapper
     auto tensor_vector = to_vector(std::move(autograd_input_tuple));
     tensor_vector.push_back(autograd_output);
     ctx->save_for_backward(tensor_vector);
-
-    // ctx->saved_data["0"] = autograd_input_tuple;
-    // ctx->saved_data["1"] = autograd_output;
 
     // 5. Constituents of output NestedTensor
     auto output = map_nested_tensor(

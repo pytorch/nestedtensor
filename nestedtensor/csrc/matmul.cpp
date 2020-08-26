@@ -102,33 +102,31 @@ struct NestedTensorFunction_addmm
     ctx->save_for_backward({input, self, other});
     ctx->saved_data["3"] = alpha;
     ctx->saved_data["4"] = beta;
-    //    if (structure_self.buffer()) {
-    //       if (self.dim() == 3 && other.dim() == 2 &&
-    //       impl_self->opt_sizes()[0] &&
-    //           impl_self->opt_sizes()[2] &&
-    //           impl_self->opt_sizes()[self.dim() - 1] ==
-    //               other.size(self.dim() - 2)) {
-    // #ifdef TRACEPACKED
-    //         std::cout << "calling packed T x NT x T addmm" << std::endl;
-    // #endif
-    //         SizeNode new_nested_size = map(
-    //             [&](c10::List<int64_t> self_size) {
-    //               c10::List<int64_t> new_size{self_size[0], other.size(1)};
-    //               return std::move(new_size);
-    //             },
-    //             impl_self->nested_size());
-    //         return
-    //         wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-    //             at::addmm(
-    //                 input,
-    //                 (*structure_self.buffer()).reshape({-1, other.size(0)}),
-    //                 other,
-    //                 alpha,
-    //                 beta)
-    //                 .reshape(-1),
-    //             new_nested_size));
-    //       }
-    //     }
+    if (structure_self.buffer()) {
+      if (self.dim() == 3 && other.dim() == 2 && impl_self->opt_sizes()[0] &&
+          impl_self->opt_sizes()[2] &&
+          impl_self->opt_sizes()[self.dim() - 1] ==
+              other.size(self.dim() - 2)) {
+#ifdef TRACEPACKED
+        std::cout << "calling packed T x NT x T addmm" << std::endl;
+#endif
+        SizeNode new_nested_size = map(
+            [&](c10::List<int64_t> self_size) {
+              c10::List<int64_t> new_size{self_size[0], other.size(1)};
+              return std::move(new_size);
+            },
+            impl_self->nested_size());
+        return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+            at::addmm(
+                input,
+                (*structure_self.buffer()).reshape({-1, other.size(0)}),
+                other,
+                alpha,
+                beta)
+                .reshape(-1),
+            new_nested_size));
+      }
+    }
     return map_nested_tensor(
         [&](Tensor tensor) {
           return at::addmm(input, tensor, other, alpha, beta);
