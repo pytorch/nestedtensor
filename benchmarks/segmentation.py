@@ -23,16 +23,16 @@ def gen_t_loop_segmentation():
 
     def t_loop():
         for t in tensors:
-            MODEL(t)
+            MODEL(t)['out'].sum().backward()
     return t_loop
 
 
 def gen_nt_segmentation():
     nested_tensor = nestedtensor.nested_tensor(
-        [torch.rand(3, i, 256).cuda() for i in RAND_INTS])
+        [torch.rand(3, i, 256) for i in RAND_INTS], device=torch.device('cuda'), dtype=torch.float)
 
     def nt():
-        MODEL(nested_tensor)
+        MODEL(nested_tensor)['out'].sum().backward()
     return nt
 
 

@@ -14,7 +14,7 @@ def gen_t_cos():
     tensor = tensor.cuda()
 
     def t():
-        tensor.cos_()
+        tensor.cos().sum().backward()
     return t
 
 
@@ -23,16 +23,16 @@ def gen_t_loop_cos():
 
     def t_loop():
         for t in tensors:
-            t.cos_()
+            t.cos().sum().backward()
     return t_loop
 
 
 def gen_nt_cos():
     nested_tensor = nestedtensor.nested_tensor(
-        [torch.rand(i, 2560).cuda() for i in RAND_INTS])
+        [torch.rand(i, 2560) for i in RAND_INTS], device=torch.device('cuda'), dtype=torch.float)
 
     def nt():
-        nested_tensor.cos_()
+        nested_tensor.cos().sum().backward()
     return nt
 
 
