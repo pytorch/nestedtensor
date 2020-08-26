@@ -29,8 +29,8 @@ def _gen_test_unary(func__, nested_dim, device):
         if func__ in ['mvlgamma']:
             data = utils.nested_map(lambda x: x.clamp(min=1), data)
 
-        a1 = nestedtensor.nested_tensor(data)
-        a3 = nestedtensor.nested_tensor(data)
+        a1 = nestedtensor.nested_tensor(data, device=device)
+        a3 = nestedtensor.nested_tensor(data, device=device)
         func_ = getattr(torch, func__)
         method_ = getattr(nestedtensor.NestedTensor, func__)
         method_inplace_ = getattr(nestedtensor.NestedTensor, func__ + "_")
@@ -88,7 +88,7 @@ def _gen_test_unary(func__, nested_dim, device):
             method = method_
             method_inplace = method_inplace_
 
-        a2 = nestedtensor.nested_tensor(utils.nested_map(func, data))
+        a2 = nestedtensor.nested_tensor(utils.nested_map(func, data), device=device)
 
         self.assertTrue(a1.nested_dim() == a2.nested_dim())
         self.assertTrue(a2.nested_dim() == a3.nested_dim())
@@ -183,9 +183,9 @@ for func__ in get_unary_functions():
     if func__ == 'fill':
         continue
     for nested_dim in range(1, 5):
-        avail_devices = ['cpu']
+        avail_devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            avail_devices += ['cuda']
+            avail_devices += [torch.device('cuda')]
         for device in avail_devices:
             setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
                 func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
