@@ -230,11 +230,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
-        # TODO: to is currently not supported by impls due to argparsing.
-        new_tensors = [t.to(*args, **kwargs) for t in self.unbind()]
-        # TODO: Make contiguous by default? Heavy operation...
-        # NOTE: Needs grad support, which nestedtensor.nested_tensor
-        # constructor doesn't have.
+        raise NotImplementedError("NestedTensor.to is currently not implemented.")
         return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
