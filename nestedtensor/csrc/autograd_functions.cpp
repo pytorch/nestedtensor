@@ -161,13 +161,13 @@ Tensor NestedTensor_max_pool2d(
 Tensor NestedTensor_relu(const Tensor& self) {
   auto impl = get_nested_tensor_impl(self);
   auto structure = get_nested_tensor_structure(self);
-  //   if (structure.buffer()) {
-  // #ifdef TRACEPACKED
-  //     std::cout << "calling packed relu" << std::endl;
-  // #endif
-  //     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-  //         at::relu(*structure.buffer()), impl->nested_size()));
-  //   }
+  if (structure.buffer()) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed relu" << std::endl;
+#endif
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        at::relu(*structure.buffer()), impl->nested_size()));
+  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::relu(tensor); }, self);
 }
