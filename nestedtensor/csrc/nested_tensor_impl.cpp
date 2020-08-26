@@ -251,8 +251,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  // return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
-  return wrap_tensor_node(get_nested_tensor_structure(self));
+  return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -479,11 +478,11 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "squeeze", NestedTensor_squeeze);
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
   // nt_impl("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
-  nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "select.int", NestedTensor_select);
   nt_impl(m, "slice.Tensor", NestedTensor_slice);

@@ -43,15 +43,16 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
     return map_nested_tensor(
         [&self](Tensor other) { return func(self, other); }, other);
   }
-//   if (is_packed(self) && (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
-// #ifdef TRACEPACKED
-//     std::cout << "calling packed binary " << typeid(func).name() << std::endl;
-// #endif
-//     auto self_structure = get_nested_tensor_structure(self);
-//     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-//         func((*self_structure.buffer()), other),
-//         get_nested_tensor_impl(self)->nested_size()));
-//   }
+  if (is_packed(self) &&
+      (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed binary " << typeid(func).name() << std::endl;
+#endif
+    auto self_structure = get_nested_tensor_structure(self);
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        func((*self_structure.buffer()), other),
+        get_nested_tensor_impl(self)->nested_size()));
+  }
   return map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);
 }
@@ -167,9 +168,7 @@ Tensor& NestedTensor_pow_out_1(
       "At least one of base or exp needs to be a NestedTensor");
   torch_check_tensor_shape_matches(result, exp);
   apply_nested_tensor(
-      [&exp](Tensor& result, Tensor& base) {
-        at::pow_out(result, base, exp);
-      },
+      [&exp](Tensor& result, Tensor& base) { at::pow_out(result, base, exp); },
       result,
       base);
   return result;
@@ -216,7 +215,7 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
 
 #define BINARY_OP(NAME)                                                    \
   nt_impl(m, #NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
-  nt_impl(m, #NAME ".Scalar", NestedTensor_binary_scalar<at::NAME>);              \
+  nt_impl(m, #NAME ".Scalar", NestedTensor_binary_scalar<at::NAME>);       \
   nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 

@@ -84,7 +84,6 @@ struct NestedNode<at::Tensor> {
         _payload(structure._payload),
         _height(structure._height),
         _buffer(buffer) {
-          TORCH_CHECK(false, "Don't use packed version.");
     TORCH_CHECK(
         buffer.dim() == 1,
         "Buffer needs to be a flat vector, i.e. Tensor of dim 1.")
@@ -111,11 +110,9 @@ struct NestedNode<at::Tensor> {
     return _payload;
   }
   inline const c10::optional<at::Tensor>& buffer() const {
-    TORCH_CHECK(false, "dont use buffer.");
     return _buffer;
   }
   inline c10::optional<at::Tensor>& buffer() {
-    TORCH_CHECK(false, "dont use buffer.");
     return _buffer;
   }
 
