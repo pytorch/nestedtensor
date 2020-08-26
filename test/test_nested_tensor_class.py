@@ -82,9 +82,9 @@ class TestNestedTensor(TestCase):
 
         nested_tensor1 = nestedtensor.as_nested_tensor(nested_tensor)
         self.assertTrue(nested_tensor1 is nested_tensor)
-        nested_tensor2 = nestedtensor.as_nested_tensor(
-            nested_tensor, dtype=torch.int64)
-        self.assertTrue(nested_tensor2 is not nested_tensor)
+        self.assertRaises(NotImplementedError, lambda: nestedtensor.as_nested_tensor(
+            nested_tensor, dtype=torch.int64))
+        # self.assertTrue(nested_tensor2 is not nested_tensor)
 
     def test_constructor(self):
         for constructor in _iter_constructors():
@@ -284,14 +284,20 @@ class TestNestedTensor(TestCase):
 
             a1 = constructor([torch.tensor([1, 2]),
                               torch.tensor([2, 8])])
-            a2 = constructor([torch.tensor([0, 1]),
-                              torch.tensor([1, 0])], dtype=torch.bool)
-            a3 = constructor([torch.tensor([1, 0]),
-                              torch.tensor([0, 1])], dtype=torch.bool)
-            self.assertEqual((a1 == 2), a2)
-            self.assertEqual((a1 != 2), a3)
-            self.assertEqual((a1 == 2.0), a2)
-            self.assertEqual((a1 != 2.0), a3)
+            if constructor == nestedtensor.as_nested_tensor:
+                self.assertRaises(NotImplementedError, lambda: constructor([torch.tensor([0, 1]),
+                                                                            torch.tensor([1, 0])], dtype=torch.bool))
+                self.assertRaises(NotImplementedError, lambda: constructor([torch.tensor([1, 0]),
+                                                                            torch.tensor([0, 1])], dtype=torch.bool))
+            else:
+                a2 = constructor([torch.tensor([0, 1]),
+                                  torch.tensor([1, 0])], dtype=torch.bool)
+                a3 = constructor([torch.tensor([1, 0]),
+                                  torch.tensor([0, 1])], dtype=torch.bool)
+                self.assertEqual((a1 == 2), a2)
+                self.assertEqual((a1 != 2), a3)
+                self.assertEqual((a1 == 2.0), a2)
+                self.assertEqual((a1 != 2.0), a3)
 
     def test_dim(self):
         for constructor in _iter_constructors():
@@ -574,9 +580,9 @@ class TestNestedTensor(TestCase):
                    torch.randn(3, 8),
                    torch.randn(7, 8)]
         a1 = nestedtensor.nested_tensor(tensors)
-        a2 = a1.to(torch.int64)
-        for a, b in zip(tensors, a2.unbind()):
-            self.assertEqual(a.to(torch.int64), b)
+        self.assertRaises(NotImplementedError, lambda: a1.to(torch.int64))
+        # for a, b in zip(tensors, a2.unbind()):
+        #     self.assertEqual(a.to(torch.int64), b)
 
     def test_dtype(self):
         _test_property(self, lambda x: x.dtype)

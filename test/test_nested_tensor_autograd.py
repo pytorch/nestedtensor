@@ -49,7 +49,7 @@ class TestNestedTensorAutograd(TestCase):
         def some_func(x):
             return torch.sum(x ** 2 + x ** 3)
 
-        nt1 = nestedtensor.as_nested_tensor([torch.tensor([1, 2, 3, 4]),
+        nt1 = nestedtensor.nested_tensor([torch.tensor([1, 2, 3, 4]),
                                              torch.tensor([1, 2, 3]),
                                              torch.tensor([1, 2])],
                                             dtype=torch.float) #, requires_grad=True)
@@ -62,7 +62,7 @@ class TestNestedTensorAutograd(TestCase):
         # self.assertEqual(nt1[1].grad, torch.tensor([ 5., 16., 33.]))
         # self.assertEqual(nt1[2].grad, torch.tensor([ 5., 16.]))
 
-        nt2 = nestedtensor.as_nested_tensor([torch.tensor([1, 2, 3, 4]),
+        nt2 = nestedtensor.nested_tensor([torch.tensor([1, 2, 3, 4]),
                                              torch.tensor([1, 2, 3]),
                                              torch.tensor([1, 2])],
                                             dtype=torch.float) # , requires_grad=True)
