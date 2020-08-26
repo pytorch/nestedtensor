@@ -145,7 +145,7 @@ Tensor& NestedTensor_pow_out_1(
     torch_check_tensor_shape_matches(result, base, exp);
     apply_nested_tensor(
         [](Tensor& result, Tensor& base, Tensor& exp) {
-          return at::pow_out(result, base, exp);
+          at::pow_out(result, base, exp);
         },
         result,
         base,
@@ -156,7 +156,7 @@ Tensor& NestedTensor_pow_out_1(
     torch_check_tensor_shape_matches(result, base);
     apply_nested_tensor(
         [&exp](Tensor& result, Tensor& base) {
-          return at::pow_out(result, base, exp);
+          at::pow_out(result, base, exp);
         },
         result,
         base);
@@ -168,7 +168,7 @@ Tensor& NestedTensor_pow_out_1(
   torch_check_tensor_shape_matches(result, exp);
   apply_nested_tensor(
       [&exp](Tensor& result, Tensor& base) {
-        return at::pow_out(result, base, exp);
+        at::pow_out(result, base, exp);
       },
       result,
       base);
@@ -220,7 +220,7 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
   nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)

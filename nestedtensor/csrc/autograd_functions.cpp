@@ -13,9 +13,9 @@ struct NestedTensorFunction_batch_norm
     : torch::autograd::Function<NestedTensorFunction_batch_norm> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      const Tensor& input_,
-      const c10::optional<Tensor>& weight_,
-      const c10::optional<Tensor>& bias_,
+      const Tensor& input,
+      const c10::optional<Tensor>& weight,
+      const c10::optional<Tensor>& bias,
       const c10::optional<Tensor>& running_mean,
       const c10::optional<Tensor>& running_var,
       bool training,
@@ -24,28 +24,8 @@ struct NestedTensorFunction_batch_norm
       bool cudnn_enabled) {
     // TORCH_CHECK(weight_, "asdf0");
     // TORCH_CHECK(bias_, "asdf1");
-    c10::optional<at::Tensor> weight;
-    c10::optional<at::Tensor> bias;
-    auto autograd_input = map_nested_tensor(
-        [](at::Tensor ti) {
-          AutoGradMode autogradmode(true);
-          auto alias = ti.alias();
-          alias.requires_grad_();
-          return alias;
-        },
-        input_);
-    {
-      AutoGradMode autogradmode(true);
-      if (weight_) {
-        weight = (*weight_).alias().detach().requires_grad_();
-      }
-      if (bias_) {
-        bias = (*bias_).alias().detach().requires_grad_();
-      }
-    }
-    auto autograd_output = map_nested_tensor(
+    auto output = map_nested_tensor(
         [&](at::Tensor t) {
-          AutoGradMode autogradmode(true);
           return at::native::batch_norm(
                      t.unsqueeze(0),
                      *weight,
@@ -58,13 +38,12 @@ struct NestedTensorFunction_batch_norm
                      cudnn_enabled)
               .squeeze(0);
         },
-        autograd_input);
+        input);
     ctx->saved_data["0"] = weight;
     ctx->saved_data["1"] = bias;
-    ctx->saved_data["2"] = autograd_output;
-    ctx->saved_data["3"] = autograd_input;
-    return map_nested_tensor(
-        [](at::Tensor t) { return t.detach(); }, autograd_output);
+    ctx->saved_data["2"] = output;
+    ctx->saved_data["3"] = input;
+    return output;
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
@@ -175,13 +154,13 @@ Tensor NestedTensor_max_pool2d(
 Tensor NestedTensor_relu(const Tensor& self) {
   auto impl = get_nested_tensor_impl(self);
   auto structure = get_nested_tensor_structure(self);
-  if (structure.buffer()) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed relu" << std::endl;
-#endif
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        at::relu(*structure.buffer()), impl->nested_size()));
-  }
+//   if (structure.buffer()) {
+// #ifdef TRACEPACKED
+//     std::cout << "calling packed relu" << std::endl;
+// #endif
+//     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+//         at::relu(*structure.buffer()), impl->nested_size()));
+//   }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::relu(tensor); }, self);
 }
@@ -206,13 +185,8 @@ Tensor NestedTensor_threshold_backward(
 }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
-}
-
-Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  throw std::runtime_error("dropout_ is not implemented");
-  return input;
 }
 
 struct NestedTensorFunction_sum
@@ -358,11 +332,10 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
-  nt_impl(m, "dropout", NestedTensor_dropout);
-  nt_impl(m, "dropout_", NestedTensor_dropout_);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "dropout", NestedTensor_dropout);
   nt_impl(m, "add.Tensor", NestedTensor_add);
   nt_impl(m, "add_.Tensor", NestedTensor_add_);
   nt_impl(m, "relu", NestedTensor_relu);

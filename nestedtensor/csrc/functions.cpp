@@ -299,6 +299,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "softmax.int", NestedTensor_softmax);
   nt_impl(m, "layer_norm", NestedTensor_layer_norm);
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
   nt_impl(m, "stack", NestedTensor_stack);
   nt_impl(m, "stack.out", NestedTensor_stack_out);

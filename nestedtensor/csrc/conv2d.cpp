@@ -178,6 +178,7 @@ struct NestedTensorFunction_conv2d
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output) {
+    TORCH_CHECK(false, "fails here.");
     auto weight = ctx->saved_data["0"].toTensor();
     auto bias = ctx->saved_data["1"].toOptional<at::Tensor>();
     auto autograd_output = ctx->saved_data["2"].toTensor();
