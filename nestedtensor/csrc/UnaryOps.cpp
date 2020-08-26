@@ -10,35 +10,35 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  auto structure = get_nested_tensor_structure(self);
-  // if (structure.buffer()) {
-  //   func(*structure.buffer());
-  // } else {
+  if (is_packed(self)) {
+    auto structure = get_nested_tensor_structure(self);
+    func(*structure.buffer());
+  } else {
     apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
-  // }
+  }
   return self;
 }
 
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  auto structure = get_nested_tensor_structure(self);
-  // if (structure.buffer()) {
-  //   ((*structure.buffer()).*func)();
-  // } else {
+  if (is_packed(self)) {
+    auto structure = get_nested_tensor_structure(self);
+    ((*structure.buffer()).*func)();
+  } else {
     apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
-  // }
+  }
   return self;
 }
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  auto impl = get_nested_tensor_impl(self);
-  auto structure = get_nested_tensor_structure(self);
-  // if (structure.buffer()) {
-  //   return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-  //       func(*structure.buffer()), impl->nested_size()));
-  // }
+  if (is_packed(self)) {
+    auto impl = get_nested_tensor_impl(self);
+    auto structure = get_nested_tensor_structure(self);
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        func(*structure.buffer()), impl->nested_size()));
+  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return func(tensor); }, self);
 }
@@ -46,9 +46,7 @@ Tensor NestedTensor_unary(const Tensor& self) {
 template <class F, F func>
 Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
   apply_nested_tensor(
-      [](at::Tensor& result, at::Tensor& tensor) {
-        func(result, tensor);
-      },
+      [](at::Tensor& result, at::Tensor& tensor) { func(result, tensor); },
       result,
       self);
   return result;
