@@ -127,7 +127,7 @@ Tensor& NestedTensor_clamp_max_out(
     Scalar min) {
   apply_nested_tensor(
       [min](at::Tensor result, const at::Tensor tensor) {
-        return at::clamp_max_out(result, tensor, min);
+        at::clamp_max_out(result, tensor, min);
       },
       result,
       self);

@@ -39,10 +39,9 @@ struct NestedTensorFunction_batch_norm
               .squeeze(0);
         },
         input);
-    ctx->saved_data["0"] = weight;
-    ctx->saved_data["1"] = bias;
-    ctx->saved_data["2"] = output;
-    ctx->saved_data["3"] = input;
+    at::Tensor undef;
+    ctx->save_for_backward(
+        {weight ? *weight : undef, bias ? *bias : undef, output, input});
     return output;
   }
   static torch::autograd::variable_list backward(
@@ -50,10 +49,18 @@ struct NestedTensorFunction_batch_norm
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output) {
-    auto weight = ctx->saved_data["0"].toOptional<at::Tensor>();
-    auto bias = ctx->saved_data["1"].toOptional<at::Tensor>();
-    auto autograd_output = ctx->saved_data["2"].toTensor();
-    auto autograd_input = ctx->saved_data["3"].toTensor();
+    auto saved_data = ctx->get_saved_variables();
+
+    c10::optional<at::Tensor> weight;
+    c10::optional<at::Tensor> bias;
+    if (saved_data[0].defined()) {
+      weight = saved_data[0];
+    }
+    if (saved_data[1].defined()) {
+      bias = saved_data[1];
+    }
+    auto autograd_output = saved_data[2];
+    auto autograd_input = saved_data[3];
     c10::optional<at::Tensor> weight_grad;
     if (weight) {
       weight_grad = torch::zeros_like(*weight);
@@ -154,13 +161,13 @@ Tensor NestedTensor_max_pool2d(
 Tensor NestedTensor_relu(const Tensor& self) {
   auto impl = get_nested_tensor_impl(self);
   auto structure = get_nested_tensor_structure(self);
-//   if (structure.buffer()) {
-// #ifdef TRACEPACKED
-//     std::cout << "calling packed relu" << std::endl;
-// #endif
-//     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-//         at::relu(*structure.buffer()), impl->nested_size()));
-//   }
+  //   if (structure.buffer()) {
+  // #ifdef TRACEPACKED
+  //     std::cout << "calling packed relu" << std::endl;
+  // #endif
+  //     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+  //         at::relu(*structure.buffer()), impl->nested_size()));
+  //   }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::relu(tensor); }, self);
 }
@@ -258,19 +265,19 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
     return map_nested_tensor(
         [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
   }
-//   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
-// #ifdef TRACEPACKED
-//     std::cout << "calling packed add" << std::endl;
-// #endif
-//     auto self_structure = get_nested_tensor_structure(self);
-//     auto self_impl = get_nested_tensor_impl(self);
-//     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-//         (*self_structure.buffer())
-//             .reshape({-1, other.size(0)})
-//             .add(other)
-//             .reshape({-1}),
-//         self_impl->nested_size()));
-//   }
+  //   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
+  // #ifdef TRACEPACKED
+  //     std::cout << "calling packed add" << std::endl;
+  // #endif
+  //     auto self_structure = get_nested_tensor_structure(self);
+  //     auto self_impl = get_nested_tensor_impl(self);
+  //     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+  //         (*self_structure.buffer())
+  //             .reshape({-1, other.size(0)})
+  //             .add(other)
+  //             .reshape({-1}),
+  //         self_impl->nested_size()));
+  //   }
   return map_nested_tensor(
       [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
 }
@@ -281,14 +288,14 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
         [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
     return self;
   }
-//   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
-// #ifdef TRACEPACKED
-//     std::cout << "calling packed add_" << std::endl;
-// #endif
-//     auto self_structure = get_nested_tensor_structure(self);
-//     (*self_structure.buffer()).reshape({-1, other.size(0)}).add_(other);
-//     return self;
-//   }
+  //   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
+  // #ifdef TRACEPACKED
+  //     std::cout << "calling packed add_" << std::endl;
+  // #endif
+  //     auto self_structure = get_nested_tensor_structure(self);
+  //     (*self_structure.buffer()).reshape({-1, other.size(0)}).add_(other);
+  //     return self;
+  //   }
   apply_nested_tensor([&](at::Tensor& s) { s.add_(other, alpha); }, self);
   return self;
 }

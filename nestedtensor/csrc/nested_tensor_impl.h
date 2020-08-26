@@ -173,7 +173,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
       return input && leaf.is_contiguous();
     };
     return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
-      // && get_structure().buffer().has_value();
+    // && get_structure().buffer().has_value();
   }
   TensorNode& get_structure() {
     return _structure;
@@ -184,7 +184,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
   // void backward(Tensor gradient, bool retain_graph, bool create_graph) {
   //   apply(
   //       [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
-  //           -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
+  //           -> void { tensor1.backward(tensor2, retain_graph, create_graph);
+  //           },
   //       get_structure(),
   //       get_nested_tensor_impl(gradient)->get_structure());
   // }
@@ -292,6 +293,17 @@ struct _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>
     return {};
   }
 };
+
+template <
+    class Tuple,
+    class T = std::decay_t<std::tuple_element_t<0, std::decay_t<Tuple>>>>
+std::vector<T> to_vector(Tuple&& tuple) {
+  return c10::guts::apply(
+      [](auto&&... elems) {
+        return std::vector<T>{std::forward<decltype(elems)>(elems)...};
+      },
+      std::forward<Tuple>(tuple));
+}
 
 template <class FuncPtr, class ParameterTypes>
 struct _Function_no_bw_wrapper {};
@@ -429,8 +441,12 @@ struct NestedTensorFunction_mapper
         },
         std::move(autograd_input_tuple_));
 
-    ctx->saved_data["0"] = autograd_input_tuple;
-    ctx->saved_data["1"] = autograd_output;
+    auto tensor_vector = to_vector(std::move(autograd_input_tuple));
+    tensor_vector.push_back(autograd_output);
+    ctx->save_for_backward(tensor_vector);
+
+    // ctx->saved_data["0"] = autograd_input_tuple;
+    // ctx->saved_data["1"] = autograd_output;
 
     // 5. Constituents of output NestedTensor
     auto output = map_nested_tensor(
@@ -444,11 +460,13 @@ struct NestedTensorFunction_mapper
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output_) {
-    auto autograd_input_tuple = ctx->saved_data["0"].toTuple();
-    auto autograd_output = ctx->saved_data["1"].toTensor();
-    TORCH_CHECK(grad_output_.size() == 1, "not supported 0");
+    auto saved_data = ctx->get_saved_variables();
     TORCH_CHECK(
-        autograd_input_tuple->elements().size() == 1, "not supported 1");
+        grad_output_.size() == 1,
+        "Only one incoming gradient support for now.");
+    TORCH_CHECK(
+        saved_data.size() == 2,
+        "Only one input and one output supported for now.");
     at::Tensor grad_input;
     grad_input = map_nested_tensor(
         [](at::Tensor r, at::Tensor i, at::Tensor g) {
@@ -456,8 +474,8 @@ struct NestedTensorFunction_mapper
           TORCH_CHECK(result.size() == 1, "not supported 2");
           return result[0];
         },
-        autograd_output,
-        autograd_input_tuple->elements()[0].toTensor(),
+        saved_data[1],
+        saved_data[0],
         grad_output_[0]);
 
     at::Tensor undef;
