@@ -14,15 +14,11 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         warnings.warn(
             "NestedTensor temporarily does not support autograd. Please use an older commit.")
 
-    result = nested.NestedTensor(_C.nested_tensor_impl(data))
-
-    if dtype is not None or device is not None:
-        result = result.to(dtype=dtype, device=device)
-    if requires_grad:
-        result = result.requires_grad_(requires_grad)
-    if pin_memory:
-        result = result.pin_memory()
-    return result
+    if dtype is None:
+        dtype = torch.get_default_dtype()
+    if device is None:
+        device = torch.device('cpu')
+    return nested.NestedTensor(_C.nested_tensor_impl(data, dtype, device, requires_grad, pin_memory))
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):

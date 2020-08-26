@@ -50,7 +50,7 @@ class TestFunctional(TestCase):
 
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
-        x = nestedtensor.nested_tensor(inputs)
+        x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
         emb = torch.nn.Embedding(100, 8)
         y = emb(x)
         for i, inp in enumerate(inputs):
@@ -205,10 +205,10 @@ class TestFunctional(TestCase):
                 inputs[i].unsqueeze(0).contiguous(), targets[i].unsqueeze(0))
             tensor_res.append(t_res.squeeze(0))
 
-        for input_nt, target_nt in [(nestedtensor.nested_tensor(inputs), nestedtensor.nested_tensor(targets)),
-                                    (nestedtensor.as_nested_tensor(inputs), nestedtensor.as_nested_tensor(targets))]:
-            nt_res = torch.nn.functional.cross_entropy(input_nt, target_nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+        input_nt = nestedtensor.nested_tensor(inputs)
+        target_nt = nestedtensor.nested_tensor(targets, dtype=torch.int64)
+        nt_res = torch.nn.functional.cross_entropy(input_nt, target_nt)
+        self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
     def test_nn_dropout(self):
         inputs = [
