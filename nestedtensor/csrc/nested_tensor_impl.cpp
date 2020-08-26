@@ -121,13 +121,13 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
           _structure)) {
   // apply([](at::Tensor& tensor) { TORCH_CHECK(!tensor.requires_grad(), "Input
   // tensornode requires gradient."); }, structure);
-#ifdef TRACEPACKED
-  if (_structure.buffer()) {
-    std::cout << "structure is packed" << std::endl;
-  } else {
-    std::cout << "structure is  not packed" << std::endl;
-  }
-#endif
+// #ifdef TRACEPACKED
+//   if (_structure.buffer()) {
+//     std::cout << "structure is packed" << std::endl;
+//   } else {
+//     std::cout << "structure is  not packed" << std::endl;
+//   }
+// #endif
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")
@@ -214,9 +214,9 @@ TensorNode get_nested_tensor_structure(at::Tensor tensor) {
 }
 
 at::Tensor wrap_tensor_node(TensorNode&& result) {
-#ifdef TRACEPACKED
-  std::cout << "wrap_tensor_node" << std::endl;
-#endif
+// #ifdef TRACEPACKED
+//   std::cout << "wrap_tensor_node" << std::endl;
+// #endif
   if (result.is_leaf()) {
     return result.payload();
   }

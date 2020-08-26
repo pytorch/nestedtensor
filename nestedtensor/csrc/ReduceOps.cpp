@@ -15,7 +15,7 @@ Tensor NestedTensor_cumsum(
   dim = maybe_wrap_dim(dim, nt_impl->dim());
   TORCH_CHECK(
       dim >= nested_dim, "cumsum of nested dimensions is not implemented yet.");
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [nested_dim, dim](at::Tensor tensor) {
         return at::cumsum(tensor, dim - nested_dim);
       },
@@ -79,11 +79,14 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  nt_impl(m, "cumsum", NestedTensor_cumsum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
   nt_impl(m, "mean", NestedTensor_mean);
   nt_impl(m, "prod", NestedTensor_prod);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "cumsum", NestedTensor_cumsum);
 }
 
 } // namespace at
