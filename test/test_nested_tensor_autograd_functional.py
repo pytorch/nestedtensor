@@ -292,6 +292,9 @@ class TestAutogradFunctional(TestCase):
         self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
         self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
         self.assertRaises(IndexError, lambda: nt.squeeze(4))
+        a = nt.squeeze(1)
+        a.sum().backward()
+        self.assertEqual(nt.grad, ntnt_nograd([t.reshape(1, 2, 3).mul(0).add(1)]))
 
         nt = ntnt([[t.reshape(1, 2, 1, 3)]])
         self.assertRaisesRegex(RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
