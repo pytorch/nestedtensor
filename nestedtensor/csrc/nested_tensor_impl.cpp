@@ -421,14 +421,24 @@ Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
   return self;
 }
 
-Tensor NestedTensor_squeeze(const Tensor& self) {
-  auto new_tensor = self.clone(c10::nullopt);
-  return _NestedTensor_squeeze_(new_tensor, c10::nullopt);
+Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
+  dim = at::maybe_wrap_dim(dim, self.dim());
+  auto self_impl = get_nested_tensor_impl(self);
+  int64_t nested_dim = self_impl->nested_dim();
+  TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
+  TORCH_CHECK(
+      dim >= nested_dim, "Cannot squeeze nested dimension.");
+  TORCH_CHECK(
+      ((self_impl->opt_sizes()[dim]) &&
+       ((*(self_impl->opt_sizes()[dim])) == 1)),
+      "Given dimension is either undefined or not a singleton.");
+  return autograd_map_nested_tensor(
+      [dim, nested_dim](at::Tensor tensor) { return tensor.squeeze(dim - nested_dim); },
+      self);
 }
 
-Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
-  auto new_tensor = self.clone(c10::nullopt);
-  return _NestedTensor_squeeze_(new_tensor, dim);
+Tensor NestedTensor_squeeze(const Tensor& self) {
+  TORCH_CHECK(false, "squeeze(Tensor) is currently not implemented.");
 }
 
 Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
