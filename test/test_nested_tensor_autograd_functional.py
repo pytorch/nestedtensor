@@ -287,10 +287,6 @@ class TestAutogradFunctional(TestCase):
 
         result = ntnt([t])
         nt = ntnt([t.reshape(1, 2, 3)])
-        print(nt)
-        print(nt.squeeze(1))
-        print(result)
-        print(nt.squeeze(1))
         self.assertEqual(nt.squeeze(1), result)
         self.assertRaisesRegex(RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
         self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
