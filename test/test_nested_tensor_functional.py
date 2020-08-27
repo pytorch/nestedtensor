@@ -241,8 +241,6 @@ class TestFunctional(TestCase):
 
         nt = ntnt(inputs)
         nt_res = torch.nn.functional.dropout(nt)
-        self.assertRaisesRegex(RuntimeError, "dropout_ is not implemented",
-                               lambda: torch.nn.functional.dropout(nt, inplace=True))
         self.assertEqual(ntnt(tensor_res).size(), nt_res.size())
 
     @ unittest.skip("Not implemented")

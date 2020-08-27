@@ -13,9 +13,9 @@ struct NestedTensorFunction_batch_norm
     : torch::autograd::Function<NestedTensorFunction_batch_norm> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      const Tensor& input,
-      const c10::optional<Tensor>& weight,
-      const c10::optional<Tensor>& bias,
+      const Tensor& input_,
+      const c10::optional<Tensor>& weight_,
+      const c10::optional<Tensor>& bias_,
       const c10::optional<Tensor>& running_mean,
       const c10::optional<Tensor>& running_var,
       bool training,
@@ -24,8 +24,28 @@ struct NestedTensorFunction_batch_norm
       bool cudnn_enabled) {
     // TORCH_CHECK(weight_, "asdf0");
     // TORCH_CHECK(bias_, "asdf1");
-    auto output = map_nested_tensor(
+    c10::optional<at::Tensor> weight;
+    c10::optional<at::Tensor> bias;
+    auto autograd_input = map_nested_tensor(
+        [](at::Tensor ti) {
+          AutoGradMode autogradmode(true);
+          auto alias = ti.alias();
+          alias.requires_grad_();
+          return alias;
+        },
+        input_);
+    {
+      AutoGradMode autogradmode(true);
+      if (weight_) {
+        weight = (*weight_).alias().detach().requires_grad_();
+      }
+      if (bias_) {
+        bias = (*bias_).alias().detach().requires_grad_();
+      }
+    }
+    auto autograd_output = map_nested_tensor(
         [&](at::Tensor t) {
+          AutoGradMode autogradmode(true);
           return at::native::batch_norm(
                      t.unsqueeze(0),
                      *weight,
@@ -38,11 +58,14 @@ struct NestedTensorFunction_batch_norm
                      cudnn_enabled)
               .squeeze(0);
         },
-        input);
+        autograd_input);
     at::Tensor undef;
-    ctx->save_for_backward(
-        {weight ? *weight : undef, bias ? *bias : undef, output, input});
-    return output;
+    ctx->save_for_backward({weight ? *weight : undef,
+                            bias ? *bias : undef,
+                            autograd_output,
+                            autograd_input});
+    return map_nested_tensor(
+        [](at::Tensor t) { return t.detach(); }, autograd_output);
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
