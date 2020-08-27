@@ -59,10 +59,11 @@ struct NestedTensorFunction_batch_norm
               .squeeze(0);
         },
         autograd_input);
-    ctx->saved_data["0"] = weight;
-    ctx->saved_data["1"] = bias;
-    ctx->saved_data["2"] = autograd_output;
-    ctx->saved_data["3"] = autograd_input;
+    at::Tensor undef;
+    ctx->save_for_backward({weight ? *weight : undef,
+                            bias ? *bias : undef,
+                            autograd_output,
+                            autograd_input});
     return map_nested_tensor(
         [](at::Tensor t) { return t.detach(); }, autograd_output);
   }
@@ -71,10 +72,18 @@ struct NestedTensorFunction_batch_norm
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output) {
-    auto weight = ctx->saved_data["0"].toOptional<at::Tensor>();
-    auto bias = ctx->saved_data["1"].toOptional<at::Tensor>();
-    auto autograd_output = ctx->saved_data["2"].toTensor();
-    auto autograd_input = ctx->saved_data["3"].toTensor();
+    auto saved_data = ctx->get_saved_variables();
+
+    c10::optional<at::Tensor> weight;
+    c10::optional<at::Tensor> bias;
+    if (saved_data[0].defined()) {
+      weight = saved_data[0];
+    }
+    if (saved_data[1].defined()) {
+      bias = saved_data[1];
+    }
+    auto autograd_output = saved_data[2];
+    auto autograd_input = saved_data[3];
     c10::optional<at::Tensor> weight_grad;
     if (weight) {
       weight_grad = torch::zeros_like(*weight);
@@ -208,11 +217,6 @@ Tensor NestedTensor_threshold_backward(
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
   return autograd_map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
-}
-
-Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
-  throw std::runtime_error("dropout_ is not implemented");
-  return input;
 }
 
 struct NestedTensorFunction_sum
@@ -359,7 +363,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);
-  nt_impl(m, "dropout_", NestedTensor_dropout_);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {

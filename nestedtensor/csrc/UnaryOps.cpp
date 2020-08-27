@@ -10,8 +10,8 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  auto structure = get_nested_tensor_structure(self);
-  if (structure.buffer()) {
+  if (is_packed(self)) {
+    auto structure = get_nested_tensor_structure(self);
     func(*structure.buffer());
   } else {
     apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
@@ -22,8 +22,8 @@ Tensor& NestedTensor_unary_(Tensor& self) {
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  auto structure = get_nested_tensor_structure(self);
-  if (structure.buffer()) {
+  if (is_packed(self)) {
+    auto structure = get_nested_tensor_structure(self);
     ((*structure.buffer()).*func)();
   } else {
     apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
@@ -33,9 +33,9 @@ Tensor& NestedTensor_unary_method_(Tensor& self) {
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  auto impl = get_nested_tensor_impl(self);
-  auto structure = get_nested_tensor_structure(self);
-  if (structure.buffer()) {
+  if (is_packed(self)) {
+    auto impl = get_nested_tensor_impl(self);
+    auto structure = get_nested_tensor_structure(self);
     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
         func(*structure.buffer()), impl->nested_size()));
   }
@@ -46,9 +46,7 @@ Tensor NestedTensor_unary(const Tensor& self) {
 template <class F, F func>
 Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
   apply_nested_tensor(
-      [](at::Tensor& result, at::Tensor& tensor) {
-        return func(result, tensor);
-      },
+      [](at::Tensor& result, at::Tensor& tensor) { func(result, tensor); },
       result,
       self);
   return result;
@@ -79,7 +77,7 @@ Tensor& NestedTensor_clamp_out(
     optional<Scalar> max) {
   apply_nested_tensor(
       [min, max](at::Tensor result, const at::Tensor tensor) {
-        return at::clamp_out(result, tensor, min, max);
+        at::clamp_out(result, tensor, min, max);
       },
       result,
       self);
@@ -103,7 +101,7 @@ Tensor& NestedTensor_clamp_min_out(
     Scalar min) {
   apply_nested_tensor(
       [min](at::Tensor result, const at::Tensor tensor) {
-        return at::clamp_min_out(result, tensor, min);
+        at::clamp_min_out(result, tensor, min);
       },
       result,
       self);
@@ -127,7 +125,7 @@ Tensor& NestedTensor_clamp_max_out(
     Scalar min) {
   apply_nested_tensor(
       [min](at::Tensor result, const at::Tensor tensor) {
-        return at::clamp_max_out(result, tensor, min);
+        at::clamp_max_out(result, tensor, min);
       },
       result,
       self);
@@ -175,7 +173,7 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       #NAME "_",                                                          \
       (NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>));
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   UNARY_OP(abs);
   UNARY_OP(acos);
   UNARY_OP(asin);

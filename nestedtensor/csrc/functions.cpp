@@ -48,20 +48,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
-//   if (is_packed(self)) {
-// #ifdef TRACEPACKED
-//     std::cout << "calling packed reshape" << std::endl;
-// #endif
-//     auto self_structure = get_nested_tensor_structure(self);
-//     auto self_buffer = (*self_structure.buffer());
-//     return wrap_tensor_node(TensorNode(
-//         map(
-//             [target_shape](const at::Tensor t) {
-//               return at::reshape(t, IntArrayRef(target_shape));
-//             },
-//             self_structure),
-//         std::move(self_buffer)));
-//   }
+  //TODO: Potential use for packed reshape, but requires custom backward.
   return autograd_map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
@@ -81,20 +68,7 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-//   if (is_packed(self)) {
-// #ifdef TRACEPACKED
-//     std::cout << "calling packed transpose" << std::endl;
-// #endif
-//     auto self_structure = get_nested_tensor_structure(self);
-//     auto self_buffer = (*self_structure.buffer());
-//     return wrap_tensor_node(TensorNode(
-//         map(
-//             [dim0, dim1, nested_dim](const at::Tensor t) {
-//               return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
-//             },
-//             self_structure),
-//         std::move(self_buffer)));
-//   }
+  //TODO: Potential use for packed transpose, but requires custom backward.
   return autograd_map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
@@ -299,6 +273,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "softmax.int", NestedTensor_softmax);
   nt_impl(m, "layer_norm", NestedTensor_layer_norm);
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
   nt_impl(m, "stack", NestedTensor_stack);
   nt_impl(m, "stack.out", NestedTensor_stack_out);

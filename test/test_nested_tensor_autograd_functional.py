@@ -66,16 +66,13 @@ class TestAutogradFunctional(TestCase):
                 t_res = batch_norm(inputs[i].unsqueeze(0).contiguous())
                 tensor_res.append(t_res.squeeze(0))
                 t_res.sum().backward()
-            print(list(batch_norm.named_parameters()))
             layer_grad0 = [p.grad for (n, p) in batch_norm.named_parameters()]
-            print(list(p.sum() for p in layer_grad0))
 
             batch_norm.zero_grad()
             nt = ntnt(inputs)
             nt_res = batch_norm(nt)
             nt_res.sum().backward()
             layer_grad1 = [p.grad for (n, p) in batch_norm.named_parameters()]
-            print(list(p.sum() for p in layer_grad1))
 
             self.assertEqual(ntnt(tensor_res), nt_res)
             map(self.assertEqual, zip(layer_grad0, layer_grad1))
@@ -113,16 +110,13 @@ class TestAutogradFunctional(TestCase):
             t_res = relu_(t_res)
             tensor_res.append(t_res.squeeze(0))
             tensor_res[i].sum().backward()
-        print(list(relu.named_parameters()))
         layer_grad0 = [p.grad for (n, p) in relu.named_parameters()]
-        print(list(p.sum() for p in layer_grad0))
 
         nt = ntnt(inputs)
         nt_res = relu(nt)
         nt_res = relu_(nt_res)
         nt_res.sum().backward()
         layer_grad1 = [p.grad for (n, p) in relu.named_parameters()]
-        print(list(p.sum() for p in layer_grad1))
 
         self.assertEqual(ntnt(tensor_res), nt_res)
         map(self.assertEqual, zip(layer_grad0, layer_grad1))
@@ -244,16 +238,8 @@ class TestAutogradFunctional(TestCase):
         # For regular tensors the batch dimension is along dimension 1
         scalar1 = attn_output.sum()
         scalar2 = nt_attn_output.sum()
-        print(scalar1)
-        print(scalar2)
         scalar1.backward()
         scalar2.backward()
-        print(query.grad)
-        print(key.grad)
-        print(value.grad)
-        print(query_nt.grad)
-        print(key_nt.grad)
-        print(value_nt.grad)
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
 

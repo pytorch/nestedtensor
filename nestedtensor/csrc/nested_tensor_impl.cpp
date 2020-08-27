@@ -119,15 +119,6 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       _nested_size(map(
           [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
           _structure)) {
-  // apply([](at::Tensor& tensor) { TORCH_CHECK(!tensor.requires_grad(), "Input
-  // tensornode requires gradient."); }, structure);
-#ifdef TRACEPACKED
-  if (_structure.buffer()) {
-    std::cout << "structure is packed" << std::endl;
-  } else {
-    std::cout << "structure is  not packed" << std::endl;
-  }
-#endif
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")
@@ -214,9 +205,6 @@ TensorNode get_nested_tensor_structure(at::Tensor tensor) {
 }
 
 at::Tensor wrap_tensor_node(TensorNode&& result) {
-#ifdef TRACEPACKED
-  std::cout << "wrap_tensor_node" << std::endl;
-#endif
   if (result.is_leaf()) {
     return result.payload();
   }
@@ -478,9 +466,11 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "squeeze", NestedTensor_squeeze);
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
   // nt_impl("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
-  nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
+}
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "select.int", NestedTensor_select);
   nt_impl(m, "slice.Tensor", NestedTensor_slice);

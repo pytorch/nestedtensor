@@ -163,10 +163,8 @@ struct NestedTensorFunction_conv2d
               .squeeze(0);
         },
         input);
-    ctx->saved_data["0"] = weight;
-    ctx->saved_data["1"] = bias;
-    ctx->saved_data["2"] = output;
-    ctx->saved_data["3"] = input;
+    at::Tensor undef;
+    ctx->save_for_backward({weight, bias ? *bias : undef, output, input});
     ctx->saved_data["4"] = stride.vec();
     ctx->saved_data["5"] = padding.vec();
     ctx->saved_data["6"] = groups;
@@ -178,10 +176,14 @@ struct NestedTensorFunction_conv2d
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output) {
-    auto weight = ctx->saved_data["0"].toTensor();
-    auto bias = ctx->saved_data["1"].toOptional<at::Tensor>();
-    auto autograd_output = ctx->saved_data["2"].toTensor();
-    auto autograd_input = ctx->saved_data["3"].toTensor();
+    auto saved_data = ctx->get_saved_variables();
+    auto weight = saved_data[0];
+    c10::optional<at::Tensor> bias;
+    if (saved_data[1].defined()) {
+      bias = saved_data[1];
+    }
+    auto autograd_output = saved_data[2];
+    auto autograd_input = saved_data[3];
 
     auto stride = ctx->saved_data["4"].toIntList().vec();
     auto padding = ctx->saved_data["5"].toIntList().vec();

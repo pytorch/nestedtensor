@@ -79,11 +79,14 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  nt_impl(m, "cumsum", NestedTensor_cumsum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
   nt_impl(m, "mean", NestedTensor_mean);
   nt_impl(m, "prod", NestedTensor_prod);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "cumsum", NestedTensor_cumsum);
 }
 
 } // namespace at

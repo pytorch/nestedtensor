@@ -13,8 +13,7 @@ struct NestedTensorFunction_matmul
       torch::autograd::AutogradContext* ctx,
       const Tensor& self,
       const Tensor& other) {
-    ctx->saved_data["0"] = self;
-    ctx->saved_data["1"] = other;
+    ctx->save_for_backward({self, other});
     auto impl_self = get_nested_tensor_impl(self);
     auto structure_self = get_nested_tensor_structure(self);
     if (is_nested_tensor_impl(other)) {
@@ -94,8 +93,9 @@ struct NestedTensorFunction_matmul
     auto grad = grad_output[0];
     TORCH_CHECK(
         !grad.requires_grad(), "addmm does not support double backward.");
-    auto self = ctx->saved_data["0"].toTensor();
-    auto other = ctx->saved_data["1"].toTensor();
+    auto saved_data = ctx->get_saved_variables();
+    auto self = saved_data[0];
+    auto other = saved_data[1];
     TORCH_CHECK(self.dim() > 3, "NT self must be at least 3-dim.");
     TORCH_CHECK(is_nested_tensor_impl(self), "self must be NestedTensor");
     if (!is_nested_tensor_impl(other)) {
@@ -124,10 +124,9 @@ Tensor& NestedTensor_matmul_out(
     Tensor& result,
     const Tensor& self,
     const Tensor& other) {
-  AutoGradMode autogradmode(false);
   apply_nested_tensor(
       [](Tensor& result, Tensor& tensor, Tensor& other) {
-        return at::matmul_out(result, tensor, other);
+        at::matmul_out(result, tensor, other);
       },
       result,
       self,
@@ -141,10 +140,6 @@ at::Tensor mm_mat1_backward(
     c10::Scalar alpha) {
   return at::mul(at::matmul(grad, other.transpose(0, 1)), alpha);
 }
-at::Tensor mm_mat2_backward(
-    at::Tensor grad,
-    at::Tensor self,
-    at::Tensor alpha) {}
 
 // TODO: Technically this has the wrong semantics and shouldn't accept NTs of
 // 3dim, but there's not addmatml
@@ -157,7 +152,6 @@ struct NestedTensorFunction_addmm
       const Tensor& other,
       c10::Scalar alpha,
       c10::Scalar beta) {
-    AutoGradMode autogradmode(false);
     TORCH_CHECK(!is_nested_tensor_impl(input), "input must be Tensor");
     TORCH_CHECK(is_nested_tensor_impl(self), "self must be NestedTensor");
     TORCH_CHECK(!is_nested_tensor_impl(other), "other must be Tensor");
@@ -165,9 +159,7 @@ struct NestedTensorFunction_addmm
     // TORCH_CHECK(beta == 1, "beta must be 1.");
     auto impl_self = get_nested_tensor_impl(self);
     auto structure_self = get_nested_tensor_structure(self);
-    ctx->saved_data["0"] = input;
-    ctx->saved_data["1"] = self;
-    ctx->saved_data["2"] = other;
+    ctx->save_for_backward({input, self, other});
     ctx->saved_data["3"] = alpha;
     ctx->saved_data["4"] = beta;
     if (structure_self.buffer()) {
@@ -211,13 +203,13 @@ struct NestedTensorFunction_addmm
     auto grad = grad_output[0];
     TORCH_CHECK(
         !grad.requires_grad(), "addmm does not support double backward.");
-    auto input = ctx->saved_data["0"].toTensor();
-    auto self = ctx->saved_data["1"].toTensor();
-    auto other = ctx->saved_data["2"].toTensor();
+    auto saved_data = ctx->get_saved_variables();
+    auto input = saved_data[0];
+    auto self = saved_data[1];
+    auto other = saved_data[2];
     auto alpha = ctx->saved_data["3"].toScalar();
     auto beta = ctx->saved_data["4"].toScalar();
-    auto grad_other_nt =
-        at::mul(at::matmul(self.transpose(1, 2), grad), alpha);
+    auto grad_other_nt = at::mul(at::matmul(self.transpose(1, 2), grad), alpha);
     auto grad_other = torch::zeros_like(other);
     apply_nested_tensor(
         [&grad_other](at::Tensor& t) { grad_other.add_(t); }, grad_other_nt);
@@ -242,6 +234,8 @@ Tensor NestedTensor_addmm(
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "addmm", NestedTensor_addmm);
   nt_impl(m, "matmul", NestedTensor_matmul);
+}
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "matmul.out", NestedTensor_matmul_out);
 }
 } // namespace at
