@@ -192,7 +192,7 @@ Tensor NestedTensor_threshold_backward(
 }
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
@@ -339,10 +339,10 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
+  nt_impl(m, "dropout", NestedTensor_dropout);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  nt_impl(m, "dropout", NestedTensor_dropout);
   nt_impl(m, "add.Tensor", NestedTensor_add);
   nt_impl(m, "add_.Tensor", NestedTensor_add_);
   nt_impl(m, "relu", NestedTensor_relu);
