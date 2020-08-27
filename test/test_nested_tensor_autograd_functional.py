@@ -12,6 +12,7 @@ from torch.nn import functional as F
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 
 class TestAutogradFunctional(TestCase):
@@ -142,6 +143,7 @@ class TestAutogradFunctional(TestCase):
 
     def test_resnet_bottleneck(self):
         import torchvision
+
         def _test(Bottleneck):
             inputs_ = [
                 torch.randn(256, 50, 60, requires_grad=True)
@@ -179,6 +181,7 @@ class TestAutogradFunctional(TestCase):
 
     def test_resnet_classification(self):
         import torchvision
+
         def _test(FCNHead):
             inputs_ = [
                 torch.randn(256, 50, 60, requires_grad=True)
@@ -186,7 +189,7 @@ class TestAutogradFunctional(TestCase):
             inputs = ntnt(inputs_)
 
             b = FCNHead()
-            list(b.children())[3].eval() # dropout is stochastic otherwise
+            list(b.children())[3].eval()  # dropout is stochastic otherwise
             b(inputs).sum().backward()
             g0 = list(p.grad for (n, p) in b.named_parameters())
 
@@ -241,6 +244,66 @@ class TestAutogradFunctional(TestCase):
         scalar1.backward()
         scalar2.backward()
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
+
+    def test_squeeze(self):
+        t = torch.randn(2, 3)
+        result = ntnt_nograd([t])
+
+        nt = ntnt_nograd([[t.reshape(1, 2, 1, 3)]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(2, 3)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([[t.reshape(2, 3)]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(1, 2, 3)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(1, 2, 1, 3, 1)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([[[t.reshape(1, 2, 3)]]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        result = ntnt([t])
+        nt = ntnt([t.reshape(1, 2, 3)])
+        self.assertEqual(nt.squeeze(1), result)
+        self.assertRaisesRegex(RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
+        self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
+        self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
+        self.assertRaises(IndexError, lambda: nt.squeeze(4))
+        a = nt.squeeze(1)
+        a.sum().backward()
+        self.assertEqual(nt.grad, ntnt_nograd([t.reshape(1, 2, 3).mul(0).add(1)]))
+
+        nt = ntnt([[t.reshape(1, 2, 1, 3)]])
+        self.assertRaisesRegex(RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
+        # self.assertEqual(nt.squeeze(1), ntnt(
+        #     [t.reshape(1, 2, 1, 3)]))
+        self.assertEqual(nt.squeeze(
+            2), ntnt([[t.reshape(2, 1, 3)]]))
+        self.assertEqual(nt.squeeze(
+            4), ntnt([[t.reshape(1, 2, 3)]]))
 
 
 if __name__ == "__main__":

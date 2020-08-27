@@ -367,56 +367,6 @@ class TestFunctional(TestCase):
                 3), constructor([t.reshape(2, 3, 1)]))
             self.assertRaises(IndexError, lambda: nt.unsqueeze(4))
 
-    def test_squeeze(self):
-        for constructor in _iter_constructors():
-            t = torch.randn(2, 3)
-            result = constructor([t])
-
-            nt = constructor([[t.reshape(1, 2, 1, 3)]])
-            self.assertEqual(nt.squeeze(), result)
-            nt.squeeze_()
-            self.assertEqual(nt, result)
-
-            nt = constructor([t.reshape(2, 3)])
-            self.assertEqual(nt.squeeze(), result)
-            nt.squeeze_()
-            self.assertEqual(nt, result)
-
-            nt = constructor([[t.reshape(2, 3)]])
-            self.assertEqual(nt.squeeze(), result)
-            nt.squeeze_()
-            self.assertEqual(nt, result)
-
-            nt = constructor([t.reshape(1, 2, 3)])
-            self.assertEqual(nt.squeeze(), result)
-            nt.squeeze_()
-            self.assertEqual(nt, result)
-
-            nt = constructor([t.reshape(1, 2, 1, 3, 1)])
-            self.assertEqual(nt.squeeze(), result)
-            nt.squeeze_()
-            self.assertEqual(nt, result)
-
-            nt = constructor([[[t.reshape(1, 2, 3)]]])
-            self.assertEqual(nt.squeeze(), result)
-            nt.squeeze_()
-            self.assertEqual(nt, result)
-
-            nt = constructor([t.reshape(1, 2, 3)])
-            self.assertEqual(nt.squeeze(1), result)
-            self.assertRaises(RuntimeError, lambda: nt.squeeze(0))
-            self.assertRaises(RuntimeError, lambda: nt.squeeze(2))
-            self.assertRaises(RuntimeError, lambda: nt.squeeze(3))
-            self.assertRaises(IndexError, lambda: nt.squeeze(4))
-
-            nt = constructor([[t.reshape(1, 2, 1, 3)]])
-            self.assertEqual(nt.squeeze(1), constructor(
-                [t.reshape(1, 2, 1, 3)]))
-            self.assertEqual(nt.squeeze(
-                2), constructor([[t.reshape(2, 1, 3)]]))
-            self.assertEqual(nt.squeeze(
-                4), constructor([[t.reshape(1, 2, 3)]]))
-
     def test_matmul(self):
         for constructor in _iter_constructors():
             t1 = torch.randn(2, 3)
