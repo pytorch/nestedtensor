@@ -205,9 +205,6 @@ TensorNode get_nested_tensor_structure(at::Tensor tensor) {
 }
 
 at::Tensor wrap_tensor_node(TensorNode&& result) {
-// #ifdef TRACEPACKED
-//   std::cout << "wrap_tensor_node" << std::endl;
-// #endif
   if (result.is_leaf()) {
     return result.payload();
   }

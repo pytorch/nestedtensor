@@ -107,12 +107,9 @@ class TestIntegration(TestCase):
         # grad test
         output1_sum = output1.sum()
         output2_sum = output2.sum()
-        print(output1_sum.requires_grad)
-        print(output2_sum.requires_grad)
         self.assertEqual(output1_sum, output2_sum)
 
         output1_sum.backward()
-        print(output2_sum.requires_grad)
         output2_sum.backward()
 
         # TODO: Re-enable under autograd support
