@@ -7,7 +7,7 @@
 #include <torch/extension.h>
 #include <torch/library.h>
 
-#define TRACEPACKED 1
+// #define TRACEPACKED 1
 
 namespace torch {
 namespace nested_tensor {
@@ -46,6 +46,23 @@ template <class A, class B, class... C>
 bool is_nested_tensor_impl(A first, B second, C... other) {
   return is_nested_tensor_impl(first, second) &&
       is_nested_tensor_impl(other...);
+}
+
+template <class A>
+void torch_check_is_nested_tensor(A tensor) {
+  TORCH_CHECK(is_nested_tensor_impl(tensor), "Argument is not NestedTensor.");
+}
+
+template <class A, class B>
+void torch_check_is_nested_tensor(A first, B other) {
+  torch_check_is_nested_tensor(first);
+  torch_check_is_nested_tensor(other);
+}
+
+template <class A, class B, class... C>
+void torch_check_is_nested_tensor(A first, B second, C... other) {
+  torch_check_is_nested_tensor(first, second);
+  torch_check_is_nested_tensor(other...);
 }
 
 template <class A>
@@ -136,6 +153,7 @@ bool is_packed(A first, B second, C... other) {
 template <class F, class... A>
 static inline void apply_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
+  torch_check_is_nested_tensor(a...);
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
 
@@ -149,6 +167,7 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
+  torch_check_is_nested_tensor(a...);
   return wrap_tensor_node(
       map(std::move(fn), get_nested_tensor_structure(a)...));
 }

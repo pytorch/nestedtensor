@@ -13,6 +13,10 @@ import random
 import utils
 
 
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
+
+
 class DynamicClassBase(TestCase):
     longMessage = True
 
@@ -88,7 +92,8 @@ def _gen_test_unary(func__, nested_dim, device):
             method = method_
             method_inplace = method_inplace_
 
-        a2 = nestedtensor.nested_tensor(utils.nested_map(func, data), device=device)
+        a2 = nestedtensor.nested_tensor(
+            utils.nested_map(func, data), device=device)
 
         self.assertTrue(a1.nested_dim() == a2.nested_dim())
         self.assertTrue(a2.nested_dim() == a3.nested_dim())
@@ -114,30 +119,52 @@ def _gen_test_binary(func):
         c = utils.gen_float_tensor(3, (2, 3))
 
         # The constructor is supposed to copy!
-        a1 = nestedtensor.nested_tensor([a, b])
-        a2 = nestedtensor.nested_tensor([b, c])
-        a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
-                                         getattr(torch, func)(b, c)])
+        a1 = ntnt([a, b])
+        if func == "remainder":
+            a2 = ntnt_nograd([b, c])
+        else:
+            a2 = ntnt([b, c])
+        a3 = ntnt([getattr(torch, func)(a, b),
+                   getattr(torch, func)(b, c)])
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
+        a1 = a1.detach()
+        if func == "remainder":
+            a3.detach_()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
 
         # The constructor is supposed to copy!
-        a1 = nestedtensor.nested_tensor([a, b])
+        a1 = ntnt([a, b])
         a2 = c
-        a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, a2),
-                                         getattr(torch, func)(b, a2)])
+        a3 = ntnt([getattr(torch, func)(a, a2),
+                   getattr(torch, func)(b, a2)])
+
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
+
+        self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match dimension of other",
+                               lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
+        if func == "remainder":
+            a1.detach_()
+        self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match dimension of self.",
+                               lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match dimension of self.",
+                               lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+
+        a1 = a1.detach()
+        a3 = a3.detach()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
 
         # The constructor is supposed to copy!
         a1 = c
-        a2 = nestedtensor.nested_tensor([a, b])
-        a3 = nestedtensor.nested_tensor([getattr(torch, func)(c, a),
-                                         getattr(torch, func)(c, b)])
+        a2 = ntnt([a, b])
+        a3 = ntnt([getattr(torch, func)(c, a),
+                   getattr(torch, func)(c, b)])
+        if func == "remainder":
+            a2.detach_()
+            a3.detach_()
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
         # TODO: This depends on https://github.com/pytorch/rfcs/pull/3
         # RFC-0001: Add method __torch_function__ RFC.
@@ -146,7 +173,8 @@ def _gen_test_binary(func):
         # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
         # TODO: Only sub doesn't adhere to this rule but with irregular behavior
         if func != "sub":
-            self.assertRaises(RuntimeError, lambda: getattr(a1, func + "_")(a2))
+            self.assertRaises(
+                RuntimeError, lambda: getattr(a1, func + "_")(a2))
     return _test_binary
 
 

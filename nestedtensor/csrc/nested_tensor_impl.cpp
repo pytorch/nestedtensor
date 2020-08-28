@@ -124,7 +124,6 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       "NestedTensorImpl must be given structure of at least height 1.")
   // NOTE: This is and must always be defined. There is no "raggedness" here.
   _sizes.push_back(_structure.degree());
-  std::cout << "_structure.height(): " << _structure.height() << std::endl;
   for (int64_t i = 1; i < _structure.height(); i++) {
     // TODO: Should we prefer this over opt_sizes?
     // TODO: Using -1 here is of of a similar thought as using -1 in reshape
