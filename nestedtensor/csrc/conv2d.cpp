@@ -195,13 +195,9 @@ struct NestedTensorFunction_conv2d
     if (bias) {
       bias_grad = torch::zeros_like(*bias);
     }
-    bool grad_undefined = false;
-    bool weight_grad_undefined = false;
-    bool bias_grad_undefined = false;
 
-    at::Tensor grad;
     TORCH_CHECK(grad_output.size() == 1, "not supported 0");
-    grad = map_nested_tensor(
+    at::Tensor grad = map_nested_tensor(
         [&](at::Tensor r, at::Tensor i, at::Tensor g) {
           TORCH_CHECK(
               !g.requires_grad(), "conv2d doesn't support double backward.");
@@ -219,11 +215,12 @@ struct NestedTensorFunction_conv2d
         autograd_output,
         autograd_input,
         grad_output[0]);
+    std::cout << "weight_grad.sum(): " << weight_grad.sum() << std::endl;
 
     at::Tensor undef;
-    return {grad_undefined ? undef : grad,
-            weight_grad_undefined ? undef : weight_grad,
-            bias_grad_undefined || !bias ? undef : *bias_grad,
+    return {grad,
+            weight_grad,
+            bias ? *bias : undef,
             undef,
             undef,
             undef,
