@@ -143,6 +143,8 @@ def _gen_test_binary(func):
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
 
+        # TODO: Add check for broadcasting smaller tensors / tensor constiuents
+
         self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match dimension of other",
                                lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
         if func == "remainder":

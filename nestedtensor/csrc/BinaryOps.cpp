@@ -19,13 +19,13 @@ void check_binary_shape(const Tensor& self, const Tensor& other) {
   } else if (is_nested_tensor_impl(other)) {
     int64_t other_nested_dim = get_nested_tensor_impl(other)->nested_dim();
     TORCH_CHECK(
-        self.dim() == other.dim() - other_nested_dim,
-        "tensor dimension of other must match dimension of self.");
+        self.dim() <= other.dim() - other_nested_dim,
+        "tensor dimension of other must match or be greater than dimension of self.");
   } else if (is_nested_tensor_impl(self)) {
     int64_t self_nested_dim = get_nested_tensor_impl(self)->nested_dim();
     TORCH_CHECK(
-        self.dim() - self_nested_dim == other.dim(),
-        "tensor dimension of self must match dimension of other.");
+        other.dim() <= self.dim() - self_nested_dim,
+        "tensor dimension of self must match or be greater than dimension of other.");
   } else {
     TORCH_CHECK(false, "check_binary_shape can only be used in NT context.");
   }

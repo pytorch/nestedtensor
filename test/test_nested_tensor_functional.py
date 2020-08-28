@@ -449,42 +449,6 @@ class TestFunctional(TestCase):
         map(self.assertEqual, zip(ts[0].unbind(), ts_r[0].unbind()))
         map(self.assertEqual, zip(ts[1].unbind(), ts_r[1].unbind()))
 
-    def test_layer_norm(self):
-        layer_norm = torch.nn.LayerNorm((0,))
-        t0 = torch.randn(3)
-        t1 = torch.randn(2)
-        t2 = torch.randn(3)
-        ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
-        self.assertRaisesRegex(RuntimeError,
-                               "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
-
-        layer_norm = torch.nn.LayerNorm((3,))
-        t0 = torch.randn(3, 3)
-        t1 = torch.randn(2, 3)
-        t2 = torch.randn(3, 3)
-        ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
-        result = F.layer_norm(nt, (3,))
-        map(self.assertEqual, tuple(
-            map(lambda x: layer_norm(x), ts[0])), result[0])
-        map(self.assertEqual, tuple(
-            map(lambda x: layer_norm(x), ts[1])), result[1])
-
-        t0 = torch.randn(3, 3, 4)
-        t1 = torch.randn(2, 3, 4)
-        t2 = torch.randn(3, 3, 4)
-        ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
-        self.assertRaisesRegex(RuntimeError,
-                               "Given normalized_shape=\[3\], expected input with shape \[\*, 3\], but got input of size\[3, 3, 4\]",
-                               lambda: layer_norm(nt))
-
-        layer_norm = torch.nn.LayerNorm((3, 2, 4))
-        self.assertRaisesRegex(RuntimeError,
-                               "Currently only singleton tuples of integers supported for layer_norm.",
-                               lambda: layer_norm(nt))
-
     def _test_softmax(self, ts, nt):
         fn = F.softmax
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))

@@ -244,6 +244,7 @@ class TestAutogradFunctional(TestCase):
         scalar1.backward()
         scalar2.backward()
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
+        # XXX: This needs a test that actually checks the parameter gradients
 
     def test_squeeze(self):
         t = torch.randn(2, 3)
@@ -364,22 +365,16 @@ class TestAutogradFunctional(TestCase):
             def forward(self, x):
                 # move reshapes to the beginning
                 # to make it fuser-friendly
-                w = self.weight.reshape(1, -1, 1, 1)
-                b = self.bias.reshape(1, -1, 1, 1)
-                rv = self.running_var.reshape(1, -1, 1, 1)
-                rm = self.running_mean.reshape(1, -1, 1, 1)
+                w = self.weight.reshape(-1, 1, 1)
+                b = self.bias.reshape(-1, 1, 1)
+                rv = self.running_var.reshape(-1, 1, 1)
+                rm = self.running_mean.reshape(-1, 1, 1)
                 eps = 1e-5
                 scale = w * (rv + eps).rsqrt()
                 bias = b - rm * scale
-                # return (x * scale + bias).squeeze(1)
-                # return (x * scale) # + bias)
-                print(type(bias))
-                print(bias.size())
-                print(x.nested_size())
-                res = x + bias
-                print('res.nested_size()')
-                print(res.nested_size())
-                return res
+                return (x * scale + bias)
+                # return (x * scale + bias)
+                # return x + bias
 
         b0 = FrozenBatchNorm2d(64)  # .cuda()
         random.seed(1010)
@@ -391,7 +386,6 @@ class TestAutogradFunctional(TestCase):
         print(nested_tensor.nested_size())
         s0 = b0(nested_tensor).sum()
         s0.backward()
-        import sys; sys.exit(1)
 
         b1 = FrozenBatchNorm2d(64)
         s1 = 0
@@ -404,6 +398,44 @@ class TestAutogradFunctional(TestCase):
 
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)
+
+    def test_layer_norm(self):
+        layer_norm = torch.nn.LayerNorm((0,))
+        t0 = torch.randn(3)
+        t1 = torch.randn(2)
+        t2 = torch.randn(3)
+        ts = [[t0, t1], [t2]]
+        nt = ntnt(ts)
+        self.assertRaisesRegex(RuntimeError,
+                               "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
+
+        layer_norm = torch.nn.LayerNorm((3,))
+        t0 = torch.randn(3, 3)
+        t1 = torch.randn(2, 3)
+        t2 = torch.randn(3, 3)
+        ts = [[t0, t1], [t2]]
+        nt = ntnt(ts)
+        result = F.layer_norm(nt, (3,))
+        # XXX: Need to check weight and bias gradients
+        result.sum().backward()
+        map(self.assertEqual, tuple(
+            map(lambda x: layer_norm(x), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: layer_norm(x), ts[1])), result[1])
+
+        t0 = torch.randn(3, 3, 4)
+        t1 = torch.randn(2, 3, 4)
+        t2 = torch.randn(3, 3, 4)
+        ts = [[t0, t1], [t2]]
+        nt = ntnt(ts)
+        self.assertRaisesRegex(RuntimeError,
+                               "Given normalized_shape=\[3\], expected input with shape \[\*, 3\], but got input of size\[3, 3, 4\]",
+                               lambda: layer_norm(nt))
+
+        layer_norm = torch.nn.LayerNorm((3, 2, 4))
+        self.assertRaisesRegex(RuntimeError,
+                               "Currently only singleton tuples of integers supported for layer_norm.",
+                               lambda: layer_norm(nt))
 
 
 if __name__ == "__main__":
