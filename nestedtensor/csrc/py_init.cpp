@@ -50,7 +50,8 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   if (!is_nested_tensor_impl(tensor)) {
     auto wrapped_key = py::tuple(py::cast(key));
     auto wrapped_tensor = THPVariable_Wrap(tensor);
-    auto wrapped_result = torch::autograd::THPVariable_getitem(wrapped_tensor, wrapped_key.ptr());
+    auto wrapped_result =
+        torch::autograd::THPVariable_getitem(wrapped_tensor, wrapped_key.ptr());
     auto result = THPVariable_Unpack(wrapped_result);
     Py_DECREF(wrapped_tensor);
     Py_DECREF(wrapped_result);
@@ -83,11 +84,11 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   int64_t nested_dim = get_nested_tensor_impl(*first)->nested_dim();
   std::vector<TensorNode> result_nodes;
   if (nested_dim == 1) {
-    for (auto t: result) {
+    for (auto t : result) {
       result_nodes.push_back(TensorNode(std::move(t)));
     }
   } else {
-    for (auto t: result) {
+    for (auto t : result) {
       result_nodes.push_back(get_nested_tensor_structure(t));
     }
   }
@@ -125,7 +126,6 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   };
   return fn(fn, size_node, *index);
 }
-
 
 namespace torch {
 namespace nested_tensor {

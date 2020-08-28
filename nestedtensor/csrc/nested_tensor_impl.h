@@ -244,7 +244,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
         get_structure());
   }
-  at::Tensor to_tensor();
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
