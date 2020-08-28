@@ -310,6 +310,31 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(nt.squeeze(
             4), ntnt([[t.reshape(1, 2, 3)]]))
 
+    def test_nn_max_pool2d(self):
+        data = [
+            [
+                torch.randn(3, 500, 600),
+                torch.randn(3, 128, 128)
+            ],
+            [
+                torch.randn(3, 500, 600),
+                torch.randn(3, 500, 600)
+            ],
+        ]
+
+        # with optional params
+        maxPool2d = torch.nn.MaxPool2d(kernel_size=(
+            3, 3), stride=2, padding=(1, 1), dilation=1, ceil_mode=False)
+        for inputs in data:
+            tensor_res = []
+            for i in range(2):
+                t_res = maxPool2d(inputs[i].unsqueeze(0).contiguous())
+                tensor_res.append(t_res.squeeze(0))
+
+            nt = ntnt(inputs)
+            nt_res = maxPool2d(nt)
+            self.assertEqual(ntnt(tensor_res), nt_res)
+
     def test_fzbn2d(self):
         class FrozenBatchNorm2d(torch.nn.Module):
             """
@@ -352,7 +377,8 @@ class TestAutogradFunctional(TestCase):
         random.seed(1010)
         torch.manual_seed(1310)
         RAND_INTS = [random.randint(100, 300) for _ in range(20)]
-        tensors = [torch.rand(64, i, 256, requires_grad=True) for i in RAND_INTS]
+        tensors = [torch.rand(64, i, 256, requires_grad=True)
+                   for i in RAND_INTS]
         nested_tensor = nestedtensor.nested_tensor(tensors,
                                                    device=torch.device('cpu'), dtype=torch.float, requires_grad=True)
         s0 = b0(nested_tensor).sum()
@@ -364,6 +390,8 @@ class TestAutogradFunctional(TestCase):
             s1 += b1(t).sum()
         s1.backward()
         self.assertEqual(s0, s1)
+        for i in range(len(tensors)):
+            self.assertEqual(nested_tensor.grad[i], tensors[i].grad)
 
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)

@@ -9,6 +9,7 @@ from utils import TestCase
 import random
 import utils
 import torchvision
+from torchvision.models._utils import IntermediateLayerGetter
 
 
 class ConfusionMatrix(object):
@@ -60,71 +61,145 @@ class TestIntegration(TestCase):
         not utils.internet_on(), "Cannot reach internet to download reference model."
     )
     def test_segmentation_pretrained_test_only(self):
-        torch.manual_seed(1010)
-        t1 = torch.randn(3, 2, 2, requires_grad=True)
-        t2 = torch.randn(3, 2, 2, requires_grad=True)
-        tr1 = torch.randn(2, 2, requires_grad=True)
-        tr2 = torch.randn(2, 2, requires_grad=True)
+        class FrozenBatchNorm2d(torch.nn.Module):
+            """
+            BatchNorm2d where the batch statistics and the affine parameters are fixed.
+            Copy-paste from torchvision.misc.ops with added eps before rqsrt,
+            without which any other models than torchvision.models.resnet[18,34,50,101]
+            produce nans.
+            """
 
-        model_name = "fcn_resnet101"
-        num_classes = 21
-        aux_loss = "store_true"
-        model1 = torchvision.models.segmentation.__dict__[model_name](
-            num_classes=num_classes, aux_loss=aux_loss, pretrained=True
-        )
-        model1.eval()
+            def __init__(self, n):
+                super(FrozenBatchNorm2d, self).__init__()
+                self.register_buffer("weight", torch.ones(n))
+                self.register_buffer("bias", torch.zeros(n))
+                self.register_buffer("running_mean", torch.zeros(n))
+                self.register_buffer("running_var", torch.ones(n))
 
-        # tensor run
-        t_input = torch.stack([t1, t2])
-        t_target = torch.stack([tr1, tr2])
-        confmat = ConfusionMatrix(num_classes)
+            def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
+                                      missing_keys, unexpected_keys, error_msgs):
+                num_batches_tracked_key = prefix + 'num_batches_tracked'
+                if num_batches_tracked_key in state_dict:
+                    del state_dict[num_batches_tracked_key]
 
-        output1 = model1(t_input)
-        output1 = output1["out"]
+                super(FrozenBatchNorm2d, self)._load_from_state_dict(
+                    state_dict, prefix, local_metadata, strict,
+                    missing_keys, unexpected_keys, error_msgs)
 
-        confmat.update(t_target.flatten(), output1.argmax(1).flatten())
-        confmat.reduce_from_all_processes()
+            def forward(self, x):
+                # move reshapes to the beginning
+                # to make it fuser-friendly
+                w = self.weight.reshape(1, -1, 1, 1)
+                b = self.bias.reshape(1, -1, 1, 1)
+                rv = self.running_var.reshape(1, -1, 1, 1)
+                rm = self.running_mean.reshape(1, -1, 1, 1)
+                eps = 1e-5
+                scale = w * (rv + eps).rsqrt()
+                bias = b - rm * scale
+                print('x.size()')
+                print(x.size())
+                res = (x * scale + bias)
+                print('res.size()')
+                print(res.size())
+                res = res.squeeze(1)
+                print('res0.size()')
+                print(res.size())
+                return res
 
-        # nt run
-        model2 = torchvision.models.segmentation.__dict__[model_name](
-            num_classes=num_classes, aux_loss=aux_loss, pretrained=True
-        )
-        model2.eval()
-        nt_t1 = t1.clone().detach()
-        nt_t2 = t2.clone().detach()
-        nt_tr1 = tr1.clone().detach()
-        nt_tr2 = tr2.clone().detach()
-
-        nt_input = nestedtensor.nested_tensor([nt_t1, nt_t2], requires_grad=True)
-        nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
-        confmat2 = ConfusionMatrix(num_classes)
-
-        output2 = model2(nt_input)
-        output2 = output2["out"]
-
-        for a, b in zip(nt_target, output2):
-            confmat2.update(a.flatten(), b.argmax(0).flatten())
-
-        confmat2.reduce_from_all_processes()
-        self.assertEqual(confmat.mat, confmat2.mat)
-
-        # grad test
-        output1_sum = output1.sum()
-        output2_sum = output2.sum()
-        self.assertEqual(output1_sum, output2_sum)
-
-        output1_sum.backward()
-        output2_sum.backward()
-
-        for (n1, p1), (n2, p2) in zip(model1.named_parameters(), model2.named_parameters()):
-            if p1.grad is not None:
-                self.assertEqual(p1.grad, p2.grad)
+        def _test(model_factory, use_confmat, num_classes=21):
+            if use_confmat:
+                torch.manual_seed(1010)
             else:
-                self.assertIsNone(p2.grad)
+                torch.manual_seed(10102)
+            t1 = torch.randn(3, 2, 2, requires_grad=True)
+            t2 = torch.randn(3, 2, 2, requires_grad=True)
+            tr1 = torch.randn(2, 2, requires_grad=True)
+            tr2 = torch.randn(2, 2, requires_grad=True)
 
-        # TODO: Re-enable under autograd support
-        self.assertEqual(t1.grad, nt_input.grad[0])
-        self.assertEqual(t2.grad, nt_input.grad[1])
+            model1 = model_factory()
+            # model1 = torchvision.models.segmentation.__dict__[model_name](
+            #     num_classes=num_classes, aux_loss=aux_loss, pretrained=True
+            # )
+            # model1.eval()
+
+            # tensor run
+            t_input = torch.stack([t1, t2])
+            t_target = torch.stack([tr1, tr2])
+            if use_confmat:
+                confmat = ConfusionMatrix(num_classes)
+
+            output1 = model1(t_input)
+            if use_confmat:
+                output1 = output1["out"]
+            else:
+                output1 = output1["0"]
+
+            if use_confmat:
+                confmat.update(t_target.flatten(), output1.argmax(1).flatten())
+                confmat.reduce_from_all_processes()
+
+            # nt run
+            # model2 = torchvision.models.segmentation.__dict__[model_name](
+            #     num_classes=num_classes, aux_loss=aux_loss, pretrained=True
+            # )
+            # model2.eval()
+            model2 = model_factory()
+            nt_t1 = t1.clone().detach()
+            nt_t2 = t2.clone().detach()
+            nt_tr1 = tr1.clone().detach()
+            nt_tr2 = tr2.clone().detach()
+            print(model2)
+
+            nt_input = nestedtensor.nested_tensor(
+                [nt_t1, nt_t2], requires_grad=True)
+            nt_target = nestedtensor.nested_tensor(
+                [nt_tr1, nt_tr2], requires_grad=True)
+            if use_confmat:
+                confmat2 = ConfusionMatrix(num_classes)
+
+            output2 = model2(nt_input)
+            if use_confmat:
+                output2 = output2["out"]
+            else:
+                output2 = output2["0"]
+
+            if use_confmat:
+                for a, b in zip(nt_target, output2):
+                    confmat2.update(a.flatten(), b.argmax(0).flatten())
+
+            if use_confmat:
+                confmat2.reduce_from_all_processes()
+                self.assertEqual(confmat.mat, confmat2.mat)
+
+            # grad test
+            output1_sum = output1.sum()
+            output2_sum = output2.sum()
+            print('output1_sum')
+            print(output1_sum)
+            print('output2_sum')
+            print(output2_sum)
+            self.assertEqual(output1_sum, output2_sum)
+
+            output1_sum.backward()
+            output2_sum.backward()
+
+            for (n1, p1), (n2, p2) in zip(model1.named_parameters(), model2.named_parameters()):
+                if p1.grad is not None:
+                    self.assertEqual(p1.grad, p2.grad)
+                else:
+                    self.assertIsNone(p2.grad)
+
+            # TODO: Re-enable under autograd support
+            self.assertEqual(t1.grad, nt_input.grad[0])
+            self.assertEqual(t2.grad, nt_input.grad[1])
+
+        # _test(lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
+        #     num_classes=21, aux_loss="store_true", pretrained=True
+        # ).eval(), True)
+
+        _test(lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
+            replace_stride_with_dilation=[False, False, False],
+            pretrained=True, norm_layer=FrozenBatchNorm2d), {'layer4': "0"}), False)
 
 
 if __name__ == "__main__":

@@ -108,32 +108,6 @@ class TestFunctional(TestCase):
                 nt, running_mean, running_var)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
-    def test_nn_max_pool2d(self):
-        data = [
-            [
-                torch.randn(3, 500, 600),
-                torch.randn(3, 128, 128)
-            ],
-            [
-                torch.randn(3, 500, 600),
-                torch.randn(3, 500, 600)
-            ],
-        ]
-
-        # with optional params
-        maxPool2d = torch.nn.MaxPool2d(kernel_size=(
-            3, 3), stride=2, padding=(1, 1), dilation=1, ceil_mode=False)
-        for inputs in data:
-            tensor_res = []
-            for i in range(2):
-                t_res = maxPool2d(inputs[i].unsqueeze(0).contiguous())
-                tensor_res.append(t_res.squeeze(0))
-
-            for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-                nt_res = maxPool2d(nt)
-                self.assertEqual(
-                    nestedtensor.nested_tensor(tensor_res), nt_res)
-
     def test_nn_functional_max_pool2d(self):
         inputs = [
             torch.randn(3, 500, 600),
