@@ -122,16 +122,17 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")
-  for (auto opt_int : construct_size(_nested_size)) {
-    if (opt_int) {
-      _sizes.push_back(*opt_int);
-    } else {
-      // TODO: Should we prefer this over opt_sizes?
-      // TODO: Using -1 here is of of a similar thought as using -1 in reshape
-      // as a placeholder. Unfortunatly using -1 here interacts very badly with
-      // the rest of the functions that consume size.
-      _sizes.push_back(0);
-    }
+  // NOTE: This is and must always be defined. There is no "raggedness" here.
+  _sizes.push_back(_structure.degree());
+  for (int64_t i = 1; i < _structure.height(); i++) {
+    // TODO: Should we prefer this over opt_sizes?
+    // TODO: Using -1 here is of of a similar thought as using -1 in reshape
+    // as a placeholder. Unfortunatly using -1 here interacts very badly with
+    // the rest of the functions that consume size.
+    // NOTE: This needs to happend for backwards in autograd/engine.cpp, which
+    // calls into expandable_to(a.sizes(), b.sizes()), which cannot be
+    // overwritten.
+    _sizes.push_back(0);
   }
 }
 
@@ -220,12 +221,19 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {
+#ifdef TRACEPACKED
+  std::cout << "Using NestedTensorImpl size." << std::endl;
+#endif
   std::vector<c10::optional<int64_t>> size = opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
   throw std::runtime_error(
       "NestedTensor size at dim is not Tensor shape compliant.");
+}
+
+int64_t NestedTensor_size_int(const Tensor& self, int64_t dim) {
+  return get_nested_tensor_impl(self)->size(dim);
 }
 
 IntArrayRef NestedTensorImpl::strides() const {
@@ -426,14 +434,15 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
   auto self_impl = get_nested_tensor_impl(self);
   int64_t nested_dim = self_impl->nested_dim();
   TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
-  TORCH_CHECK(
-      dim >= nested_dim, "Cannot squeeze nested dimension.");
+  TORCH_CHECK(dim >= nested_dim, "Cannot squeeze nested dimension.");
   TORCH_CHECK(
       ((self_impl->opt_sizes()[dim]) &&
        ((*(self_impl->opt_sizes()[dim])) == 1)),
       "Given dimension is either undefined or not a singleton.");
   return autograd_map_nested_tensor(
-      [dim, nested_dim](at::Tensor tensor) { return tensor.squeeze(dim - nested_dim); },
+      [dim, nested_dim](at::Tensor tensor) {
+        return tensor.squeeze(dim - nested_dim);
+      },
       self);
 }
 
@@ -478,6 +487,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // nt_impl("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
+  nt_impl(m, "size.int", NestedTensor_size_int);
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "contiguous", NestedTensor_contiguous);
