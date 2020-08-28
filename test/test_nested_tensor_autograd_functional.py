@@ -349,7 +349,6 @@ class TestAutogradFunctional(TestCase):
                 return (x * scale + bias).squeeze(1)
 
         b0 = FrozenBatchNorm2d(64)  # .cuda()
-        import random
         random.seed(1010)
         torch.manual_seed(1310)
         RAND_INTS = [random.randint(100, 300) for _ in range(20)]
@@ -359,7 +358,7 @@ class TestAutogradFunctional(TestCase):
         s0 = b0(nested_tensor).sum()
         s0.backward()
 
-        b1 = FrozenBatchNorm2d(64)  # .cuda()
+        b1 = FrozenBatchNorm2d(64)
         s1 = 0
         for t in tensors:
             s1 += b1(t).sum()
