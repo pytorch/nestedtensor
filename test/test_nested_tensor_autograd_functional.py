@@ -30,14 +30,14 @@ class TestAutogradFunctional(TestCase):
                 t_res = conv2d(inputs[i].unsqueeze(0).contiguous())
                 tensor_res.append(t_res.squeeze(0))
                 t_res.sum().backward()
-            layer_grad0 = [p.grad.clone() for (n, p) in conv2d.named_parameters()]
+            layer_grad0 = [p.grad for (n, p) in conv2d.named_parameters()]
 
             conv2d.zero_grad()
 
             nt = ntnt(inputs)
             nt_res = conv2d(nt)
             nt_res.sum().backward()
-            layer_grad1 = [p.grad.clone() for (n, p) in conv2d.named_parameters()]
+            layer_grad1 = [p.grad for (n, p) in conv2d.named_parameters()]
 
             self.assertEqual(ntnt(tensor_res), nt_res)
             map(self.assertEqual, zip(layer_grad0, layer_grad1))
