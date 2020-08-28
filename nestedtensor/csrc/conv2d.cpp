@@ -218,7 +218,7 @@ struct NestedTensorFunction_conv2d
     at::Tensor undef;
     return {grad,
             weight_grad,
-            bias ? *bias : undef,
+            bias ? *bias_grad : undef,
             undef,
             undef,
             undef,

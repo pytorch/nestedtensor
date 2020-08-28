@@ -69,23 +69,27 @@ class TestIntegration(TestCase):
         model_name = "fcn_resnet101"
         num_classes = 21
         aux_loss = "store_true"
-        model = torchvision.models.segmentation.__dict__[model_name](
+        model1 = torchvision.models.segmentation.__dict__[model_name](
             num_classes=num_classes, aux_loss=aux_loss, pretrained=True
         )
-        model.eval()
+        model1.eval()
 
         # tensor run
         t_input = torch.stack([t1, t2])
         t_target = torch.stack([tr1, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        output1 = model(t_input)
+        output1 = model1(t_input)
         output1 = output1["out"]
 
         confmat.update(t_target.flatten(), output1.argmax(1).flatten())
         confmat.reduce_from_all_processes()
 
         # nt run
+        model2 = torchvision.models.segmentation.__dict__[model_name](
+            num_classes=num_classes, aux_loss=aux_loss, pretrained=True
+        )
+        model2.eval()
         nt_t1 = t1.clone().detach()
         nt_t2 = t2.clone().detach()
         nt_tr1 = tr1.clone().detach()
@@ -95,7 +99,7 @@ class TestIntegration(TestCase):
         nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
         confmat2 = ConfusionMatrix(num_classes)
 
-        output2 = model(nt_input)
+        output2 = model2(nt_input)
         output2 = output2["out"]
 
         for a, b in zip(nt_target, output2):
@@ -111,6 +115,12 @@ class TestIntegration(TestCase):
 
         output1_sum.backward()
         output2_sum.backward()
+
+        for (n1, p1), (n2, p2) in zip(model1.named_parameters(), model2.named_parameters()):
+            if p1.grad is not None:
+                self.assertEqual(p1.grad, p2.grad)
+            else:
+                self.assertIsNone(p2.grad)
 
         # TODO: Re-enable under autograd support
         self.assertEqual(t1.grad, nt_input.grad[0])
