@@ -94,6 +94,8 @@ Tensor NestedTensor_softmax(
       input);
 }
 
+/// XXX: Whenever a capture tensor requires a gradient this sort of stuff should fail.
+// See conv2d for another example.
 Tensor NestedTensor_layer_norm(
     const Tensor& input,
     IntArrayRef normalized_shape,
