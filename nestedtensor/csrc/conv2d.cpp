@@ -215,8 +215,6 @@ struct NestedTensorFunction_conv2d
         autograd_output,
         autograd_input,
         grad_output[0]);
-    std::cout << "weight_grad.sum(): " << weight_grad.sum() << std::endl;
-
     at::Tensor undef;
     return {grad,
             weight_grad,
