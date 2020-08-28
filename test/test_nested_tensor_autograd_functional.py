@@ -52,6 +52,36 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torch.nn.Conv2d(
             3, 33, kernel_size=(1, 1), stride=(1, 1), bias=False))
 
+    def test_nn_linear(self):
+        def _test(linear):
+            inputs = [
+                torch.randn(3, 10, requires_grad=True),
+                torch.randn(3, 10, requires_grad=True)
+            ]
+
+            # most of optional params
+            linear = linear()
+            tensor_res = []
+            for i in range(2):
+                t_res = linear(inputs[i].unsqueeze(0).contiguous())
+                tensor_res.append(t_res.squeeze(0))
+                t_res.sum().backward()
+            layer_grad0 = [p.grad for (n, p) in linear.named_parameters()]
+
+            linear.zero_grad()
+
+            nt = ntnt(inputs)
+            nt_res = linear(nt)
+            nt_res.sum().backward()
+            layer_grad1 = [p.grad for (n, p) in linear.named_parameters()]
+
+            self.assertEqual(ntnt(tensor_res), nt_res)
+            map(self.assertEqual, zip(layer_grad0, layer_grad1))
+            self.assertEqual(nt.grad[0], inputs[0].grad)
+            self.assertEqual(nt.grad[1], inputs[1].grad)
+
+        _test(lambda: torch.nn.Linear(10, 6))
+
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
             inputs = [

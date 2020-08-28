@@ -423,6 +423,7 @@ struct NestedTensorFunction_mapper
                 AutoGradMode autogradmode(true);
                 // TODO: Don't apply this if the corresponding NestedTensor
                 // doesn't require a gradient.
+                // TODO: This fails if the input is not of differentiable dtype.
                 auto alias = ti.alias();
                 alias.requires_grad_();
                 // 3. Alias to constituents that do requires gradients
@@ -441,6 +442,8 @@ struct NestedTensorFunction_mapper
               [&](A... t) {
                 AutoGradMode autogradmode(true);
                 auto result = fn(t...);
+                // TODO: This fails if none of the inputs are differentiable
+                // (because they're e.g. the wrong dtype)
                 TORCH_CHECK(
                     result.requires_grad(),
                     "fn ",

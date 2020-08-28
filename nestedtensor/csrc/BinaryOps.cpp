@@ -247,36 +247,80 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
       [&base](Tensor exp) { return at::pow(base, exp); }, exp);
 }
 
+struct NestedTensorFunction_add
+    : public torch::autograd::Function<NestedTensorFunction_add> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      const Tensor& self,
+      const Tensor& other,
+      Scalar alpha) {
+    check_binary_shape(self, other);
+    ctx->saved_data["0"] = alpha;
+    if (is_nested_tensor_impl(self, other)) {
+      return map_nested_tensor(
+          [&](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
+          self,
+          other);
+    }
+    if (is_nested_tensor_impl(other)) {
+      return map_nested_tensor(
+          [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
+    }
+    // NOTE: Not compatible with autograd
+    //   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
+    // #ifdef TRACEPACKED
+    //     std::cout << "calling packed add" << std::endl;
+    // #endif
+    //     auto self_structure = get_nested_tensor_structure(self);
+    //     auto self_impl = get_nested_tensor_impl(self);
+    //     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+    //         (*self_structure.buffer())
+    //             .reshape({-1, other.size(0)})
+    //             .add(other)
+    //             .reshape({-1}),
+    //         self_impl->nested_size()));
+    //   }
+    return map_nested_tensor(
+        [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(
+        grad_output_.size() == 1,
+        "add needs to receive grad_output of size 1.");
+    auto alpha = ctx->saved_data["0"].toScalar();
+    auto grad = grad_output_[0];
+    Tensor undef;
+    return {grad, grad * alpha, undef};
+  }
+};
+
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  check_binary_shape(self, other);
   if (is_nested_tensor_impl(self, other)) {
-    return map_nested_tensor(
-        [&](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
-        self,
-        other);
+    return NestedTensorFunction_add::apply(self, other, alpha);
   }
-  if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
-        [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
+  if (torch::autograd::isDifferentiableType(self.scalar_type()) &&
+      torch::autograd::isDifferentiableType(other.scalar_type())) {
+    if (is_nested_tensor_impl(self)) {
+      return autograd_map_nested_tensor(
+          [&other](at::Tensor s) { return at::add(s, other); }, self);
+    }
+    return autograd_map_nested_tensor(
+        [&self](at::Tensor o) { return at::add(self, o); }, other);
   }
-  if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed add" << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    auto self_impl = get_nested_tensor_impl(self);
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        (*self_structure.buffer())
-            .reshape({-1, other.size(0)})
-            .add(other)
-            .reshape({-1}),
-        self_impl->nested_size()));
+  // XXX: This doesn't handle the case where only one of the arguments is
+  // differentiable. It just disables autograd alltogether.
+  if (is_nested_tensor_impl(self)) {
+    return map_nested_tensor(
+        [&other](at::Tensor s) { return at::add(s, other); }, self);
   }
   return map_nested_tensor(
-      [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
+      [&self](at::Tensor o) { return at::add(self, o); }, other);
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
+  TORCH_CHECK(false, "add_ is not implemented for NT");
   check_binary_shape(self, other);
   if (is_nested_tensor_impl(self, other)) {
     apply_nested_tensor(
@@ -301,10 +345,15 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "add.Tensor", NestedTensor_add);
   nt_impl(m, "add_.Tensor", NestedTensor_add_);
+}
 
+// XXX: We need to disable binary ops below autograd between NT and T, because
+// in the backwards pass autograd/engine.cpp uses .sizes() which
+// doesn't compare between NTs and Ts.
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)
