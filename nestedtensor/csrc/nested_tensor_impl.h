@@ -424,7 +424,10 @@ struct NestedTensorFunction_mapper
                 // doesn't require a gradient.
                 // TODO: This fails if the input is not of differentiable dtype.
                 auto alias = ti.alias();
-                alias.requires_grad_();
+                if (torch::autograd::isDifferentiableType(
+                        alias.scalar_type())) {
+                  alias.requires_grad_();
+                }
                 // 3. Alias to constituents that do requires gradients
                 return alias;
               },
@@ -443,11 +446,11 @@ struct NestedTensorFunction_mapper
                 auto result = fn(t...);
                 // TODO: This fails if none of the inputs are differentiable
                 // (because they're e.g. the wrong dtype)
-                TORCH_CHECK(
-                    result.requires_grad(),
-                    "fn ",
-                    typeid(F).name(),
-                    " doesn't seem differentiable.");
+                // TORCH_CHECK(
+                //     result.requires_grad(),
+                //     "fn ",
+                //     typeid(F).name(),
+                //     " doesn't seem differentiable.");
                 return result;
               },
               a...);

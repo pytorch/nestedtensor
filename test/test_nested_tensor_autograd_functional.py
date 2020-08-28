@@ -9,6 +9,11 @@ from utils import TestCase
 import random
 import utils
 from torch.nn import functional as F
+from torchvision.models._utils import IntermediateLayerGetter
+from frozen_batch_norm_2d import NTFrozenBatchNorm2d
+from position_encoding import PositionEmbeddingSine
+from joiner import Joiner
+from torch import nn
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
@@ -194,9 +199,10 @@ class TestAutogradFunctional(TestCase):
                 torch.randn(256, 50, 60, requires_grad=True),
                 torch.randn(256, 18, 18, requires_grad=True)
             ]
+            b = Bottleneck()
             inputs = ntnt(inputs_)
-            b.zero_grad()
             b(inputs).sum().backward()
+            print(list((n, p.grad is None) for (n, p) in b.named_parameters()))
 
             b.zero_grad()
             b(inputs_[0].unsqueeze(0)).sum().backward()
@@ -219,6 +225,7 @@ class TestAutogradFunctional(TestCase):
             inputs = ntnt(inputs_)
 
             b = FCNHead()
+            print(b)
             list(b.children())[3].eval()  # dropout is stochastic otherwise
             b(inputs).sum().backward()
             g0 = list(p.grad for (n, p) in b.named_parameters())
@@ -247,6 +254,56 @@ class TestAutogradFunctional(TestCase):
             self.assertEqual(inputs_[1].grad, inputs.grad[1])
         _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64))
         _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64).eval())
+
+    def test_backbone(self):
+        import torchvision
+
+        def _test(FCNHead):
+            inputs_ = [
+                torch.randn(3, 50, 60, requires_grad=True)
+            ]
+            inputs = ntnt(inputs_)
+
+            b = FCNHead()
+            print(b)
+            print(b(inputs))
+            b(inputs)[0][0].sum().backward()
+            g0 = list(p.grad for (n, p) in b.named_parameters())
+
+            b.zero_grad()
+            b(inputs_[0].unsqueeze(0))[0][0].sum().backward()
+            g1 = list(p.grad for (n, p) in b.named_parameters())
+
+            map(self.assertEqual, zip(g0, g1))
+
+            inputs_ = [
+                torch.randn(3, 50, 60, requires_grad=True),
+                torch.randn(3, 18, 18, requires_grad=True)
+            ]
+            inputs = ntnt(inputs_)
+            b.zero_grad()
+            b(inputs)[0][0].sum().backward()
+            for (n, p) in b.named_parameters():
+                if p.grad is None:
+                    print(n)
+                    continue
+                print(n, " is fine")
+
+            b.zero_grad()
+            b(inputs_[0].unsqueeze(0))[0][0].sum().backward()
+
+            b.zero_grad()
+            b(inputs_[1].unsqueeze(0))[0][0].sum().backward()
+
+            self.assertEqual(inputs_[0].grad, inputs.grad[0])
+            self.assertEqual(inputs_[1].grad, inputs.grad[1])
+        # Note: It seems expected that layer0 has no gradients.
+        return_layers = {"layer1": "0", "layer2": "1",
+                         "layer3": "2", "layer4": "3"}
+        _test(lambda: Joiner(IntermediateLayerGetter(getattr(torchvision.models, "resnet50")(
+            replace_stride_with_dilation=[False, False, False],
+            pretrained=True, norm_layer=NTFrozenBatchNorm2d), return_layers),
+            PositionEmbeddingSine(128, normalize=True)))
 
     def test_mha(self):
         embed_dim = 2
@@ -439,15 +496,28 @@ class TestAutogradFunctional(TestCase):
         self.assertRaisesRegex(RuntimeError,
                                "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
-        layer_norm = torch.nn.LayerNorm((3,))
+        d = torch.nn.Dropout(0.1)
+        t0 = torch.randn(864, 256)
+        t1 = torch.randn(360, 256)
+        ts = [t0, t1]
+        nt = ntnt(ts)
+        nt2 = ntnt_nograd(ts)
+        layer_norm = torch.nn.LayerNorm(256)
+        print(list(layer_norm.named_parameters()))
+        print(nt)
+        res = layer_norm(nt)
+        res = nt2 + res
+        print(res)
+        res.sum().backward()
+        print(list(layer_norm.named_parameters()))
+        # XXX: Need to check weight and bias gradients
+        import sys
+        sys.exit(1)
         t0 = torch.randn(3, 3)
         t1 = torch.randn(2, 3)
         t2 = torch.randn(3, 3)
         ts = [[t0, t1], [t2]]
         nt = ntnt(ts)
-        result = F.layer_norm(nt, (3,))
-        # XXX: Need to check weight and bias gradients
-        result.sum().backward()
         map(self.assertEqual, tuple(
             map(lambda x: layer_norm(x), ts[0])), result[0])
         map(self.assertEqual, tuple(
@@ -466,6 +536,84 @@ class TestAutogradFunctional(TestCase):
         self.assertRaisesRegex(RuntimeError,
                                "Currently only singleton tuples of integers supported for layer_norm.",
                                lambda: layer_norm(nt))
+
+    def test_decoder(self):
+        class TransformerDecoderLayer(nn.Module):
+
+            def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
+                         activation="relu", normalize_before=False):
+                super().__init__()
+                self.self_attn = nestedtensor.nn.MultiheadAttention(
+                    d_model, nhead, dropout=dropout)
+                self.multihead_attn = nestedtensor.nn.MultiheadAttention(
+                    d_model, nhead, dropout=dropout)
+                # Implementation of Feedforward model
+                self.linear1 = nn.Linear(d_model, dim_feedforward)
+                self.dropout = nn.Dropout(dropout)
+                self.linear2 = nn.Linear(dim_feedforward, d_model)
+
+                self.norm1 = nn.LayerNorm(d_model)
+                self.norm2 = nn.LayerNorm(d_model)
+                self.norm3 = nn.LayerNorm(d_model)
+                self.dropout1 = nn.Dropout(dropout)
+                self.dropout2 = nn.Dropout(dropout)
+                self.dropout3 = nn.Dropout(dropout)
+
+                self.activation = torch.nn.functional.relu
+                self.normalize_before = normalize_before
+
+            def with_pos_embed(self, tensor, pos):
+                return tensor if pos is None else tensor + pos
+
+            def forward(self, tgt, memory,
+                # tgt_mask: Optional[Tensor] = None,
+                # memory_mask: Optional[Tensor] = None,
+                # tgt_key_padding_mask: Optional[Tensor] = None,
+                # memory_key_padding_mask: Optional[Tensor] = None,
+                pos = None, query_pos = None):
+                q = k = self.with_pos_embed(tgt, query_pos)
+                tgt2 = self.self_attn(q, k, value=tgt,
+                                      need_weights=False)[0]
+                # tgt = tgt + self.dropout1(tgt2)
+                tgt = tgt + tgt2
+                tgt = self.norm1(tgt)
+                tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
+                                           key=self.with_pos_embed(
+                                               memory, pos),
+                                           value=memory,
+                                           need_weights=False)[0]
+                # tgt = tgt + self.dropout2(tgt2)
+                tgt = tgt + tgt2
+                tgt = self.norm2(tgt)
+                tgt2 = self.linear2(self.dropout(
+                    self.activation(self.linear1(tgt))))
+                # tgt = tgt + self.dropout3(tgt2)
+                tgt = tgt + tgt2
+                tgt = self.norm3(tgt)
+                print('tgt.requires_grad')
+                print(tgt.requires_grad)
+                return tgt
+
+        d = TransformerDecoderLayer(256, 8)
+        d.zero_grad()
+        a = d(
+            ntnt([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+            ntnt([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+            pos = ntnt([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+            query_pos = ntnt([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+        )
+        # a.sum().backward()
+        for (n, p) in d.named_parameters():
+            print(n)
+            print(p is None)
 
 
 if __name__ == "__main__":
