@@ -238,6 +238,35 @@ inline NestedNode<R> unflatten(
 }
 
 template <class A>
+inline std::vector<NestedNode<A>> unzip(
+    const NestedNode<std::vector<A>>& structure) {
+  if (structure.is_leaf()) {
+    std::vector<NestedNode<A>> results;
+    std::vector<A> payload = structure.payload();
+    for (size_t i = 0; i < payload.size(); i++) {
+      results.push_back(NestedNode<A>(std::move(payload[i])));
+    }
+    return results;
+  } else {
+    std::vector<std::vector<NestedNode<A>>> result;
+    for (size_t i = 0; i < structure.degree(); i++) {
+      std::vector<NestedNode<A>> unzipped = unzip(structure.children(i));
+      for (size_t j = 0; j < unzipped.size(); j++) {
+        if (j >= result.size()) {
+          result.resize(j + 1);
+        }
+        result[j].push_back(unzipped[j]);
+      }
+    }
+    std::vector<NestedNode<A>> wrapped_result;
+    for (size_t i = 0; i < result.size(); i++) {
+      wrapped_result.push_back(NestedNode<A>(std::move(result[i])));
+    }
+    return wrapped_result;
+  }
+}
+
+template <class A>
 inline NestedNode<std::vector<A>> zip(
     const std::vector<NestedNode<A>>& structures) {
   bool all_leaf = true;
@@ -402,7 +431,8 @@ inline TensorNode build_structure(
 inline TensorNode build_structure(
     at::Tensor&& buffer,
     const SizeNode& nested_size) {
-  TORCH_CHECK(buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
+  TORCH_CHECK(
+      buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
   SizeNode nested_stride = map(
       [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
   return build_structure(std::move(buffer), nested_size, nested_stride);

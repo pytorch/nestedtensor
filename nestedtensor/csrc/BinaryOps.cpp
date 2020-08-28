@@ -50,7 +50,7 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
 
 template <Tensor (*func)(const Tensor&, Scalar)>
 Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);
 }
 
@@ -58,26 +58,16 @@ template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   check_binary_shape(self, other);
   if (is_nested_tensor_impl(self, other)) {
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [](Tensor self, Tensor other) { return func(self, other); },
         self,
         other);
   }
   if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [&self](Tensor other) { return func(self, other); }, other);
   }
-  if (is_packed(self) &&
-      (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed binary " << typeid(func).name() << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        func((*self_structure.buffer()), other),
-        get_nested_tensor_impl(self)->nested_size()));
-  }
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);
 }
 
@@ -85,7 +75,7 @@ template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
   check_binary_shape(self, other);
   if (is_nested_tensor_impl(self, other)) {
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [&scalar](Tensor tensor, Tensor other) {
           return func(tensor, other, scalar);
         },
@@ -93,11 +83,11 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
         other);
   }
   if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [&self, &scalar](Tensor other) { return func(self, other, scalar); },
         other);
   }
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&other, &scalar](Tensor self) { return func(self, other, scalar); },
       self);
 }
@@ -228,7 +218,7 @@ Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
 }
 
 Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [exp](Tensor base) { return at::pow(base, exp); }, base);
 }
 
@@ -243,80 +233,24 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
 }
 
 Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&base](Tensor exp) { return at::pow(base, exp); }, exp);
 }
 
-struct NestedTensorFunction_add
-    : public torch::autograd::Function<NestedTensorFunction_add> {
-  static Tensor forward(
-      torch::autograd::AutogradContext* ctx,
-      const Tensor& self,
-      const Tensor& other,
-      Scalar alpha) {
-    check_binary_shape(self, other);
-    ctx->saved_data["0"] = alpha;
-    if (is_nested_tensor_impl(self, other)) {
-      return map_nested_tensor(
-          [&](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
-          self,
-          other);
-    }
-    if (is_nested_tensor_impl(other)) {
-      return map_nested_tensor(
-          [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
-    }
-    // NOTE: Not compatible with autograd
-    //   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
-    // #ifdef TRACEPACKED
-    //     std::cout << "calling packed add" << std::endl;
-    // #endif
-    //     auto self_structure = get_nested_tensor_structure(self);
-    //     auto self_impl = get_nested_tensor_impl(self);
-    //     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-    //         (*self_structure.buffer())
-    //             .reshape({-1, other.size(0)})
-    //             .add(other)
-    //             .reshape({-1}),
-    //         self_impl->nested_size()));
-    //   }
-    return map_nested_tensor(
-        [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
-  }
-  static torch::autograd::variable_list backward(
-      torch::autograd::AutogradContext* ctx,
-      torch::autograd::variable_list grad_output_) {
-    TORCH_CHECK(
-        grad_output_.size() == 1,
-        "add needs to receive grad_output of size 1.");
-    auto alpha = ctx->saved_data["0"].toScalar();
-    auto grad = grad_output_[0];
-    Tensor undef;
-    return {grad, grad * alpha, undef};
-  }
-};
-
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
   if (is_nested_tensor_impl(self, other)) {
-    return NestedTensorFunction_add::apply(self, other, alpha);
-  }
-  if (torch::autograd::isDifferentiableType(self.scalar_type()) &&
-      torch::autograd::isDifferentiableType(other.scalar_type())) {
-    if (is_nested_tensor_impl(self)) {
-      return autograd_map_nested_tensor(
-          [&other](at::Tensor s) { return at::add(s, other); }, self);
-    }
     return autograd_map_nested_tensor(
-        [&self](at::Tensor o) { return at::add(self, o); }, other);
+        [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
+        self,
+        other);
   }
-  // XXX: This doesn't handle the case where only one of the arguments is
-  // differentiable. It just disables autograd alltogether.
   if (is_nested_tensor_impl(self)) {
-    return map_nested_tensor(
-        [&other](at::Tensor s) { return at::add(s, other); }, self);
+    return autograd_map_nested_tensor(
+        [&other, &alpha](at::Tensor s) { return at::add(s, other, alpha); },
+        self);
   }
-  return map_nested_tensor(
-      [&self](at::Tensor o) { return at::add(self, o); }, other);
+  return autograd_map_nested_tensor(
+      [&self, &alpha](at::Tensor o) { return at::add(self, o, alpha); }, other);
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
@@ -325,14 +259,6 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   if (is_nested_tensor_impl(self, other)) {
     apply_nested_tensor(
         [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
-    return self;
-  }
-  if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed add_" << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    (*self_structure.buffer()).reshape({-1, other.size(0)}).add_(other);
     return self;
   }
   apply_nested_tensor([&](at::Tensor& s) { s.add_(other, alpha); }, self);

@@ -475,21 +475,39 @@ struct NestedTensorFunction_mapper
         grad_output_.size() == 1,
         "Only one incoming gradient support for now.");
     TORCH_CHECK(
-        saved_data.size() == 2,
-        "Only one input and one output supported for now.");
-    at::Tensor grad_input;
-    grad_input = map_nested_tensor(
-        [](at::Tensor r, at::Tensor i, at::Tensor g) {
-          auto result = torch::autograd::grad({r}, {i}, {g});
-          TORCH_CHECK(result.size() == 1, "not supported 2");
-          return result[0];
-        },
-        saved_data[1],
-        saved_data[0],
-        grad_output_[0]);
-
+        saved_data.size() <= 3,
+        "Only one input and at most two outputs supported for now.");
+    std::vector<TensorNode> wrapped_grad_input;
+    if (saved_data.size() == 2) {
+      wrapped_grad_input = unzip(map(
+          [](at::Tensor r, at::Tensor i, at::Tensor g) {
+            auto result = torch::autograd::grad({r}, {i}, {g});
+            TORCH_CHECK(result.size() == 1, "not supported 2");
+            return result;
+          },
+          get_nested_tensor_structure(saved_data[1]),
+          get_nested_tensor_structure(saved_data[0]),
+          get_nested_tensor_structure(grad_output_[0])));
+    }
+    if (saved_data.size() == 3) {
+      wrapped_grad_input = unzip(map(
+          [](at::Tensor r, at::Tensor i0, at::Tensor i1, at::Tensor g) {
+            auto result = torch::autograd::grad({r}, {i0, i1}, {g});
+            TORCH_CHECK(result.size() == 2, "not supported 3");
+            return result;
+          },
+          get_nested_tensor_structure(saved_data[2]),
+          get_nested_tensor_structure(saved_data[0]),
+          get_nested_tensor_structure(saved_data[1]),
+          get_nested_tensor_structure(grad_output_[0])));
+    }
+    std::vector<at::Tensor> grad_input;
     at::Tensor undef;
-    return {undef, grad_input};
+    grad_input.push_back(undef);
+    for (size_t i = 0; i < wrapped_grad_input.size(); i++) {
+      grad_input.push_back(wrap_tensor_node(std::move(wrapped_grad_input[i])));
+    }
+    return grad_input;
   }
 };
 

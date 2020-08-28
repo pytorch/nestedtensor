@@ -89,32 +89,22 @@ class TestIntegration(TestCase):
             def forward(self, x):
                 # move reshapes to the beginning
                 # to make it fuser-friendly
-                w = self.weight.reshape(1, -1, 1, 1)
-                b = self.bias.reshape(1, -1, 1, 1)
-                rv = self.running_var.reshape(1, -1, 1, 1)
-                rm = self.running_mean.reshape(1, -1, 1, 1)
+                w = self.weight.reshape(-1, 1, 1)
+                b = self.bias.reshape(-1, 1, 1)
+                rv = self.running_var.reshape(-1, 1, 1)
+                rm = self.running_mean.reshape(-1, 1, 1)
                 eps = 1e-5
                 scale = w * (rv + eps).rsqrt()
                 bias = b - rm * scale
-                print('x.size()')
-                print(x.size())
                 res = (x * scale + bias)
-                print('res.size()')
-                print(res.size())
-                res = res.squeeze(1)
-                print('res0.size()')
-                print(res.size())
                 return res
 
-        def _test(model_factory, use_confmat, num_classes=21):
-            if use_confmat:
-                torch.manual_seed(1010)
-            else:
-                torch.manual_seed(10102)
-            t1 = torch.randn(3, 2, 2, requires_grad=True)
-            t2 = torch.randn(3, 2, 2, requires_grad=True)
-            tr1 = torch.randn(2, 2, requires_grad=True)
-            tr2 = torch.randn(2, 2, requires_grad=True)
+        def _test(seed, model_factory, use_confmat, num_classes=21):
+            torch.manual_seed(seed)
+            t1 = torch.randn(3, 30, 40, requires_grad=True)
+            t2 = torch.randn(3, 30, 40, requires_grad=True)
+            tr1 = torch.randn(30, 40, requires_grad=True)
+            tr2 = torch.randn(30, 40, requires_grad=True)
 
             model1 = model_factory()
             # model1 = torchvision.models.segmentation.__dict__[model_name](
@@ -148,7 +138,6 @@ class TestIntegration(TestCase):
             nt_t2 = t2.clone().detach()
             nt_tr1 = tr1.clone().detach()
             nt_tr2 = tr2.clone().detach()
-            print(model2)
 
             nt_input = nestedtensor.nested_tensor(
                 [nt_t1, nt_t2], requires_grad=True)
@@ -174,10 +163,6 @@ class TestIntegration(TestCase):
             # grad test
             output1_sum = output1.sum()
             output2_sum = output2.sum()
-            print('output1_sum')
-            print(output1_sum)
-            print('output2_sum')
-            print(output2_sum)
             self.assertEqual(output1_sum, output2_sum)
 
             output1_sum.backward()
@@ -193,13 +178,13 @@ class TestIntegration(TestCase):
             self.assertEqual(t1.grad, nt_input.grad[0])
             self.assertEqual(t2.grad, nt_input.grad[1])
 
-        # _test(lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
-        #     num_classes=21, aux_loss="store_true", pretrained=True
-        # ).eval(), True)
+        _test(10, lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
+            num_classes=21, aux_loss="store_true", pretrained=True
+        ).eval(), True)
 
-        _test(lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
-            replace_stride_with_dilation=[False, False, False],
-            pretrained=True, norm_layer=FrozenBatchNorm2d), {'layer4': "0"}), False)
+        # _test(10, lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
+        #     replace_stride_with_dilation=[False, False, False],
+        #     pretrained=True, norm_layer=FrozenBatchNorm2d), {'layer4': "0"}), False)
 
 
 if __name__ == "__main__":

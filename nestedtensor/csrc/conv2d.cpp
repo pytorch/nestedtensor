@@ -22,7 +22,7 @@ std::vector<int64_t> _grad_input_padding(
   size_t k = grad_output.dim() - 2;
   std::vector<int64_t> input_size;
   if (input_size_.size() == k + 2) {
-    for (int64_t i = 2; i < k + 2; i++) {
+    for (size_t i = 2; i < k + 2; i++) {
       input_size.push_back(input_size_[i]);
     }
   } else {
