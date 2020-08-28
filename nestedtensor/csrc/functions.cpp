@@ -275,12 +275,10 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "layer_norm", NestedTensor_layer_norm);
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
   nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
-}
-
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "stack", NestedTensor_stack);
   nt_impl(m, "stack.out", NestedTensor_stack_out);
   nt_impl(m, "cat", NestedTensor_cat);
   nt_impl(m, "cat.out", NestedTensor_cat_out);
 }
+
 } // namespace at

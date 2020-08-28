@@ -345,15 +345,12 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  nt_impl(m, "add.Tensor", NestedTensor_add);
-  nt_impl(m, "add_.Tensor", NestedTensor_add_);
-}
-
 // XXX: We need to disable binary ops below autograd between NT and T, because
 // in the backwards pass autograd/engine.cpp uses .sizes() which
 // doesn't compare between NTs and Ts.
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  nt_impl(m, "add.Tensor", NestedTensor_add);
+  nt_impl(m, "add_.Tensor", NestedTensor_add_);
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)
