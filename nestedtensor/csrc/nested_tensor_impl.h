@@ -160,7 +160,7 @@ bool is_packed(A first, B second, C... other) {
 template <class F, class... A>
 static inline void apply_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
-  torch_check_is_nested_tensor(a...);
+  // torch_check_is_nested_tensor(a...);
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
 
@@ -174,7 +174,7 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
-  torch_check_is_nested_tensor(a...);
+  // torch_check_is_nested_tensor(a...);
   return wrap_tensor_node(
       map(std::move(fn), get_nested_tensor_structure(a)...));
 }
@@ -415,13 +415,13 @@ struct NestedTensorFunction_mapper
       A... input) {
     auto autograd_input_tuple_ =
         c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
-          apply_nested_tensor(
-              [](at::Tensor& ti) {
-                TORCH_CHECK(
-                    !ti.requires_grad(),
-                    "autograd_mapper input's constituents shouldn't require gradients.");
-              },
-              t);
+          // apply_nested_tensor(
+          //     [](at::Tensor& ti) {
+          //       TORCH_CHECK(
+          //           !ti.requires_grad(),
+          //           "autograd_mapper input's constituents shouldn't require gradients.");
+          //     },
+          //     t);
           // if (t.requires_grad()) {
           return map_nested_tensor(
               // 2. Constituents of NestedTensors

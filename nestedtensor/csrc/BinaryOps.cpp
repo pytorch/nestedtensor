@@ -218,19 +218,10 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
 }
 
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  if (is_nested_tensor_impl(self, other)) {
-    return autograd_map_nested_tensor(
-        [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
-        self,
-        other);
-  }
-  if (is_nested_tensor_impl(self)) {
-    return autograd_map_nested_tensor(
-        [&other, &alpha](at::Tensor s) { return at::add(s, other, alpha); },
-        self);
-  }
   return autograd_map_nested_tensor(
-      [&self, &alpha](at::Tensor o) { return at::add(self, o, alpha); }, other);
+      [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
+      self,
+      other);
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {

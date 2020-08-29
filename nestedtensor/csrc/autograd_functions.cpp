@@ -406,19 +406,6 @@ Tensor NestedTensor_layer_norm(
       input, normalized_shape, weight, bias, eps, false);
 }
 
-Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  return autograd_map_nested_tensor(
-      [&](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
-      self,
-      other);
-}
-
-Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  apply_nested_tensor(
-      [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
-  return self;
-}
-
 Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
   return NestedTensorFunction_sum::apply(self, dtype);
 }
