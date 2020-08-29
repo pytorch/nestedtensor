@@ -145,14 +145,14 @@ def _gen_test_binary(func):
 
         # TODO: Add check for broadcasting smaller tensors / tensor constiuents
 
-        self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match dimension of other",
-                               lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
-        if func == "remainder":
-            a1.detach_()
-        self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match dimension of self.",
-                               lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
-        self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match dimension of self.",
-                               lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match or be greater than dimension of other.",
+        #                        lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
+        # if func == "remainder":
+        #     a1.detach_()
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
 
         a1 = a1.detach()
         a3 = a3.detach()
@@ -176,6 +176,33 @@ def _gen_test_binary(func):
         # TODO: Only sub doesn't adhere to this rule but with irregular behavior
         if func == "add":
             self.assertEqual(c + a + b, getattr(a1, func + "_")(a2))
+
+        # test autograd
+        a = utils.gen_float_tensor(1, (2, 3)).requires_grad_()
+        b = utils.gen_float_tensor(2, (2, 3)).requires_grad_()
+        c = utils.gen_float_tensor(3, (2, 3)).requires_grad_()
+
+        a1 = ntnt([a, b])
+        if func == "remainder":
+            a2 = ntnt_nograd([b, c])
+        else:
+            a2 = ntnt([b, c])
+        if func == "remainder":
+            a3 = ntnt([getattr(torch, func)(a, b.detach()),
+                       getattr(torch, func)(b, c.detach())])
+        else:
+            a3 = ntnt([getattr(torch, func)(a, b),
+                       getattr(torch, func)(b, c)])
+        print(a3.requires_grad)
+        result = getattr(torch, func)(a1, a2)
+        print(result.requires_grad)
+        result.sum().backward()
+        result = getattr(torch, func)(a1, c)
+        result.sum().backward()
+        print(result.requires_grad)
+        result = getattr(torch, func)(c, a1)
+        print(result.requires_grad)
+
     return _test_binary
 
 

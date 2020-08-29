@@ -215,7 +215,7 @@ int64_t NestedTensorImpl::size(int64_t dim) const {
 }
 
 IntArrayRef NestedTensorImpl::strides() const {
-  throw std::runtime_error("NestedTensor stride is not implemented.");
+  return _sizes;
 }
 
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {

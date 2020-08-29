@@ -441,34 +441,34 @@ struct NestedTensorFunction_mapper
           //           gradients.");
           //     },
           //     t);
-          // if (t.requires_grad()) {
-          if (is_nested_tensor_impl(t)) {
-            return map_nested_tensor(
-                // 2. Constituents of NestedTensors
-                [](at::Tensor ti) {
-                  AutoGradMode autogradmode(true);
-                  // TODO: Don't apply this if the corresponding NestedTensor
-                  // doesn't require a gradient.
-                  // TODO: This fails if the input is not of differentiable
-                  // dtype.
-                  auto alias = ti.alias();
-                  if (torch::autograd::isDifferentiableType(
-                          alias.scalar_type())) {
-                    alias.requires_grad_();
-                  }
-                  // 3. Alias to constituents that do requires gradients
-                  return alias;
-                },
-                t);
+          if (t.requires_grad()) {
+            if (is_nested_tensor_impl(t)) {
+              return map_nested_tensor(
+                  // 2. Constituents of NestedTensors
+                  [](at::Tensor ti) {
+                    AutoGradMode autogradmode(true);
+                    // TODO: Don't apply this if the corresponding NestedTensor
+                    // doesn't require a gradient.
+                    // TODO: This fails if the input is not of differentiable
+                    // dtype.
+                    auto alias = ti.alias();
+                    if (torch::autograd::isDifferentiableType(
+                            alias.scalar_type())) {
+                      alias.requires_grad_();
+                    }
+                    // 3. Alias to constituents that do requires gradients
+                    return alias;
+                  },
+                  t);
+            }
+            AutoGradMode autogradmode(true);
+            auto alias = t.alias();
+            if (torch::autograd::isDifferentiableType(alias.scalar_type())) {
+              alias.requires_grad_();
+            }
+            return alias;
           }
-          AutoGradMode autogradmode(true);
-          auto alias = t.alias();
-          if (torch::autograd::isDifferentiableType(alias.scalar_type())) {
-            alias.requires_grad_();
-          }
-          return alias;
-          // }
-          // return t;
+          return t;
         });
 
     auto autograd_input_tuple = autograd_input_tuple_;
@@ -509,13 +509,16 @@ struct NestedTensorFunction_mapper
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output_) {
-    auto saved_data = ctx->get_saved_variables();
+    std::vector<at::Tensor> saved_data = ctx->get_saved_variables();
     TORCH_CHECK(
         grad_output_.size() == 1,
         "Only one incoming gradient support for now.");
     TORCH_CHECK(
         saved_data.size() <= 3,
         "Only one input and at most two outputs supported for now.");
+    std::vector<at::Tensor> grad_input;
+    at::Tensor undef;
+    grad_input.push_back(undef);
     std::vector<TensorNode> wrapped_grad_input;
     if (saved_data.size() == 2) {
       wrapped_grad_input = unzip(map(
@@ -531,6 +534,8 @@ struct NestedTensorFunction_mapper
     if (saved_data.size() == 3) {
       wrapped_grad_input = unzip(map(
           [](at::Tensor r, at::Tensor i0, at::Tensor i1, at::Tensor g) {
+          // XXX: TODO: CONTINUE HERE: Some inputs might not require gradients and need
+          // to be filtered.
             auto result = torch::autograd::grad({r}, {i0, i1}, {g});
             TORCH_CHECK(result.size() == 2, "not supported 3");
             return result;
@@ -540,11 +545,21 @@ struct NestedTensorFunction_mapper
           get_nested_tensor_structure(saved_data[1]),
           get_nested_tensor_structure(grad_output_[0])));
     }
-    std::vector<at::Tensor> grad_input;
-    at::Tensor undef;
-    grad_input.push_back(undef);
-    for (size_t i = 0; i < wrapped_grad_input.size(); i++) {
-      grad_input.push_back(wrap_tensor_node(std::move(wrapped_grad_input[i])));
+    if (saved_data.size() >= 2) {
+      if (!is_nested_tensor_impl(saved_data[0])) {
+        grad_input.push_back(at::stack(flatten(wrapped_grad_input[0])).sum(0));
+      } else {
+        grad_input.push_back(
+            wrap_tensor_node(std::move(wrapped_grad_input[0])));
+      }
+    }
+    if (saved_data.size() == 3) {
+      if (!is_nested_tensor_impl(saved_data[1])) {
+        grad_input.push_back(at::stack(flatten(wrapped_grad_input[1])).sum(0));
+      } else {
+        grad_input.push_back(
+            wrap_tensor_node(std::move(wrapped_grad_input[1])));
+      }
     }
     return grad_input;
   }

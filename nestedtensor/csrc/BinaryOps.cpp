@@ -218,14 +218,9 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  TORCH_CHECK(false, "add_ is not implemented for NT");
   check_binary_shape(self, other);
-  if (is_nested_tensor_impl(self, other)) {
-    apply_nested_tensor(
-        [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
-    return self;
-  }
-  apply_nested_tensor([&](at::Tensor& s) { s.add_(other, alpha); }, self);
+  apply_nested_tensor(
+      [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
   return self;
 }
 
