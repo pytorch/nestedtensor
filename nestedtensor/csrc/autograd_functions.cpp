@@ -24,8 +24,6 @@ struct NestedTensorFunction_batch_norm
       bool cudnn_enabled) {
     // TORCH_CHECK(weight_, "asdf0");
     // TORCH_CHECK(bias_, "asdf1");
-    c10::optional<at::Tensor> weight;
-    c10::optional<at::Tensor> bias;
     auto autograd_input = map_nested_tensor(
         [](at::Tensor ti) {
           AutoGradMode autogradmode(true);
@@ -34,6 +32,8 @@ struct NestedTensorFunction_batch_norm
           return alias;
         },
         input_);
+    c10::optional<at::Tensor> weight;
+    c10::optional<at::Tensor> bias;
     {
       AutoGradMode autogradmode(true);
       if (weight_) {
@@ -93,9 +93,8 @@ struct NestedTensorFunction_batch_norm
       bias_grad = torch::zeros_like(*bias);
     }
 
-    at::Tensor grad;
     TORCH_CHECK(grad_output.size() == 1, "not supported 0");
-    grad = map_nested_tensor(
+    at::Tensor grad = map_nested_tensor(
         [&](at::Tensor r, at::Tensor i, at::Tensor g) {
           // TODO: Might have to retain graph in many to one settings.
           std::vector<at::Tensor> inputs;
@@ -227,6 +226,7 @@ struct NestedTensorFunction_sum
       c10::optional<ScalarType> dtype) {
     auto input = map_nested_tensor(
         [](Tensor t) {
+          // XXX: Does this require autogradmode(true)?
           auto alias = t.alias();
           alias.requires_grad_();
           return alias;
@@ -277,6 +277,135 @@ struct NestedTensorFunction_sum
   }
 };
 
+struct NestedTensorFunction_layer_norm
+    : public torch::autograd::Function<NestedTensorFunction_layer_norm> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      const Tensor& input_,
+      IntArrayRef normalized_shape,
+      const c10::optional<Tensor>& weight_,
+      const c10::optional<Tensor>& bias_,
+      double eps,
+      bool /* cudnn_enable, deprecated */) {
+    auto autograd_input = map_nested_tensor(
+        [](Tensor t) {
+          AutoGradMode autogradmode(true);
+          auto alias = t.alias();
+          alias.requires_grad_();
+          return alias;
+        },
+        input_);
+    c10::optional<at::Tensor> weight;
+    {
+      AutoGradMode autogradmode(true);
+      if (weight_) {
+        weight = (*weight_).alias();
+        (*weight).requires_grad_();
+      }
+    }
+    c10::optional<at::Tensor> bias;
+    {
+      AutoGradMode autogradmode(true);
+      if (bias_) {
+        bias = (*bias_).alias();
+        (*bias).requires_grad_();
+      }
+    }
+    TORCH_CHECK(
+        normalized_shape.size() == 1,
+        "Currently only singleton tuples of integers supported for layer_norm.");
+    // auto input_data = get_nested_tensor_impl(input);
+    // TORCH_CHECK(
+    //     input_data->opt_sizes()[input.dim() - 1],
+    //     "Cannot normalize across irregular dimension ",
+    //     std::to_string(input.dim() - 1));
+    auto autograd_result = map_nested_tensor(
+        [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
+          AutoGradMode autogradmode(true);
+          return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
+        },
+        autograd_input);
+    Tensor undef;
+    ctx->save_for_backward({autograd_result,
+                            autograd_input,
+                            weight ? *weight : undef,
+                            bias ? *bias : undef});
+    return map_nested_tensor(
+        [](at::Tensor t) { return t.alias().detach(); }, autograd_result);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    auto saved_data = ctx->get_saved_variables();
+    at::Tensor autograd_result = saved_data[0];
+    at::Tensor autograd_input = saved_data[1];
+    c10::optional<at::Tensor> weight;
+    c10::optional<at::Tensor> weight_grad;
+    if (saved_data[2].defined()) {
+      weight = saved_data[2];
+      weight_grad = torch::zeros_like(*weight);
+    }
+    c10::optional<at::Tensor> bias;
+    c10::optional<at::Tensor> bias_grad;
+    if (saved_data[3].defined()) {
+      bias = saved_data[3];
+      bias_grad = torch::zeros_like(*bias);
+    }
+    TORCH_CHECK(
+        grad_output_.size() == 1, "layer_norm grad_output should be 1.");
+    at::Tensor grad_output = grad_output_[0];
+    TORCH_CHECK(
+        !grad_output.requires_grad(),
+        "NestedTensor layer_norm doesn't support double backward.");
+    at::Tensor grad = map_nested_tensor(
+        [&](at::Tensor r, at::Tensor i, at::Tensor g) {
+          // TODO: Might have to retain graph in many to one settings.
+          std::vector<at::Tensor> inputs;
+          inputs.push_back(i);
+          if (weight) {
+            inputs.push_back(*weight);
+          }
+          if (bias) {
+            inputs.push_back(*bias);
+          }
+          auto result = torch::autograd::grad(
+              {r}, inputs, {g}, c10::nullopt, false, true);
+          if (result[1].defined()) {
+            (*weight_grad).add_(result[1]);
+          }
+          if (result[2].defined()) {
+            (*bias_grad).add_(result[2]);
+          }
+          return result[0];
+        },
+        autograd_result,
+        autograd_input,
+        grad_output);
+
+    at::Tensor undef;
+    return {grad,
+            undef,
+            weight_grad ? *weight_grad : undef,
+            bias_grad ? *bias_grad : undef,
+            undef,
+            undef};
+  }
+};
+
+/// XXX: Whenever a capture tensor requires a gradient this sort of stuff should
+/// fail.
+// See conv2d for another example.
+Tensor NestedTensor_layer_norm(
+    const Tensor& input,
+    IntArrayRef normalized_shape,
+    const c10::optional<Tensor>& weight,
+    const c10::optional<Tensor>& bias,
+    double eps,
+    bool /* cudnn_enable, deprecated */) {
+  return NestedTensorFunction_layer_norm::apply(
+      input, normalized_shape, weight, bias, eps, false);
+}
+
 Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
   return NestedTensorFunction_sum::apply(self, dtype);
 }
@@ -317,6 +446,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);
+  nt_impl(m, "layer_norm", NestedTensor_layer_norm);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {

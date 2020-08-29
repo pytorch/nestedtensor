@@ -493,8 +493,8 @@ class TestAutogradFunctional(TestCase):
         t2 = torch.randn(3)
         ts = [[t0, t1], [t2]]
         nt = ntnt(ts)
-        self.assertRaisesRegex(RuntimeError,
-                               "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
+        # self.assertRaisesRegex(RuntimeError,
+        #                        "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
         d = torch.nn.Dropout(0.1)
         t0 = torch.randn(864, 256)
@@ -506,7 +506,7 @@ class TestAutogradFunctional(TestCase):
         print(list(layer_norm.named_parameters()))
         print(nt)
         res = layer_norm(nt)
-        res = nt2 + res
+        res = res * 5
         print(res)
         res.sum().backward()
         print(list(layer_norm.named_parameters()))

@@ -94,30 +94,6 @@ Tensor NestedTensor_softmax(
       input);
 }
 
-/// XXX: Whenever a capture tensor requires a gradient this sort of stuff should fail.
-// See conv2d for another example.
-Tensor NestedTensor_layer_norm(
-    const Tensor& input,
-    IntArrayRef normalized_shape,
-    const c10::optional<Tensor>& weight,
-    const c10::optional<Tensor>& bias,
-    double eps,
-    bool /* cudnn_enable, deprecated */) {
-  TORCH_CHECK(
-      normalized_shape.size() == 1,
-      "Currently only singleton tuples of integers supported for layer_norm.");
-  auto input_data = get_nested_tensor_impl(input);
-  TORCH_CHECK(
-      input_data->opt_sizes()[input.dim() - 1],
-      "Cannot normalize across irregular dimension ",
-      std::to_string(input.dim() - 1));
-  return autograd_map_nested_tensor(
-      [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
-        return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
-      },
-      input);
-}
-
 Tensor NestedTensor_all(const Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self);
   if (self.numel() == 0) {
@@ -274,7 +250,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "reshape", NestedTensor_reshape);
   nt_impl(m, "transpose.int", NestedTensor_transpose);
   nt_impl(m, "softmax.int", NestedTensor_softmax);
-  nt_impl(m, "layer_norm", NestedTensor_layer_norm);
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
   nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
   nt_impl(m, "stack", NestedTensor_stack);
