@@ -158,17 +158,45 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
   static NestedNode<A> function(
       F&& fn,
       const NestedNode<Args>&... nested_node) {
-    auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
-    if (first_node.is_leaf()) {
+    size_t degree = 0;
+    bool all_leaf = true;
+    c10::guts::tuple_map(
+        std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
+          all_leaf = all_leaf && (n.is_leaf());
+          if (degree == 0 && n.degree() > 0) {
+            degree = n.degree();
+          }
+          if (degree > 0 && n.degree() > 0) {
+            TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
+          }
+          return nullptr;
+        });
+    if (all_leaf) {
       return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
-    } else {
-      std::vector<NestedNode<A>> result;
-      for (size_t i = 0; i < first_node.degree(); i++) {
-        result.emplace_back(
-            function(std::forward<F>(fn), nested_node.children(i)...));
-      }
-      return NestedNode<A>(std::move(result));
     }
+    std::vector<NestedNode<A>> result;
+    for (size_t i = 0; i < degree; i++) {
+      std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
+          std::forward_as_tuple(nested_node...), [&i](auto a) {
+            static_assert(
+                c10::guts::is_instantiation_of<NestedNode, decltype(a)>::value,
+                "Internal error.");
+            if (a.is_leaf()) {
+              return a;
+            }
+            if (a.degree() == 1 && a.height() > 0) {
+              return a.children(0);
+            }
+            TORCH_CHECK(a.degree() > 0, "Internal assert.");
+            return a.children(i);
+          });
+      c10::guts::apply(
+          [&result, &fn](NestedNode<Args>... filtered) {
+            result.emplace_back(function(std::forward<F>(fn), filtered...));
+          },
+          std::move(children));
+    }
+    return NestedNode<A>(std::move(result));
   };
 };
 
@@ -332,12 +360,43 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
   // NOTE: We must move F to avoid copying objects if it is a lambda with
   // captures.
   static void function(F&& fn, NestedNode<Args>... nested_node) {
-    auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
-    if (first_node.is_leaf()) {
+    size_t degree = 0;
+    bool all_leaf = true;
+    c10::guts::tuple_map(
+        std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
+          all_leaf = all_leaf && (n.is_leaf());
+          if (degree == 0 && n.degree() > 0) {
+            degree = n.degree();
+          }
+          if (degree > 0 && n.degree() > 0) {
+            TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
+          }
+          return nullptr;
+        });
+    if (all_leaf) {
       std::forward<F>(fn)(nested_node.payload()...);
     } else {
-      for (size_t i = 0; i < first_node.degree(); i++) {
-        function(std::forward<F>(fn), nested_node.children(i)...);
+      for (size_t i = 0; i < degree; i++) {
+        std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
+            std::forward_as_tuple(nested_node...), [&i](auto a) {
+              static_assert(
+                  c10::guts::is_instantiation_of<NestedNode, decltype(a)>::
+                      value,
+                  "Internal error.");
+              if (a.is_leaf()) {
+                return a;
+              }
+              if (a.degree() == 1) {
+                return a.children(0);
+              }
+              TORCH_CHECK(a.degree() > 0, "Internal assert.");
+              return a.children(i);
+            });
+        c10::guts::apply(
+            [&fn](NestedNode<Args>... filtered) {
+              function(std::forward<F>(fn), filtered...);
+            },
+            std::move(children));
       }
     }
   };

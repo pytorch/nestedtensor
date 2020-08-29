@@ -57,39 +57,19 @@ Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   check_binary_shape(self, other);
-  if (is_nested_tensor_impl(self, other)) {
-    return autograd_map_nested_tensor(
-        [](Tensor self, Tensor other) { return func(self, other); },
-        self,
-        other);
-  }
-  if (is_nested_tensor_impl(other)) {
-    return autograd_map_nested_tensor(
-        [&self](Tensor other) { return func(self, other); }, other);
-  }
   return autograd_map_nested_tensor(
-      [&other](Tensor self) { return func(self, other); }, self);
+      [](Tensor self, Tensor other) { return func(self, other); }, self, other);
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
   check_binary_shape(self, other);
-  if (is_nested_tensor_impl(self, other)) {
-    return autograd_map_nested_tensor(
-        [&scalar](Tensor tensor, Tensor other) {
-          return func(tensor, other, scalar);
-        },
-        self,
-        other);
-  }
-  if (is_nested_tensor_impl(other)) {
-    return autograd_map_nested_tensor(
-        [&self, &scalar](Tensor other) { return func(self, other, scalar); },
-        other);
-  }
   return autograd_map_nested_tensor(
-      [&other, &scalar](Tensor self) { return func(self, other, scalar); },
-      self);
+      [&scalar](Tensor tensor, Tensor other) {
+        return func(tensor, other, scalar);
+      },
+      self,
+      other);
 }
 
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
