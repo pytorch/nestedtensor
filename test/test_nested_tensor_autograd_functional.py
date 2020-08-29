@@ -504,10 +504,13 @@ class TestAutogradFunctional(TestCase):
         nt2 = ntnt_nograd(ts)
         layer_norm = torch.nn.LayerNorm(256)
         print(list(layer_norm.named_parameters()))
-        print(nt)
+        # print(nt)
+        print(nt.requires_grad)
         res = layer_norm(nt)
+        print(res.requires_grad)
         res = res * 5
-        print(res)
+        # print(res)
+        print(res.requires_grad)
         res.sum().backward()
         print(list(layer_norm.named_parameters()))
         # XXX: Need to check weight and bias gradients

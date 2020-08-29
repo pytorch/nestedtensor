@@ -109,9 +109,23 @@ Tensor NestedTensor_layer_norm(
       input_data->opt_sizes()[input.dim() - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(input.dim() - 1));
-  return map_nested_tensor(
-      [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
-        return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
+  if (weight && bias) {
+    return autograd_map_nested_tensor(
+        [normalized_shape, eps](
+            const at::Tensor t,
+            c10::optional<Tensor> w,
+            c10::optional<Tensor> b) {
+          return at::layer_norm(t, normalized_shape, w, b, eps, true);
+        },
+        input,
+        *weight,
+        *bias);
+  }
+  TORCH_CHECK(!weight && !bias, "Either both weight and bias are used or not.");
+  return autograd_map_nested_tensor(
+      [normalized_shape, eps](const at::Tensor t) {
+        return at::layer_norm(
+            t, normalized_shape, c10::nullopt, c10::nullopt, eps, true);
       },
       input);
 }

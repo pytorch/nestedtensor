@@ -34,17 +34,10 @@ void check_binary_shape(const Tensor& self, const Tensor& other) {
 template <Tensor& (*func)(Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
   check_binary_shape(self, other);
-  if (is_nested_tensor_impl(self, other)) {
-    apply_nested_tensor(
-        [](Tensor& tensor, const Tensor other) { func(tensor, other); },
-        self,
-        other);
-    return self;
-  }
-  if (is_nested_tensor_impl(other)) {
-    apply_nested_tensor([&self](Tensor& other) { func(self, other); }, other);
-  }
-  apply_nested_tensor([&other](Tensor& self) { func(self, other); }, self);
+  apply_nested_tensor(
+      [](Tensor& tensor, const Tensor other) { func(tensor, other); },
+      self,
+      other);
   return self;
 }
 

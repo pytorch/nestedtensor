@@ -227,6 +227,7 @@ struct NestedTensorFunction_sum
     auto input = map_nested_tensor(
         [](Tensor t) {
           // XXX: Does this require autogradmode(true)?
+          AutoGradMode autogradmode(true);
           auto alias = t.alias();
           alias.requires_grad_();
           return alias;
