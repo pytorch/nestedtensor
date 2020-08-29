@@ -114,58 +114,38 @@ def _gen_test_binary(func):
         c = utils.gen_float_tensor(3, (2, 3))
 
         # The constructor is supposed to copy!
-        print(0)
         a1 = nestedtensor.nested_tensor([a, b])
-        print(1)
         a2 = nestedtensor.nested_tensor([b, c])
-        print(2)
         a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
                                          getattr(torch, func)(b, c)])
-        print(3)
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
-        print(4)
         self.assertEqual(a3, getattr(a1, func)(a2))
-        print(5)
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
-        print(6)
         self.assertEqual(a3, a1)
-        print(7)
 
         # The constructor is supposed to copy!
         a1 = nestedtensor.nested_tensor([a, b])
-        print(8)
         a2 = c
-        print(9)
         a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, a2),
                                          getattr(torch, func)(b, a2)])
-        print(10)
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
-        print(11)
         self.assertEqual(a3, getattr(a1, func)(a2))
-        print(12)
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
-        print(13)
         self.assertEqual(a3, a1)
-        print(14)
 
         # The constructor is supposed to copy!
         a1 = c
-        print(15)
         a2 = nestedtensor.nested_tensor([a, b])
-        print(16)
         a3 = nestedtensor.nested_tensor([getattr(torch, func)(c, a),
                                          getattr(torch, func)(c, b)])
-        print(17)
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
-        print(18)
         # TODO: This depends on https://github.com/pytorch/rfcs/pull/3
         # RFC-0001: Add method __torch_function__ RFC.
         # TODO: This causes a segfault likely due https://github.com/pytorch/pytorch/pull/37091
         self.assertEqual(a3, getattr(a1, func)(a2))
-        print(19)
         # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
         # TODO: Only sub doesn't adhere to this rule but with irregular behavior
-        if func != "sub":
+        if func == "add":
             self.assertEqual(c + a + b, getattr(a1, func + "_")(a2))
     return _test_binary
 

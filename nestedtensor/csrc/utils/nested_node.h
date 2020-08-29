@@ -198,15 +198,15 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
   static NestedNode<A> function(
       F&& fn,
       const NestedNode<Args>&... nested_node) {
-    size_t degree = 1;
+    size_t degree = 0;
     bool all_leaf = true;
     c10::guts::tuple_map(
         std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
           all_leaf = all_leaf && (n.is_leaf());
-          if (degree == 1 && n.degree() > 1) {
+          if (degree == 0 && n.degree() > 0) {
             degree = n.degree();
           }
-          if (degree > 1 && n.degree() > 1) {
+          if (degree > 0 && n.degree() > 0) {
             TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
           }
           return nullptr;
@@ -227,12 +227,7 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
             if (a.degree() == 1 && a.height() > 0) {
               return a.children(0);
             }
-            if (a.degree() == 0 && a.height() > 0) {
-              TORCH_CHECK(
-                  a.height() == 1, "If degree is 0, height should be 1.");
-              return a.payload();
-              //              return decltype(a)();
-            }
+            TORCH_CHECK(a.degree() > 0, "Internal assert.");
             return a.children(i);
           });
       c10::guts::apply(
@@ -376,15 +371,15 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
   // NOTE: We must move F to avoid copying objects if it is a lambda with
   // captures.
   static void function(F&& fn, NestedNode<Args>... nested_node) {
-    size_t degree = 1;
+    size_t degree = 0;
     bool all_leaf = true;
     c10::guts::tuple_map(
         std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
           all_leaf = all_leaf && (n.is_leaf());
-          if (degree == 1 && n.degree() > 1) {
+          if (degree == 0 && n.degree() > 0) {
             degree = n.degree();
           }
-          if (degree > 1 && n.degree() > 1) {
+          if (degree > 0 && n.degree() > 0) {
             TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
           }
           return nullptr;
@@ -395,12 +390,17 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
       for (size_t i = 0; i < degree; i++) {
         std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
             std::forward_as_tuple(nested_node...), [&i](auto a) {
+              static_assert(
+                  c10::guts::is_instantiation_of<NestedNode, decltype(a)>::
+                      value,
+                  "Internal error.");
               if (a.is_leaf()) {
                 return a;
               }
               if (a.degree() == 1) {
                 return a.children(0);
               }
+              TORCH_CHECK(a.degree() > 0, "Internal assert.");
               return a.children(i);
             });
         c10::guts::apply(

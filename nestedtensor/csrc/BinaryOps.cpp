@@ -11,17 +11,10 @@ using namespace torch::nested_tensor;
 
 template <Tensor& (*func)(Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
-  if (is_nested_tensor_impl(self, other)) {
-    apply_nested_tensor(
-        [](Tensor& tensor, const Tensor other) { func(tensor, other); },
-        self,
-        other);
-    return self;
-  }
-  if (is_nested_tensor_impl(other)) {
-    apply_nested_tensor([&self](Tensor& other) { func(self, other); }, other);
-  }
-  apply_nested_tensor([&other](Tensor& self) { func(self, other); }, self);
+  apply_nested_tensor(
+      [](Tensor& tensor, const Tensor other) { func(tensor, other); },
+      self,
+      other);
   return self;
 }
 
@@ -33,48 +26,18 @@ Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
-  if (is_nested_tensor_impl(self, other)) {
-    return map_nested_tensor(
-        [](Tensor self, Tensor other) { return func(self, other); },
-        self,
-        other);
-  }
-  if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
-        [&self](Tensor other) { return func(self, other); }, other);
-  }
-  if (is_packed(self) &&
-      (other.dim() == 0 || (other.dim() == 1 && other.numel() == 1))) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed binary " << typeid(func).name() << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        func((*self_structure.buffer()), other),
-        get_nested_tensor_impl(self)->nested_size()));
-  }
   return map_nested_tensor(
-      [&other](Tensor self) { return func(self, other); }, self);
+      [](Tensor self, Tensor other) { return func(self, other); }, self, other);
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
-  if (is_nested_tensor_impl(self, other)) {
-    return map_nested_tensor(
-        [&scalar](Tensor tensor, Tensor other) {
-          return func(tensor, other, scalar);
-        },
-        self,
-        other);
-  }
-  if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
-        [&self, &scalar](Tensor other) { return func(self, other, scalar); },
-        other);
-  }
   return map_nested_tensor(
-      [&other, &scalar](Tensor self) { return func(self, other, scalar); },
-      self);
+      [&scalar](Tensor tensor, Tensor other) {
+        return func(tensor, other, scalar);
+      },
+      self,
+      other);
 }
 
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
