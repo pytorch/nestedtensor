@@ -50,17 +50,12 @@ bool is_nested_tensor_impl(A first, B second, C... other) {
 
 template <class A>
 inline bool tensor_shape_matches(A a) {
-  // TORCH_CHECK(
-  //     is_nested_tensor_impl(a), "Can only compare shapes of NestedTensors.");
   return true;
 }
 
 template <class A, class B>
 inline bool tensor_shape_matches(A a, B b) {
   if (is_nested_tensor_impl(a, b)) {
-    // TORCH_CHECK(
-    //     is_nested_tensor_impl(a, b), "Can only compare shapes of
-    //     NestedTensors.");
     return shape_matches(
         get_nested_tensor_structure(a), get_nested_tensor_structure(b));
   }
