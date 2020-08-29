@@ -433,16 +433,15 @@ struct NestedTensorFunction_mapper
       A... input) {
     std::tuple<A...> autograd_input_tuple_ =
         c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
-          // apply_nested_tensor(
-          //     [](at::Tensor& ti) {
-          //       TORCH_CHECK(
-          //           !ti.requires_grad(),
-          //           "autograd_mapper input's constituents shouldn't require
-          //           gradients.");
-          //     },
-          //     t);
           if (t.requires_grad()) {
             if (is_nested_tensor_impl(t)) {
+              apply_nested_tensor(
+                  [](at::Tensor& ti) {
+                    TORCH_CHECK(
+                        !ti.requires_grad(),
+                        "autograd_mapper input's constituents shouldn't require gradients.");
+                  },
+                  t);
               return map_nested_tensor(
                   // 2. Constituents of NestedTensors
                   [](at::Tensor ti) {
@@ -516,51 +515,41 @@ struct NestedTensorFunction_mapper
     TORCH_CHECK(
         saved_data.size() <= 3,
         "Only one input and at most two outputs supported for now.");
-    std::vector<at::Tensor> grad_input;
+    std::vector<TensorNode> input_nodes;
+    for (size_t i = 0; i < saved_data.size() - 1; i++) {
+      if (saved_data[i].requires_grad()) {
+        input_nodes.push_back(get_nested_tensor_structure(saved_data[i]));
+      }
+    }
+    std::vector<TensorNode> wrapped_grad_input = unzip(map(
+        [](at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
+          return torch::autograd::grad({r}, is, {g});
+        },
+        get_nested_tensor_structure(saved_data[saved_data.size() - 1]),
+        zip(input_nodes),
+        get_nested_tensor_structure(grad_output_[0])));
     at::Tensor undef;
+    std::vector<at::Tensor> grad_input;
+    // NOTE: First entry needs to return undef for function value input.
     grad_input.push_back(undef);
-    std::vector<TensorNode> wrapped_grad_input;
-    if (saved_data.size() == 2) {
-      wrapped_grad_input = unzip(map(
-          [](at::Tensor r, at::Tensor i, at::Tensor g) {
-            auto result = torch::autograd::grad({r}, {i}, {g});
-            TORCH_CHECK(result.size() == 1, "not supported 2");
-            return result;
-          },
-          get_nested_tensor_structure(saved_data[1]),
-          get_nested_tensor_structure(saved_data[0]),
-          get_nested_tensor_structure(grad_output_[0])));
-    }
-    if (saved_data.size() == 3) {
-      wrapped_grad_input = unzip(map(
-          [](at::Tensor r, at::Tensor i0, at::Tensor i1, at::Tensor g) {
-          // XXX: TODO: CONTINUE HERE: Some inputs might not require gradients and need
-          // to be filtered.
-            auto result = torch::autograd::grad({r}, {i0, i1}, {g});
-            TORCH_CHECK(result.size() == 2, "not supported 3");
-            return result;
-          },
-          get_nested_tensor_structure(saved_data[2]),
-          get_nested_tensor_structure(saved_data[0]),
-          get_nested_tensor_structure(saved_data[1]),
-          get_nested_tensor_structure(grad_output_[0])));
-    }
-    if (saved_data.size() >= 2) {
-      if (!is_nested_tensor_impl(saved_data[0])) {
-        grad_input.push_back(at::stack(flatten(wrapped_grad_input[0])).sum(0));
+    size_t index = 0;
+    for (size_t i = 0; i < saved_data.size() - 1; i++) {
+      if (saved_data[i].requires_grad()) {
+        if (is_nested_tensor_impl(saved_data[i])) {
+          grad_input.push_back(
+              wrap_tensor_node(std::move(wrapped_grad_input[index])));
+        } else {
+          grad_input.push_back(
+              at::stack(flatten(wrapped_grad_input[index])).sum(0));
+        }
+        index++;
       } else {
-        grad_input.push_back(
-            wrap_tensor_node(std::move(wrapped_grad_input[0])));
+        grad_input.push_back(undef);
       }
     }
-    if (saved_data.size() == 3) {
-      if (!is_nested_tensor_impl(saved_data[1])) {
-        grad_input.push_back(at::stack(flatten(wrapped_grad_input[1])).sum(0));
-      } else {
-        grad_input.push_back(
-            wrap_tensor_node(std::move(wrapped_grad_input[1])));
-      }
-    }
+    TORCH_CHECK(grad_input.size() == saved_data.size(), "grad input should match number of inputs.");
+    TORCH_CHECK(
+        index == wrapped_grad_input.size(), "Not all grad inputs distributed.");
     return grad_input;
   }
 };

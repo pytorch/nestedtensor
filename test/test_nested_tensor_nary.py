@@ -129,8 +129,7 @@ def _gen_test_binary(func):
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
         a1 = a1.detach()
-        if func == "remainder":
-            a3.detach_()
+        a3.detach_()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
 
@@ -193,15 +192,19 @@ def _gen_test_binary(func):
         else:
             a3 = ntnt([getattr(torch, func)(a, b),
                        getattr(torch, func)(b, c)])
-        print(a3.requires_grad)
+        # print(a3.requires_grad)
         result = getattr(torch, func)(a1, a2)
-        print(result.requires_grad)
+        # print(result.requires_grad)
         result.sum().backward()
+        if func == "remainder":
+            c.detach_()
         result = getattr(torch, func)(a1, c)
         result.sum().backward()
-        print(result.requires_grad)
+        # print(result.requires_grad)
+        if func == "remainder":
+            a1.detach_()
         result = getattr(torch, func)(c, a1)
-        print(result.requires_grad)
+        # print(result.requires_grad)
 
     return _test_binary
 
