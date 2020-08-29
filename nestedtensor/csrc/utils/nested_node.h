@@ -147,6 +147,46 @@ inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
   return c10::nullopt;
 }
 
+// template <class F, class A, class TypeList>
+// class _map;
+// 
+// template <class F, class A, class... Args>
+// class _map<F, A, c10::guts::typelist::typelist<Args...>> {
+//  public:
+//   // NOTE: We must move F to avoid copying objects if it is a lambda with
+//   // captures.
+//   static NestedNode<A> function(
+//       F&& fn,
+//       const NestedNode<Args>&... nested_node) {
+//     auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+//     if (first_node.is_leaf()) {
+//       return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
+//     } else {
+//       std::vector<NestedNode<A>> result;
+//       for (size_t i = 0; i < first_node.degree(); i++) {
+//         result.emplace_back(
+//             function(std::forward<F>(fn), nested_node.children(i)...));
+//       }
+//       return NestedNode<A>(std::move(result));
+//     }
+//   };
+// };
+// 
+// // NOTE: Assuming all NestedNodes have same shape.
+// // TODO: Add check
+// // TODO: Add static assert to verify lambda arguments match nested_node types
+// // TODO: Do we want broadcasting?
+// template <class F, class... B>
+// static inline NestedNode<
+//     typename c10::guts::infer_function_traits<F>::type::return_type>
+// map(F&& fn, const NestedNode<B>&... nested_node) {
+//   return _map<
+//       F,
+//       typename c10::guts::infer_function_traits<F>::type::return_type,
+//       typename c10::guts::infer_function_traits<F>::type::parameter_types>::
+//       function(std::move(fn), nested_node...);
+// }
+
 template <class F, class A, class TypeList>
 class _map;
 
@@ -158,17 +198,41 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
   static NestedNode<A> function(
       F&& fn,
       const NestedNode<Args>&... nested_node) {
-    auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
-    if (first_node.is_leaf()) {
+    size_t degree = 1;
+    bool all_leaf = true;
+    c10::guts::tuple_map(
+        std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
+          all_leaf = all_leaf && (n.is_leaf());
+          if (degree == 1 && n.degree() > 1) {
+            degree = n.degree();
+          }
+          if (degree > 1 && n.degree() > 1) {
+            TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
+          }
+          return nullptr;
+        });
+    if (all_leaf) {
       return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
-    } else {
-      std::vector<NestedNode<A>> result;
-      for (size_t i = 0; i < first_node.degree(); i++) {
-        result.emplace_back(
-            function(std::forward<F>(fn), nested_node.children(i)...));
-      }
-      return NestedNode<A>(std::move(result));
     }
+    std::vector<NestedNode<A>> result;
+    for (size_t i = 0; i < degree; i++) {
+      std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
+          std::forward_as_tuple(nested_node...), [&i](auto a) {
+            if (a.is_leaf()) {
+              return a;
+            }
+            if (a.degree() == 1) {
+              return a.children(0);
+            }
+            return a.children(i);
+          });
+      c10::guts::apply(
+          [&result, &fn](NestedNode<Args>... filtered) {
+            result.emplace_back(function(std::forward<F>(fn), filtered...));
+          },
+          std::move(children));
+    }
+    return NestedNode<A>(std::move(result));
   };
 };
 
@@ -402,7 +466,8 @@ inline TensorNode build_structure(
 inline TensorNode build_structure(
     at::Tensor&& buffer,
     const SizeNode& nested_size) {
-  TORCH_CHECK(buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
+  TORCH_CHECK(
+      buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
   SizeNode nested_stride = map(
       [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
   return build_structure(std::move(buffer), nested_size, nested_stride);
