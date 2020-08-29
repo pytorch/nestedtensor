@@ -122,8 +122,6 @@ inline bool nested_size_matches(A a, B b, C... c) {
 
 template <class... A>
 inline void torch_check_tensor_shape_matches(A... a) {
-  // TORCH_CHECK(
-  //     is_nested_tensor_impl(a...), "Can only check shapes of NestedTensors.");
   TORCH_CHECK(tensor_shape_matches(a...), "NestedTensor shapes don't match.");
 }
 
@@ -161,12 +159,6 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   return wrap_tensor_node(
       map(std::move(fn), get_nested_tensor_structure(a)...));
 }
-
-// template <class F, class... A>
-// static inline at::Tensor new_map_nested_tensor(F&& fn, A... a) {
-//   return wrap_tensor_node(
-//       new_map(std::move(fn), get_nested_tensor_structure(a)...));
-// }
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(TensorNode structure);
