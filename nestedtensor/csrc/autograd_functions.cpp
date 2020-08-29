@@ -278,49 +278,49 @@ struct NestedTensorFunction_sum
 };
 
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  if (is_nested_tensor_impl(self, other)) {
+//  if (is_nested_tensor_impl(self, other)) {
     return map_nested_tensor(
         [&](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
         self,
         other);
-  }
-  if (is_nested_tensor_impl(other)) {
-    return map_nested_tensor(
-        [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
-  }
-  if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed add" << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    auto self_impl = get_nested_tensor_impl(self);
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        (*self_structure.buffer())
-            .reshape({-1, other.size(0)})
-            .add(other)
-            .reshape({-1}),
-        self_impl->nested_size()));
-  }
-  return map_nested_tensor(
-      [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
+//  }
+//   if (is_nested_tensor_impl(other)) {
+//     return map_nested_tensor(
+//         [&](at::Tensor o) { return at::add(self, o, alpha); }, other);
+//   }
+//   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
+// #ifdef TRACEPACKED
+//     std::cout << "calling packed add" << std::endl;
+// #endif
+//     auto self_structure = get_nested_tensor_structure(self);
+//     auto self_impl = get_nested_tensor_impl(self);
+//     return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+//         (*self_structure.buffer())
+//             .reshape({-1, other.size(0)})
+//             .add(other)
+//             .reshape({-1}),
+//         self_impl->nested_size()));
+//   }
+//   return map_nested_tensor(
+//       [&](at::Tensor s) { return at::add(s, other, alpha); }, self);
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  if (is_nested_tensor_impl(self, other)) {
+//  if (is_nested_tensor_impl(self, other)) {
     apply_nested_tensor(
         [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
     return self;
-  }
-  if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed add_" << std::endl;
-#endif
-    auto self_structure = get_nested_tensor_structure(self);
-    (*self_structure.buffer()).reshape({-1, other.size(0)}).add_(other);
-    return self;
-  }
-  apply_nested_tensor([&](at::Tensor& s) { s.add_(other, alpha); }, self);
-  return self;
+//  }
+//   if (is_packed(self) && self.dim() == 3 && other.dim() == 1) {
+// #ifdef TRACEPACKED
+//     std::cout << "calling packed add_" << std::endl;
+// #endif
+//     auto self_structure = get_nested_tensor_structure(self);
+//     (*self_structure.buffer()).reshape({-1, other.size(0)}).add_(other);
+//     return self;
+//   }
+//  apply_nested_tensor([&](at::Tensor& s) { s.add_(other, alpha); }, self);
+//  return self;
 }
 
 Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
