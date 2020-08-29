@@ -48,7 +48,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
   }
-  //TODO: Potential use for packed reshape, but requires custom backward.
+  // TODO: Potential use for packed reshape, but requires custom backward.
   return autograd_map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
@@ -68,7 +68,7 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  //TODO: Potential use for packed transpose, but requires custom backward.
+  // TODO: Potential use for packed transpose, but requires custom backward.
   return autograd_map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
@@ -90,6 +90,28 @@ Tensor NestedTensor_softmax(
   return autograd_map_nested_tensor(
       [dim, nested_dim, dtype](const at::Tensor t) {
         return at::softmax(t, dim - nested_dim, dtype);
+      },
+      input);
+}
+
+Tensor NestedTensor_layer_norm(
+    const Tensor& input,
+    IntArrayRef normalized_shape,
+    const c10::optional<Tensor>& weight,
+    const c10::optional<Tensor>& bias,
+    double eps,
+    bool /* cudnn_enable, deprecated */) {
+  TORCH_CHECK(
+      normalized_shape.size() == 1,
+      "Currently only singleton tuples of integers supported for layer_norm.");
+  auto input_data = get_nested_tensor_impl(input);
+  TORCH_CHECK(
+      input_data->opt_sizes()[input.dim() - 1],
+      "Cannot normalize across irregular dimension ",
+      std::to_string(input.dim() - 1));
+  return map_nested_tensor(
+      [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
+        return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
       input);
 }
@@ -250,6 +272,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "reshape", NestedTensor_reshape);
   nt_impl(m, "transpose.int", NestedTensor_transpose);
   nt_impl(m, "softmax.int", NestedTensor_softmax);
+  nt_impl(m, "layer_norm", NestedTensor_layer_norm);
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
   nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
   nt_impl(m, "stack", NestedTensor_stack);

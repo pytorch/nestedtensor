@@ -317,7 +317,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);
-  nt_impl(m, "layer_norm", NestedTensor_layer_norm);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
