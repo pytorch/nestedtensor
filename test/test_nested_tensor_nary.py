@@ -166,12 +166,7 @@ def _gen_test_binary(func):
         # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
         # TODO: Only sub doesn't adhere to this rule but with irregular behavior
         if func != "sub":
-            print(20)
-            print(a1)
-            print(a2)
-            print(func)
-            self.assertRaises(RuntimeError, lambda: getattr(a1, func + "_")(a2))
-        print(21)
+            self.assertEqual(c + a + b, getattr(a1, func + "_")(a2))
     return _test_binary
 
 
