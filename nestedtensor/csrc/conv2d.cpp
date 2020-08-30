@@ -241,25 +241,19 @@ Tensor NestedTensor_conv2d(
     int64_t groups) {
   // return NestedTensorFunction_conv2d::apply(
   //     input, weight, bias, stride, padding, dilation, groups);
-  if (bias) {
-    return autograd_map_nested_tensor(
-        [&stride, &padding, &dilation, &groups](
-            at::Tensor input, at::Tensor weight, at::Tensor bias) {
-          return at::conv2d(
-              input, weight, bias, stride, padding, dilation, groups);
-        },
-        input,
-        weight,
-        *bias);
-  }
   return autograd_map_nested_tensor(
       [&stride, &padding, &dilation, &groups](
-          at::Tensor input, at::Tensor weight) {
+          at::Tensor input, at::Tensor weight, at::Tensor bias) {
+        if (bias.defined()) {
+          return at::conv2d(
+              input, weight, bias, stride, padding, dilation, groups);
+        }
         return at::conv2d(
             input, weight, c10::nullopt, stride, padding, dilation, groups);
       },
       input,
-      weight);
+      weight,
+      bias);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
