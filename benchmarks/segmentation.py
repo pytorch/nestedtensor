@@ -16,6 +16,7 @@ backbone = torchvision.models.resnet.__dict__['resnet50'](
 return_layers = {'layer4': 'out'}
 MODEL = torchvision.models._utils.IntermediateLayerGetter(
     backbone, return_layers=return_layers).cuda()
+print(MODEL)
 
 
 def gen_t_loop_segmentation():
@@ -37,5 +38,6 @@ def gen_nt_segmentation():
 
 
 if __name__ == "__main__":
-    print(utils.benchmark_fn(gen_t_loop_segmentation()))
+    # print(utils.benchmark_fn(gen_t_loop_segmentation()))
     print(utils.benchmark_fn(gen_nt_segmentation()))
+    print(utils.benchmark_fn(gen_nt_segmentation(), 10.0))

@@ -104,7 +104,8 @@ at::Tensor _conv2d_grad_weight(
   int64_t out_channels = grad_output_.size(1);
   int64_t min_batch = input_.size(0);
   auto weight_size = weight.sizes();
-  // std::cout << "00 grad_output_.sizes(): " << grad_output_.sizes()<< std::endl;
+  // std::cout << "00 grad_output_.sizes(): " << grad_output_.sizes()<<
+  // std::endl;
   at::Tensor grad_output =
       grad_output_.contiguous().repeat({1, in_channels / groups, 1, 1});
   grad_output =
@@ -149,6 +150,13 @@ struct NestedTensorFunction_conv2d
       IntArrayRef padding,
       IntArrayRef dilation,
       int64_t groups) {
+    TORCH_CHECK(
+        !is_nested_tensor_impl(weight),
+        "weight needs to be a regular tensors.");
+    if (bias) {
+      TORCH_CHECK(
+          !is_nested_tensor_impl(*bias), "bias needs to be a regular tensors.");
+    }
     // The final call to .contiguous is of questionable general value
     // but in the context of DETR we'll make it the default.
     at::Tensor output = map_nested_tensor(
@@ -238,8 +246,25 @@ Tensor NestedTensor_conv2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     int64_t groups) {
-  return NestedTensorFunction_conv2d::apply(
-      input, weight, bias, stride, padding, dilation, groups);
+  // return NestedTensorFunction_conv2d::apply(
+  //     input, weight, bias, stride, padding, dilation, groups);
+  if (bias) {
+  return autograd_map_nested_tensor(
+      [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
+        return at::conv2d(input.unsqueeze(0), weight, bias, stride, padding, dilation, groups).squeeze(0);
+        // return at::conv2d(input, self, c10::nullopt, stride, padding, dilation, groups);
+      },
+      input,
+      weight,
+      *bias);
+  }
+  return autograd_map_nested_tensor(
+      [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight) {
+        return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);
+        // return at::conv2d(input, self, c10::nullopt, stride, padding, dilation, groups);
+      },
+      input,
+      weight);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {

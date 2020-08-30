@@ -100,14 +100,22 @@ struct NestedTensorFunction_matmul
     TORCH_CHECK(is_nested_tensor_impl(self), "self must be NestedTensor");
     if (!is_nested_tensor_impl(other)) {
       TORCH_CHECK(other.dim() >= 2, "T other must be at least 2-dim.");
-      auto grad_self = at::matmul(grad, other.transpose(0, 1));
-      auto grad_other_nt =
-          at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad);
+      // auto grad_other_nt =
+      //     at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad);
       // TODO: Implement sum over nested dimensions
       auto grad_other = torch::zeros_like(other);
+      // apply_nested_tensor(
+      //     [&grad_other](at::Tensor& t) { grad_other.add_(t);
+      //     },
+      //     grad_other_nt);
       apply_nested_tensor(
-          [&grad_other](at::Tensor& t) { grad_other.add_(t); }, grad_other_nt);
-      at::Tensor undef;
+          [&grad_other](at::Tensor& s, at::Tensor& g) {
+            grad_other.add_(
+                at::matmul(s.transpose(s.dim() - 2, s.dim() - 1), g));
+          },
+          self,
+          grad);
+      auto grad_self = at::matmul(grad, other.transpose(0, 1));
       return {grad_self, grad_other};
     }
     TORCH_CHECK(other.dim() >= 3, "NT other must be at least 3-dim.");
@@ -117,7 +125,11 @@ struct NestedTensorFunction_matmul
 };
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
-  return NestedTensorFunction_matmul::apply(self, other);
+  return autograd_map_nested_tensor(
+      [](at::Tensor self, at::Tensor other) { return at::matmul(self, other); },
+      self,
+      other);
+  // return NestedTensorFunction_matmul::apply(self, other);
 }
 
 Tensor& NestedTensor_matmul_out(
@@ -228,7 +240,14 @@ Tensor NestedTensor_addmm(
     const Tensor& other,
     c10::Scalar alpha,
     c10::Scalar beta) {
-  return NestedTensorFunction_addmm::apply(input, self, other, alpha, beta);
+  // return NestedTensorFunction_addmm::apply(input, self, other, alpha, beta);
+  return autograd_map_nested_tensor(
+      [&alpha, &beta](at::Tensor input, at::Tensor self, at::Tensor other) {
+        return at::addmm(input, self, other, alpha, beta);
+      },
+      input,
+      self,
+      other);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {

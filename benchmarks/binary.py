@@ -39,8 +39,17 @@ def gen_nt_mul():
         nested_tensor1.mul(nested_tensor2)
     return nt
 
+def gen_nt_sum():
+    nested_tensor1 = nestedtensor.nested_tensor(
+        [torch.rand(i, 2560).cuda() for i in RAND_INTS], requires_grad=True)
+
+    def nt():
+        nested_tensor1 #.sum().backward()
+    return nt
+
 
 if __name__ == "__main__":
-    print(utils.benchmark_fn(gen_t_mul()))
-    print(utils.benchmark_fn(gen_t_loop_mul()))
-    print(utils.benchmark_fn(gen_nt_mul()))
+    # print(utils.benchmark_fn(gen_t_mul()))
+    # print(utils.benchmark_fn(gen_t_loop_mul()))
+    # print(utils.benchmark_fn(gen_nt_mul()))
+    print(utils.benchmark_fn(gen_nt_sum()))
