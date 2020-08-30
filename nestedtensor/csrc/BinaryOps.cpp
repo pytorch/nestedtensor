@@ -49,18 +49,9 @@ Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
-  std::cout << "self is_nested_tensor_impl: " << is_nested_tensor_impl(self) << std::endl;
-  std::cout << "other is_nested_tensor_impl: " << is_nested_tensor_impl(other) << std::endl;
-  std::cout << "self rg: " <<   self.requires_grad() << std::endl;
-  std::cout << "other rg: " << other.requires_grad() << std::endl;
-  if (!is_nested_tensor_impl(other)) {
-    std::cout << "o: " << other << std::endl;
-  }
   check_binary_shape(self, other);
   return autograd_map_nested_tensor(
-      [](Tensor s, Tensor o) { 
-    std::cout << "o1: " << o << std::endl;
-      return func(s, o); }, self, other);
+      [](Tensor s, Tensor o) { return func(s, o); }, self, other);
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
@@ -220,8 +211,6 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
 }
 
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  // std::cout << "self add" << get_nested_tensor_impl(self) << std::endl;
-  // std::cout << "other add" << get_nested_tensor_impl(other) << std::endl;
   return autograd_map_nested_tensor(
       [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
       self,

@@ -126,17 +126,13 @@ def _gen_test_binary(func):
             a2 = ntnt([b, c])
         a3 = ntnt([getattr(torch, func)(a, b),
                    getattr(torch, func)(b, c)])
-        print(a1.requires_grad)
-        print(a2.requires_grad)
         res1 = getattr(torch, func)(a1, a2)
-        print('res1.requires_grad')
-        print(res1.requires_grad)
         res1.sum().backward()
         self.assertIsNotNone(a1.grad)
-        self.assertIsNotNone(a2.grad)
-        # print(a1.grad)
-        # print(a2.grad)
-        # import sys; sys.exit(1)
+        if func == "remainder":
+            self.assertIsNone(a2.grad)
+        else:
+            self.assertIsNotNone(a2.grad)
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
         a1 = a1.detach()
@@ -155,14 +151,14 @@ def _gen_test_binary(func):
 
         # TODO: Add check for broadcasting smaller tensors / tensor constiuents
 
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match or be greater than dimension of other.",
-        #                        lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
-        # if func == "remainder":
-        #     a1.detach_()
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
-        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
-        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match or be greater than dimension of other.",
+                               lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
+        if func == "remainder":
+            a1.detach_()
+        self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+                               lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+                               lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
 
         a1 = a1.detach()
         a3 = a3.detach()
@@ -209,10 +205,6 @@ def _gen_test_binary(func):
         result.sum().backward()
         if func == "remainder":
             c.detach_()
-        print("DFHJDLF")
-        print("a1: ", a1)
-        print("c: ", c)
-        print("___")
         result = getattr(torch, func)(a1, c)
         result.sum().backward()
         # print(result.requires_grad)

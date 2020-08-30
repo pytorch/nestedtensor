@@ -122,9 +122,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return _wrap_result(self._impl.__ne__(other))
 
     def __add__(self, other):
-        print("ADD")
-        print(self)
-        print(other)
         if isinstance(other, NestedTensor):
             return _wrap_result(self._impl + other._impl)
         return _wrap_result(self._impl + other)
