@@ -1,5 +1,6 @@
 #pragma once
 #include <ATen/ATen.h>
+#include <ATen/MemoryOverlap.h>
 #include <c10/util/Metaprogramming.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
@@ -46,6 +47,23 @@ template <class A, class B, class... C>
 bool is_nested_tensor_impl(A first, B second, C... other) {
   return is_nested_tensor_impl(first, second) &&
       is_nested_tensor_impl(other...);
+}
+
+template <class A>
+void torch_check_is_nested_tensor(A tensor) {
+  TORCH_CHECK(is_nested_tensor_impl(tensor), "Argument is not NestedTensor.");
+}
+
+template <class A, class B>
+void torch_check_is_nested_tensor(A first, B other) {
+  torch_check_is_nested_tensor(first);
+  torch_check_is_nested_tensor(other);
+}
+
+template <class A, class B, class... C>
+void torch_check_is_nested_tensor(A first, B second, C... other) {
+  torch_check_is_nested_tensor(first, second);
+  torch_check_is_nested_tensor(other...);
 }
 
 template <class A>
@@ -142,22 +160,9 @@ bool is_packed(A first, B second, C... other) {
 
 template <class F, class... A>
 static inline void apply_nested_tensor(F&& fn, A... a) {
-  torch_check_tensor_shape_matches(a...);
+  // torch_check_tensor_shape_matches(a...);
+  // torch_check_is_nested_tensor(a...);
   apply(std::move(fn), get_nested_tensor_structure(a)...);
-}
-
-at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
-torch::nested_tensor::TensorNode get_nested_tensor_structure(at::Tensor tensor);
-
-at::Tensor wrap_tensor_node(NestedTensorImpl);
-at::Tensor wrap_tensor_node(TensorNode&&);
-std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
-
-template <class F, class... A>
-static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
-  torch_check_tensor_shape_matches(a...);
-  return wrap_tensor_node(
-      map(std::move(fn), get_nested_tensor_structure(a)...));
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
@@ -232,7 +237,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
         get_structure());
   }
-  at::Tensor to_tensor();
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
@@ -247,6 +251,38 @@ struct NestedTensorImpl : public c10::TensorImpl {
   SizeNode _nested_size;
   std::vector<int64_t> _sizes;
 };
+
+inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
+  if (!is_nested_tensor_impl(tensor)) {
+    throw std::runtime_error("Function requires NestedTensorImpl");
+  }
+  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
+}
+
+template <class A>
+inline NestedNode<A> get_nested_tensor_structure(A tensor) {
+  return NestedNode<A>(std::move(tensor));
+}
+
+template <>
+inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
+  if (!is_nested_tensor_impl(tensor)) {
+    return TensorNode(std::move(tensor));
+  }
+  return get_nested_tensor_impl(tensor)->get_structure();
+}
+
+at::Tensor wrap_tensor_node(NestedTensorImpl);
+at::Tensor wrap_tensor_node(TensorNode&&);
+std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
+
+template <class F, class... A>
+static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
+  // torch_check_tensor_shape_matches(a...);
+  // torch_check_is_nested_tensor(a...);
+  return wrap_tensor_node(
+      map(std::move(fn), get_nested_tensor_structure(a)...));
+}
 
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor_impl(tensor);
@@ -296,6 +332,7 @@ struct _Function_no_bw<FuncPtr, c10::guts::typelist::typelist<Parameters...>>
 template <
     class Tuple,
     class T = std::decay_t<std::tuple_element_t<0, std::decay_t<Tuple>>>>
+// TODO: Return an array instead.
 std::vector<T> to_vector(Tuple&& tuple) {
   return c10::guts::apply(
       [](auto&&... elems) {
@@ -359,6 +396,42 @@ constexpr auto trace(FuncPtr /*func_ptr*/) {
   return &_Function_trace_wrapper<FuncPtr, parameter_types>::apply;
 }
 
+namespace detail {
+// Describe the type of a tuple with element I from each input tuple.
+// Needed to preserve the exact types from the input tuples.
+template <std::size_t I, typename... Tuples>
+using zip_tuple_at_index_t =
+    std::tuple<std::tuple_element_t<I, std::decay_t<Tuples>>...>;
+
+// Collect all elements at index I from all input tuples as a new tuple.
+template <std::size_t I, typename... Tuples>
+zip_tuple_at_index_t<I, Tuples...> zip_tuple_at_index(Tuples&&... tuples) {
+  return {std::get<I>(std::forward<Tuples>(tuples))...};
+}
+
+// Create a tuple with the result of zip_tuple_at_index for each index.
+// The explicit return type prevents flattening into a single tuple
+// when sizeof...(Tuples) == 1 or sizeof...(I) == 1 .
+template <typename... Tuples, std::size_t... I>
+std::tuple<zip_tuple_at_index_t<I, Tuples...>...> tuple_zip_impl(
+    Tuples&&... tuples,
+    std::index_sequence<I...>) {
+  return {zip_tuple_at_index<I>(std::forward<Tuples>(tuples)...)...};
+}
+
+} // namespace detail
+
+// Zip a number of tuples together into a tuple of tuples.
+// Take the first tuple separately so we can easily get its size.
+template <typename Head, typename... Tail>
+auto tuple_zip(Head&& head, Tail&&... tail) {
+  constexpr std::size_t size = std::tuple_size<std::decay_t<Head>>::value;
+  return detail::tuple_zip_impl<Head, Tail...>(
+      std::forward<Head>(head),
+      std::forward<Tail>(tail)...,
+      std::make_index_sequence<size>());
+}
+
 // The approach here is quite "simple". There are six different stages to this.
 // 1. We take the input NestedTensor whose constituents are, by design, required
 // to not track gradients. Only the NestedTensor as a whole is allowed to track
@@ -387,53 +460,79 @@ constexpr auto trace(FuncPtr /*func_ptr*/) {
 // to get gradients for its weight and bias. If they are regular Tensors
 // they won't be given as inputs and their gradients won't be propagated
 // by this mapper.
-template <typename F, class... A>
+template <typename F, class B, class... Args>
 struct NestedTensorFunction_mapper
-    : public torch::autograd::Function<NestedTensorFunction_mapper<F, A...>> {
+    : public torch::autograd::Function<
+          NestedTensorFunction_mapper<F, B, Args...>> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
       F&& fn,
+      B input,
       // 1. Original NestedTensors
-      A... input) {
-    auto autograd_input_tuple_ =
-        c10::guts::tuple_map(std::tuple<A...>(input...), [](at::Tensor t) {
-          apply_nested_tensor(
-              [](at::Tensor& ti) {
-                TORCH_CHECK(
-                    !ti.requires_grad(),
-                    "autograd_mapper input's constituents shouldn't require gradients.");
-              },
-              t);
-          // if (t.requires_grad()) {
-          return map_nested_tensor(
-              // 2. Constituents of NestedTensors
-              [](at::Tensor ti) {
-                AutoGradMode autogradmode(true);
-                // TODO: Don't apply this if the corresponding NestedTensor
-                // doesn't require a gradient.
-                auto alias = ti.alias();
-                alias.requires_grad_();
-                // 3. Alias to constituents that do requires gradients
-                return alias;
-              },
-              t);
-          // }
-          // return t;
+      Args... a) {
+    auto autograd_input_tuple_ = c10::guts::tuple_map(
+        tuple_zip(input, std::make_tuple(a...)),
+        [](std::tuple<bool, at::Tensor>&& tup) {
+          bool rg = std::get<0>(tup);
+          at::Tensor t = std::get<1>(tup);
+          if (is_nested_tensor_impl(t)) {
+            apply_nested_tensor(
+                [](at::Tensor& ti) {
+                  TORCH_CHECK(
+                      !ti.requires_grad(),
+                      "autograd_mapper input's constituents shouldn't require gradients.");
+                },
+                t);
+          }
+          if (rg) {
+            if (is_nested_tensor_impl(t)) {
+              return map_nested_tensor(
+                  // 2. Constituents of NestedTensors
+                  [](at::Tensor ti) {
+                    AutoGradMode autogradmode(true);
+                    // TODO: Don't apply this if the corresponding NestedTensor
+                    // doesn't require a gradient.
+                    // TODO: This fails if the input is not of differentiable
+                    // dtype.
+                    auto alias = ti.alias();
+                    if (torch::autograd::isDifferentiableType(
+                            alias.scalar_type())) {
+                      alias.requires_grad_();
+                    }
+                    // 3. Alias to constituents that do requires gradients
+                    return alias;
+                  },
+                  t);
+            }
+            AutoGradMode autogradmode(true);
+            auto alias = t.alias();
+            if (torch::autograd::isDifferentiableType(alias.scalar_type())) {
+              alias.requires_grad_();
+            }
+            return alias;
+          }
+          return t;
         });
     auto autograd_input_tuple = autograd_input_tuple_;
-
+    std::vector<bool> requires_grad_vector = to_vector(input);
+    bool expect_diff_function = true;
+    for (bool requires_grad : requires_grad_vector) {
+      expect_diff_function = expect_diff_function && requires_grad;
+    }
     // 4. Output of differentiable function given Tensor from step 3.
     at::Tensor autograd_output = c10::guts::apply(
-        [&fn](A... a) {
+        [&fn, &expect_diff_function](auto... a) {
           return map_nested_tensor(
-              [&](A... t) {
+              [&](Args... t) {
                 AutoGradMode autogradmode(true);
-                auto result = fn(t...);
-                TORCH_CHECK(
-                    result.requires_grad(),
-                    "fn ",
-                    typeid(F).name(),
-                    " doesn't seem differentiable.");
+                at::Tensor result = fn(t...);
+                if (expect_diff_function) {
+                  TORCH_CHECK(
+                      result.requires_grad(),
+                      "fn ",
+                      typeid(F).name(),
+                      " output expected to required gradient.");
+                }
                 return result;
               },
               a...);
@@ -443,7 +542,7 @@ struct NestedTensorFunction_mapper
     auto tensor_vector = to_vector(std::move(autograd_input_tuple));
     tensor_vector.push_back(autograd_output);
     ctx->save_for_backward(tensor_vector);
-
+    ctx->saved_data["0"] = requires_grad_vector;
     // 5. Constituents of output NestedTensor
     auto output = map_nested_tensor(
         [](at::Tensor t) { return t.alias().detach(); }, autograd_output);
@@ -456,32 +555,84 @@ struct NestedTensorFunction_mapper
       // TODO: To prevent double backward (for now) check that grad_output
       // doesn't require gradients.
       torch::autograd::variable_list grad_output_) {
-    auto saved_data = ctx->get_saved_variables();
+    std::vector<at::Tensor> saved_data = ctx->get_saved_variables();
+    std::vector<bool> requires_grad_vector =
+        ctx->saved_data["0"].toBoolList().vec();
+    TORCH_CHECK(
+        requires_grad_vector.size() == saved_data.size() - 1,
+        "requires_grad_vector.size() should match number of inputs.");
     TORCH_CHECK(
         grad_output_.size() == 1,
         "Only one incoming gradient support for now.");
-    TORCH_CHECK(
-        saved_data.size() == 2,
-        "Only one input and one output supported for now.");
-    at::Tensor grad_input;
-    grad_input = map_nested_tensor(
-        [](at::Tensor r, at::Tensor i, at::Tensor g) {
-          auto result = torch::autograd::grad({r}, {i}, {g});
-          TORCH_CHECK(result.size() == 1, "not supported 2");
-          return result[0];
-        },
-        saved_data[1],
-        saved_data[0],
-        grad_output_[0]);
-
+    // TORCH_CHECK(
+    //     saved_data.size() <= 3,
+    //     "Only one input and at most two outputs supported for now.");
+    std::vector<TensorNode> input_nodes;
+    for (size_t i = 0; i < saved_data.size() - 1; i++) {
+      if (requires_grad_vector[i]) {
+        input_nodes.push_back(get_nested_tensor_structure(saved_data[i]));
+      }
+    }
     at::Tensor undef;
-    return {undef, grad_input};
+    // NOTE: First entry needs to return undef for function value input.
+    // NOTE: Second entry corresponds to the requires_grad_vector
+    std::vector<at::Tensor> grad_input(saved_data.size() + 1, undef);
+    std::vector<TensorNode> wrapped_grad_input = unzip(map(
+        [&grad_input, &saved_data, &requires_grad_vector](
+            at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
+          std::vector<at::Tensor> tmp_grad_input =
+              torch::autograd::grad({r}, is, {g});
+          at::Tensor undef;
+          std::vector<at::Tensor> nt_grad_input(tmp_grad_input.size(), undef);
+          size_t index = 0;
+          for (size_t i = 0; i < saved_data.size() - 1; i++) {
+            if (requires_grad_vector[i]) {
+              if (is_nested_tensor_impl(saved_data[i])) {
+                nt_grad_input[index] = tmp_grad_input[index];
+              } else {
+                if (grad_input[2 + i].defined()) {
+                  grad_input[2 + i].add_(tmp_grad_input[index]);
+                } else {
+                  grad_input[2 + i] = tmp_grad_input[index].contiguous();
+                }
+              }
+              index++;
+            }
+          }
+          TORCH_CHECK(
+              index == tmp_grad_input.size(),
+              "tmp_grad_input wasn't entirely used.");
+          return tmp_grad_input;
+        },
+        get_nested_tensor_structure(saved_data[saved_data.size() - 1]),
+        zip(input_nodes),
+        get_nested_tensor_structure(grad_output_[0])));
+    size_t index = 0;
+    for (size_t i = 0; i < saved_data.size() - 1; i++) {
+      if (requires_grad_vector[i]) {
+        if (is_nested_tensor_impl(saved_data[i])) {
+          grad_input[2 + i] =
+              wrap_tensor_node(std::move(wrapped_grad_input[index]));
+        }
+        index++;
+      }
+    }
+    TORCH_CHECK(
+        grad_input.size() == saved_data.size() + 1,
+        "grad input should match number of inputs.");
+    TORCH_CHECK(
+        index == wrapped_grad_input.size(), "Not all grad inputs distributed.");
+    return grad_input;
   }
 };
 
 template <class F, class... A>
 static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
-  return NestedTensorFunction_mapper<F, A...>::apply(std::move(fn), a...);
+  auto b = c10::guts::tuple_map(
+      std::tuple<A...>(a...),
+      [](at::Tensor t) -> bool { return t.requires_grad(); });
+  return NestedTensorFunction_mapper<F, decltype(b), A...>::apply(
+      std::move(fn), b, a...);
 }
 
 #ifdef TRACEPACKED

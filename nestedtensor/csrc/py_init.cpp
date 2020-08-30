@@ -50,7 +50,8 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   if (!is_nested_tensor_impl(tensor)) {
     auto wrapped_key = py::tuple(py::cast(key));
     auto wrapped_tensor = THPVariable_Wrap(tensor);
-    auto wrapped_result = torch::autograd::THPVariable_getitem(wrapped_tensor, wrapped_key.ptr());
+    auto wrapped_result =
+        torch::autograd::THPVariable_getitem(wrapped_tensor, wrapped_key.ptr());
     auto result = THPVariable_Unpack(wrapped_result);
     Py_DECREF(wrapped_tensor);
     Py_DECREF(wrapped_result);
@@ -83,11 +84,11 @@ at::Tensor get_item(Tensor tensor, std::vector<py::object> key) {
   int64_t nested_dim = get_nested_tensor_impl(*first)->nested_dim();
   std::vector<TensorNode> result_nodes;
   if (nested_dim == 1) {
-    for (auto t: result) {
+    for (auto t : result) {
       result_nodes.push_back(TensorNode(std::move(t)));
     }
   } else {
-    for (auto t: result) {
+    for (auto t : result) {
       result_nodes.push_back(get_nested_tensor_structure(t));
     }
   }
@@ -125,7 +126,6 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   };
   return fn(fn, size_node, *index);
 }
-
 
 namespace torch {
 namespace nested_tensor {
@@ -173,10 +173,6 @@ static auto registry =
         .op("nestedtensor::len",
             [](Tensor self) {
               return (int64_t)(get_nested_tensor_structure(self).degree());
-            })
-        .op("nestedtensor::to_tensor",
-            [](Tensor tensor, c10::optional<int64_t> dim) {
-              return NestedTensor_to_tensor(tensor, dim);
             })
         .op("nestedtensor::str", [](Tensor tensor) {
           auto node = get_nested_tensor_structure(tensor);
@@ -272,6 +268,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
   });
+  // m.def("_test", []() {
+  //     std::vector<at:Tensor> ts;
+  //     ts.push_back(torch::rand({1}));
+  //     ts.push_back(torch::rand({2}));
+  //     TensorNode t0_ = TensorNode(ts);
+  //     at::Tensor t0 = wrap_tensor_node(std::move(t0_));
+  //     at::Tensor t1 = torch::tensor({3});
+  //     autograd_map_nested_tensor([](at::Tensor s, at::Tensor o) {
+  //         std::cout << "s: " << s << std::endl;
+  //         std::cout << "o: " << o << std::endl;}, t0, t1);
+
+  //     });
 
   add_functions(m);
 }

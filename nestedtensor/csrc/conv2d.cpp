@@ -37,7 +37,7 @@ std::vector<int64_t> _grad_input_padding(
       ")");
 
   std::vector<int64_t> result_size;
-  for (int64_t d = 0; d < k; d++) {
+  for (size_t d = 0; d < k; d++) {
     int64_t min_size = ((grad_output.size(d + 2) - 1) * stride[d]) -
         (2 * padding[d]) + 1 + (dilation[d] * (kernel_size[d] - 1));
     int64_t max_size = min_size + stride[d] - 1;
@@ -104,6 +104,7 @@ at::Tensor _conv2d_grad_weight(
   int64_t out_channels = grad_output_.size(1);
   int64_t min_batch = input_.size(0);
   auto weight_size = weight.sizes();
+  // std::cout << "00 grad_output_.sizes(): " << grad_output_.sizes()<< std::endl;
   at::Tensor grad_output =
       grad_output_.contiguous().repeat({1, in_channels / groups, 1, 1});
   grad_output =
@@ -163,6 +164,8 @@ struct NestedTensorFunction_conv2d
               .squeeze(0);
         },
         input);
+    // std::cout << "00 output.sizes(): " << output.sizes()<< std::endl;
+    // std::cout << "00 input.sizes(): " << input.sizes()<< std::endl;
     at::Tensor undef;
     ctx->save_for_backward({weight, bias ? *bias : undef, output, input});
     ctx->saved_data["4"] = stride.vec();

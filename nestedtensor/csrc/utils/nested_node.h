@@ -190,6 +190,9 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
             TORCH_CHECK(a.degree() > 0, "Internal assert.");
             return a.children(i);
           });
+      // TODO: Due to the experiences with to_vector and the inversion I'm a bit
+      // wary of apply but I haven't been able to reproduce the  argument
+      // inversion behavior in other contexts.
       c10::guts::apply(
           [&result, &fn](NestedNode<Args>... filtered) {
             result.emplace_back(function(std::forward<F>(fn), filtered...));
@@ -263,6 +266,35 @@ inline NestedNode<R> unflatten(
     std::vector<R> content) {
   auto _result = _unflatten<R, A>(structure, content, 0);
   return std::get<1>(_result);
+}
+
+template <class A>
+inline std::vector<NestedNode<A>> unzip(
+    const NestedNode<std::vector<A>>& structure) {
+  if (structure.is_leaf()) {
+    std::vector<NestedNode<A>> results;
+    std::vector<A> payload = structure.payload();
+    for (size_t i = 0; i < payload.size(); i++) {
+      results.push_back(NestedNode<A>(std::move(payload[i])));
+    }
+    return results;
+  } else {
+    std::vector<std::vector<NestedNode<A>>> result;
+    for (size_t i = 0; i < structure.degree(); i++) {
+      std::vector<NestedNode<A>> unzipped = unzip(structure.children(i));
+      for (size_t j = 0; j < unzipped.size(); j++) {
+        if (j >= result.size()) {
+          result.resize(j + 1);
+        }
+        result[j].push_back(unzipped[j]);
+      }
+    }
+    std::vector<NestedNode<A>> wrapped_result;
+    for (size_t i = 0; i < result.size(); i++) {
+      wrapped_result.push_back(NestedNode<A>(std::move(result[i])));
+    }
+    return wrapped_result;
+  }
 }
 
 template <class A>

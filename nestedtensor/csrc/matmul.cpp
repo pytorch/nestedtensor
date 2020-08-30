@@ -96,10 +96,10 @@ struct NestedTensorFunction_matmul
     auto saved_data = ctx->get_saved_variables();
     auto self = saved_data[0];
     auto other = saved_data[1];
-    TORCH_CHECK(self.dim() > 3, "NT self must be at least 3-dim.");
+    TORCH_CHECK(self.dim() >= 3, "NT self must be at least 3-dim.");
     TORCH_CHECK(is_nested_tensor_impl(self), "self must be NestedTensor");
     if (!is_nested_tensor_impl(other)) {
-      TORCH_CHECK(other.dim() > 2, "T other must be 2-dim.");
+      TORCH_CHECK(other.dim() >= 2, "T other must be at least 2-dim.");
       auto grad_self = at::matmul(grad, other.transpose(0, 1));
       auto grad_other_nt =
           at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad);
@@ -110,7 +110,7 @@ struct NestedTensorFunction_matmul
       at::Tensor undef;
       return {grad_self, grad_other};
     }
-    TORCH_CHECK(other.dim() > 3, "NT other must be at least 3-dim.");
+    TORCH_CHECK(other.dim() >= 3, "NT other must be at least 3-dim.");
     return {at::matmul(grad, other.transpose(other.dim() - 2, other.dim() - 1)),
             at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad)};
   }
@@ -234,8 +234,6 @@ Tensor NestedTensor_addmm(
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "addmm", NestedTensor_addmm);
   nt_impl(m, "matmul", NestedTensor_matmul);
-}
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "matmul.out", NestedTensor_matmul_out);
 }
 } // namespace at

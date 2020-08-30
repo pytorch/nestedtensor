@@ -142,66 +142,17 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   return TensorNode(_squeeze_nested_dim(structure, dim - 1));
 }
 
-at::Tensor _to_tensor(TensorNode node) {
-  // TODO: Recursive stacking is expensive.
-  if (node.is_leaf()) {
-    return node.payload();
+int64_t NestedTensorImpl::size(int64_t dim) const {
+  std::vector<c10::optional<int64_t>> size = opt_sizes();
+  if (size[dim]) {
+    return *(size[dim]);
   }
-  if (node.degree() == 0) {
-    return at::empty({0});
-  }
-  std::vector<at::Tensor> flat;
-  for (auto child : node.unbind()) {
-    flat.push_back(_to_tensor(child));
-  }
-  return stack(flat);
+  throw std::runtime_error(
+      "NestedTensor size at dim is not Tensor shape compliant.");
 }
 
-at::Tensor NestedTensorImpl::to_tensor() {
-  // TODO: Not necessarily a view because of stack and reshape.
-  std::vector<int64_t> new_size;
-  for (const auto& si : opt_sizes()) {
-    if (!si) {
-      // TODO: This assumes we'll extend to_tensor to also work with int64_t at
-      // this level.
-      throw std::out_of_range(
-          "to_tensor()/to_tensor(0) only works if there is no None in size().");
-    }
-    new_size.push_back(*si);
-  }
-  return _to_tensor(get_structure());
-}
-
-Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
-  int64_t dim_ = 0;
-  if (dim__) {
-    dim_ = *dim__;
-  }
-  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
-  // if dim < nested_dim() the NestedTensor is already nested
-  // up to the given dimension.
-  if (dim >= nested_dim()) {
-    TensorNode unbound = _unbind_tensors(get_structure());
-    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
-      unbound = _unbind_tensors(unbound);
-    }
-    return wrap_tensor_node(std::move(unbound));
-  }
-  return wrap_tensor_node(std::move(_structure));
-}
-
-at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
-  if (!is_nested_tensor_impl(tensor)) {
-    throw std::runtime_error("Function requires NestedTensorImpl");
-  }
-  return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
-}
-
-TensorNode get_nested_tensor_structure(at::Tensor tensor) {
-  if (!is_nested_tensor_impl(tensor)) {
-    return TensorNode(std::move(tensor));
-  }
-  return get_nested_tensor_impl(tensor)->get_structure();
+IntArrayRef NestedTensorImpl::strides() const {
+  return _sizes;
 }
 
 at::Tensor wrap_tensor_node(TensorNode&& result) {
@@ -219,19 +170,6 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
   return result;
 }
 
-int64_t NestedTensorImpl::size(int64_t dim) const {
-  std::vector<c10::optional<int64_t>> size = opt_sizes();
-  if (size[dim]) {
-    return *(size[dim]);
-  }
-  throw std::runtime_error(
-      "NestedTensor size at dim is not Tensor shape compliant.");
-}
-
-IntArrayRef NestedTensorImpl::strides() const {
-  throw std::runtime_error("NestedTensor stride is not implemented.");
-}
-
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   if (self.is_contiguous(memory_format)) {
     return self;
@@ -242,38 +180,6 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
 }
 
-Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
-  auto impl_data = get_nested_tensor_impl(tensor);
-  if (!dim_) {
-    return impl_data->to_tensor();
-  }
-  int64_t dim = maybe_wrap_dim((*dim_), impl_data->dim());
-  if (dim == 0) {
-    return impl_data->to_tensor();
-  }
-  // If dim is bigger than nested_dim the NestedTensor is already
-  // of Tensor for dimensions bigger than the given.
-  if (impl_data->nested_dim() == 1) {
-    return tensor;
-  }
-  // At this point nested_dim is at least 2. That means any unbind
-  // operation of a child must yield NestedTensors.
-  // If dim is 1 then we'll apply to_tensor(0) to the children and must expect
-  // Tensors.
-  std::vector<at::Tensor> unbound = at::unbind(tensor, 0);
-  std::vector<TensorNode> result;
-  for (Tensor child : unbound) {
-    auto ci = NestedTensor_to_tensor(child, dim - 1);
-    if (is_nested_tensor_impl(ci)) {
-      auto s = get_nested_tensor_impl(ci)->get_structure();
-      result.push_back(TensorNode(std::move(s)));
-    } else {
-      // TODO: If it's a NestedTensor instance get the structure
-      result.push_back(TensorNode(std::move(ci)));
-    }
-  }
-  return wrap_tensor_node(TensorNode(std::move(result)));
-}
 
 bool NestedTensor_is_pinned(const Tensor& self) {
   return get_nested_tensor_impl(self)->is_pinned();
@@ -315,6 +221,25 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   auto tmp = get_nested_tensor_structure(self).unbind()[index];
   return wrap_tensor_node(std::move(tmp));
 }
+
+Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
+  int64_t dim_ = 0;
+  if (dim__) {
+    dim_ = *dim__;
+  }
+  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
+  // if dim < nested_dim() the NestedTensor is already nested
+  // up to the given dimension.
+  if (dim >= this->nested_dim()) {
+    TensorNode unbound = _unbind_tensors(this->get_structure());
+    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
+      unbound = _unbind_tensors(unbound);
+    }
+    return wrap_tensor_node(std::move(unbound));
+  }
+  return wrap_tensor_node(std::move(_structure));
+}
+
 
 // TODO: There are unanswered questions
 // around 0-numel NestedTensors as maybe brought about by
@@ -367,11 +292,11 @@ Tensor NestedTensor_slice(
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
-  auto self_data = get_nested_tensor_impl(self);
-  auto src_data = get_nested_tensor_impl(src);
-  TORCH_CHECK(
-      shape_matches(self_data->nested_size(), src_data->nested_size()),
-      "self and source don't match in shape");
+  // auto self_data = get_nested_tensor_impl(self);
+  // auto src_data = get_nested_tensor_impl(src);
+  // TORCH_CHECK(
+  //     shape_matches(self_data->nested_size(), src_data->nested_size()),
+  //     "self and source don't match in shape");
   apply_nested_tensor(
       [](at::Tensor& self, at::Tensor& source) { return self.copy_(source); },
       self,

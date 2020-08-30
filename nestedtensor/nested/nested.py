@@ -26,6 +26,20 @@ def _new_torch_cat(tensors, dim=0, out=None):
     out.copy_(result)
 
 
+def _nn_functional_linear(input, weight, bias=None):
+    # TODO: This is done because autograd/engine.cpp has an is_expandable_to check
+    # that doesn't support NT's extension of the .sizes() function. Therefore
+    # we need to disable the addition of NTs and Ts below autograd, but we still need
+    # it for linear (hence add lives above autograd). Also linear insists on using the
+    # in-place version, for which we don't have an op above autograd, since the custom
+    # function wrapper autograd_map_nested_tensor doesn't suport it.
+    # And that's why we're writing our own version of linear here.
+    output = input.matmul(weight.t())
+    if bias is not None:
+        output = output + bias
+    return output
+
+
 def _wrap_result(result):
     if isinstance(result, list):
         return list(_wrap_result(r) for r in result)
@@ -230,7 +244,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
-        raise NotImplementedError("NestedTensor.to is currently not implemented.")
+        raise NotImplementedError(
+            "NestedTensor.to is currently not implemented.")
         return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
@@ -266,6 +281,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
         # TODO:This was disabled for now to focus on DETR
+        if func is torch.nn.functional.linear:
+            return _wrap_result(_nn_functional_linear(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.interpolate:
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         # Need a specialized implementation to dodge call to view in nll_loss
