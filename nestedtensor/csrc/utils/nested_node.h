@@ -190,6 +190,9 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
             TORCH_CHECK(a.degree() > 0, "Internal assert.");
             return a.children(i);
           });
+      // TODO: Due to the experiences with to_vector and the inversion I'm a bit
+      // wary of apply but I haven't been able to reproduce the  argument
+      // inversion behavior in other contexts.
       c10::guts::apply(
           [&result, &fn](NestedNode<Args>... filtered) {
             result.emplace_back(function(std::forward<F>(fn), filtered...));

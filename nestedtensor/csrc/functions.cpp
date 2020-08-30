@@ -16,14 +16,14 @@ Tensor NestedTensor_embedding(
     bool sparse) {
   if (is_nested_tensor_impl(weight)) {
     // TODO: Needs test coverage
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [&](at::Tensor w, at::Tensor i) {
           return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse);
         },
         weight,
         indices);
   }
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&](at::Tensor i) {
         return at::embedding(
             weight, i, padding_idx, scale_grad_by_freq, sparse);
@@ -113,8 +113,8 @@ Tensor NestedTensor_layer_norm(
     return autograd_map_nested_tensor(
         [normalized_shape, eps](
             const at::Tensor t,
-            c10::optional<Tensor> w,
-            c10::optional<Tensor> b) {
+            Tensor w,
+            Tensor b) {
           return at::layer_norm(t, normalized_shape, w, b, eps, true);
         },
         input,
@@ -174,7 +174,7 @@ Tensor NestedTensor__log_softmax(
     const Tensor& self,
     const int64_t dim_,
     const bool half_to_float) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
 }
 

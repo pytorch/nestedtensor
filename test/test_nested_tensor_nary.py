@@ -114,9 +114,9 @@ def _gen_test_unary(func__, nested_dim, device):
 
 def _gen_test_binary(func):
     def _test_binary(self):
-        a = utils.gen_float_tensor(1, (2, 3))
-        b = utils.gen_float_tensor(2, (2, 3))
-        c = utils.gen_float_tensor(3, (2, 3))
+        a = utils.gen_float_tensor(1, (2, 3)) * 0 + 1
+        b = utils.gen_float_tensor(2, (2, 3)) * 0 + 2
+        c = utils.gen_float_tensor(3, (2, 3)) * 0 + 3
 
         # The constructor is supposed to copy!
         a1 = ntnt([a, b])
@@ -126,6 +126,17 @@ def _gen_test_binary(func):
             a2 = ntnt([b, c])
         a3 = ntnt([getattr(torch, func)(a, b),
                    getattr(torch, func)(b, c)])
+        print(a1.requires_grad)
+        print(a2.requires_grad)
+        res1 = getattr(torch, func)(a1, a2)
+        print('res1.requires_grad')
+        print(res1.requires_grad)
+        res1.sum().backward()
+        self.assertIsNotNone(a1.grad)
+        self.assertIsNotNone(a2.grad)
+        # print(a1.grad)
+        # print(a2.grad)
+        # import sys; sys.exit(1)
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
         a1 = a1.detach()
@@ -198,6 +209,10 @@ def _gen_test_binary(func):
         result.sum().backward()
         if func == "remainder":
             c.detach_()
+        print("DFHJDLF")
+        print("a1: ", a1)
+        print("c: ", c)
+        print("___")
         result = getattr(torch, func)(a1, c)
         result.sum().backward()
         # print(result.requires_grad)

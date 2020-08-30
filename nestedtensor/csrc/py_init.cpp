@@ -272,6 +272,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
   });
+  // m.def("_test", []() {
+  //     std::vector<at:Tensor> ts;
+  //     ts.push_back(torch::rand({1}));
+  //     ts.push_back(torch::rand({2}));
+  //     TensorNode t0_ = TensorNode(ts);
+  //     at::Tensor t0 = wrap_tensor_node(std::move(t0_));
+  //     at::Tensor t1 = torch::tensor({3});
+  //     autograd_map_nested_tensor([](at::Tensor s, at::Tensor o) {
+  //         std::cout << "s: " << s << std::endl;
+  //         std::cout << "o: " << o << std::endl;}, t0, t1);
+
+  //     });
 
   add_functions(m);
 }

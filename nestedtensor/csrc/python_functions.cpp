@@ -33,7 +33,7 @@ at::Tensor cross_entropy(
     options = options.ignore_index(ignore_index.value());
   }
 
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&, options](at::Tensor input_tensor, at::Tensor target_tensor) {
         return F::cross_entropy(
                    input_tensor.unsqueeze(0),

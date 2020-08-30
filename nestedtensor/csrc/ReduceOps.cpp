@@ -39,11 +39,11 @@ Tensor NestedTensor_cumsum(
               std::to_string(dim));                                           \
       newdims.push_back(dim - nested_dim);                                    \
     }                                                                         \
-    return wrap_tensor_node(map_nested_tensor(                                \
+    return autograd_map_nested_tensor(                                        \
         [nested_dim, newdims, keepdims](at::Tensor tensor) {                  \
           return FUNC(tensor, c10::ArrayRef<int64_t>(newdims), keepdims);     \
         },                                                                    \
-        self));                                                               \
+        self);                                                                \
   }
 
 REDUCE_DIM_LIST_FUNC(mean_dim, at::mean, "mean");

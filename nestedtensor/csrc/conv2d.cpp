@@ -37,7 +37,7 @@ std::vector<int64_t> _grad_input_padding(
       ")");
 
   std::vector<int64_t> result_size;
-  for (int64_t d = 0; d < k; d++) {
+  for (size_t d = 0; d < k; d++) {
     int64_t min_size = ((grad_output.size(d + 2) - 1) * stride[d]) -
         (2 * padding[d]) + 1 + (dilation[d] * (kernel_size[d] - 1));
     int64_t max_size = min_size + stride[d] - 1;

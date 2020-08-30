@@ -353,11 +353,11 @@ Tensor NestedTensor_slice(
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
-  auto self_data = get_nested_tensor_impl(self);
-  auto src_data = get_nested_tensor_impl(src);
-  TORCH_CHECK(
-      shape_matches(self_data->nested_size(), src_data->nested_size()),
-      "self and source don't match in shape");
+  // auto self_data = get_nested_tensor_impl(self);
+  // auto src_data = get_nested_tensor_impl(src);
+  // TORCH_CHECK(
+  //     shape_matches(self_data->nested_size(), src_data->nested_size()),
+  //     "self and source don't match in shape");
   apply_nested_tensor(
       [](at::Tensor& self, at::Tensor& source) { return self.copy_(source); },
       self,

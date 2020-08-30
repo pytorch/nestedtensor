@@ -459,9 +459,10 @@ class TestAutogradFunctional(TestCase):
                 eps = 1e-5
                 scale = w * (rv + eps).rsqrt()
                 bias = b - rm * scale
-                return (x * scale + bias)
                 # return (x * scale + bias)
-                # return x + bias
+                # return x
+                # return (x * scale + bias)
+                return x + bias
 
         b0 = FrozenBatchNorm2d(64)  # .cuda()
         random.seed(1010)
