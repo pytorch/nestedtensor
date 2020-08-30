@@ -16,6 +16,7 @@ backbone = torchvision.models.resnet.__dict__['resnet50'](
 return_layers = {'layer4': 'out'}
 MODEL = torchvision.models._utils.IntermediateLayerGetter(
     backbone, return_layers=return_layers).cuda()
+print(MODEL)
 
 
 def gen_t_loop_segmentation():
@@ -32,10 +33,11 @@ def gen_nt_segmentation():
         [torch.rand(3, i, 256) for i in RAND_INTS], device=torch.device('cuda'), dtype=torch.float)
 
     def nt():
-        MODEL(nested_tensor)['out'].sum().backward()
+        MODEL(nested_tensor)['out'].sum()
     return nt
 
 
 if __name__ == "__main__":
-    print(utils.benchmark_fn(gen_t_loop_segmentation()))
+    # print(utils.benchmark_fn(gen_t_loop_segmentation()))
     print(utils.benchmark_fn(gen_nt_segmentation()))
+    print(utils.benchmark_fn(gen_nt_segmentation(), 10.0))

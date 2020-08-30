@@ -19,7 +19,7 @@ def gen_t_loop_mha():
 
     def t_loop():
         for t in tensors:
-            MODEL0(t, t, t, need_weights=False)[0].sum()
+            MODEL0(t, t, t, need_weights=False)[0].sum().backward()
     return t_loop
 
 
@@ -28,7 +28,7 @@ def gen_nt_mha():
         [torch.rand(i, 256) for i in RAND_INTS], device=torch.device('cuda'), dtype=torch.float)
 
     def nt():
-        MODEL1(nt0, nt0, nt0, need_weights=False)[0].sum()
+        MODEL1(nt0, nt0, nt0, need_weights=False)[0].sum().backward()
     return nt
 
 

@@ -150,6 +150,13 @@ struct NestedTensorFunction_conv2d
       IntArrayRef padding,
       IntArrayRef dilation,
       int64_t groups) {
+    TORCH_CHECK(
+        !is_nested_tensor_impl(weight),
+        "weight needs to be a regular tensors.");
+    if (bias) {
+      TORCH_CHECK(
+          !is_nested_tensor_impl(*bias), "bias needs to be a regular tensors.");
+    }
     // The final call to .contiguous is of questionable general value
     // but in the context of DETR we'll make it the default.
     at::Tensor output = map_nested_tensor(
