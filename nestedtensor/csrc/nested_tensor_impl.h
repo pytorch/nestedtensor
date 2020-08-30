@@ -460,6 +460,58 @@ auto tuple_zip(Head&& head, Tail&&... tail) {
 // to get gradients for its weight and bias. If they are regular Tensors
 // they won't be given as inputs and their gradients won't be propagated
 // by this mapper.
+template <typename A>
+inline A apply_require_grad(std::tuple<bool, A>&& tup) {
+  bool rg = std::get<0>(tup);
+  at::Tensor t = std::get<1>(tup);
+  if (is_nested_tensor_impl(t)) {
+    apply_nested_tensor(
+        [](at::Tensor& ti) {
+          TORCH_CHECK(
+              !ti.requires_grad(),
+              "autograd_mapper input's constituents shouldn't require gradients.");
+        },
+        t);
+  }
+  if (rg) {
+    if (is_nested_tensor_impl(t)) {
+      return map_nested_tensor(
+          // 2. Constituents of NestedTensors
+          [](at::Tensor ti) {
+            AutoGradMode autogradmode(true);
+            // TODO: Don't apply this if the corresponding NestedTensor
+            // doesn't require a gradient.
+            // TODO: This fails if the input is not of differentiable
+            // dtype.
+            auto alias = ti.alias();
+            if (torch::autograd::isDifferentiableType(alias.scalar_type())) {
+              alias.requires_grad_();
+            }
+            // 3. Alias to constituents that do requires gradients
+            return alias;
+          },
+          t);
+    }
+    AutoGradMode autogradmode(true);
+    auto alias = t.alias();
+    if (torch::autograd::isDifferentiableType(alias.scalar_type())) {
+      alias.requires_grad_();
+    }
+    return alias;
+  }
+  return t;
+}
+
+template <>
+inline c10::optional<at::Tensor> apply_require_grad(
+    std::tuple<bool, c10::optional<at::Tensor>>&& tup) {
+  if (std::get<1>(tup)) {
+    return apply_require_grad(
+        std::make_tuple(std::get<0>(tup), *std::get<1>(tup)));
+  }
+  return c10::nullopt;
+}
+
 template <typename F, class B, class... Args>
 struct NestedTensorFunction_mapper
     : public torch::autograd::Function<
@@ -472,47 +524,7 @@ struct NestedTensorFunction_mapper
       Args... a) {
     auto autograd_input_tuple_ = c10::guts::tuple_map(
         tuple_zip(input, std::make_tuple(a...)),
-        [](std::tuple<bool, at::Tensor>&& tup) {
-          bool rg = std::get<0>(tup);
-          at::Tensor t = std::get<1>(tup);
-          if (is_nested_tensor_impl(t)) {
-            apply_nested_tensor(
-                [](at::Tensor& ti) {
-                  TORCH_CHECK(
-                      !ti.requires_grad(),
-                      "autograd_mapper input's constituents shouldn't require gradients.");
-                },
-                t);
-          }
-          if (rg) {
-            if (is_nested_tensor_impl(t)) {
-              return map_nested_tensor(
-                  // 2. Constituents of NestedTensors
-                  [](at::Tensor ti) {
-                    AutoGradMode autogradmode(true);
-                    // TODO: Don't apply this if the corresponding NestedTensor
-                    // doesn't require a gradient.
-                    // TODO: This fails if the input is not of differentiable
-                    // dtype.
-                    auto alias = ti.alias();
-                    if (torch::autograd::isDifferentiableType(
-                            alias.scalar_type())) {
-                      alias.requires_grad_();
-                    }
-                    // 3. Alias to constituents that do requires gradients
-                    return alias;
-                  },
-                  t);
-            }
-            AutoGradMode autogradmode(true);
-            auto alias = t.alias();
-            if (torch::autograd::isDifferentiableType(alias.scalar_type())) {
-              alias.requires_grad_();
-            }
-            return alias;
-          }
-          return t;
-        });
+        [](auto&& tup) { return apply_require_grad(std::move(tup)); });
     auto autograd_input_tuple = autograd_input_tuple_;
     std::vector<bool> requires_grad_vector = to_vector(input);
     bool expect_diff_function = true;
@@ -626,11 +638,29 @@ struct NestedTensorFunction_mapper
   }
 };
 
+template <typename A>
+inline bool _get_requires_grad(A a) {
+  return false;
+}
+
+template <>
+inline bool _get_requires_grad(at::Tensor a) {
+  return a.requires_grad();
+}
+
+template <>
+inline bool _get_requires_grad(c10::optional<at::Tensor> a) {
+  if (a) {
+    return (*a).requires_grad();
+  }
+  return false;
+}
+
 template <class F, class... A>
 static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
-  auto b = c10::guts::tuple_map(
-      std::tuple<A...>(a...),
-      [](at::Tensor t) -> bool { return t.requires_grad(); });
+  auto b = c10::guts::tuple_map(std::tuple<A...>(a...), [](auto t) -> bool {
+    return _get_requires_grad(t);
+  });
   return NestedTensorFunction_mapper<F, decltype(b), A...>::apply(
       std::move(fn), b, a...);
 }
