@@ -569,7 +569,7 @@ struct NestedTensorFunction_mapper
     //     "Only one input and at most two outputs supported for now.");
     std::vector<TensorNode> input_nodes;
     for (size_t i = 0; i < saved_data.size() - 1; i++) {
-      if (requires_grad_vector[i] && saved_data[i].defined()) {
+      if (requires_grad_vector[i]) {
         input_nodes.push_back(get_nested_tensor_structure(saved_data[i]));
       }
     }
@@ -586,7 +586,7 @@ struct NestedTensorFunction_mapper
           std::vector<at::Tensor> nt_grad_input(tmp_grad_input.size(), undef);
           size_t index = 0;
           for (size_t i = 0; i < saved_data.size() - 1; i++) {
-            if (requires_grad_vector[i] && saved_data[i].defined()) {
+            if (requires_grad_vector[i]) {
               if (is_nested_tensor_impl(saved_data[i])) {
                 nt_grad_input[index] = tmp_grad_input[index];
               } else {
@@ -609,7 +609,7 @@ struct NestedTensorFunction_mapper
         get_nested_tensor_structure(grad_output_[0])));
     size_t index = 0;
     for (size_t i = 0; i < saved_data.size() - 1; i++) {
-      if (requires_grad_vector[i] && saved_data[i].defined()) {
+      if (requires_grad_vector[i]) {
         if (is_nested_tensor_impl(saved_data[i])) {
           grad_input[2 + i] =
               wrap_tensor_node(std::move(wrapped_grad_input[index]));
@@ -628,9 +628,13 @@ struct NestedTensorFunction_mapper
 
 template <class F, class... A>
 static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
-  auto b = c10::guts::tuple_map(
-      std::tuple<A...>(a...),
-      [](at::Tensor t) -> bool { return t.requires_grad(); });
+  auto b =
+      c10::guts::tuple_map(std::tuple<A...>(a...), [](at::Tensor t) -> bool {
+        if (t.defined()) {
+          return t.requires_grad();
+        }
+        return false;
+      });
   return NestedTensorFunction_mapper<F, decltype(b), A...>::apply(
       std::move(fn), b, a...);
 }
