@@ -51,11 +51,11 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1), padding=(
             4, 2), padding_mode='zeros', dilation=1, groups=1, bias=True))
-        # _test(lambda: torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1), padding=(
-        #     4, 2), padding_mode='zeros', dilation=1, groups=1, bias=False))
-        # _test(lambda: torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1)))
-        # _test(lambda: torch.nn.Conv2d(
-        #     3, 33, kernel_size=(1, 1), stride=(1, 1), bias=False))
+        _test(lambda: torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1), padding=(
+            4, 2), padding_mode='zeros', dilation=1, groups=1, bias=False))
+        _test(lambda: torch.nn.Conv2d(3, 33, kernel_size=3, stride=(2, 1)))
+        _test(lambda: torch.nn.Conv2d(
+            3, 33, kernel_size=(1, 1), stride=(1, 1), bias=False))
 
     def test_nn_linear(self):
         def _test(linear):
