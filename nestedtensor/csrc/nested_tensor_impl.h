@@ -237,7 +237,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
         get_structure());
   }
 
-  at::Tensor to_tensor();
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
     return IntArrayRef(_sizes);
@@ -593,8 +592,15 @@ struct NestedTensorFunction_mapper
           grad_input.push_back(
               wrap_tensor_node(std::move(wrapped_grad_input[index])));
         } else {
-          grad_input.push_back(
-              at::stack(flatten(wrapped_grad_input[index])).sum(0));
+          std::vector<at::Tensor> tmp_grads = flatten(wrapped_grad_input[index]);
+          TORCH_CHECK(tmp_grads.size() > 0, "Expected more than 0 gradients.");
+          at::Tensor result = tmp_grads[0];
+          for (size_t i = 1; i < tmp_grads.size(); i++) {
+            result.add_(tmp_grads[i]);
+          }
+          grad_input.push_back(result);
+          // grad_input.push_back(
+          //     at::stack(flatten(wrapped_grad_input[index])).sum(0));
         }
         index++;
       } else {
