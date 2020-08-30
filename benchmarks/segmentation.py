@@ -33,7 +33,7 @@ def gen_nt_segmentation():
         [torch.rand(3, i, 256) for i in RAND_INTS], device=torch.device('cuda'), dtype=torch.float)
 
     def nt():
-        MODEL(nested_tensor)['out'].sum()
+        MODEL(nested_tensor)['out'].sum().backward()
     return nt
 
 
