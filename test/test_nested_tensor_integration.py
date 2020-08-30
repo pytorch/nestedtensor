@@ -65,13 +65,12 @@ class TestIntegration(TestCase):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):
             torch.manual_seed(seed)
-            t1 = torch.randn(3, 300, 400, requires_grad=True)
-            t2 = torch.randn(3, 300, 400, requires_grad=True)
-            tr1 = torch.randn(300, 400, requires_grad=True)
-            tr2 = torch.randn(300, 400, requires_grad=True)
+            t1 = torch.randn(3, 3, 4, requires_grad=True)
+            t2 = torch.randn(3, 3, 4, requires_grad=True)
+            tr1 = torch.randn(3, 4, requires_grad=True)
+            tr2 = torch.randn(3, 4, requires_grad=True)
 
             model1 = model_factory()
-            print(model1)
             # model1 = torchvision.models.segmentation.__dict__[model_name](
             #     num_classes=num_classes, aux_loss=aux_loss, pretrained=True
             # )
