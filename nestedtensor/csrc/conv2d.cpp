@@ -248,18 +248,23 @@ Tensor NestedTensor_conv2d(
     int64_t groups) {
   // return NestedTensorFunction_conv2d::apply(
   //     input, weight, bias, stride, padding, dilation, groups);
-  at::Tensor undef;
+  if (bias) {
   return autograd_map_nested_tensor(
-      [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor self, at::Tensor bias) {
-        if (bias.defined()) {
-        std::cout << "ID DEFINED" << std::endl;
-          return at::conv2d(input, self, bias, stride, padding, dilation, groups);
-        }
-        return at::conv2d(input, self, c10::nullopt, stride, padding, dilation, groups);
+      [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
+        return at::conv2d(input.unsqueeze(0), weight, bias, stride, padding, dilation, groups).squeeze(0);
+        // return at::conv2d(input, self, c10::nullopt, stride, padding, dilation, groups);
       },
       input,
       weight,
-      bias ? *bias : undef);
+      *bias);
+  }
+  return autograd_map_nested_tensor(
+      [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight) {
+        return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);
+        // return at::conv2d(input, self, c10::nullopt, stride, padding, dilation, groups);
+      },
+      input,
+      weight);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
