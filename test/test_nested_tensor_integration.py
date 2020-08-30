@@ -65,12 +65,13 @@ class TestIntegration(TestCase):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):
             torch.manual_seed(seed)
-            t1 = torch.randn(3, 30, 40, requires_grad=True)
-            t2 = torch.randn(3, 30, 40, requires_grad=True)
-            tr1 = torch.randn(30, 40, requires_grad=True)
-            tr2 = torch.randn(30, 40, requires_grad=True)
+            t1 = torch.randn(3, 300, 400, requires_grad=True)
+            t2 = torch.randn(3, 300, 400, requires_grad=True)
+            tr1 = torch.randn(300, 400, requires_grad=True)
+            tr2 = torch.randn(300, 400, requires_grad=True)
 
             model1 = model_factory()
+            print(model1)
             # model1 = torchvision.models.segmentation.__dict__[model_name](
             #     num_classes=num_classes, aux_loss=aux_loss, pretrained=True
             # )
@@ -142,7 +143,7 @@ class TestIntegration(TestCase):
             self.assertEqual(t1.grad, nt_input.grad[0])
             self.assertEqual(t2.grad, nt_input.grad[1])
 
-        _test(10, lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
+        _test(1010, lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
             num_classes=21, aux_loss="store_true", pretrained=True
         ).eval(), True)
 

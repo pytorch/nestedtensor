@@ -211,6 +211,7 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
 }
 
 Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
+  check_binary_shape(self, other);
   return autograd_map_nested_tensor(
       [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
       self,
@@ -220,7 +221,7 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   check_binary_shape(self, other);
   apply_nested_tensor(
-      [&](at::Tensor& s, at::Tensor o) { s.add_(o, alpha); }, self, other);
+      [&](at::Tensor& s, at::Tensor o) { at::native::add_(s, o, alpha); }, self, other);
   return self;
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <ATen/ATen.h>
+#include <ATen/MemoryOverlap.h>
 #include <c10/util/Metaprogramming.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
@@ -572,39 +573,48 @@ struct NestedTensorFunction_mapper
         input_nodes.push_back(get_nested_tensor_structure(saved_data[i]));
       }
     }
+    at::Tensor undef;
+    // NOTE: First entry needs to return undef for function value input.
+    // NOTE: Second entry corresponds to the requires_grad_vector
+    std::vector<at::Tensor> grad_input(saved_data.size() + 1, undef);
     std::vector<TensorNode> wrapped_grad_input = unzip(map(
-        [](at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
-          return torch::autograd::grad({r}, is, {g});
+        [&grad_input, &saved_data, &requires_grad_vector](
+            at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
+          std::vector<at::Tensor> tmp_grad_input =
+              torch::autograd::grad({r}, is, {g});
+          at::Tensor undef;
+          std::vector<at::Tensor> nt_grad_input(tmp_grad_input.size(), undef);
+          size_t index = 0;
+          for (size_t i = 0; i < saved_data.size() - 1; i++) {
+            if (requires_grad_vector[i]) {
+              if (is_nested_tensor_impl(saved_data[i])) {
+                nt_grad_input[index] = tmp_grad_input[index];
+              } else {
+                if (grad_input[2 + i].defined()) {
+                  grad_input[2 + i].add_(tmp_grad_input[index]);
+                } else {
+                  grad_input[2 + i] = tmp_grad_input[index].contiguous();
+                }
+              }
+              index++;
+            }
+          }
+          TORCH_CHECK(
+              index == tmp_grad_input.size(),
+              "tmp_grad_input wasn't entirely used.");
+          return tmp_grad_input;
         },
         get_nested_tensor_structure(saved_data[saved_data.size() - 1]),
         zip(input_nodes),
         get_nested_tensor_structure(grad_output_[0])));
-    at::Tensor undef;
-    std::vector<at::Tensor> grad_input;
-    // NOTE: First entry needs to return undef for function value input.
-    grad_input.push_back(undef);
-    // NOTE: Second entry corresponds to the requires_grad_vector
-    grad_input.push_back(undef);
     size_t index = 0;
     for (size_t i = 0; i < saved_data.size() - 1; i++) {
       if (requires_grad_vector[i]) {
         if (is_nested_tensor_impl(saved_data[i])) {
-          grad_input.push_back(
-              wrap_tensor_node(std::move(wrapped_grad_input[index])));
-        } else {
-          std::vector<at::Tensor> tmp_grads = flatten(wrapped_grad_input[index]);
-          TORCH_CHECK(tmp_grads.size() > 0, "Expected more than 0 gradients.");
-          at::Tensor result = tmp_grads[0];
-          for (size_t i = 1; i < tmp_grads.size(); i++) {
-            result.add_(tmp_grads[i]);
-          }
-          grad_input.push_back(result);
-          // grad_input.push_back(
-          //     at::stack(flatten(wrapped_grad_input[index])).sum(0));
+          grad_input[2 + i] =
+              wrap_tensor_node(std::move(wrapped_grad_input[index]));
         }
         index++;
-      } else {
-        grad_input.push_back(undef);
       }
     }
     TORCH_CHECK(

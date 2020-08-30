@@ -22,12 +22,7 @@ class Joiner(nn.Sequential):
         out: List[NestedTensor] = []
         pos = []
         for name, x in xs.items():
-            # import torchviz
-            # dot = torchviz.make_dot(x.sum())
-            # dot.format = 'svg'
-            # dot.render('asdf.svg')
             out.append(x)
-            print(self[1](x).dtype)
             pos.append(self[1](x))
 
         return out, pos

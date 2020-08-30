@@ -202,7 +202,7 @@ class TestAutogradFunctional(TestCase):
             b = Bottleneck()
             inputs = ntnt(inputs_)
             b(inputs).sum().backward()
-            print(list((n, p.grad is None) for (n, p) in b.named_parameters()))
+            # print(list((n, p.grad is None) for (n, p) in b.named_parameters()))
 
             b.zero_grad()
             b(inputs_[0].unsqueeze(0)).sum().backward()
@@ -226,7 +226,8 @@ class TestAutogradFunctional(TestCase):
 
             b = FCNHead()
             print(b)
-            list(b.children())[3].eval()  # dropout is stochastic otherwise
+            # print(b)
+            # list(b.children())[3].eval()  # dropout is stochastic otherwise
             b(inputs).sum().backward()
             g0 = list(p.grad for (n, p) in b.named_parameters())
 
@@ -252,7 +253,7 @@ class TestAutogradFunctional(TestCase):
 
             self.assertEqual(inputs_[0].grad, inputs.grad[0])
             self.assertEqual(inputs_[1].grad, inputs.grad[1])
-        _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64))
+        # _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64))
         _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64).eval())
 
     def test_backbone(self):
@@ -265,8 +266,8 @@ class TestAutogradFunctional(TestCase):
             inputs = ntnt(inputs_)
 
             b = FCNHead()
-            print(b)
-            print(b(inputs))
+            # print(b)
+            # print(b(inputs))
             b(inputs)[0][0].sum().backward()
             g0 = list(p.grad for (n, p) in b.named_parameters())
 
@@ -283,11 +284,11 @@ class TestAutogradFunctional(TestCase):
             inputs = ntnt(inputs_)
             b.zero_grad()
             b(inputs)[0][0].sum().backward()
-            for (n, p) in b.named_parameters():
-                if p.grad is None:
-                    print(n)
-                    continue
-                print(n, " is fine")
+            # for (n, p) in b.named_parameters():
+            #     if p.grad is None:
+            #         print(n)
+            #         continue
+            #     print(n, " is fine")
 
             b.zero_grad()
             b(inputs_[0].unsqueeze(0))[0][0].sum().backward()
@@ -471,7 +472,7 @@ class TestAutogradFunctional(TestCase):
         tensors = [torch.rand(64, i, 256, requires_grad=True)
                    for i in RAND_INTS]
         nested_tensor = ntnt(tensors)
-        print(nested_tensor.nested_size())
+        # print(nested_tensor.nested_size())
         s0 = b0(nested_tensor).sum()
         s0.backward()
 
@@ -494,39 +495,45 @@ class TestAutogradFunctional(TestCase):
         t2 = torch.randn(3)
         ts = [[t0, t1], [t2]]
         nt = ntnt(ts)
-        # self.assertRaisesRegex(RuntimeError,
-        #                        "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
+        self.assertRaisesRegex(RuntimeError,
+                               "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
         d = torch.nn.Dropout(0.1)
         t0 = torch.randn(864, 256)
         t1 = torch.randn(360, 256)
-        ts = [t0, t1]
+        ts = [t0, t1, t0, t1]
         nt = ntnt(ts)
         nt2 = ntnt_nograd(ts)
         layer_norm = torch.nn.LayerNorm(256)
-        print(list(layer_norm.named_parameters()))
+        # print(list(layer_norm.named_parameters()))
         # print(nt)
-        print(nt.requires_grad)
-        res = layer_norm(nt)
-        print(res.requires_grad)
+        tt = torch.randn(30, 43, 256, requires_grad=True)
+        # print(nt.requires_grad)
+        # res = layer_norm(nt)
+        res = layer_norm(tt)
+        nt = nt + 3
+        # print(res.requires_grad)
         res = res * 5
         # print(res)
-        print(res.requires_grad)
+        # print(res.requires_grad)
         res.sum().backward()
-        print(list(layer_norm.named_parameters()))
+        res = layer_norm(tt + 2)
+        res.sum().backward()
+        # print(list(layer_norm.named_parameters()))
         # XXX: Need to check weight and bias gradients
-        import sys
-        sys.exit(1)
-        t0 = torch.randn(3, 3)
-        t1 = torch.randn(2, 3)
-        t2 = torch.randn(3, 3)
+        # import sys
+        # sys.exit(1)
+        t0 = torch.randn(3, 256)
+        t1 = torch.randn(2, 256)
+        t2 = torch.randn(3, 256)
         ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
+        result = ntnt(ts)
         map(self.assertEqual, tuple(
             map(lambda x: layer_norm(x), ts[0])), result[0])
         map(self.assertEqual, tuple(
             map(lambda x: layer_norm(x), ts[1])), result[1])
 
+        layer_norm = torch.nn.LayerNorm(3)
         t0 = torch.randn(3, 3, 4)
         t1 = torch.randn(2, 3, 4)
         t2 = torch.randn(3, 3, 4)
@@ -594,8 +601,8 @@ class TestAutogradFunctional(TestCase):
                 # tgt = tgt + self.dropout3(tgt2)
                 tgt = tgt + tgt2
                 tgt = self.norm3(tgt)
-                print('tgt.requires_grad')
-                print(tgt.requires_grad)
+                # print('tgt.requires_grad')
+                # print(tgt.requires_grad)
                 return tgt
 
         d = TransformerDecoderLayer(256, 8)
@@ -614,10 +621,10 @@ class TestAutogradFunctional(TestCase):
                 torch.randn(864, 256),
                 torch.randn(360, 256)]),
         )
-        # a.sum().backward()
-        for (n, p) in d.named_parameters():
-            print(n)
-            print(p is None)
+        a.sum().backward()
+        # for (n, p) in d.named_parameters():
+        #     print(n)
+        #     print(p is None)
 
 
 if __name__ == "__main__":
