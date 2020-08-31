@@ -64,7 +64,13 @@ c10::intrusive_ptr<c10::TensorImpl> NestedTensorImpl::shallow_copy_and_detach(
 
 void NestedTensorImpl::shallow_copy_from(
     const c10::intrusive_ptr<TensorImpl>& impl) {
-  TORCH_CHECK(false, "shallow_copy_from is not implemented.");
+  NestedTensorImpl* nested_impl = dynamic_cast<NestedTensorImpl*>(impl.get());
+  copy_tensor_metadata(
+      /*src_impl=*/nested_impl,
+      /*dest_impl=*/this,
+      /*version_counter=*/version_counter(),
+      /*allow_tensor_metadata_change=*/allow_tensor_metadata_change());
+  nested_impl->_structure = _structure;
 }
 
 std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {

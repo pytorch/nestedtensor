@@ -111,6 +111,9 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     # --- magic methods ---
 
+    def __hash__(self):
+        return hash(self._impl)
+
     def __eq__(self, other):
         if isinstance(other, NestedTensor):
             return _wrap_result(self._impl.__eq__(other._impl))
