@@ -40,7 +40,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
     if (size[i] >= 0) {
       throw std::runtime_error(
           "Cannot reshape explicitly along irregular dimension " +
-          std::to_string(size[i]) + ". Please use -1 as a placeholder.");
+          std::to_string(i) + ". Please use -1 as a placeholder.");
     }
   }
   int64_t nested_dim = self_data->nested_dim();
