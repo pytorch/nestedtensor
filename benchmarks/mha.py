@@ -9,7 +9,7 @@ import random
 random.seed(1010)
 RAND_INTS = [random.randint(10, 30) for _ in range(2000)]
 RAND_INTS = [random.randint(100, 300) for _ in range(20)]
-DEVICE = torch.device('cpu')
+DEVICE = torch.device('cuda')
 
 # (26, None, 256) (26, None, 256) (26, None, 256) torch.Size([256, 256]) torch.Size([256])
 MODEL0 = torch.nn.MultiheadAttention(256, 8, dropout=0.1).to(DEVICE)

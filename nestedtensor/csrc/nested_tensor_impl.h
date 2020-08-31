@@ -556,19 +556,27 @@ struct NestedTensorFunction_mapper
       // doesn't require gradients.
       torch::autograd::variable_list grad_output_) {
     std::vector<at::Tensor> saved_data = ctx->get_saved_variables();
-    std::vector<bool> requires_grad_vector =
+    constexpr int64_t saved_data_size = sizeof...(Args) + 1;
+    TORCH_CHECK(
+        saved_data.size() == saved_data_size,
+        "saved_data not of expected size.");
+    std::vector<bool> requires_grad_vector_ =
         ctx->saved_data["0"].toBoolList().vec();
     TORCH_CHECK(
-        requires_grad_vector.size() == saved_data.size() - 1,
+        requires_grad_vector_.size() == saved_data_size - 1,
         "requires_grad_vector.size() should match number of inputs.");
+    std::array<bool, saved_data_size - 1> requires_grad_vector;
+    for (size_t i = 0; i < saved_data_size - 1; i++) {
+      requires_grad_vector[i] = requires_grad_vector_[i];
+    }
     TORCH_CHECK(
         grad_output_.size() == 1,
         "Only one incoming gradient support for now.");
     // TORCH_CHECK(
-    //     saved_data.size() <= 3,
+    //     saved_data_size <= 3,
     //     "Only one input and at most two outputs supported for now.");
     std::vector<TensorNode> input_nodes;
-    for (size_t i = 0; i < saved_data.size() - 1; i++) {
+    for (size_t i = 0; i < saved_data_size - 1; i++) {
       if (requires_grad_vector[i]) {
         input_nodes.push_back(get_nested_tensor_structure(saved_data[i]));
       }
@@ -576,16 +584,18 @@ struct NestedTensorFunction_mapper
     at::Tensor undef;
     // NOTE: First entry needs to return undef for function value input.
     // NOTE: Second entry corresponds to the requires_grad_vector
-    std::vector<at::Tensor> grad_input(saved_data.size() + 1, undef);
+    std::array<at::Tensor, saved_data_size + 1> grad_input;
+    grad_input.fill(undef);
     std::vector<TensorNode> wrapped_grad_input = unzip(map(
         [&grad_input, &saved_data, &requires_grad_vector](
             at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
           std::vector<at::Tensor> tmp_grad_input =
               torch::autograd::grad({r}, is, {g});
           at::Tensor undef;
-          std::vector<at::Tensor> nt_grad_input; //(tmp_grad_input.size(), undef);
+          std::vector<at::Tensor>
+              nt_grad_input; //(tmp_grad_input.size(), undef);
           size_t index = 0;
-          for (size_t i = 0; i < saved_data.size() - 1; i++) {
+          for (size_t i = 0; i < saved_data_size - 1; i++) {
             if (requires_grad_vector[i]) {
               if (is_nested_tensor_impl(saved_data[i])) {
                 // nt_grad_input[index] = tmp_grad_input[index];
@@ -605,25 +615,25 @@ struct NestedTensorFunction_mapper
               "tmp_grad_input wasn't entirely used.");
           return nt_grad_input;
         },
-        get_nested_tensor_structure(saved_data[saved_data.size() - 1]),
+        get_nested_tensor_structure(saved_data[saved_data_size - 1]),
         zip(input_nodes),
         get_nested_tensor_structure(grad_output_[0])));
     size_t index = 0;
-    for (size_t i = 0; i < saved_data.size() - 1; i++) {
-      if (requires_grad_vector.at(i)) {
-        if (is_nested_tensor_impl(saved_data.at(i))) {
-          grad_input.at(2 + i) =
-              wrap_tensor_node(std::move(wrapped_grad_input.at(index)));
+    for (size_t i = 0; i < saved_data_size - 1; i++) {
+      if (requires_grad_vector[i]) {
+        if (is_nested_tensor_impl(saved_data[i])) {
+          grad_input[2 + i] =
+              wrap_tensor_node(std::move(wrapped_grad_input[index]));
           index++;
         }
       }
     }
     TORCH_CHECK(
-        grad_input.size() == saved_data.size() + 1,
+        grad_input.size() == saved_data_size + 1,
         "grad input should match number of inputs.");
     TORCH_CHECK(
         index == wrapped_grad_input.size(), "Not all grad inputs distributed.");
-    return grad_input;
+    return std::vector<at::Tensor>{grad_input.begin(), grad_input.end()};
   }
 };
 
