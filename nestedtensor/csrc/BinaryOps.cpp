@@ -219,7 +219,7 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  // check_binary_shape(self, other);
+  check_binary_shape(self, other);
   apply_nested_tensor(
       [&](at::Tensor& s, at::Tensor o) { at::native::add_(s, o, alpha); }, self, other);
   return self;
