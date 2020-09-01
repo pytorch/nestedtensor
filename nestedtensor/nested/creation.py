@@ -10,10 +10,6 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
     """
     Arguments match torch.tensor
     """
-    if requires_grad:
-        warnings.warn(
-            "NestedTensor temporarily does not support autograd. Please use an older commit.")
-
     if dtype is None:
         dtype = torch.get_default_dtype()
     if device is None:
@@ -22,9 +18,6 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
-    if requires_grad:
-        warnings.warn(
-            "NestedTensor temporarily does not support autograd. Please use an older commit.")
     # TODO: Needs tests to check failure cases
     if not isinstance(data, nested.NestedTensor):
         data = nested_tensor(data, dtype, device, requires_grad, pin_memory)
