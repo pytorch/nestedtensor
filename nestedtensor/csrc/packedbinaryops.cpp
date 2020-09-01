@@ -17,7 +17,7 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
 template <Tensor (*func)(const Tensor&, Scalar)>
 Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
   return autograd_map_nested_tensor(
-      [](Tensor self, Scalar other) { return func(self, other); }, self, other);
+      [&other](Tensor self) { return func(self, other); }, self);
 }
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
