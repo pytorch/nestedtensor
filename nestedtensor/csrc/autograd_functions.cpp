@@ -8,27 +8,6 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-Tensor NestedTensor_max_pool2d(
-    const Tensor& self,
-    IntArrayRef kernel_size,
-    IntArrayRef stride,
-    IntArrayRef padding,
-    IntArrayRef dilation,
-    bool ceil_mode) {
-  return autograd_map_nested_tensor(
-      [&](at::Tensor t) {
-        return at::max_pool2d(
-                   t.unsqueeze(0),
-                   kernel_size,
-                   stride,
-                   padding,
-                   dilation,
-                   ceil_mode)
-            .squeeze(0);
-      },
-      self);
-}
-
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
   return autograd_map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
@@ -64,7 +43,6 @@ Tensor NestedTensor_clone(
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  nt_impl(m, "max_pool2d", NestedTensor_max_pool2d);
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);
