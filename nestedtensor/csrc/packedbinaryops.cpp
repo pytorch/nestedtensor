@@ -5,13 +5,15 @@ namespace at {
 using namespace torch::nested_tensor;
 
 template <Tensor& (*func)(Tensor&, const Tensor&)>
-Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
-  check_binary_shape(self, other);
+Tensor& NestedTensor_binary_(Tensor& self_, const Tensor& other_) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
   apply_nested_tensor(
       [](Tensor& tensor, const Tensor other) { func(tensor, other); },
       self,
       other);
-  return self;
+  return self_;
 }
 
 template <Tensor (*func)(const Tensor&, Scalar)>
@@ -21,15 +23,19 @@ Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
 }
 
 template <Tensor (*func)(const Tensor&, const Tensor&)>
-Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
-  check_binary_shape(self, other);
+Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
   return autograd_map_nested_tensor(
       [](Tensor s, Tensor o) { return func(s, o); }, self, other);
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
-Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
-  check_binary_shape(self, other);
+Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_, S scalar) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
   return autograd_map_nested_tensor(
       [&scalar](Tensor self, Tensor other) {
         return func(self, other, scalar);
@@ -43,10 +49,12 @@ Tensor& NestedTensor_binary_out(
     Tensor& result,
     const Tensor& self,
     const Tensor& other) {
+  // at::Tensor self;
+  // at::Tensor other;
+  // std::tie(self, other) = _expand_other_as(self_, other_);
   TORCH_CHECK(
       is_nested_tensor_impl(result),
       "NT binary out variant requires NT as result argument.");
-  check_binary_shape(self, other);
   TORCH_CHECK(
       is_nested_tensor_impl(result, self, other),
       "binary_out doesn't support non-NT arguments.")
@@ -60,9 +68,13 @@ Tensor& NestedTensor_binary_out(
   return result;
 }
 
-
-Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
-  check_binary_shape(self, other);
+Tensor NestedTensor_add(
+    const Tensor& self_,
+    const Tensor& other_,
+    Scalar alpha) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
   return autograd_map_nested_tensor(
       [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
       self,
@@ -70,12 +82,15 @@ Tensor NestedTensor_add(const Tensor& self, const Tensor& other, Scalar alpha) {
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  check_binary_shape(self, other);
+  // at::Tensor self;
+  // at::Tensor other;
+  // std::tie(self, other) = _expand_other_as(self_, other_);
   apply_nested_tensor(
-      [&](at::Tensor& s, at::Tensor o) { at::native::add_(s, o, alpha); }, self, other);
+      [&](at::Tensor& s, at::Tensor o) { at::native::add_(s, o, alpha); },
+      self,
+      other);
   return self;
 }
-
 
 #define BINARY_OP(NAME)                                                    \
   nt_impl(m, #NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
@@ -113,4 +128,4 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
   nt_impl(m, "pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
 }
-}
+} // namespace at
