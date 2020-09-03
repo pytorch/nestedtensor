@@ -68,6 +68,59 @@ Tensor& NestedTensor_binary_out(
   return result;
 }
 
+// template <Tensor (*func)(const Tensor&, const Tensor&)>
+// struct NestedTensorFunction_packed_add
+//     : torch::autograd::Function<NestedTensorFunction_packed_add> {
+//   static Tensor forward(
+//       torch::autograd::AutogradContext* ctx,
+//       const Tensor& self,
+//       const Tensor& other) {
+//     ctx->save_for_backward({self, other});
+//     return map_nested_tensor(
+//         [](Tensor s, Tensor o) { return func(s, o); }, self, other);
+//   }
+//   static torch::autograd::variable_list backward(
+//       torch::autograd::AutogradContext* ctx,
+//       // TODO: To prevent double backward (for now) check that grad_output
+//       // doesn't require gradients.
+//       torch::autograd::variable_list grad_output) {
+//     TORCH_CHECK(
+//         grad_output.size() == 1, "Expected grad_output of size 1 for packed binary op.");
+//     auto grad = grad_output[0];
+//     TORCH_CHECK(
+//         !grad.requires_grad(), "addmm does not support double backward.");
+//     auto saved_data = ctx->get_saved_variables();
+//     auto self = saved_data[0];
+//     auto other = saved_data[1];
+//     TORCH_CHECK(self.dim() >= 3, "NT self must be at least 3-dim.");
+//     TORCH_CHECK(is_nested_tensor_impl(self), "self must be NestedTensor");
+//     if (!is_nested_tensor_impl(other)) {
+//       TORCH_CHECK(other.dim() >= 2, "T other must be at least 2-dim.");
+//       // auto grad_other_nt =
+//       //     at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad);
+//       // TODO: Implement sum over nested dimensions
+//       auto grad_other = torch::zeros_like(other);
+//       // apply_nested_tensor(
+//       //     [&grad_other](at::Tensor& t) { grad_other.add_(t);
+//       //     },
+//       //     grad_other_nt);
+//       apply_nested_tensor(
+//           [&grad_other](at::Tensor& s, at::Tensor& g) {
+//             grad_other.add_(
+//                 at::matmul(s.transpose(s.dim() - 2, s.dim() - 1), g));
+//           },
+//           self,
+//           grad);
+//       auto grad_self = at::matmul(grad, other.transpose(0, 1));
+//       return {grad_self, grad_other};
+//     }
+//     TORCH_CHECK(other.dim() >= 3, "NT other must be at least 3-dim.");
+//     return {at::matmul(grad, other.transpose(other.dim() - 2, other.dim() - 1)),
+//             at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad)};
+//   }
+// };
+
+
 Tensor NestedTensor_add(
     const Tensor& self_,
     const Tensor& other_,
