@@ -101,6 +101,8 @@ def run_benchmark(shapes):
     
         # result = MODEL(query, key, value, key_padding_mask=key_mask_bool, need_weights=False) #[0].sum().backward()
         result = MODEL(src, src, src, key_padding_mask=mask, need_weights=False) #[0].sum().backward()
+        mask = ~mask
+        result = result * mask.expand_as(mask)
         print(result[0])
         return None
 
