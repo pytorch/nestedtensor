@@ -10,13 +10,14 @@ import random
 DEVICE = torch.device('cpu')
 
 # MODEL = torch.nn.MultiheadAttention(256, 8, dropout=0.1).to(DEVICE)
-NDIM=4
-BSZ=2
-MODEL = torch.nn.MultiheadAttention(NDIM, 2, dropout=0.5).to(DEVICE).eval()
-print(MODEL.in_proj_weight.data.fill_(1))
-print(MODEL.in_proj_bias.data.fill_(1))
-print(MODEL.out_proj.weight.data.fill_(1))
-print(MODEL.out_proj.bias.data.fill_(1))
+NDIM=128
+BSZ=8
+NHEAD=8
+MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).to(DEVICE).eval()
+# print(MODEL.in_proj_weight.data.fill_(1))
+# print(MODEL.in_proj_bias.data.fill_(1))
+# print(MODEL.out_proj.weight.data.fill_(1))
+# print(MODEL.out_proj.bias.data.fill_(1))
 
 
 class DETRNestedTensor(object):
@@ -78,16 +79,16 @@ def run_benchmark(shapes):
 
     def gen_t_loop_mha(detr_nt_src):
         src, mask = detr_nt_src.decompose()
-        print("____")
-        print(src.size())
-        print(mask.size())
+        # print("____")
+        # print(src.size())
+        # print(mask.size())
         src = src.flatten(2).permute(2, 0, 1)
         mask = mask.flatten(1)
-        print(src.size())
-        print(mask.size())
-        print(src)
-        print(mask)
-        print("____")
+        # print(src.size())
+        # print(mask.size())
+        # print(src)
+        # print(mask)
+        # print("____")
         # query_, query_mask = nestedtensor.nested_tensor(query_list).to_tensor_mask()
         # key_, key_mask = nestedtensor.nested_tensor(key_list).to_tensor_mask()
         # value_, value_mask = nestedtensor.nested_tensor(value_list).to_tensor_mask()
@@ -100,10 +101,22 @@ def run_benchmark(shapes):
         # value = value_.transpose(0, 1)
     
         # result = MODEL(query, key, value, key_padding_mask=key_mask_bool, need_weights=False) #[0].sum().backward()
-        result = MODEL(src, src, src, key_padding_mask=mask, need_weights=False) #[0].sum().backward()
-        mask = ~mask
-        result = result * mask.expand_as(mask)
-        print(result[0])
+        result, _ = MODEL(src, src, src, key_padding_mask=mask, need_weights=False) #[0].sum().backward()
+        mask = (~mask.t().unsqueeze(2)).float()
+        # print("010")
+        # print(result)
+        # print(src)
+        # print(mask)
+        # print("101")
+        # print(result.size())
+        # print(src.size())
+        # print(mask.size())
+        # print("102")
+        result = result * mask
+        print(result.sum())
+        # print(result)
+        # print("103")
+        # print(result.sum())
         return None
 
         # def t_loop():
@@ -114,9 +127,11 @@ def run_benchmark(shapes):
     
     def gen_nt_mha(src):
         src = nestedtensor.nested_tensor([t.flatten(1).permute(1, 0) for t in src], device=DEVICE, dtype=torch.float)
-        print(src.nested_size())
-        print(src)
-        print(MODEL(src, src, src, need_weights=False)[0])
+        # print(src.nested_size())
+        # print(src)
+        result, _ = MODEL(src, src, src, need_weights=False)
+        # print(result)
+        print(result.sum())
         return None
     
         # def nt():
