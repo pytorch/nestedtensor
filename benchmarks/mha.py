@@ -63,7 +63,7 @@ def run_benchmark(bsz, mean_i, mean_j, var, autograd, writer):
         src.append(i*len(s) + s)
 
     detr_nt_src = DETRNestedTensor.from_tensor_list(src)
-    sparsity = detr_nt_src.decompose()[1].float().mean().item()
+    sparsity = int(detr_nt_src.decompose()[1].float().mean().item() * 10) / 10
 
     def gen_t_loop_mha(src):
         detr_nt_src = DETRNestedTensor.from_tensor_list(src)
@@ -93,11 +93,15 @@ def run_benchmark(bsz, mean_i, mean_j, var, autograd, writer):
 
         return nt
 
-    result_t = {**utils.benchmark_fn(gen_t_loop_mha(src), 0.1), "bsz": bsz,
+    result_t = {**utils.benchmark_fn(gen_t_loop_mha(src), 5.0), "bsz": bsz,
                 "sparsity": sparsity, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
+    result_t["numel"] = sum([x.numel() for x in src_])
+    result_t["avg_ns_div_numel"] = result_t["avg_us"] / result_t["numel"] * 1000
     writer.writerow(result_t)
-    result_nt = {**utils.benchmark_fn(gen_nt_mha(src), 0.1),
+    result_nt = {**utils.benchmark_fn(gen_nt_mha(src), 5.0),
                  "bsz": bsz, "sparsity": 0.0, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
+    result_nt["numel"] = sum([x.numel() for x in src_])
+    result_nt["avg_ns_div_numel"] = result_nt["avg_us"] / result_nt["numel"] * 1000
     writer.writerow(result_nt)
 
 
@@ -105,9 +109,10 @@ if __name__ == "__main__":
     random.seed(1011)
     torch.manual_seed(1011)
     writer = csv.DictWriter(sys.stdout, fieldnames=[
-                            "name", "avg_us", "std_us", "runs", "bsz", "sparsity", "autograd", "var", "mean_i", "mean_j"])
+                            "name", "avg_us", "std_us", "runs", "bsz", "sparsity",
+                            "autograd", "var", "mean_i", "mean_j", "numel", "avg_ns_div_numel"])
     writer.writeheader()
-    for var in [float(i) / 10 for i in range(10, 20, 2)]:
+    for var in [float(i) / 10 for i in range(0, 100, 20)]:
         for autograd in [True, False]:
             for batch_size in [2, 4, 8]:
                 run_benchmark(batch_size, 30, 30, var, autograd, writer)
