@@ -43,49 +43,5 @@ class DETRNestedTensor(object):
             raise ValueError('not supported')
         return cls(tensor, mask)
 
-
-# Performance tanks hard for lots of small Tensors as expected
-DEVICE = torch.device('cpu')
-NDIM = 128
-BSZ = 8
-NHEAD = 8
-MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).to(DEVICE).eval()
-
-
-def run_benchmark(low, high):
-    RAND_INTS = [(random.randint(low, high), random.randint(low, high)) for _ in range(BSZ)]
-    src_ = nestedtensor.nested_tensor(
-        [torch.arange(NDIM * i * j).float().reshape(NDIM, i, j) for (i, j) in RAND_INTS], device=DEVICE, dtype=torch.float)
-    src = []
-    for i, s in enumerate(src_):
-        src.append(i*len(s) + s)
-
-    def gen_t_loop_mha(src):
-        detr_nt_src = DETRNestedTensor.from_tensor_list(src)
-        src, mask = detr_nt_src.decompose()
-        src = src.flatten(2).permute(2, 0, 1)
-        mask = mask.flatten(1)
-
-        def t_loop():
-            MODEL(src, src, src, key_padding_mask=mask,
-                  need_weights=False)  # [0].sum().backward()
-
-        return t_loop
-
-    def gen_nt_mha(src):
-        src = nestedtensor.nested_tensor([t.flatten(1).permute(
-            1, 0) for t in src], device=DEVICE, dtype=torch.float)
-
-        def nt():
-            MODEL(src, src, src, need_weights=False)
-
-        return nt
-
-    print(utils.benchmark_fn(gen_t_loop_mha(src)))
-    print(utils.benchmark_fn(gen_nt_mha(src)))
-
-
-if __name__ == "__main__":
-    random.seed(1011)
-    torch.manual_seed(1011)
-    run_benchmark(25, 35)
+    def __repr__(self):
+        return repr(self.tensors)

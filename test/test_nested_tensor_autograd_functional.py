@@ -13,6 +13,7 @@ from torchvision.models._utils import IntermediateLayerGetter
 from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 from position_encoding import PositionEmbeddingSine
 from joiner import Joiner
+from detr_nestedtensor import DETRNestedTensor
 from torch import nn
 
 
@@ -334,6 +335,38 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
         # XXX: This needs a test that actually checks the parameter gradients
 
+    def test_mha_detr(self):
+        NDIM = 128
+        BSZ = 8
+        NHEAD = 8
+        RAND_INTS = [(1, 5), (7, 9)]
+        # NOTE: Slight numerical instabilities due to reordering could cause up to 5e-5
+        # Fixing the numbers here
+        torch.manual_seed(10)
+        MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).eval()
+
+        src_list = nestedtensor.nested_tensor(
+            [torch.randn(NDIM, i, j) for (i, j) in RAND_INTS])
+        detr_nt_src = DETRNestedTensor.from_tensor_list(src_list)
+        src0, mask = detr_nt_src.decompose()
+        src0.requires_grad_()
+        src = src0.flatten(2).permute(2, 0, 1)
+        mask = mask.flatten(1)
+        result, _ = MODEL(src, src, src, key_padding_mask=mask,
+                          need_weights=False)  # [0].sum().backward()
+        mask = (~mask.t().unsqueeze(2)).float()
+        result = result * mask
+        result_sum = result.sum()
+        result_sum.backward()
+        grad_sum = src0.grad.sum()
+
+        src = ntnt([t.flatten(1).permute(
+            1, 0) for t in src_list])
+        result, _ = MODEL(src, src, src, need_weights=False)
+        self.assertEqual(result_sum, result.sum())
+        result.sum().backward()
+        self.assertEqual(src.grad.sum(), grad_sum)
+
     def test_squeeze(self):
         t = torch.randn(2, 3)
         result = ntnt_nograd([t])
@@ -577,11 +610,11 @@ class TestAutogradFunctional(TestCase):
                 return tensor if pos is None else tensor + pos
 
             def forward(self, tgt, memory,
-                # tgt_mask: Optional[Tensor] = None,
-                # memory_mask: Optional[Tensor] = None,
-                # tgt_key_padding_mask: Optional[Tensor] = None,
-                # memory_key_padding_mask: Optional[Tensor] = None,
-                pos = None, query_pos = None):
+                        # tgt_mask: Optional[Tensor] = None,
+                        # memory_mask: Optional[Tensor] = None,
+                        # tgt_key_padding_mask: Optional[Tensor] = None,
+                        # memory_key_padding_mask: Optional[Tensor] = None,
+                        pos=None, query_pos=None):
                 q = k = self.with_pos_embed(tgt, query_pos)
                 tgt2 = self.self_attn(q, k, value=tgt,
                                       need_weights=False)[0]
@@ -614,10 +647,10 @@ class TestAutogradFunctional(TestCase):
             ntnt([
                 torch.randn(864, 256),
                 torch.randn(360, 256)]),
-            pos = ntnt([
+            pos=ntnt([
                 torch.randn(864, 256),
                 torch.randn(360, 256)]),
-            query_pos = ntnt([
+            query_pos=ntnt([
                 torch.randn(864, 256),
                 torch.randn(360, 256)]),
         )
