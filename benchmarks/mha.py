@@ -53,10 +53,11 @@ NHEAD = 8
 MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).to(DEVICE).eval()
 
 
-def run_benchmark(bsz, low, high, autograd, writer):
-    RAND_INTS = [(random.randint(low, high), random.randint(low, high)) for _ in range(bsz)]
+def run_benchmark(bsz, mean_i, mean_j, var, autograd, writer):
+    RAND_INTS = [(int(random.gauss(mean_j, var)), int(
+        random.gauss(mean_i, var))) for _ in range(bsz)]
     src_ = nestedtensor.nested_tensor(
-        [torch.arange(NDIM * i * j).float().reshape(NDIM, i, j) for (i, j) in RAND_INTS], device=DEVICE, dtype=torch.float)
+        [torch.randn(NDIM * i * j).float().reshape(NDIM, i, j) for (i, j) in RAND_INTS], device=DEVICE, dtype=torch.float)
     src = []
     for i, s in enumerate(src_):
         src.append(i*len(s) + s)
@@ -77,7 +78,7 @@ def run_benchmark(bsz, low, high, autograd, writer):
                 MODEL(src, src, src, key_padding_mask=mask,
                       need_weights=False)[0].sum().backward()
             MODEL(src, src, src, key_padding_mask=mask,
-                      need_weights=False)
+                  need_weights=False)
 
         return te
 
@@ -92,18 +93,21 @@ def run_benchmark(bsz, low, high, autograd, writer):
 
         return nt
 
-    result_t = {**utils.benchmark_fn(gen_t_loop_mha(src), 0.1), "bsz": bsz, "sparsity": sparsity, "autograd": autograd}
+    result_t = {**utils.benchmark_fn(gen_t_loop_mha(src), 0.1), "bsz": bsz,
+                "sparsity": sparsity, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
     writer.writerow(result_t)
-    result_nt = {**utils.benchmark_fn(gen_nt_mha(src), 0.1), "bsz": bsz, "sparsity": 0.0, "autograd": autograd}
+    result_nt = {**utils.benchmark_fn(gen_nt_mha(src), 0.1),
+                 "bsz": bsz, "sparsity": 0.0, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
     writer.writerow(result_nt)
 
 
 if __name__ == "__main__":
     random.seed(1011)
     torch.manual_seed(1011)
-    writer = csv.DictWriter(sys.stdout, fieldnames=["name", "avg_us", "std_us", "runs", "bsz", "sparsity", "autograd"])
+    writer = csv.DictWriter(sys.stdout, fieldnames=[
+                            "name", "avg_us", "std_us", "runs", "bsz", "sparsity", "autograd", "var", "mean_i", "mean_j"])
     writer.writeheader()
-    for autograd in [True, False]:
-        for batch_size in [2, 4, 8]:
-            for (i, j) in [(30, 30), (29, 31), (28, 32), (26, 34), (24, 36)]:
-                run_benchmark(batch_size, i, j, autograd, writer)
+    for var in [float(i) / 10 for i in range(10, 20, 2)]:
+        for autograd in [True, False]:
+            for batch_size in [2, 4, 8]:
+                run_benchmark(batch_size, 30, 30, var, autograd, writer)
