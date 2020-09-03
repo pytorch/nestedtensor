@@ -93,13 +93,13 @@ def run_benchmark(bsz, mean_i, mean_j, var, autograd, writer):
 
         return nt
 
-    result_t = {**utils.benchmark_fn(gen_t_loop_mha(src), 5.0), "bsz": bsz,
+    result_t = {**utils.benchmark_fn(gen_t_loop_mha(src), 10.0), "bsz": bsz,
                 "sparsity": sparsity, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
     result_t["numel"] = sum([x.numel() for x in src_])
     result_t["numel_div_avg_us"] = result_t["numel"]  /  result_t["avg_us"]
     result_t["avg_ns_div_numel"] = result_t["avg_us"] / result_t["numel"] * 1000
     writer.writerow(result_t)
-    result_nt = {**utils.benchmark_fn(gen_nt_mha(src), 5.0),
+    result_nt = {**utils.benchmark_fn(gen_nt_mha(src), 10.0),
                  "bsz": bsz, "sparsity": 0.0, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
     result_nt["numel"] = sum([x.numel() for x in src_])
     result_nt["numel_div_avg_us"] = result_nt["numel"]  /  result_nt["avg_us"]
@@ -115,7 +115,7 @@ if __name__ == "__main__":
                             "autograd", "var", "mean_i", "mean_j", "numel", "numel_div_avg_us",
                             "avg_ns_div_numel"])
     writer.writeheader()
-    for var in [float(i) / 10 for i in range(0, 100, 40)]:
+    for var in [float(i) / 10 for i in range(0, 100, 50)]:
         for autograd in [True, False]:
-            for batch_size in [2, 8]:
+            for batch_size in [2, 8, 16]:
                 run_benchmark(batch_size, 30, 30, var, autograd, writer)
