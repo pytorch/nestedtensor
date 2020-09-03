@@ -340,9 +340,6 @@ class TestAutogradFunctional(TestCase):
         BSZ = 8
         NHEAD = 8
         RAND_INTS = [(1, 5), (7, 9)]
-        # NOTE: Slight numerical instabilities due to reordering could cause up to 5e-5
-        # Fixing the numbers here
-        torch.manual_seed(10)
         MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).eval()
 
         src_list = nestedtensor.nested_tensor(
@@ -365,7 +362,8 @@ class TestAutogradFunctional(TestCase):
         result, _ = MODEL(src, src, src, need_weights=False)
         self.assertEqual(result_sum, result.sum())
         result.sum().backward()
-        self.assertEqual(src.grad.sum(), grad_sum)
+        # TODO: The numerical instabilities of summation seem to add up here.
+        self.assertEqual(src.grad.sum(), grad_sum, prec=5e-5)
 
     def test_squeeze(self):
         t = torch.randn(2, 3)
