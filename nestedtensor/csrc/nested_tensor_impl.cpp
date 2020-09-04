@@ -391,16 +391,16 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
-      c10::DispatchKey::PrivateUse1_PreAutograd);
+      c10::DispatchKey::AutogradPrivateUse2);
   op.callBoxed(stack);
 }
 
-TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(_, AutogradPrivateUse2, m) {
   // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
   m.fallback(torch::CppFunction::makeFallthrough());
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "squeeze_", NestedTensor_squeeze_);
   nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
@@ -410,7 +410,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse2, m) {
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "select.int", NestedTensor_select);

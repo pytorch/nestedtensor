@@ -234,7 +234,7 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
 // XXX: We need to disable binary ops below autograd between NT and T, because
 // in the backwards pass autograd/engine.cpp uses .sizes() which
 // doesn't compare between NTs and Ts.
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
   nt_impl(m, "add.Tensor", NestedTensor_add);
   nt_impl(m, "add_.Tensor", NestedTensor_add_);
   BINARY_OP(div)

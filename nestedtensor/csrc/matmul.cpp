@@ -250,7 +250,7 @@ Tensor NestedTensor_addmm(
       other);
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
   nt_impl(m, "addmm", NestedTensor_addmm);
   nt_impl(m, "matmul", NestedTensor_matmul);
   nt_impl(m, "matmul.out", NestedTensor_matmul_out);

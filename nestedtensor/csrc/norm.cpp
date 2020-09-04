@@ -154,7 +154,7 @@ Tensor NestedTensor_batch_norm(
       cudnn_enabled);
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
   nt_impl(m, "batch_norm", NestedTensor_batch_norm);
 }
 
