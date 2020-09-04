@@ -410,7 +410,7 @@ TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
-TORCH_LIBRARY_IMPL(aten, PrivateUse2, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "select.int", NestedTensor_select);
