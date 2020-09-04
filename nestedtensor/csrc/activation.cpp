@@ -47,7 +47,7 @@ Tensor NestedTensor_threshold_backward(
       self);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "gelu", NestedTensor_gelu);
 }
 

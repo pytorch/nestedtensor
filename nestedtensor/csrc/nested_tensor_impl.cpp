@@ -391,16 +391,16 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
-      c10::DispatchKey::AutogradPrivateUse2);
+      c10::DispatchKey::AutogradPrivateUse1);
   op.callBoxed(stack);
 }
 
-TORCH_LIBRARY_IMPL(_, AutogradPrivateUse2, m) {
+TORCH_LIBRARY_IMPL(_, AutogradPrivateUse1, m) {
   // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
   m.fallback(torch::CppFunction::makeFallthrough());
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "squeeze_", NestedTensor_squeeze_);
   nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);

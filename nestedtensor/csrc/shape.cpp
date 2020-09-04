@@ -78,7 +78,7 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
       self);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "reshape", NestedTensor_reshape);
   nt_impl(m, "view", NestedTensor_view);
   nt_impl(m, "transpose.int", NestedTensor_transpose);

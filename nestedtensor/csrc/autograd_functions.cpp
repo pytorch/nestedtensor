@@ -42,7 +42,7 @@ Tensor NestedTensor_clone(
       src);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);

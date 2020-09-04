@@ -142,7 +142,7 @@ Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
   return NestedTensorFunction_sum::apply(self, dtype);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse2, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
