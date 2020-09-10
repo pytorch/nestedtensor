@@ -1,13 +1,16 @@
-#include <creation.h>
-#include <py_utils.h>
+#include <nestedtensor/csrc/creation.h>
+#include <nestedtensor/csrc/nested_tensor_impl.h>
+#include <nestedtensor/csrc/py_utils.h>
+#include <nestedtensor/csrc/utils/nested_node.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
 #include <torch/extension.h>
-#include <utils/nested_node.h>
 
 namespace py = pybind11;
 
 namespace torch {
 namespace nested_tensor {
+
+using namespace torch::jit;
 
 NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
   if (py::isinstance<py::list>(py_obj) || py::isinstance<py::tuple>(py_obj)) {
@@ -22,7 +25,6 @@ NestedNode<py::object> py_to_nested_node(py::object&& py_obj) {
     return NestedNode<py::object>(std::move(py_obj));
   }
 }
-
 
 bool _verify_variables(
     const int64_t dim,
@@ -170,6 +172,15 @@ bool _verify_variables(
 }
 
 NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
+  if (THPVariable_Check(py_obj.ptr())) {
+    at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
+    if (is_nested_tensor_impl(tensor)) {
+      auto tensor_data_structure =
+          get_nested_tensor_impl(tensor)->get_structure();
+      return map(
+          [](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
+    }
+  }
   if (py::isinstance<py::sequence>(py_obj)) {
     std::vector<NestedNode<c10::IValue>> result;
     auto py_seq = py::sequence(py_obj);
@@ -182,7 +193,14 @@ NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
   }
 }
 
-THPNestedTensor as_nested_tensor(py::sequence list) {
+at::Tensor nested_tensor_impl(
+    py::sequence list,
+    py::object dtype_,
+    py::object device_,
+    bool requires_grad,
+    bool pin_memory) {
+  auto dtype = toTypeInferredIValue(dtype_).toScalarType();
+  auto device = toTypeInferredIValue(device_).toDevice();
   NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
   auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
   bool all_same =
@@ -190,14 +208,24 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
   TORCH_CHECK(
       all_same,
       "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
-  TensorNode structure =
-      map([](c10::IValue a) { return a.toTensor(); }, ivalue_structure);
+  TensorNode structure = map(
+      [&device, &dtype](c10::IValue a) {
+        return a.toTensor().clone().detach().to(device, dtype);
+      },
+      ivalue_structure);
   if (auto first = get_first_leaf(structure)) {
     if (!_verify_variables(*first, structure)) {
       _verify_variables(*first, structure, true);
     }
   }
-  return THPNestedTensor(NestedTensor(std::move(structure)));
+  auto result = at::detail::make_tensor<NestedTensorImpl>(std::move(structure)).contiguous();
+  if (requires_grad) {
+    result.requires_grad_();
+  }
+  if (pin_memory) {
+    result.pin_memory();
+  }
+  return result;
 }
 
 } // namespace nested_tensor

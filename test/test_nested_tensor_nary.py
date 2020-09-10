@@ -6,8 +6,15 @@ import torch
 import nestedtensor
 import unittest
 from utils import TestCase
+from utils import get_unary_functions
+from utils import get_binary_functions
+from utils import get_python_binary_arithmetic_operations
 import random
 import utils
+
+
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 
 class DynamicClassBase(TestCase):
@@ -26,8 +33,8 @@ def _gen_test_unary(func__, nested_dim, device):
         if func__ in ['mvlgamma']:
             data = utils.nested_map(lambda x: x.clamp(min=1), data)
 
-        a1 = nestedtensor.nested_tensor(data)
-        a3 = nestedtensor.nested_tensor(data)
+        a1 = nestedtensor.nested_tensor(data, device=device)
+        a3 = nestedtensor.nested_tensor(data, device=device)
         func_ = getattr(torch, func__)
         method_ = getattr(nestedtensor.NestedTensor, func__)
         method_inplace_ = getattr(nestedtensor.NestedTensor, func__ + "_")
@@ -85,7 +92,8 @@ def _gen_test_unary(func__, nested_dim, device):
             method = method_
             method_inplace = method_inplace_
 
-        a2 = nestedtensor.nested_tensor(utils.nested_map(func, data))
+        a2 = nestedtensor.nested_tensor(
+            utils.nested_map(func, data), device=device)
 
         self.assertTrue(a1.nested_dim() == a2.nested_dim())
         self.assertTrue(a2.nested_dim() == a3.nested_dim())
@@ -106,40 +114,160 @@ def _gen_test_unary(func__, nested_dim, device):
 
 def _gen_test_binary(func):
     def _test_binary(self):
-        a = utils.gen_float_tensor(1, (2, 3))
-        b = utils.gen_float_tensor(2, (2, 3))
-        c = utils.gen_float_tensor(3, (2, 3))
+        a = utils.gen_float_tensor(1, (2, 3)) * 0 + 1
+        b = utils.gen_float_tensor(2, (2, 3)) * 0 + 2
+        c = utils.gen_float_tensor(3, (2, 3)) * 0 + 3
+
         # The constructor is supposed to copy!
-        a1 = nestedtensor.nested_tensor([a, b])
-        a2 = nestedtensor.nested_tensor([b, c])
-        a1_l = nestedtensor.as_nested_tensor([a.clone(), b.clone()])
-        a2_l = nestedtensor.as_nested_tensor([b.clone(), c.clone()])
-        a3 = nestedtensor.nested_tensor([getattr(torch, func)(a, b),
-                                  getattr(torch, func)(b, c)])
-        a3_l = nestedtensor.as_nested_tensor(a3)
-        self.assertEqual(a3_l, getattr(torch, func)(a1_l, a2_l))
-        self.assertEqual(a3_l, getattr(torch, func)(a1, a2))
+        a1 = ntnt([a, b])
+        if func == "remainder":
+            a2 = ntnt_nograd([b, c])
+        else:
+            a2 = ntnt([b, c])
+        a3 = ntnt([getattr(torch, func)(a, b),
+                   getattr(torch, func)(b, c)])
+        res1 = getattr(torch, func)(a1, a2)
+        res1.sum().backward()
+        self.assertIsNotNone(a1.grad)
+        if func == "remainder":
+            self.assertIsNone(a2.grad)
+        else:
+            self.assertIsNotNone(a2.grad)
+        self.assertEqual(a3, getattr(torch, func)(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
+        a1 = a1.detach()
+        a3.detach_()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
+
+        # The constructor is supposed to copy!
+        a1 = ntnt([a, b])
+        a2 = c
+        a3 = ntnt([getattr(torch, func)(a, a2),
+                   getattr(torch, func)(b, a2)])
+
+        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        self.assertEqual(a3, getattr(a1, func)(a2))
+
+        # TODO: Add check for broadcasting smaller tensors / tensor constiuents
+
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match or be greater than dimension of other.",
+        #                        lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
+        # if func == "remainder":
+        #     a1.detach_()
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+
+        a1 = a1.detach()
+        a3 = a3.detach()
+        self.assertEqual(a3, getattr(a1, func + "_")(a2))
+        self.assertEqual(a3, a1)
+
+        # The constructor is supposed to copy!
+        a1 = c
+        a2 = ntnt([a, b])
+        a3 = ntnt([getattr(torch, func)(c, a),
+                   getattr(torch, func)(c, b)])
+        if func == "remainder":
+            a2.detach_()
+            a3.detach_()
+        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        # TODO: This depends on https://github.com/pytorch/rfcs/pull/3
+        # RFC-0001: Add method __torch_function__ RFC.
+        # TODO: This causes a segfault likely due https://github.com/pytorch/pytorch/pull/37091
+        self.assertEqual(a3, getattr(a1, func)(a2))
+        # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
+        # TODO: Only sub doesn't adhere to this rule but with irregular behavior
+        if func == "add":
+            self.assertEqual(c + a + b, getattr(a1, func + "_")(a2))
+
+        # test autograd
+        a = utils.gen_float_tensor(1, (2, 3)).requires_grad_()
+        b = utils.gen_float_tensor(2, (2, 3)).requires_grad_()
+        c = utils.gen_float_tensor(3, (2, 3)).requires_grad_()
+
+        a1 = ntnt([a, b])
+        if func == "remainder":
+            a2 = ntnt_nograd([b, c])
+        else:
+            a2 = ntnt([b, c])
+        if func == "remainder":
+            a3 = ntnt([getattr(torch, func)(a, b.detach()),
+                       getattr(torch, func)(b, c.detach())])
+        else:
+            a3 = ntnt([getattr(torch, func)(a, b),
+                       getattr(torch, func)(b, c)])
+        # print(a3.requires_grad)
+        result = getattr(torch, func)(a1, a2)
+        # print(result.requires_grad)
+        result.sum().backward()
+        if func == "remainder":
+            c.detach_()
+        result = getattr(torch, func)(a1, c)
+        result.sum().backward()
+        # print(result.requires_grad)
+        if func == "remainder":
+            a1.detach_()
+        result = getattr(torch, func)(c, a1)
+        # print(result.requires_grad)
+
     return _test_binary
 
 
+def _gen_test_binary_method(func):
+    def _test_binary_method(self):
+        a = utils.gen_float_tensor(1, (2, 3))
+        b = utils.gen_float_tensor(2, (2, 3))
+        c = utils.gen_float_tensor(3, (2, 3))
+
+        # The constructor is supposed to copy!
+        a1 = nestedtensor.nested_tensor([a, b])
+        a2 = nestedtensor.nested_tensor([b, c])
+        a3 = nestedtensor.nested_tensor([getattr(a, "__" + func + "__")(b),
+                                         getattr(b, "__" + func + "__")(c)])
+        self.assertEqual(a3, getattr(a1, "__" + func + "__")(a2))
+
+        # The constructor is supposed to copy!
+        a1 = nestedtensor.nested_tensor([a, b])
+        a2 = c
+        a3 = nestedtensor.nested_tensor([getattr(a, "__" + func + "__")(a2),
+                                         getattr(b, "__" + func + "__")(a2)])
+        self.assertEqual(a3, getattr(a1, "__" + func + "__")(a2))
+
+        a1 = c
+        a2 = nestedtensor.nested_tensor([a, b])
+        a3 = nestedtensor.nested_tensor([getattr(a1, "__" + func + "__")(a),
+                                         getattr(a1, "__" + func + "__")(b)])
+        self.assertEqual(a3, getattr(a2, "__r" + func + "__")(a1))
+    return _test_binary_method
+
+
 TestUnary = type('TestUnary', (DynamicClassBase,), {})
-for func__ in nestedtensor.nested.codegen.extension.get_unary_functions():
+for func__ in get_unary_functions():
     if func__ == 'fill':
         continue
     for nested_dim in range(1, 5):
-        avail_devices = ['cpu']
+        avail_devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            avail_devices += ['cuda']
+            avail_devices += [torch.device('cuda')]
         for device in avail_devices:
             setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
                 func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
+
 TestBinary = type('TestBinary', (DynamicClassBase,), {})
-for func in nestedtensor.nested.codegen.extension.get_binary_functions():
+for func in get_binary_functions():
     setattr(TestBinary, "test_{0}".format(func),
             _gen_test_binary(func))
+
+TestBinaryMethod = type('TestBinaryMethod', (DynamicClassBase,), {})
+for func in get_python_binary_arithmetic_operations():
+    # Not implemented yet
+    if func in ['divmod', 'and', 'lshift', 'matmul', 'mod', 'or', 'rshift', 'xor']:
+        continue
+    setattr(TestBinaryMethod, "test_{0}".format(func),
+            _gen_test_binary_method(func))
 
 if __name__ == "__main__":
     unittest.main()
