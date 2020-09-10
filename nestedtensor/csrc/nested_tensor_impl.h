@@ -116,12 +116,12 @@ inline bool nested_size_matches(A a, B b) {
   if (!shape_matches(nested_size_a, nested_size_b)) {
     return false;
   }
-  auto bools = map(
-      [](c10::List<int64_t> a, c10::List<int64_t> b) {
+  std::vector<bool> bools = flatten(map(
+      [](c10::List<int64_t> a, c10::List<int64_t> b) -> bool {
         if (a.size() != b.size()) {
           return false;
         }
-        for (int64_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
           if (a[i] != b[i]) {
             return false;
           }
@@ -129,8 +129,12 @@ inline bool nested_size_matches(A a, B b) {
         return true;
       },
       nested_size_a,
-      nested_size_b);
-  return all(bools);
+      nested_size_b));
+  bool all = true;
+  for (size_t i = 0; i < bools.size(); i++) {
+    all = all && bools[i];
+  }
+  return all;
 }
 
 template <class A, class B, class... C>
@@ -141,21 +145,6 @@ inline bool nested_size_matches(A a, B b, C... c) {
 template <class... A>
 inline void torch_check_tensor_shape_matches(A... a) {
   TORCH_CHECK(tensor_shape_matches(a...), "NestedTensor shapes don't match.");
-}
-
-template <class A>
-bool is_packed(A tensor) {
-  return get_nested_tensor_structure(tensor).buffer().has_value();
-}
-
-template <class A, class B>
-bool is_packed(A first, B other) {
-  return is_packed(first) && is_packed(other);
-}
-
-template <class A, class B, class... C>
-bool is_packed(A first, B second, C... other) {
-  return is_packed(first, second) && is_packed(other...);
 }
 
 template <class F, class... A>
@@ -270,6 +259,27 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
     return TensorNode(std::move(tensor));
   }
   return get_nested_tensor_impl(tensor)->get_structure();
+}
+
+template <class A>
+static inline bool is_packed(A tensor) {
+  return is_nested_tensor_impl(tensor) &&
+      get_nested_tensor_structure(tensor).buffer().has_value();
+}
+
+template <class A, class B>
+static inline bool is_packed(A first, B other) {
+  return is_packed(first) && is_packed(other);
+}
+
+template <class A, class B, class... C>
+static inline bool is_packed(A first, B second, C... other) {
+  return is_packed(first, second) && is_packed(other...);
+}
+
+static inline at::Tensor get_buffer(at::Tensor tensor) {
+  TORCH_CHECK(is_packed(tensor), "Given Tensor doesn't have buffer.");
+  return *(get_nested_tensor_structure(tensor).buffer());
 }
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);
@@ -648,6 +658,21 @@ static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
       });
   return NestedTensorFunction_mapper<F, decltype(b), A...>::apply(
       std::move(fn), b, a...);
+}
+
+static inline Tensor maybe_multiply(const Tensor& t, const Scalar& s) {
+  bool is_one = false;
+  if (s.isFloatingPoint()) {
+    is_one = s.toDouble() == 1;
+  } else if (s.isIntegral(true)) {
+    is_one = s.toLong() == 1;
+  }
+
+  if (is_one) {
+    return t;
+  } else {
+    return t * s;
+  }
 }
 
 #ifdef TRACEPACKED

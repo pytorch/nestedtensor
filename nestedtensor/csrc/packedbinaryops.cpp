@@ -32,7 +32,10 @@ Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_) {
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
-Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_, S scalar) {
+Tensor NestedTensor_binary(
+    const Tensor& self_,
+    const Tensor& other_,
+    S scalar) {
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
@@ -68,58 +71,34 @@ Tensor& NestedTensor_binary_out(
   return result;
 }
 
-// template <Tensor (*func)(const Tensor&, const Tensor&)>
-// struct NestedTensorFunction_packed_add
-//     : torch::autograd::Function<NestedTensorFunction_packed_add> {
-//   static Tensor forward(
-//       torch::autograd::AutogradContext* ctx,
-//       const Tensor& self,
-//       const Tensor& other) {
-//     ctx->save_for_backward({self, other});
-//     return map_nested_tensor(
-//         [](Tensor s, Tensor o) { return func(s, o); }, self, other);
-//   }
-//   static torch::autograd::variable_list backward(
-//       torch::autograd::AutogradContext* ctx,
-//       // TODO: To prevent double backward (for now) check that grad_output
-//       // doesn't require gradients.
-//       torch::autograd::variable_list grad_output) {
-//     TORCH_CHECK(
-//         grad_output.size() == 1, "Expected grad_output of size 1 for packed binary op.");
-//     auto grad = grad_output[0];
-//     TORCH_CHECK(
-//         !grad.requires_grad(), "addmm does not support double backward.");
-//     auto saved_data = ctx->get_saved_variables();
-//     auto self = saved_data[0];
-//     auto other = saved_data[1];
-//     TORCH_CHECK(self.dim() >= 3, "NT self must be at least 3-dim.");
-//     TORCH_CHECK(is_nested_tensor_impl(self), "self must be NestedTensor");
-//     if (!is_nested_tensor_impl(other)) {
-//       TORCH_CHECK(other.dim() >= 2, "T other must be at least 2-dim.");
-//       // auto grad_other_nt =
-//       //     at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad);
-//       // TODO: Implement sum over nested dimensions
-//       auto grad_other = torch::zeros_like(other);
-//       // apply_nested_tensor(
-//       //     [&grad_other](at::Tensor& t) { grad_other.add_(t);
-//       //     },
-//       //     grad_other_nt);
-//       apply_nested_tensor(
-//           [&grad_other](at::Tensor& s, at::Tensor& g) {
-//             grad_other.add_(
-//                 at::matmul(s.transpose(s.dim() - 2, s.dim() - 1), g));
-//           },
-//           self,
-//           grad);
-//       auto grad_self = at::matmul(grad, other.transpose(0, 1));
-//       return {grad_self, grad_other};
-//     }
-//     TORCH_CHECK(other.dim() >= 3, "NT other must be at least 3-dim.");
-//     return {at::matmul(grad, other.transpose(other.dim() - 2, other.dim() - 1)),
-//             at::matmul(self.transpose(self.dim() - 2, self.dim() - 1), grad)};
-//   }
-// };
-
+struct NestedTensorFunction_packed_add
+    : torch::autograd::Function<NestedTensorFunction_packed_add> {
+  static Tensor forward(
+      torch::autograd::AutogradContext* ctx,
+      const Tensor& self,
+      const Tensor& other,
+      Scalar alpha) {
+    ctx->saved_data["0"] = alpha;
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        at::add(get_buffer(self), get_buffer(other)),
+        get_nested_tensor_impl(self)->nested_size()));
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      // TODO: To prevent double backward (for now) check that grad_output
+      // doesn't require gradients.
+      torch::autograd::variable_list grad_output) {
+    auto alpha = ctx->saved_data["0"].toScalar();
+    TORCH_CHECK(
+        grad_output.size() == 1,
+        "Expected grad_output of size 1 for packed binary op.");
+    auto grad = grad_output[0];
+    TORCH_CHECK(
+        !grad.requires_grad(), "addmm does not support double backward.");
+    at::Tensor undef;
+    return {grad, maybe_multiply(grad, alpha), undef};
+  }
+};
 
 Tensor NestedTensor_add(
     const Tensor& self_,
@@ -128,6 +107,12 @@ Tensor NestedTensor_add(
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
+  if (is_packed(self, other) && nested_size_matches(self, other)) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed add" << std::endl;
+#endif
+    return NestedTensorFunction_packed_add::apply(self, other, alpha);
+  }
   return autograd_map_nested_tensor(
       [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
       self,
