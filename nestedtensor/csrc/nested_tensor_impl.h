@@ -581,7 +581,7 @@ struct NestedTensorFunction_mapper
     }
     TORCH_CHECK(
         grad_output_.size() == 1,
-        "Only one incoming gradient support for now.");
+        "Only one incoming gradient supported for now.");
     // TORCH_CHECK(
     //     saved_data_size <= 3,
     //     "Only one input and at most two outputs supported for now.");
@@ -599,31 +599,32 @@ struct NestedTensorFunction_mapper
     std::vector<TensorNode> wrapped_grad_input = unzip(map(
         [&grad_input, &saved_data, &requires_grad_vector](
             at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
-          std::vector<at::Tensor> tmp_grad_input =
-              torch::autograd::grad({r}, is, {g});
-          at::Tensor undef;
-          std::vector<at::Tensor>
-              nt_grad_input; //(tmp_grad_input.size(), undef);
-          size_t index = 0;
-          for (size_t i = 0; i < saved_data_size - 1; i++) {
-            if (requires_grad_vector[i]) {
-              if (is_nested_tensor_impl(saved_data[i])) {
-                // nt_grad_input[index] = tmp_grad_input[index];
-                nt_grad_input.push_back(tmp_grad_input[index]);
-              } else {
-                if (grad_input[2 + i].defined()) {
-                  grad_input[2 + i].add_(tmp_grad_input[index]);
-                } else {
-                  grad_input[2 + i] = tmp_grad_input[index].contiguous();
-                }
-              }
-              index++;
-            }
-          }
-          TORCH_CHECK(
-              index == tmp_grad_input.size(),
-              "tmp_grad_input wasn't entirely used.");
-          return nt_grad_input;
+          return torch::autograd::grad({r}, is, {g});
+          // std::vector<at::Tensor> tmp_grad_input =
+          //     torch::autograd::grad({r}, is, {g});
+          // at::Tensor undef;
+          // std::vector<at::Tensor>
+          //     nt_grad_input; //(tmp_grad_input.size(), undef);
+          // size_t index = 0;
+          // for (size_t i = 0; i < saved_data_size - 1; i++) {
+          //   if (requires_grad_vector[i]) {
+          //     // if (is_nested_tensor_impl(saved_data[i])) {
+          //     //   // nt_grad_input[index] = tmp_grad_input[index];
+          //     nt_grad_input.push_back(tmp_grad_input[index]);
+          //     // } else {
+          //     //   if (grad_input[2 + i].defined()) {
+          //     //     grad_input[2 + i].add_(tmp_grad_input[index]);
+          //     //   } else {
+          //     //     grad_input[2 + i] = tmp_grad_input[index].contiguous();
+          //     //   }
+          //     // }
+          //     index++;
+          //   }
+          // }
+          // TORCH_CHECK(
+          //     index == tmp_grad_input.size(),
+          //     "tmp_grad_input wasn't entirely used.");
+          // return nt_grad_input;
         },
         get_nested_tensor_structure(saved_data[saved_data_size - 1]),
         zip(input_nodes),
@@ -634,8 +635,38 @@ struct NestedTensorFunction_mapper
         if (is_nested_tensor_impl(saved_data[i])) {
           grad_input[2 + i] =
               wrap_tensor_node(std::move(wrapped_grad_input[index]));
-          index++;
+        } else {
+          std::vector<at::Tensor> flat = flatten(wrapped_grad_input[index]);
+          if (flat.size() == 0) {
+            index++;
+            continue;
+          }
+          at::Tensor tmp_grad = flat[flat.size() - 1].contiguous();
+          flat.pop_back();
+          if (flat.size() % 2 == 1) {
+            tmp_grad.add_(flat[flat.size() - 1]);
+            flat.pop_back();
+          }
+          std::vector<at::Tensor> first_flat;
+          std::vector<at::Tensor> second_flat;
+          for (size_t j = 0; j < flat.size(); j += 2) {
+            first_flat.push_back(flat[j]);
+          }
+          for (size_t j = 1; j < flat.size(); j += 2) {
+            second_flat.push_back(flat[j]);
+          }
+          if (first_flat.size() > 0) {
+            TORCH_CHECK(
+                first_flat.size() == second_flat.size(),
+                "Both first and second list should be of the same size.");
+            _foreach_add_(first_flat, second_flat);
+            for (size_t j = 0; j < first_flat.size(); j++) {
+              tmp_grad.add_(first_flat[j]);
+            }
+          }
+          grad_input[2 + i] = tmp_grad;
         }
+        index++;
       }
     }
     TORCH_CHECK(

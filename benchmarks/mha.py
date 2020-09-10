@@ -115,7 +115,10 @@ if __name__ == "__main__":
                             "autograd", "var", "mean_i", "mean_j", "numel", "numel_div_avg_us",
                             "avg_ns_div_numel"])
     writer.writeheader()
-    for var in [float(i) / 10 for i in range(0, 100, 50)]:
-        for autograd in [True, False]:
-            for batch_size in [2, 8, 16]:
+    # for var in [float(i) / 10 for i in range(0, 100, 50)]:
+    for var in [5]:
+        # for autograd in [True, False]:
+        for autograd in [True]:
+            # for batch_size in [2, 8, 16]:
+            for batch_size in [8]:
                 run_benchmark(batch_size, 30, 30, var, autograd, writer)
