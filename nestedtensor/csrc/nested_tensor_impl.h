@@ -637,34 +637,34 @@ struct NestedTensorFunction_mapper
               wrap_tensor_node(std::move(wrapped_grad_input[index]));
         } else {
           std::vector<at::Tensor> flat = flatten(wrapped_grad_input[index]);
-          if (flat.size() == 0) {
-            index++;
-            continue;
-          }
-          at::Tensor tmp_grad = flat[flat.size() - 1].contiguous();
-          flat.pop_back();
-          if (flat.size() % 2 == 1) {
-            tmp_grad.add_(flat[flat.size() - 1]);
-            flat.pop_back();
-          }
           std::vector<at::Tensor> first_flat;
           std::vector<at::Tensor> second_flat;
-          for (size_t j = 0; j < flat.size(); j += 2) {
-            first_flat.push_back(flat[j]);
-          }
-          for (size_t j = 1; j < flat.size(); j += 2) {
-            second_flat.push_back(flat[j]);
-          }
-          if (first_flat.size() > 0) {
+          while (flat.size() > 1) {
+            first_flat.clear();
+            second_flat.clear();
+            size_t flat_size = flat.size() / 2;
+            for (size_t j = 0; j < flat_size; j++) {
+              first_flat.push_back(flat[0]);
+              flat.pop_back();
+              second_flat.push_back(flat[0]);
+              flat.pop_back();
+            }
             TORCH_CHECK(
                 first_flat.size() == second_flat.size(),
                 "Both first and second list should be of the same size.");
             _foreach_add_(first_flat, second_flat);
-            for (size_t j = 0; j < first_flat.size(); j++) {
-              tmp_grad.add_(first_flat[j]);
+            for (size_t j = 0; j < flat.size(); j++) {
+              first_flat.push_back(flat[j]);
             }
+            flat = first_flat;
           }
-          grad_input[2 + i] = tmp_grad;
+          if (flat.size() > 0) {
+            at::Tensor tmp_grad = flat[0];
+            for (size_t j = 1; j < flat.size(); j++) {
+              tmp_grad.add_(flat[j]);
+            }
+            grad_input[2 + i] = tmp_grad;
+          }
         }
         index++;
       }
