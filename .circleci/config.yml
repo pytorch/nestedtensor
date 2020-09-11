@@ -543,10 +543,10 @@ workflows:
 #              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
 #          name: binary_win_wheel_py3.7_cu102
 #          python_version: '3.7'
-      - binary_win_wheel:
-          cu_version: cpu
-          name: binary_win_wheel_py3.8_cpu
-          python_version: '3.8'
+#      - binary_win_wheel:
+#          cu_version: cpu
+#          name: binary_win_wheel_py3.8_cpu
+#          python_version: '3.8'
 #      - binary_win_wheel:
 #          cu_version: cu92
 #          filters:
