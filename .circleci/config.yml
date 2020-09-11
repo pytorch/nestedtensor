@@ -716,10 +716,10 @@ workflows:
 #              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
 #          name: binary_win_conda_py3.7_cu102
 #          python_version: '3.7'
-      - binary_win_conda:
-          cu_version: cpu
-          name: binary_win_conda_py3.8_cpu
-          python_version: '3.8'
+#       - binary_win_conda:
+#           cu_version: cpu
+#           name: binary_win_conda_py3.8_cpu
+#           python_version: '3.8'
 #      - binary_win_conda:
 #          cu_version: cu92
 #          filters:
@@ -748,18 +748,18 @@ workflows:
 
   unittest:
     jobs:
-      - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.6
-          python_version: '3.6'
-      - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.7
-          python_version: '3.7'
-      - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.8
-          python_version: '3.8'
+#      - unittest_linux_cpu:
+#          cu_version: cpu
+#          name: unittest_linux_cpu_py3.6
+#          python_version: '3.6'
+#      - unittest_linux_cpu:
+#          cu_version: cpu
+#          name: unittest_linux_cpu_py3.7
+#          python_version: '3.7'
+#      - unittest_linux_cpu:
+#          cu_version: cpu
+#          name: unittest_linux_cpu_py3.8
+#          python_version: '3.8'
       - unittest_linux_gpu:
           cu_version: cu101
           filters:
@@ -778,22 +778,22 @@ workflows:
                 - nightly
           name: unittest_linux_gpu_py3.7
           python_version: '3.7'
-      - unittest_linux_gpu:
-          cu_version: cu101
-          name: unittest_linux_gpu_py3.8
-          python_version: '3.8'
-      - unittest_windows_cpu:
-          cu_version: cpu
-          name: unittest_windows_cpu_py3.6
-          python_version: '3.6'
-      - unittest_windows_cpu:
-          cu_version: cpu
-          name: unittest_windows_cpu_py3.7
-          python_version: '3.7'
-      - unittest_windows_cpu:
-          cu_version: cpu
-          name: unittest_windows_cpu_py3.8
-          python_version: '3.8'
+#      - unittest_linux_gpu:
+#          cu_version: cu101
+#          name: unittest_linux_gpu_py3.8
+#          python_version: '3.8'
+#      - unittest_windows_cpu:
+#          cu_version: cpu
+#          name: unittest_windows_cpu_py3.6
+#          python_version: '3.6'
+#      - unittest_windows_cpu:
+#          cu_version: cpu
+#          name: unittest_windows_cpu_py3.7
+#          python_version: '3.7'
+#      - unittest_windows_cpu:
+#          cu_version: cpu
+#          name: unittest_windows_cpu_py3.8
+#          python_version: '3.8'
 #      - unittest_windows_gpu:
 #          cu_version: cu101
 #          filters:
@@ -1297,15 +1297,15 @@ workflows:
 #          requires:
 #            - nightly_binary_win_wheel_py3.7_cu102
 #          subfolder: cu102/
-      - binary_win_wheel:
-          cu_version: cpu
-          filters:
-            branches:
-              only: nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_win_wheel_py3.8_cpu
-          python_version: '3.8'
+#      - binary_win_wheel:
+#          cu_version: cpu
+#          filters:
+#            branches:
+#              only: nightly
+#            tags:
+#              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
+#          name: nightly_binary_win_wheel_py3.8_cpu
+#          python_version: '3.8'
       - binary_wheel_upload:
           context: org-member
           filters:
