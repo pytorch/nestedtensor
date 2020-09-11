@@ -627,7 +627,7 @@ struct NestedTensorFunction_mapper
             TORCH_CHECK(
                 first_flat.size() == second_flat.size(),
                 "Both first and second list should be of the same size.");
-            _foreach_add_(first_flat, second_flat);
+            first_flat = _foreach_add(first_flat, second_flat);
             for (size_t j = 0; j < flat.size(); j++) {
               first_flat.push_back(flat[j]);
             }
