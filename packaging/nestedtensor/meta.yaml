@@ -41,8 +41,6 @@ build:
 test:
   imports:
     - nestedtensor
-    - nestedtensor.datasets
-    - nestedtensor.transforms
   source_files:
     - test
   requires:
