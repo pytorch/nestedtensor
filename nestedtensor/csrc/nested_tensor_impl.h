@@ -600,31 +600,6 @@ struct NestedTensorFunction_mapper
         [&grad_input, &saved_data, &requires_grad_vector](
             at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
           return torch::autograd::grad({r}, is, {g});
-          // std::vector<at::Tensor> tmp_grad_input =
-          //     torch::autograd::grad({r}, is, {g});
-          // at::Tensor undef;
-          // std::vector<at::Tensor>
-          //     nt_grad_input; //(tmp_grad_input.size(), undef);
-          // size_t index = 0;
-          // for (size_t i = 0; i < saved_data_size - 1; i++) {
-          //   if (requires_grad_vector[i]) {
-          //     // if (is_nested_tensor_impl(saved_data[i])) {
-          //     //   // nt_grad_input[index] = tmp_grad_input[index];
-          //     nt_grad_input.push_back(tmp_grad_input[index]);
-          //     // } else {
-          //     //   if (grad_input[2 + i].defined()) {
-          //     //     grad_input[2 + i].add_(tmp_grad_input[index]);
-          //     //   } else {
-          //     //     grad_input[2 + i] = tmp_grad_input[index].contiguous();
-          //     //   }
-          //     // }
-          //     index++;
-          //   }
-          // }
-          // TORCH_CHECK(
-          //     index == tmp_grad_input.size(),
-          //     "tmp_grad_input wasn't entirely used.");
-          // return nt_grad_input;
         },
         get_nested_tensor_structure(saved_data[saved_data_size - 1]),
         zip(input_nodes),
