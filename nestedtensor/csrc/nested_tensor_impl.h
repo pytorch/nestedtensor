@@ -9,7 +9,7 @@
 #include <torch/library.h>
 
 // #define TRACEPACKED 1
-// #define USEPACKED 1
+#define USEPACKED 1
 
 namespace torch {
 namespace nested_tensor {
@@ -634,7 +634,7 @@ struct NestedTensorFunction_mapper
             flat = first_flat;
           }
           if (flat.size() > 0) {
-            at::Tensor tmp_grad = flat[0];
+            at::Tensor tmp_grad = flat[0].contiguous();
             for (size_t j = 1; j < flat.size(); j++) {
               tmp_grad.add_(flat[j]);
             }
@@ -677,7 +677,7 @@ static inline Tensor maybe_multiply(const Tensor& t, const Scalar& s) {
   if (is_one) {
     return t;
   } else {
-    return t * s;
+    return at::mul(t, s);
   }
 }
 

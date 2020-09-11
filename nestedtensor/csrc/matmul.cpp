@@ -153,7 +153,7 @@ at::Tensor mm_mat1_backward(
     at::Tensor grad,
     at::Tensor other,
     c10::Scalar alpha) {
-  return at::mul(at::matmul(grad, other.transpose(0, 1)), alpha);
+  return maybe_multiply(at::matmul(grad, other.transpose(0, 1)), alpha);
 }
 
 // TODO: Technically this has the wrong semantics and shouldn't accept NTs of
