@@ -16,7 +16,7 @@ retry () {
 
 # Parse arguments and determmine version
 ###########################################################
-if [[ -n "$DESIRED_CUDA" && -n "$TORCHVISION_BUILD_VERSION" && -n "$TORCHVISION_BUILD_NUMBER" ]]; then
+if [[ -n "$DESIRED_CUDA" && -n "$NESTEDTENSOR_BUILD_VERSION" && -n "$NESTEDTENSOR_BUILD_NUMBER" ]]; then
     desired_cuda="$DESIRED_CUDA"
     build_version="$PYTORCH_BUILD_VERSION"
     build_number="$PYTORCH_BUILD_NUMBER"
@@ -58,8 +58,8 @@ else
     cuver="cu$cuda_nodot"
 fi
 
-export TORCHVISION_BUILD_VERSION=$build_version
-export TORCHVISION_BUILD_NUMBER=$build_number
+export NESTEDTENSOR_BUILD_VERSION=$build_version
+export NESTEDTENSOR_BUILD_NUMBER=$build_number
 
 if [[ -z "$DESIRED_PYTHON" ]]; then
     DESIRED_PYTHON=('3.5' '3.6' '3.7')
@@ -72,13 +72,13 @@ if [[ -z "$WIN_PACKAGE_WORK_DIR" ]]; then
 fi
 
 mkdir -p "$WIN_PACKAGE_WORK_DIR" || true
-vision_rootdir="$(realpath ${WIN_PACKAGE_WORK_DIR})/nestedtensor-src"
+nestedtensor_rootdir="$(realpath ${WIN_PACKAGE_WORK_DIR})/nestedtensor-src"
 git config --system core.longpaths true
 
-if [[ ! -d "$vision_rootdir" ]]; then
-    rm -rf "$vision_rootdir"
-    git clone "https://github.com/pytorch/vision" "$vision_rootdir"
-    pushd "$vision_rootdir"
+if [[ ! -d "$nestedtensor_rootdir" ]]; then
+    rm -rf "$nestedtensor_rootdir"
+    git clone "https://github.com/pytorch/nestedtensor" "$nestedtensor_rootdir"
+    pushd "$nestedtensor_rootdir"
     git checkout $PYTORCH_BRANCH
     popd
 fi
@@ -100,7 +100,7 @@ ANACONDA_USER=pytorch-nightly
 conda config --set anaconda_upload no
 
 
-export TORCHVISION_PACKAGE_SUFFIX=""
+export NESTEDTENSOR_PACKAGE_SUFFIX=""
 if [[ "$desired_cuda" == 'cpu' ]]; then
     export CONDA_CUDATOOLKIT_CONSTRAINT=""
     export CONDA_CPUONLY_FEATURE="- cpuonly # [not osx]"
@@ -184,9 +184,9 @@ for py_ver in "${DESIRED_PYTHON[@]}"; do
     echo "Calling conda-build at $(date)"
     if [[ "$desired_cuda" == "9.2" ]]; then
         time CMAKE_ARGS=${CMAKE_ARGS[@]} \
-            BUILD_VERSION="$TORCHVISION_BUILD_VERSION" \
+            BUILD_VERSION="$NESTEDTENSOR_BUILD_VERSION" \
             CU_VERSION="$cuver" \
-            SOURCE_ROOT_DIR="$vision_rootdir" \
+            SOURCE_ROOT_DIR="$nestedtensor_rootdir" \
             conda build -c "$ANACONDA_USER" \
                         -c defaults \
                         -c conda-forge \
@@ -199,9 +199,9 @@ for py_ver in "${DESIRED_PYTHON[@]}"; do
                         ../nestedtensor
     else
         time CMAKE_ARGS=${CMAKE_ARGS[@]} \
-            BUILD_VERSION="$TORCHVISION_BUILD_VERSION" \
+            BUILD_VERSION="$NESTEDTENSOR_BUILD_VERSION" \
             CU_VERSION="$cuver" \
-            SOURCE_ROOT_DIR="$vision_rootdir" \
+            SOURCE_ROOT_DIR="$nestedtensor_rootdir" \
             conda build -c "$ANACONDA_USER" \
                         -c defaults \
                         -c conda-forge \
