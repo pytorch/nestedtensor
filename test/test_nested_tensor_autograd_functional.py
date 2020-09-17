@@ -363,7 +363,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(result_sum, result.sum())
         result.sum().backward()
         # TODO: The numerical instabilities of summation seem to add up here.
-        self.assertEqual(src.grad.sum(), grad_sum, prec=5e-5)
+        self.assertEqual(src.grad.sum(), grad_sum, prec=6e-5)
 
     def test_squeeze(self):
         t = torch.randn(2, 3)
