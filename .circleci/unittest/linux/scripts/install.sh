@@ -27,8 +27,13 @@ printf "Checking out submodules for pytorch build\n"
 git submodule sync
 git submodule update --init --recursive
 conda install -y numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses
-printf "* Installing NT-specific pytorch and nestedtensor\n"
-USE_DISTRIBUTED=OFF BUILD_TEST=OFF BUILD_CAFFE2_OPS=0 USE_NUMPY=ON USE_NINJA=1 ./clean_build.sh
+if [ "${CU_VERSION:-}" == cpu ] ; then
+    printf "* Installing NT-specific pytorch and nestedtensor cpu-only\n"
+    USE_DISTRIBUTED=OFF BUILD_TEST=OFF USE_CUDA=OFF BUILD_CAFFE2_OPS=0 USE_NUMPY=ON USE_NINJA=1 ./clean_build.sh
+else
+    printf "* Installing NT-specific pytorch and nestedtensor with cuda\n"
+    USE_DISTRIBUTED=OFF BUILD_TEST=OFF USE_CUDA=ON BUILD_CAFFE2_OPS=0 USE_NUMPY=ON USE_NINJA=1 ./clean_build.sh
+fi
 
 printf "* Installing torchvision from source for testing\n"
 rm -rf /tmp/vision
