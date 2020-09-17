@@ -22,8 +22,9 @@ else
     version="$(python -c "print('.'.join(\"${CUDA_VERSION}\".split('.')[:2]))")"
     cudatoolkit="cudatoolkit=${version}"
 fi
-printf "Installing PyTorch with %s\n" "${cudatoolkit}"
-conda install -y -c pytorch-nightly pytorch "${cudatoolkit}"
+# torchvision is used for testing only
+printf "Installing PyTorch and torchvision with %s\n" "${cudatoolkit}"
+conda install -y -c pytorch-nightly pytorch torchvision "${cudatoolkit}"
 
 printf "* Installing nestedtensor\n"
-python setup.py develop
+USE_NINJA=1 python setup.py develop
