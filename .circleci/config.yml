@@ -218,11 +218,6 @@ workflows:
     jobs:
 #      - circleci_consistency
       - binary_linux_wheel:
-          cu_version: cpu
-          name: binary_linux_wheel_py3.7_cpu
-          python_version: '3.7'
-          wheel_docker_image: pytorch/manylinux-cuda102
-      - binary_linux_wheel:
           cu_version: cu92
           name: binary_linux_wheel_py3.7_cu92
           python_version: '3.7'
@@ -236,11 +231,6 @@ workflows:
           cu_version: cu102
           name: binary_linux_wheel_py3.7_cu102
           python_version: '3.7'
-          wheel_docker_image: pytorch/manylinux-cuda102
-      - binary_linux_wheel:
-          cu_version: cpu
-          name: binary_linux_wheel_py3.8_cpu
-          python_version: '3.8'
           wheel_docker_image: pytorch/manylinux-cuda102
       - binary_linux_wheel:
           cu_version: cu92
@@ -258,11 +248,6 @@ workflows:
           python_version: '3.8'
           wheel_docker_image: pytorch/manylinux-cuda102
       - binary_linux_conda:
-          cu_version: cpu
-          name: binary_linux_conda_py3.7_cpu
-          python_version: '3.7'
-          wheel_docker_image: pytorch/manylinux-cuda102
-      - binary_linux_conda:
           cu_version: cu92
           name: binary_linux_conda_py3.7_cu92
           python_version: '3.7'
@@ -276,11 +261,6 @@ workflows:
           cu_version: cu102
           name: binary_linux_conda_py3.7_cu102
           python_version: '3.7'
-          wheel_docker_image: pytorch/manylinux-cuda102
-      - binary_linux_conda:
-          cu_version: cpu
-          name: binary_linux_conda_py3.8_cpu
-          python_version: '3.8'
           wheel_docker_image: pytorch/manylinux-cuda102
       - binary_linux_conda:
           cu_version: cu92
@@ -300,14 +280,6 @@ workflows:
 
   unittest:
     jobs:
-      - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.7
-          python_version: '3.7'
-      - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.8
-          python_version: '3.8'
       - unittest_linux_gpu:
           cu_version: cu101
           filters:
@@ -327,16 +299,6 @@ workflows:
 #      - python_lint
 #      - python_type_check
 #      - clang_format
-      - binary_linux_wheel:
-          cu_version: cpu
-          filters:
-            branches:
-              only: nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_wheel_py3.7_cpu
-          python_version: '3.7'
-          wheel_docker_image: pytorch/manylinux-cuda102
       - binary_wheel_upload:
           context: org-member
           filters:
@@ -411,16 +373,6 @@ workflows:
           requires:
             - nightly_binary_linux_wheel_py3.7_cu102
           subfolder: cu102/
-      - binary_linux_wheel:
-          cu_version: cpu
-          filters:
-            branches:
-              only: nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_wheel_py3.8_cpu
-          python_version: '3.8'
-          wheel_docker_image: pytorch/manylinux-cuda102
       - binary_wheel_upload:
           context: org-member
           filters:
@@ -495,16 +447,6 @@ workflows:
           requires:
             - nightly_binary_linux_wheel_py3.8_cu102
           subfolder: cu102/
-      - binary_linux_conda:
-          cu_version: cpu
-          filters:
-            branches:
-              only: nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_conda_py3.7_cpu
-          python_version: '3.7'
-          wheel_docker_image: pytorch/manylinux-cuda102
       - binary_conda_upload:
           context: org-member
           filters:
@@ -575,16 +517,6 @@ workflows:
           name: nightly_binary_linux_conda_py3.7_cu102_upload
           requires:
             - nightly_binary_linux_conda_py3.7_cu102
-      - binary_linux_conda:
-          cu_version: cpu
-          filters:
-            branches:
-              only: nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_conda_py3.8_cpu
-          python_version: '3.8'
-          wheel_docker_image: pytorch/manylinux-cuda102
       - binary_conda_upload:
           context: org-member
           filters:
