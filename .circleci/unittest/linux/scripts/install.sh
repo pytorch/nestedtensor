@@ -27,4 +27,4 @@ printf "Installing PyTorch and torchvision with %s\n" "${cudatoolkit}"
 conda install -y -c pytorch-nightly pytorch torchvision "${cudatoolkit}"
 
 printf "* Installing nestedtensor\n"
-python setup.py develop
+USE_NINJA=1 python setup.py develop
