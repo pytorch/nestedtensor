@@ -14,7 +14,6 @@ requirements:
   host:
     - python
     - setuptools
-    {{ environ.get('CONDA_PYTORCH_BUILD_CONSTRAINT') }}
     {{ environ.get('CONDA_CUDATOOLKIT_CONSTRAINT') }}
     {{ environ.get('CONDA_CPUONLY_FEATURE') }}
 
@@ -24,7 +23,6 @@ requirements:
     - jpeg
     - pillow >=4.1.1
     - numpy >=1.11
-    {{ environ.get('CONDA_PYTORCH_CONSTRAINT') }}
     {{ environ.get('CONDA_CUDATOOLKIT_CONSTRAINT') }}
 
 build:
@@ -52,7 +50,7 @@ test:
 
 
 about:
-  home: https://github.com/pytorch/vision
+  home: https://github.com/pytorch/nestedtensor
   license: BSD
   license_file: LICENSE
-  summary: 'image and video datasets and models for torch deep learning'
+  summary: 'Tools for the concurrent manipulation of variably sized Tensors.'
