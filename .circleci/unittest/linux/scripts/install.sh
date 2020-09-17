@@ -27,6 +27,7 @@ printf "Checking out submodules for pytorch build\n"
 git submodule sync
 git submodule update --init --recursive
 # USE_DISTRIBUTED=OFF BUILD_TEST=OFF BUILD_CAFFE2_OPS=0 USE_FBGEMM=OFF USE_NUMPY=ON USE_QNNPACK=OFF USE_PYTORCH_QNNPACK=OFF USE_CUDA=OFF USE_XNNPACK=OFF USE_NNPACK=OFF DEBUG=1 USE_NINJA=1 ./clean_build.sh
+conda install -y numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses
 printf "* Installing NT-specific pytorch and nestedtensor\n"
 ./clean_build.sh
 
