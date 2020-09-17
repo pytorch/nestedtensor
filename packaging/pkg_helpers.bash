@@ -201,28 +201,6 @@ pip_install() {
   retry pip install --progress-bar off "$@"
 }
 
-# Install torch with pip, respecting PYTORCH_VERSION, and record the installed
-# version into PYTORCH_VERSION, if applicable
-setup_pip_pytorch_version() {
-  if [[ -z "$PYTORCH_VERSION" ]]; then
-    # Install latest prerelease version of torch, per our nightlies, consistent
-    # with the requested cuda version
-    pip_install --pre torch -f "https://download.pytorch.org/whl/nightly/${WHEEL_DIR}torch_nightly.html"
-    if [[ "$CUDA_VERSION" == "cpu" ]]; then
-      # CUDA and CPU are ABI compatible on the CPU-only parts, so strip
-      # in this case
-      export PYTORCH_VERSION="$(pip show torch | grep ^Version: | sed 's/Version:  *//' | sed 's/+.\+//')"
-    else
-      export PYTORCH_VERSION="$(pip show torch | grep ^Version: | sed 's/Version:  *//')"
-    fi
-  else
-    pip_install "torch==$PYTORCH_VERSION$PYTORCH_VERSION_SUFFIX" \
-      -f https://download.pytorch.org/whl/torch_stable.html \
-      -f https://download.pytorch.org/whl/test/torch_test.html \
-      -f https://download.pytorch.org/whl/nightly/torch_nightly.html
-  fi
-}
-
 # Fill PYTORCH_VERSION with the latest conda nightly version, and
 # CONDA_CHANNEL_FLAGS with appropriate flags to retrieve these versions
 #
