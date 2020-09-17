@@ -27,7 +27,7 @@ requirements:
 
 build:
   string: py{{py}}_{{ environ['CU_VERSION'] }}
-  script:>
+  script: >
     pushd third_party/pytorch
     python setup.py develop
     popd
