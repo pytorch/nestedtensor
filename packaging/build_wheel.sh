@@ -7,7 +7,7 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 export BUILD_TYPE=wheel
 setup_env 0.8.0
 setup_wheel_python
-pip_install numpy pyyaml future ninja dataclasses
+pip_install numpy pyyaml future ninja
 git submodule sync
 git submodule update --init --recursive
 if [ "${CU_VERSION:-}" == cpu ] ; then
@@ -40,7 +40,13 @@ else
 fi
 
 if [[ "$OSTYPE" == "msys" ]]; then
+    pushd third_party/pytorch
+        IS_WHEEL=1 "$script_dir/windows/internal/vc_env_helper.bat" python setup.py bdist_wheel
+    popd
     IS_WHEEL=1 "$script_dir/windows/internal/vc_env_helper.bat" python setup.py bdist_wheel
 else
+    pushd third_party/pytorch
+        IS_WHEEL=1 python setup.py bdist_wheel
+    popd
     IS_WHEEL=1 python setup.py bdist_wheel
 fi
