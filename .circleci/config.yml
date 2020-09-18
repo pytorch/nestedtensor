@@ -175,6 +175,7 @@ jobs:
       - store_test_results:
           path: test-results
 
+workflows:
   unittest:
     jobs:
       - unittest_linux_gpu:
