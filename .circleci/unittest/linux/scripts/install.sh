@@ -36,7 +36,6 @@ if [ "${CU_VERSION:-}" == cpu ] ; then
 else
     printf "* Installing NT-specific pytorch and nestedtensor with cuda\n"
     pushd third_party/pytorch
-    python setup.py clean
     USE_DISTRIBUTED=OFF BUILD_TEST=OFF USE_CUDA=ON  BUILD_CAFFE2_OPS=0 USE_NUMPY=ON USE_NINJA=1 python setup.py develop
     popd
     USE_NINJA=1 python setup.py develop
@@ -47,6 +46,5 @@ rm -rf /tmp/vision
 git clone https://github.com/pytorch/vision /tmp/vision
 
 pushd /tmp/vision
-python setup.py clean
 python setup.py develop
 popd
