@@ -16,51 +16,6 @@ commands:
   #             git checkout "merged/$CIRCLE_BRANCH"
   #           fi
 
-  designate_upload_channel:
-    description: "inserts the correct upload channel into ${BASH_ENV}"
-    steps:
-      - run:
-          name: adding UPLOAD_CHANNEL to BASH_ENV
-          command: |
-            our_upload_channel=nightly
-            # On tags upload to test instead
-            if [[ -n "${CIRCLE_TAG}" ]]; then
-              our_upload_channel=test
-            fi
-            echo "export UPLOAD_CHANNEL=${our_upload_channel}" >> ${BASH_ENV}
-
-binary_common: &binary_common
-  parameters:
-    # Edit these defaults to do a release`
-    build_version:
-      description: "version number of release binary; by default, build a nightly"
-      type: string
-      default: ""
-    pytorch_version:
-      description: "PyTorch version to build against; by default, use a nightly"
-      type: string
-      default: ""
-    # Don't edit these
-    python_version:
-      description: "Python version to build against (e.g., 3.7)"
-      type: string
-    cu_version:
-      description: "CUDA version to build against, in CU format (e.g., cpu or cu100)"
-      type: string
-    unicode_abi:
-      description: "Python 2.7 wheel only: whether or not we are cp27mu (default: no)"
-      type: string
-      default: ""
-    wheel_docker_image:
-      description: "Wheel only: what docker image to use"
-      type: string
-      default: "pytorch/manylinux-cuda101"
-  environment:
-    PYTHON_VERSION: << parameters.python_version >>
-    PYTORCH_VERSION: << parameters.pytorch_version >>
-    UNICODE_ABI: << parameters.unicode_abi >>
-    CU_VERSION: << parameters.cu_version >>
-
 jobs:
 
   unittest_linux_gpu:
