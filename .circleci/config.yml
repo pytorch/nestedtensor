@@ -67,7 +67,7 @@ jobs:
     <<: *binary_common
     docker:
       - image: << parameters.wheel_docker_image >>
-    resource_class: 2xlarge+
+    resource_class: gpu.small
     steps:
       - checkout_merge
       - run: packaging/build_wheel.sh
@@ -82,7 +82,7 @@ jobs:
     <<: *binary_common
     docker:
       - image: "pytorch/conda-cuda"
-    resource_class: 2xlarge+
+    resource_class: gpu.small
     steps:
       - checkout_merge
       - run: packaging/build_conda.sh
