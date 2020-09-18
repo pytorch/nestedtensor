@@ -11,7 +11,12 @@ pip_install numpy pyyaml future ninja
 git submodule sync
 git submodule update --init --recursive
 printf "* Installing NT-specific pytorch and nestedtensor with cuda\n"
-USE_DISTRIBUTED=OFF BUILD_TEST=OFF USE_CUDA=ON BUILD_CAFFE2_OPS=0 USE_NUMPY=ON USE_NINJA=1 ./clean_build.sh
+pushd third_party/pytorch
+python setup.py clean
+python setup.py develop
+popd
+python setup.py clean
+python setup.py develop
 
 # Copy binaries to be included in the wheel distribution
 if [[ "$(uname)" == Darwin || "$OSTYPE" == "msys" ]]; then
