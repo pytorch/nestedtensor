@@ -460,13 +460,15 @@ class TestFunctional(TestCase):
                 map(lambda x: fn(x, dim), ts[0])), result[0])
             map(self.assertEqual, tuple(
                 map(lambda x: fn(x, dim), ts[1])), result[1])
+            result.sum().backward()
+            print(nt)
 
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))
 
     def test_softmax_1(self):
         ts = [[], []]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
     def test_softmax_2(self):
@@ -474,7 +476,7 @@ class TestFunctional(TestCase):
         t1 = torch.randn(2)
         t2 = torch.randn(3)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
     def test_softmax_3(self):
@@ -482,13 +484,13 @@ class TestFunctional(TestCase):
         t1 = torch.randn(2, 3, 1)
         t2 = torch.randn(3, 1, 2)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
     def test_softmax_4(self):
         ts = torch.randn(6, 4, 3, 2, 5)
         ts = list(map(lambda x: x.unbind(), ts.unbind()))
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
 
