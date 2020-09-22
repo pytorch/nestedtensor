@@ -9,6 +9,7 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
+#ifdef USE_SUBMODULE
 struct NestedTensorFunction_softmax_list
     : torch::autograd::Function<NestedTensorFunction_softmax_list> {
   static Tensor forward(
@@ -52,6 +53,7 @@ struct NestedTensorFunction_softmax_list
     return {grad_input, undef, undef};
   }
 };
+#endif
 
 Tensor NestedTensor_softmax(
     const Tensor& input,
