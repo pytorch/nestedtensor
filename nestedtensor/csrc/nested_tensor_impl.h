@@ -619,9 +619,9 @@ struct NestedTensorFunction_mapper
             second_flat.clear();
             size_t flat_size = flat.size() / 2;
             for (size_t j = 0; j < flat_size; j++) {
-              first_flat.push_back(flat[0]);
+              first_flat.push_back(flat[flat.size() - 1]);
               flat.pop_back();
-              second_flat.push_back(flat[0]);
+              second_flat.push_back(flat[flat.size() - 1]);
               flat.pop_back();
             }
             TORCH_CHECK(

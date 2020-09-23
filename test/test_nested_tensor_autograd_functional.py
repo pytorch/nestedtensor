@@ -88,6 +88,7 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
+    @unittest.skip("Not implemented")
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
             inputs = [
@@ -96,7 +97,6 @@ class TestAutogradFunctional(TestCase):
             ]
 
             batch_norm = BatchNorm2d()
-            batch_norm.eval()
 
             tensor_res = []
             for i in range(2):
@@ -115,23 +115,37 @@ class TestAutogradFunctional(TestCase):
             map(self.assertEqual, zip(layer_grad0, layer_grad1))
             self.assertEqual(nt.grad[0], inputs[0].grad)
             self.assertEqual(nt.grad[1], inputs[1].grad)
+
+            inputs = torch.randn(2, 3, 50, 60, requires_grad=True)
+            nt = ntnt(inputs.detach().unbind())
+
+            batch_norm = BatchNorm2d()
+            t_res = batch_norm(inputs)
+
+            batch_norm = BatchNorm2d()
+            nt_res = batch_norm(nt)
+            self.assertEqual(nt_res[0], t_res[0])
+            self.assertEqual(nt_res[1], t_res[1])
+
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
                                            momentum=0.1, affine=True, track_running_stats=True))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-        #                                    affine=True, track_running_stats=True).eval())
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-        #                                    momentum=0.1, affine=False, track_running_stats=False))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-        #                                    affine=False, track_running_stats=False).eval())
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-        #                                    momentum=0.1, affine=True, track_running_stats=False))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-        #                                    affine=True, track_running_stats=False).eval())
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-        #                                    momentum=0.1, affine=False, track_running_stats=True))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-        #                                    affine=False, track_running_stats=True).eval())
-        # _test(lambda: torch.nn.BatchNorm2d(3))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=True, track_running_stats=True).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=True, track_running_stats=False))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=True, track_running_stats=False).eval())
+
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=False, track_running_stats=False))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=False, track_running_stats=False).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=False, track_running_stats=True))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=False, track_running_stats=True).eval())
+
+        _test(lambda: torch.nn.BatchNorm2d(3))
 
     def test_nn_relu(self):
         inputs = [
@@ -177,6 +191,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(inputs0.grad.sum(),
                          inputs1.grad.sum() + inputs1.grad.sum())
 
+    @unittest.skip("Not supported")
     def test_resnet_bottleneck(self):
         import torchvision
 
@@ -216,6 +231,7 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64))
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64).eval())
 
+    @unittest.skip("Not supported")
     def test_resnet_classification(self):
         import torchvision
 
