@@ -206,11 +206,24 @@ def _gen_test_binary(func):
         if func == "remainder":
             c.detach_()
 
-        a1 = ntnt([a, b, c])
-        print(a1)
-        print(c)
-        result = getattr(torch, func)(a1, c)
-        result.sum().backward()
+        if func != "remainder":
+            # This is used to exercise the tree reduction in the
+            # gradient calculation.
+            a1 = ntnt([a, b, c])
+            result = getattr(torch, func)(a1, c)
+            result.sum().backward()
+            a_0 = a.clone().detach().requires_grad_()
+            b_0 = b.clone().detach().requires_grad_()
+            c_0 = c.clone().detach().requires_grad_()
+            c_1 = c.clone().detach().requires_grad_()
+            result_a = getattr(torch, func)(a_0, c_1)
+            result_b = getattr(torch, func)(b_0, c_1)
+            result_c = getattr(torch, func)(c_0, c_1)
+            result_a.sum().backward()
+            result_b.sum().backward()
+            result_c.sum().backward()
+            self.assertEqual(c.grad, c_1.grad)
+
         # print(result.requires_grad)
         if func == "remainder":
             a1.detach_()
