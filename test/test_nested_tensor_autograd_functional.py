@@ -88,7 +88,6 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
-    @unittest.skip("Not implemented")
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
             inputs = [
