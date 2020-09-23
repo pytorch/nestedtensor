@@ -191,7 +191,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
   int64_t nested_dim() const {
     return get_structure().height();
   }
-  Tensor to_nested_tensor(c10::optional<int64_t> dim);
   bool is_pinned() const {
     return _first_variable.is_pinned();
   }

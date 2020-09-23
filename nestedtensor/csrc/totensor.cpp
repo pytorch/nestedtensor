@@ -84,7 +84,8 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   if (dim == 0) {
     return NestedTensorFunction_to_tensor::apply(tensor);
   }
-  TORCH_CHECK(false, "Non-zero dimension ", *dim_, " is currently not supported.");
+  TORCH_CHECK(
+      false, "Non-zero dimension ", *dim_, " is currently not supported.");
   // // If dim is bigger than nested_dim the NestedTensor is already
   // // of Tensor for dimensions bigger than the given.
   // if (impl_data->nested_dim() == 1) {
@@ -92,7 +93,8 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   // }
   // // At this point nested_dim is at least 2. That means any unbind
   // // operation of a child must yield NestedTensors.
-  // // If dim is 1 then we'll apply to_tensor(0) to the children and must expect
+  // // If dim is 1 then we'll apply to_tensor(0) to the children and must
+  // expect
   // // Tensors.
   // std::vector<at::Tensor> unbound = at::unbind(tensor, 0);
   // std::vector<TensorNode> result;
@@ -109,10 +111,33 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   // return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-static auto registry = torch::RegisterOperators().op(
-    "nestedtensor::to_tensor",
-    [](Tensor tensor, c10::optional<int64_t> dim) {
-      return NestedTensor_to_tensor(tensor, dim);
-    });
+Tensor NestedTensor_to_nested_tensor(c10::optional<int64_t> dim__) {
+  int64_t dim_ = 0;
+  if (dim__) {
+    dim_ = *dim__;
+  }
+  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
+  // if dim < nested_dim() the NestedTensor is already nested
+  // up to the given dimension.
+  if (dim >= this->nested_dim()) {
+    TensorNode unbound = _unbind_tensors(this->get_structure());
+    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
+      unbound = _unbind_tensors(unbound);
+    }
+    return wrap_tensor_node(std::move(unbound));
+  }
+  return wrap_tensor_node(std::move(_structure));
+}
+
+static auto registry =
+    torch::RegisterOperators()
+        .op("nestedtensor::to_tensor",
+            [](Tensor tensor, c10::optional<int64_t> dim) {
+              return NestedTensor_to_tensor(tensor, dim);
+            })
+        .op("nestedtensor::to_nested_tensor",
+            [](Tensor tensor, c10::optional<int64_t> dim) {
+              return get_nested_tensor_impl(tensor)->to_nested_tensor(dim);
+            });
 
 } // namespace at
