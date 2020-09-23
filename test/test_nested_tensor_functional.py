@@ -87,7 +87,8 @@ class TestFunctional(TestCase):
                 nt, weight, bias, (2, 2), (3, 3), (1, 1), 1).unbind()]
             self.assertEqual(nt_res, tensor_res)
 
-    @unittest.skip("Not fully implemented")
+    # @unittest.skip("Not fully implemented")
+    @unittest.skip("Not supported")
     def test_nn_functional_batch_norm(self):
         inputs = [
             torch.tensor([[[-0.5000]], [[0.5000]]]),
@@ -217,7 +218,7 @@ class TestFunctional(TestCase):
         nt_res = torch.nn.functional.dropout(nt)
         self.assertEqual(ntnt(tensor_res).size(), nt_res.size())
 
-    @ unittest.skip("Not implemented")
+    # @ unittest.skip("Not implemented")
     def test_nn_functional_interpolate(self):
         inputs = [
             torch.randn(3, 200, 300),
@@ -461,7 +462,6 @@ class TestFunctional(TestCase):
             map(self.assertEqual, tuple(
                 map(lambda x: fn(x, dim), ts[1])), result[1])
             result.sum().backward()
-            print(nt)
 
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))

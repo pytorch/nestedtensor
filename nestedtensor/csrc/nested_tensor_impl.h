@@ -612,6 +612,7 @@ struct NestedTensorFunction_mapper
               wrap_tensor_node(std::move(wrapped_grad_input[index]));
         } else {
           std::vector<at::Tensor> flat = flatten(wrapped_grad_input[index]);
+          std::cout << "Flat.size(): " << flat.size() << std::endl;
           std::vector<at::Tensor> first_flat;
           std::vector<at::Tensor> second_flat;
           while (flat.size() > 1) {
@@ -619,8 +620,10 @@ struct NestedTensorFunction_mapper
             second_flat.clear();
             size_t flat_size = flat.size() / 2;
             for (size_t j = 0; j < flat_size; j++) {
+              // first_flat.push_back(flat[flat.size() - 1]);
               first_flat.push_back(flat[0]);
               flat.pop_back();
+              // second_flat.push_back(flat[flat.size() - 1]);
               second_flat.push_back(flat[0]);
               flat.pop_back();
             }

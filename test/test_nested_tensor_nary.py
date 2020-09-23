@@ -205,6 +205,10 @@ def _gen_test_binary(func):
         result.sum().backward()
         if func == "remainder":
             c.detach_()
+
+        a1 = ntnt([a, b, c])
+        print(a1)
+        print(c)
         result = getattr(torch, func)(a1, c)
         result.sum().backward()
         # print(result.requires_grad)
