@@ -8,6 +8,22 @@ import nestedtensor
 from torch._C import _disabled_torch_function_impl
 
 
+def nestedtensor__str__(tensor, depth=0):
+    ws = " " * 4
+    if torch.ops.nestedtensor.is_nested_tensor_impl(tensor):
+        s = "nested_tensor([\n"
+        s = ws * depth + s
+        s += ",\n".join(map(lambda x: nestedtensor__str__(x,
+                                                          depth + 1), tensor.unbind()))
+        s += "\n" + ws * depth
+        s += "])"
+        return s
+    s = str(tensor)
+    s = map(lambda x: ws * depth + x, s.split("\n"))
+    s = "\n".join(s)
+    return s
+
+
 def _new_torch_stack(tensors, dim=0, out=None):
     result = torch.ops.nestedtensor.stack(list(
         t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
@@ -247,15 +263,23 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
-        raise NotImplementedError(
-            "NestedTensor.to is currently not implemented.")
-        return nestedtensor.as_nested_tensor(new_tensors)
+        # print(args)
+        # print(kwargs)
+        # print(torch.int64)
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
+        # help(nestedtensor._C.to)
+        # print(type(torch.int64))
+        return _wrap_result(nestedtensor._C.to(nestedtensor._C.pybindstyle_NestedTensor(self._impl), torch.int64, True))
+        # return _wrap_result(nestedtensor._C.to(self._impl, *impl_args)) #, **impl_kwargs))
+        # raise NotImplementedError(
+        #     "NestedTensor.to is currently not implemented.")
+        # return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
-        return torch.ops.nestedtensor.str(self._impl)
+        return nestedtensor__str__(self._impl.detach())
 
     def __repr__(self):
-        return torch.ops.nestedtensor.str(self._impl)
+        return nestedtensor__str__(self._impl.detach())
 
     # --- impl forward ends ---
 

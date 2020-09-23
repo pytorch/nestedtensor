@@ -1,3 +1,4 @@
+#include <Python.h>
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/python_functions.h>
@@ -177,7 +178,18 @@ static auto registry =
               "nested_tensor",
               [](c10::IValue payload, const std::string& tabs) {
                 std::stringstream ss;
-                ss << payload;
+                at::Tensor t = payload.toTensor();
+                PyObject* py_obj_ptr = THPVariable_Wrap(t);
+                // PyObject* py_obj_str = PyObject_Str(py_obj_ptr);
+                // const char* str = PyString_AsString(py_obj_str);
+                // ss << std::string(str);
+                // std::vector<std::string> tokens = split_str(ss.str(), "\n");
+                // py::handle py_hand = py::handle(py_obj_ptr);
+                // py::object py_obj = py::object(py_hand);
+                py::object py_obj =
+                    py::reinterpret_borrow<py::object>(py_obj_ptr);
+                ss << py_obj.attr("__str__")();
+                // std::string ss = py::str(py_obj);
                 std::vector<std::string> tokens = split_str(ss.str(), "\n");
                 size_t data_lines = tokens.size() - 1;
                 std::string result;
@@ -203,8 +215,27 @@ static auto registry =
 } // namespace nested_tensor
 } // namespace torch
 
+namespace pybindstyle {
+struct NestedTensor {
+  NestedTensor(at::Tensor tensor_) : tensor(tensor_) {}
+
+  at::Tensor tensor;
+};
+} // namespace pybindstyle
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   register_python_nested_node(m);
+  py::class_<pybindstyle::NestedTensor>(m, "pybindstyle_NestedTensor")
+      .def(py::init<at::Tensor>())
+      .def(
+          "__repr__",
+          [](const pybindstyle::NestedTensor& a) {
+            return "<example.pybindstyle::NestedTensor tensord '";
+          })
+      .def("__str__", [](const pybindstyle::NestedTensor& a) {
+        return "<example.pybindstyle::NestedTensor tensord '";
+      });
+
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
@@ -264,18 +295,81 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
   });
-  // m.def("_test", []() {
-  //     std::vector<at:Tensor> ts;
-  //     ts.push_back(torch::rand({1}));
-  //     ts.push_back(torch::rand({2}));
-  //     TensorNode t0_ = TensorNode(ts);
-  //     at::Tensor t0 = wrap_tensor_node(std::move(t0_));
-  //     at::Tensor t1 = torch::tensor({3});
-  //     autograd_map_nested_tensor([](at::Tensor s, at::Tensor o) {
-  //         std::cout << "s: " << s << std::endl;
-  //         std::cout << "o: " << o << std::endl;}, t0, t1);
 
-  //     });
+  //"to(Device device=None, ScalarType dtype=None, bool non_blocking=False, bool
+  // copy=False, *, MemoryFormat? memory_format=None)"
+  m.def(
+      "to",
+      [](pybindstyle::NestedTensor self_,
+         py::object device_,
+         py::object dtype_,
+         bool non_blocking,
+         bool copy) {
+        // c10::optional<bool> copy,
+        // c10::optional<py::object> memory_format) {
+        at::Tensor self = self_.tensor;
+        auto device = torch::jit::toTypeInferredIValue(device_).toDevice();
+        auto dtype = torch::jit::toTypeInferredIValue(dtype_).toScalarType();
+        return autograd_map_nested_tensor(
+            [&](at::Tensor t) {
+              return at::native::to(
+                  t, device, dtype, non_blocking, copy); //, memory_format);
+            },
+            self);
+      },
+      py::arg("self_"),
+      py::arg("dtype_"),
+      py::arg("device_"),
+      py::arg("non_blocking") = false,
+      py::arg("copy") = false);
+  //"to(ScalarType dtype, bool non_blocking=False, bool copy=False, *,
+  // MemoryFormat? memory_format=None)"
+  m.def(
+      "to",
+      [](pybindstyle::NestedTensor self_,
+         py::object dtype_,
+         bool non_blocking,
+         bool copy) {
+        // c10::optional<bool> copy,
+        // c10::optional<py::object> memory_format) {
+        at::Tensor self = self_.tensor;
+        auto dtype = torch::jit::toTypeInferredIValue(dtype_).toScalarType();
+        return autograd_map_nested_tensor(
+            [&](at::Tensor t) {
+              return at::native::to(
+                  t, dtype, non_blocking, copy); //, memory_format);
+            },
+            self);
+      },
+      py::arg("self_"),
+      py::arg("dtype_"),
+      py::arg("non_blocking") = false,
+      py::arg("copy") = false);
+
+  //  m.def(
+  //      "to",
+  //      [](const Tensor& self,
+  //         py::object dtype,
+  //         bool non_blocking,
+  //         bool copy,
+  //         py::object memory_format) { return self; },
+  //      py::arg("dtype") = py::none,
+  //      py::arg("non_blocking") = false,
+  //      py::arg("copy") = false,
+  //      py::arg("memory_format") = py::none);
+  //
+  //  //"to(Tensor tensor, bool non_blocking=False, bool copy=False, *,
+  //  // MemoryFormat? memory_format=None)"
+  //  m.def(
+  //      "to",
+  //      [](const Tensor& self,
+  //         const Tensor& other,
+  //         bool non_blocking,
+  //         bool copy,
+  //         py::object memory_format) { return self; },
+  //      py::arg("non_blocking") = false,
+  //      py::arg("copy") = false,
+  //      py::arg("memory_format") = py::none);
 
   add_functions(m);
 }

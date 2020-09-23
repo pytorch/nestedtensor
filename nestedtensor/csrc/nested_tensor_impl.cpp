@@ -286,7 +286,11 @@ Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
   //     shape_matches(self_data->nested_size(), src_data->nested_size()),
   //     "self and source don't match in shape");
   apply_nested_tensor(
-      [](at::Tensor& self, at::Tensor& source) { return self.copy_(source); },
+      [](at::Tensor& s, at::Tensor& t) {
+        std::cout << "s: " << s << std::endl;
+        std::cout << "t: " << t << std::endl;
+        return s.copy_(t);
+      },
       self,
       src);
   return self;

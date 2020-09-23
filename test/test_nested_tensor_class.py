@@ -125,64 +125,57 @@ class TestNestedTensor(TestCase):
     #     ntimeError, lambda: nestedtensor.nested_tensor([1.0]))
 
     def test_repr_string(self):
-        for constructor in _iter_constructors():
-            a = constructor(
-                [
-                ])
-            expected = "nested_tensor(["\
-                       "\n\n])"
-            self.assertEqual(str(a), expected)
-            self.assertEqual(repr(a), expected)
+        a = ntnt(
+            [
+            ])
+        expected = "nested_tensor(["\
+                   "\n\n])"
+        self.assertEqual(str(a), expected)
+        self.assertEqual(repr(a), expected)
 
-            a = constructor(
-                [
-                    torch.tensor(1),
-                ])
-            expected = "nested_tensor(["\
-                       "\n\ttensor(1)"\
-                       "\n])"
-            # self.assertEqual(str(a), expected)
-            # self.assertEqual(repr(a), expected)
-            str(a)
-            repr(a)
+        a = ntnt(
+            [
+                torch.tensor(1),
+            ])
+        expected = "nested_tensor(["\
+                   "\n    tensor(1.)"\
+                   "\n])"
+        self.assertEqual(str(a), expected)
+        self.assertEqual(repr(a), expected)
 
-            a = constructor(
-                [
-                    torch.tensor([[1, 2]]),
-                    torch.tensor([[4, 5]]),
-                ])
-            expected = "nested_tensor(["\
-                       "\n\ttensor([[1, 2]])"\
-                       ","\
-                       "\n\ttensor([[4, 5]])"\
-                       "\n])"
-            # self.assertEqual(str(a), expected)
-            # self.assertEqual(repr(a), expected)
-            str(a)
-            repr(a)
+        a = ntnt(
+            [
+                torch.tensor([[1, 2]]),
+                torch.tensor([[4, 5]]),
+            ], dtype=torch.long)
+        expected = "nested_tensor(["\
+                   "\n    tensor([[1, 2]])"\
+                   ","\
+                   "\n    tensor([[4, 5]])"\
+                   "\n])"
+        self.assertEqual(str(a), expected)
+        self.assertEqual(repr(a), expected)
 
-            a = constructor(
-                [
-                    [torch.tensor([[1, 2], [2, 3]]), torch.tensor([[3, 4]])],
-                    [torch.tensor([[4, 5]])]
-                ])
-            expected = "nested_tensor(["\
-                       "\n\tnested_tensor(["\
-                       "\n\t\ttensor([[1, 2]"\
-                       ","\
-                       "\n\t\t        [2, 3]])"\
-                       ","\
-                       "\n\t\ttensor([[3, 4]])"\
-                       "\n\t])"\
-                       ","\
-                       "\n\tnested_tensor(["\
-                       "\n\t\ttensor([[4, 5]])"\
-                       "\n\t])"\
-                       "\n])"
-            # self.assertEqual(str(a), expected)
-            # self.assertEqual(repr(a), expected)
-            str(a)
-            repr(a)
+        a = ntnt(
+            [
+                [torch.tensor([[1, 2], [2, 3]]), torch.tensor([[3, 4]])],
+                [torch.tensor([[4, 5]])]
+            ], dtype=torch.long)
+        expected = "nested_tensor(["\
+                   "\n    nested_tensor(["\
+                   "\n        tensor([[1, 2]"\
+                   ","\
+                   "\n                [2, 3]])"\
+                   ","\
+                   "\n        tensor([[3, 4]])"\
+                   "\n    ])"\
+                   ","\
+                   "\n    nested_tensor(["\
+                   "\n        tensor([[4, 5]])"\
+                   "\n    ])"\
+                   "\n])"
+        self.assertEqual(str(a), expected)
+        self.assertEqual(repr(a), expected)
 
     def test_element_size(self):
         for constructor in _iter_constructors():
@@ -587,6 +580,9 @@ class TestNestedTensor(TestCase):
                    torch.randn(3, 8),
                    torch.randn(7, 8)]
         a1 = nestedtensor.nested_tensor(tensors)
+        print(a1)
+        print(a1.to(torch.int64))
+        print(a1.to(torch.device('cuda')).device)
         self.assertRaises(NotImplementedError, lambda: a1.to(torch.int64))
         # for a, b in zip(tensors, a2.unbind()):
         #     self.assertEqual(a.to(torch.int64), b)
