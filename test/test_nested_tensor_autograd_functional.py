@@ -16,6 +16,7 @@ from joiner import Joiner
 from detr_nestedtensor import DETRNestedTensor
 from torch import nn
 
+
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
@@ -87,7 +88,7 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
-    @unittest.skip("Not supported")
+    @unittest.skip("Not implemented")
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
             inputs = [
@@ -115,42 +116,36 @@ class TestAutogradFunctional(TestCase):
             self.assertEqual(nt.grad[0], inputs[0].grad)
             self.assertEqual(nt.grad[1], inputs[1].grad)
 
-            # # inputs = torch.randn(2, 3, 50, 60, requires_grad=True)
-            # # inputs = torch.arange(2).reshape(2, 1, 1, 1).float().requires_grad_()
-            # inputs = torch.arange(4).reshape(2, 1, 2, 1).repeat(1, 1, 1, 2).float().requires_grad_()
-            # # inputs = torch.arange(12).reshape(1, 2, 2, 2).float().requires_grad_()
-            # # inputs = torch.arange(8).reshape(1, 2, 2, 2).float().requires_grad_()
-            # nt = ntnt(inputs.detach().unbind())
+            inputs = torch.randn(2, 3, 50, 60, requires_grad=True)
+            nt = ntnt(inputs.detach().unbind())
 
-            # batch_norm = BatchNorm2d()
-            # print(dir(batch_norm))
-            # print(batch_norm.weight)
-            # print('inputs.requires_grad: ', inputs.requires_grad)
-            # print(batch_norm.training)
-            # print(inputs)
-            # t_res = batch_norm(inputs)
-            # print(t_res)
+            batch_norm = BatchNorm2d()
+            t_res = batch_norm(inputs)
 
-            # batch_norm = BatchNorm2d()
-            # print(batch_norm.training)
-            # print(nt)
-            # nt_res = batch_norm(nt)
-            # print(nt_res)
-            # self.assertEqual(nt_res[0], t_res[0])
-            # self.assertEqual(nt_res[1], t_res[1])
+            batch_norm = BatchNorm2d()
+            nt_res = batch_norm(nt)
+            self.assertEqual(nt_res[0], t_res[0])
+            self.assertEqual(nt_res[1], t_res[1])
 
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=True, track_running_stats=True))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=True, track_running_stats=True).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=True, track_running_stats=False))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=True, track_running_stats=False).eval())
 
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True).eval())
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=False))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=False).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=False, track_running_stats=False))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=False, track_running_stats=False).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+                                           momentum=0.1, affine=False, track_running_stats=True))
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=False, track_running_stats=True).eval())
 
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False).eval())
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True).eval())
-
-        # _test(lambda: torch.nn.BatchNorm2d(3))
+        _test(lambda: torch.nn.BatchNorm2d(3))
 
     def test_nn_relu(self):
         inputs = [

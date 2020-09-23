@@ -87,8 +87,7 @@ class TestFunctional(TestCase):
                 nt, weight, bias, (2, 2), (3, 3), (1, 1), 1).unbind()]
             self.assertEqual(nt_res, tensor_res)
 
-    # @unittest.skip("Not fully implemented")
-    @unittest.skip("Not supported")
+    @unittest.skip("Not implemented")
     def test_nn_functional_batch_norm(self):
         inputs = [
             torch.tensor([[[-0.5000]], [[0.5000]]]),
