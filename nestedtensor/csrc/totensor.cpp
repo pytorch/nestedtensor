@@ -111,22 +111,38 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   // return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-Tensor NestedTensor_to_nested_tensor(c10::optional<int64_t> dim__) {
-  int64_t dim_ = 0;
-  if (dim__) {
-    dim_ = *dim__;
+TensorNode _unbind_tensors(TensorNode structure) {
+  std::vector<TensorNode> result_nodes;
+  if (structure.is_leaf()) {
+    for (at::Tensor tensor : structure.payload().unbind()) {
+      result_nodes.emplace_back(TensorNode(std::move(tensor)));
+    }
+  } else {
+    for (TensorNode child : structure.unbind()) {
+      result_nodes.emplace_back(_unbind_tensors(child));
+    }
   }
-  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
+  return TensorNode(std::move(result_nodes));
+}
+
+Tensor NestedTensor_to_nested_tensor(
+    at::Tensor tensor,
+    c10::optional<int64_t> dim_) {
+  int64_t dim = 0;
+  if (dim_) {
+    dim = at::maybe_wrap_dim(*dim_, tensor.dim());
+  }
+  int64_t nested_dim = get_nested_tensor_impl(tensor)->nested_dim();
   // if dim < nested_dim() the NestedTensor is already nested
   // up to the given dimension.
-  if (dim >= this->nested_dim()) {
-    TensorNode unbound = _unbind_tensors(this->get_structure());
-    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
-      unbound = _unbind_tensors(unbound);
-    }
-    return wrap_tensor_node(std::move(unbound));
+  if (dim < nested_dim) {
+    return tensor;
   }
-  return wrap_tensor_node(std::move(_structure));
+  TensorNode unbound = _unbind_tensors(get_nested_tensor_structure(tensor));
+  for (int64_t i = 0; i < (dim - nested_dim); i++) {
+    unbound = _unbind_tensors(unbound);
+  }
+  return wrap_tensor_node(std::move(unbound));
 }
 
 static auto registry =
@@ -137,7 +153,7 @@ static auto registry =
             })
         .op("nestedtensor::to_nested_tensor",
             [](Tensor tensor, c10::optional<int64_t> dim) {
-              return get_nested_tensor_impl(tensor)->to_nested_tensor(dim);
+              return NestedTensor_to_nested_tensor(tensor, dim);
             });
 
 } // namespace at

@@ -97,20 +97,6 @@ SizeNode infer_nested_size(const TensorNode& _structure) {
       _structure);
 }
 
-TensorNode _unbind_tensors(TensorNode structure) {
-  std::vector<TensorNode> result_nodes;
-  if (structure.is_leaf()) {
-    for (at::Tensor tensor : structure.payload().unbind()) {
-      result_nodes.emplace_back(TensorNode(std::move(tensor)));
-    }
-  } else {
-    for (TensorNode child : structure.unbind()) {
-      result_nodes.emplace_back(_unbind_tensors(child));
-    }
-  }
-  return TensorNode(std::move(result_nodes));
-}
-
 NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey_PreAutograd, NestedTensorKey}),
