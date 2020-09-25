@@ -19,7 +19,7 @@ class Joiner(nn.Sequential):
 
     def forward(self, tensor_list: nestedtensor.NestedTensor):
         xs = self[0](tensor_list)
-        out: List[NestedTensor] = []
+        out = []
         pos = []
         for name, x in xs.items():
             out.append(x)

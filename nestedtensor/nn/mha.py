@@ -11,37 +11,28 @@ import nestedtensor
 # NT case query, key, value have nested_dim 1 and are of shape (bsz, tgt_len, embed_dim)
 
 
-def multi_head_attention_forward(query,                           # type: NestedTensor
-                                 key,                             # type: NestedTensor
-                                 value,                           # type: NestedTensor
-                                 embed_dim_to_check,              # type: int
-                                 num_heads,                       # type: int
-                                 in_proj_weight,                  # type: Tensor
-                                 in_proj_bias,                    # type: Tensor
-                                 # type: Optional[Tensor]
+def multi_head_attention_forward(query,
+                                 key,
+                                 value,
+                                 embed_dim_to_check,
+                                 num_heads,
+                                 in_proj_weight,
+                                 in_proj_bias,
                                  bias_k,
-                                 # type: Optional[Tensor]
                                  bias_v,
-                                 add_zero_attn,                   # type: bool
-                                 dropout_p,                       # type: float
-                                 out_proj_weight,                 # type: Tensor
-                                 out_proj_bias,                   # type: Tensor
-                                 training=True,                   # type: bool
-                                 # type: Optional[Tensor]
+                                 add_zero_attn,
+                                 dropout_p,
+                                 out_proj_weight,
+                                 out_proj_bias,
+                                 training=True,
                                  key_padding_mask=None,
-                                 need_weights=True,               # type: bool
-                                 # type: Optional[Tensor]
+                                 need_weights=True,
                                  attn_mask=None,
-                                 use_separate_proj_weight=False,  # type: bool
-                                 # type: Optional[Tensor]
+                                 use_separate_proj_weight=False,
                                  q_proj_weight=None,
-                                 # type: Optional[Tensor]
                                  k_proj_weight=None,
-                                 # type: Optional[Tensor]
                                  v_proj_weight=None,
-                                 # type: Optional[Tensor]
                                  static_k=None,
-                                 # type: Optional[Tensor]
                                  static_v=None
                                  ):
     assert isinstance(query, nestedtensor.NestedTensor)

@@ -34,7 +34,7 @@ struct NestedTensorFunction_matmul
             [&](c10::List<int64_t> self_size, c10::List<int64_t> other_size) {
               c10::List<int64_t> new_size{
                   self_size[0], self_size[1], other_size[2]};
-              return std::move(new_size);
+              return new_size;
             },
             impl_self->nested_size(),
             impl_other->nested_size());
@@ -70,7 +70,7 @@ struct NestedTensorFunction_matmul
         SizeNode new_nested_size = map(
             [&](c10::List<int64_t> self_size) {
               c10::List<int64_t> new_size{self_size[0], other.size(1)};
-              return std::move(new_size);
+              return new_size;
             },
             impl_self->nested_size());
         return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
@@ -188,7 +188,7 @@ struct NestedTensorFunction_addmm
         SizeNode new_nested_size = map(
             [&](c10::List<int64_t> self_size) {
               c10::List<int64_t> new_size{self_size[0], other.size(1)};
-              return std::move(new_size);
+              return new_size;
             },
             impl_self->nested_size());
         return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
