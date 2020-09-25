@@ -44,7 +44,9 @@ class TestTensorMask(TestCase):
                     torch.tensor([])
                 ])
             ])
-        self.assertRaisesRegex(RuntimeError, "Empty tensors are not yet supported.", lambda: a.to_tensor_mask())
+        ])
+        self.assertRaisesRegex(
+            RuntimeError, "Empty tensors are not yet supported.", lambda: a.to_tensor_mask())
 
     def test_single_scalar(self):
         a = nt.nested_tensor([
@@ -69,6 +71,7 @@ class TestTensorMask(TestCase):
                     torch.tensor(1, dtype=torch.bfloat16)
                 ])
             ])
+        ])
 
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[1]], dtype=torch.bfloat16))
@@ -105,6 +108,7 @@ class TestTensorMask(TestCase):
                     torch.tensor(3)
                 ])
             ])
+        ])
 
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[1, 2, 3]]))
@@ -131,6 +135,7 @@ class TestTensorMask(TestCase):
                     torch.tensor(3)
                 ])
             ])
+        ])
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[1], [2], [3]]))
         TestCase.assertEqual(self, mask, torch.tensor(True))
@@ -199,6 +204,7 @@ class TestTensorMask(TestCase):
                     torch.tensor([1])
                 ])
             ])
+        ])
 
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[[1]]]))
@@ -259,6 +265,7 @@ class TestTensorMask(TestCase):
                     torch.tensor([3])
                 ])
             ])
+        ])
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[[1], [2], [3]]]))
         TestCase.assertEqual(self, mask, torch.tensor(True))
@@ -282,6 +289,7 @@ class TestTensorMask(TestCase):
                     torch.tensor([3])
                 ])
             ])
+        ])
         tensor, mask = a.to_tensor_mask()
         TestCase.assertEqual(self, tensor, torch.tensor([[[1]], [[2]], [[3]]]))
         TestCase.assertEqual(self, mask, torch.tensor(True))
@@ -377,6 +385,7 @@ class TestTensorMask(TestCase):
                     torch.tensor([[0, 0], [0, 0]])
                 ])
             ])
+        ])
 
         expected_t = torch.tensor([[
             [[1, 2, 3, 0], [4, 5, 6, 0]],
@@ -850,6 +859,7 @@ class TestTensorMask(TestCase):
                     torch.tensor([4])
                 ])
             ])
+        ])
 
         expected_nt3 = nt.nested_tensor([
             nt.nested_tensor([

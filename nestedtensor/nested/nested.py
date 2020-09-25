@@ -249,6 +249,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def to(self, *args, **kwargs):
         raise NotImplementedError(
             "NestedTensor.to is currently not implemented.")
+        return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
         return torch.ops.nestedtensor.str(self._impl)

@@ -9,6 +9,7 @@
 #include <torch/library.h>
 
 // #define TRACEPACKED 1
+// #define USEPACKED 1
 
 namespace torch {
 namespace nested_tensor {
@@ -115,12 +116,12 @@ inline bool nested_size_matches(A a, B b) {
   if (!shape_matches(nested_size_a, nested_size_b)) {
     return false;
   }
-  auto bools = map(
-      [](c10::List<int64_t> a, c10::List<int64_t> b) {
+  std::vector<bool> bools = flatten(map(
+      [](c10::List<int64_t> a, c10::List<int64_t> b) -> bool {
         if (a.size() != b.size()) {
           return false;
         }
-        for (int64_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
           if (a[i] != b[i]) {
             return false;
           }
@@ -128,8 +129,12 @@ inline bool nested_size_matches(A a, B b) {
         return true;
       },
       nested_size_a,
-      nested_size_b);
-  return all(bools);
+      nested_size_b));
+  bool all = true;
+  for (size_t i = 0; i < bools.size(); i++) {
+    all = all && bools[i];
+  }
+  return all;
 }
 
 template <class A, class B, class... C>
@@ -140,21 +145,6 @@ inline bool nested_size_matches(A a, B b, C... c) {
 template <class... A>
 inline void torch_check_tensor_shape_matches(A... a) {
   TORCH_CHECK(tensor_shape_matches(a...), "NestedTensor shapes don't match.");
-}
-
-template <class A>
-bool is_packed(A tensor) {
-  return get_nested_tensor_structure(tensor).buffer().has_value();
-}
-
-template <class A, class B>
-bool is_packed(A first, B other) {
-  return is_packed(first) && is_packed(other);
-}
-
-template <class A, class B, class... C>
-bool is_packed(A first, B second, C... other) {
-  return is_packed(first, second) && is_packed(other...);
 }
 
 template <class F, class... A>
@@ -269,6 +259,27 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
     return TensorNode(std::move(tensor));
   }
   return get_nested_tensor_impl(tensor)->get_structure();
+}
+
+template <class A>
+static inline bool is_packed(A tensor) {
+  return is_nested_tensor_impl(tensor) &&
+      get_nested_tensor_structure(tensor).buffer().has_value();
+}
+
+template <class A, class B>
+static inline bool is_packed(A first, B other) {
+  return is_packed(first) && is_packed(other);
+}
+
+template <class A, class B, class... C>
+static inline bool is_packed(A first, B second, C... other) {
+  return is_packed(first, second) && is_packed(other...);
+}
+
+static inline at::Tensor get_buffer(at::Tensor tensor) {
+  TORCH_CHECK(is_packed(tensor), "Given Tensor doesn't have buffer.");
+  return *(get_nested_tensor_structure(tensor).buffer());
 }
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);
@@ -570,7 +581,7 @@ struct NestedTensorFunction_mapper
     }
     TORCH_CHECK(
         grad_output_.size() == 1,
-        "Only one incoming gradient support for now.");
+        "Only one incoming gradient supported for now.");
     // TORCH_CHECK(
     //     saved_data_size <= 3,
     //     "Only one input and at most two outputs supported for now.");
@@ -588,31 +599,7 @@ struct NestedTensorFunction_mapper
     std::vector<TensorNode> wrapped_grad_input = unzip(map(
         [&grad_input, &saved_data, &requires_grad_vector](
             at::Tensor r, std::vector<at::Tensor> is, at::Tensor g) {
-          std::vector<at::Tensor> tmp_grad_input =
-              torch::autograd::grad({r}, is, {g});
-          at::Tensor undef;
-          std::vector<at::Tensor>
-              nt_grad_input; //(tmp_grad_input.size(), undef);
-          size_t index = 0;
-          for (size_t i = 0; i < saved_data_size - 1; i++) {
-            if (requires_grad_vector[i]) {
-              if (is_nested_tensor_impl(saved_data[i])) {
-                // nt_grad_input[index] = tmp_grad_input[index];
-                nt_grad_input.push_back(tmp_grad_input[index]);
-              } else {
-                if (grad_input[2 + i].defined()) {
-                  grad_input[2 + i].add_(tmp_grad_input[index]);
-                } else {
-                  grad_input[2 + i] = tmp_grad_input[index].contiguous();
-                }
-              }
-              index++;
-            }
-          }
-          TORCH_CHECK(
-              index == tmp_grad_input.size(),
-              "tmp_grad_input wasn't entirely used.");
-          return nt_grad_input;
+          return torch::autograd::grad({r}, is, {g});
         },
         get_nested_tensor_structure(saved_data[saved_data_size - 1]),
         zip(input_nodes),
@@ -623,8 +610,38 @@ struct NestedTensorFunction_mapper
         if (is_nested_tensor_impl(saved_data[i])) {
           grad_input[2 + i] =
               wrap_tensor_node(std::move(wrapped_grad_input[index]));
-          index++;
+        } else {
+          std::vector<at::Tensor> flat = flatten(wrapped_grad_input[index]);
+          std::vector<at::Tensor> first_flat;
+          std::vector<at::Tensor> second_flat;
+          while (flat.size() > 1) {
+            first_flat.clear();
+            second_flat.clear();
+            size_t flat_size = flat.size() / 2;
+            for (size_t j = 0; j < flat_size; j++) {
+              first_flat.push_back(flat[flat.size() - 1]);
+              flat.pop_back();
+              second_flat.push_back(flat[flat.size() - 1]);
+              flat.pop_back();
+            }
+            TORCH_CHECK(
+                first_flat.size() == second_flat.size(),
+                "Both first and second list should be of the same size.");
+            first_flat = _foreach_add(first_flat, second_flat);
+            for (size_t j = 0; j < flat.size(); j++) {
+              first_flat.push_back(flat[j]);
+            }
+            flat = first_flat;
+          }
+          if (flat.size() > 0) {
+            at::Tensor tmp_grad = flat[0].contiguous();
+            for (size_t j = 1; j < flat.size(); j++) {
+              tmp_grad.add_(flat[j]);
+            }
+            grad_input[2 + i] = tmp_grad;
+          }
         }
+        index++;
       }
     }
     TORCH_CHECK(
@@ -647,6 +664,21 @@ static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
       });
   return NestedTensorFunction_mapper<F, decltype(b), A...>::apply(
       std::move(fn), b, a...);
+}
+
+static inline Tensor maybe_multiply(const Tensor& t, const Scalar& s) {
+  bool is_one = false;
+  if (s.isFloatingPoint()) {
+    is_one = s.toDouble() == 1;
+  } else if (s.isIntegral(true)) {
+    is_one = s.toLong() == 1;
+  }
+
+  if (is_one) {
+    return t;
+  } else {
+    return at::mul(t, s);
+  }
 }
 
 #ifdef TRACEPACKED

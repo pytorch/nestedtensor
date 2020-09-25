@@ -31,8 +31,11 @@ def debug_on(*exceptions):
 
 
 def internet_on():
-    # Sandcastle has no access to the internet.
-    return False
+    try:
+        urllib.request.urlopen("http://www.google.com", timeout=1)
+        return True
+    except urllib.error.URLError as err:
+        return False
 
 
 def _shape_prod(shape_):

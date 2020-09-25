@@ -639,7 +639,6 @@ class TestNestedTensor(TestCase):
         self.assertFalse(a5.is_pinned())
         self.assertFalse(a6.is_pinned())
 
-    @unittest.skip("fbcode pybind11 is outdated.")
     def test_getitem(self):
         a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
         nt = nestedtensor.nested_tensor([[a, b], [c]])
