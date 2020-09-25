@@ -58,9 +58,10 @@ class ConfusionMatrix(object):
 
 
 class TestIntegration(TestCase):
-    @unittest.skipIf(
-        not utils.internet_on(), "Cannot reach internet to download reference model."
-    )
+    # @unittest.skipIf(
+    #     not utils.internet_on(), "Cannot reach internet to download reference model."
+    # )
+    @unittest.skip("Not supported")
     def test_segmentation_pretrained_test_only(self):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):

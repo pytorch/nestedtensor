@@ -8,7 +8,7 @@ import nestedtensor
 
 TensorMask = collections.namedtuple('TensorMask', 'tensor mask')
 
-def nested_tensor_from_padded_tensor(tensor, nested_dim=None, padding=-1):
+def nested_tensor_from_padded_tensor(tensor, nested_dim=1, padding=-1):
     mask = (tensor != padding)
     return nested_tensor_from_tensor_mask(tensor, mask, nested_dim)
 

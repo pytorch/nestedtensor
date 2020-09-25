@@ -35,27 +35,20 @@ at::Tensor min_mha(
   int64_t edim = query.size(2);
 
   at::Tensor q, k, v;
-  // if (in_proj_bias) {
-    q = at::addmm(
-        at::slice(*in_proj_bias, 0, 0, edim),
-        query,
-        at::slice(in_proj_weight, 0, 0, edim).t(),
-        scaling,
-        scaling);
-    k = at::addmm(
-        at::slice(*in_proj_bias, 0, edim, 2 * edim),
-        key,
-        at::slice(in_proj_weight, 0, edim, 2 * edim).t());
-    v = at::addmm(
-        at::slice(*in_proj_bias, 0, 2 * edim),
-        value,
-        at::slice(in_proj_weight, 0, 2 * edim).t());
-  // } else {
-  //   q = at::matmul(query, at::slice(in_proj_weight, 0, 0, edim).t());
-  //   k = at::matmul(key, at::slice(in_proj_weight, 0, edim, 2 * edim).t());
-  //   v = at::matmul(value, at::slice(in_proj_weight, 0, 2 * edim).t());
-  //   q = at::mul(q, torch::tensor({scaling}, q.options()));
-  // }
+  q = at::addmm(
+      at::slice(*in_proj_bias, 0, 0, edim),
+      query,
+      at::slice(in_proj_weight, 0, 0, edim).t(),
+      scaling,
+      scaling);
+  k = at::addmm(
+      at::slice(*in_proj_bias, 0, edim, 2 * edim),
+      key,
+      at::slice(in_proj_weight, 0, edim, 2 * edim).t());
+  v = at::addmm(
+      at::slice(*in_proj_bias, 0, 2 * edim),
+      value,
+      at::slice(in_proj_weight, 0, 2 * edim).t());
 
   q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);

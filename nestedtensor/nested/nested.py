@@ -218,7 +218,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return _wrap_result(self._impl.requires_grad_(requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        self._impl.backward(gradient._impl, retain_graph, create_graph)
+        self._impl.backward(gradient._impl if gradient else None, retain_graph, create_graph)
 
     def nested_dim(self):
         """
@@ -249,6 +249,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def to(self, *args, **kwargs):
         raise NotImplementedError(
             "NestedTensor.to is currently not implemented.")
+        return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
         return torch.ops.nestedtensor.str(self._impl)
@@ -331,5 +332,5 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return masking.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
+        tensor, mask = masking.to_tensor_mask(self, mask_dim)
         return tensor.masked_fill(~mask, padding)

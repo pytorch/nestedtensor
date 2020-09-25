@@ -31,7 +31,6 @@ def debug_on(*exceptions):
 
 
 def internet_on():
-    # Sandcastle has no access to the internet.
     return False
 
 
