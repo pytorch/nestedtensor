@@ -218,7 +218,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return _wrap_result(self._impl.requires_grad_(requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        self._impl.backward(gradient._impl, retain_graph, create_graph)
+        self._impl.backward(gradient._impl if gradient else None, retain_graph, create_graph)
 
     def nested_dim(self):
         """
