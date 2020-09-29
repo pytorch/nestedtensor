@@ -425,6 +425,11 @@ Tensor& NestedTensor_as_strided_(
   return self;
 }
 
+Tensor NestedTensor_expand_as(const Tensor& self, const Tensor& other) {
+  throw std::runtime_error("REEE");
+  return self;
+}
+
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
@@ -448,6 +453,7 @@ TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "expand_as", NestedTensor_expand_as);
   nt_impl(m, "as_strided", NestedTensor_as_strided);
   nt_impl(m, "as_strided_", NestedTensor_as_strided_);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
