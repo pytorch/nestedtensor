@@ -48,6 +48,7 @@ class TestReduce(TestCase):
         fn(a).backward()
         if with_grad:
             t.backward()
+            print(nt.grad)
             # TODO: Re-enable under autograd
             self.assertEqual(nt.grad[0][0], t0.grad)
             self.assertEqual(nt.grad[0][1], t1.grad)

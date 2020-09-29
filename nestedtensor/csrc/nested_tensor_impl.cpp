@@ -403,6 +403,28 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
+Tensor NestedTensor_as_strided(
+    const Tensor& self,
+    IntArrayRef size,
+    IntArrayRef stride,
+    optional<int64_t> storage_offset_) {
+  throw std::runtime_error(
+      "as_strided is not implemented for NestedTensor. "
+      "Please create an issue on https://github.com/pytorch/nestedtensor with your usecase.");
+  return self;
+}
+
+Tensor& NestedTensor_as_strided_(
+    Tensor& self,
+    IntArrayRef size,
+    IntArrayRef stride,
+    optional<int64_t> storage_offset_) {
+  throw std::runtime_error(
+      "as_strided_ is not implemented for NestedTensor. "
+      "Please create an issue on https://github.com/pytorch/nestedtensor with your usecase.");
+  return self;
+}
+
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
@@ -426,6 +448,8 @@ TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "as_strided", NestedTensor_as_strided);
+  nt_impl(m, "as_strided_", NestedTensor_as_strided_);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "select.int", NestedTensor_select);
   nt_impl(m, "slice.Tensor", NestedTensor_slice);
