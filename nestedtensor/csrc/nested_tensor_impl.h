@@ -277,14 +277,20 @@ static inline bool is_packed(A first, B second, C... other) {
   return is_packed(first, second) && is_packed(other...);
 }
 
-static inline at::Tensor get_buffer(at::Tensor tensor) {
+static inline at::Tensor get_buffer(const at::Tensor& tensor) {
   TORCH_CHECK(is_packed(tensor), "Given Tensor doesn't have buffer.");
   return *(get_nested_tensor_structure(tensor).buffer());
+}
+
+static inline SizeNode get_nested_size(at::Tensor tensor) {
+  TORCH_CHECK(is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->nested_size();
 }
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
+at::Tensor wrap_buffer(at::Tensor&&, SizeNode nested_size);
 
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
