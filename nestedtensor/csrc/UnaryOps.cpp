@@ -10,6 +10,11 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
+  if (self.is_contiguous()) {
+    at::Tensor buffer = get_buffer(self);
+    func(buffer);
+    return self;
+  }
   apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
   return self;
 }
@@ -17,12 +22,20 @@ Tensor& NestedTensor_unary_(Tensor& self) {
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
+  if (self.is_contiguous()) {
+    at::Tensor buffer = get_buffer(self);
+    (buffer.*func)();
+    return self;
+  }
   apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
   return self;
 }
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
+  if (self.is_contiguous()) {
+    return wrap_buffer(func(get_buffer(self)), get_nested_size(self));
+  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return func(tensor); }, self);
 }

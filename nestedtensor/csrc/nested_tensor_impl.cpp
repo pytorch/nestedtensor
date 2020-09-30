@@ -176,6 +176,12 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
   return result;
 }
 
+at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
+  TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
+  return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+      std::move(buffer), nested_size));
+}
+
 struct NestedTensorFunction_contiguous
     : public torch::autograd::Function<NestedTensorFunction_contiguous> {
   static Tensor forward(
