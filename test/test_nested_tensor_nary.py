@@ -142,8 +142,6 @@ def _gen_test_binary(func):
 
         # The constructor is supposed to copy!
         a1 = ntnt([a, b])
-        # if func == "remainder":
-        #     a1.detach_()
         a2 = c
         a3 = ntnt([getattr(torch, func)(a, a2),
                    getattr(torch, func)(b, a2)])
@@ -153,11 +151,14 @@ def _gen_test_binary(func):
 
         # TODO: Add check for broadcasting smaller tensors / tensor constiuents
 
-        # self.assertEqual(a3, getattr(torch, func)(a1, c.reshape(1, 2, 3)))
-        # self.assertEqual(a3, getattr(torch, func)(c.reshape(1, 2, 3), a1))
-
-        # self.assertEqual(a3, getattr(torch, func)(a1, c))
-        # self.assertEqual(a3, getattr(torch, func)(c, a1))
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match or be greater than dimension of other.",
+        #                        lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
+        # if func == "remainder":
+        #     a1.detach_()
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
+        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
 
         a1 = a1.detach()
         a3 = a3.detach()
