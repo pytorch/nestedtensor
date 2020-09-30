@@ -23,7 +23,7 @@ Tensor& NestedTensor_unary_method_(Tensor& self) {
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](at::Tensor tensor) { return func(tensor); }, self);
 }
 
@@ -49,7 +49,7 @@ Tensor NestedTensor_clamp(
     const Tensor& self,
     optional<Scalar> min,
     optional<Scalar> max) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [min, max](at::Tensor tensor) { return at::clamp(tensor, min, max); },
       self);
 }
@@ -75,7 +75,7 @@ Tensor& NestedTensor_clamp_min_(Tensor& self, Scalar min) {
 }
 
 Tensor NestedTensor_clamp_min(const Tensor& self, Scalar min) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [min](at::Tensor tensor) { return at::clamp_min(tensor, min); }, self);
 }
 
@@ -99,7 +99,7 @@ Tensor& NestedTensor_clamp_max_(Tensor& self, Scalar min) {
 }
 
 Tensor NestedTensor_clamp_max(const Tensor& self, Scalar min) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [min](at::Tensor tensor) { return at::clamp_max(tensor, min); }, self);
 }
 
@@ -122,7 +122,7 @@ Tensor& NestedTensor_mvlgamma_(Tensor& self, int64_t p) {
 }
 
 Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [p](at::Tensor tensor) { return at::mvlgamma(tensor, p); }, self);
 }
 
@@ -157,7 +157,7 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       #NAME "_",                                                          \
       (NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>));
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   UNARY_OP(abs);
   UNARY_OP(acos);
   UNARY_OP(asin);

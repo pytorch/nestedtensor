@@ -425,9 +425,29 @@ Tensor& NestedTensor_as_strided_(
   return self;
 }
 
-Tensor NestedTensor_expand_as(const Tensor& self, const Tensor& other) {
-  throw std::runtime_error("REEE");
-  return self;
+Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
+  at::Tensor self = self_;
+  if (is_nested_tensor_impl(self, other)) {
+    TORCH_CHECK(
+        get_nested_tensor_impl(self)->nested_dim(),
+        get_nested_tensor_impl(other)->nested_dim(),
+        "Given NestedTensors need to have same nested dimension.");
+    return autograd_map_nested_tensor(
+        [](at::Tensor s, at::Tensor o) { return at::native::expand_as(s, o); },
+        self,
+        other);
+  }
+  TORCH_CHECK(
+      !is_nested_tensor_impl(self),
+      "Cannot expand a NestedTensor as a Tensor.");
+  TORCH_CHECK(
+      self.dim() <= other.dim(),
+      "Cannot expand to a Tensor of smaller dimension.");
+  while (self.dim() > 0 && self.size(0) == 1) {
+    self = self.squeeze(0);
+  }
+  return autograd_map_nested_tensor(
+      [](at::Tensor s, at::Tensor o) { return s.expand_as(o); }, self, other);
 }
 
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
@@ -450,10 +470,10 @@ TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
+  nt_impl(m, "expand_as", NestedTensor_expand_as);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  nt_impl(m, "expand_as", NestedTensor_expand_as);
   nt_impl(m, "as_strided", NestedTensor_as_strided);
   nt_impl(m, "as_strided_", NestedTensor_as_strided_);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
