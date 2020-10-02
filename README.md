@@ -56,7 +56,7 @@ a NestedTensor still is a Tensor. That means it needs to have a single dimension
 ## Prerequisites
 
 - pytorch (installed from nestedtensor/third_party/pytorch submodule)
-- torchvision (needed for examples)
+- torchvision (needed for examples and tests)
 - ipython (needed for examples)
 - notebook (needed for examples)
 
