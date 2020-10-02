@@ -1,170 +1,97 @@
 # The nestedtensor package
 
-NOTE: nestedtensor is under active development and various aspects may change.
+The nestedtensor package is now on road to prototype release (end of October 2020).
 
-NOTE: We test and develop against nightlies! Please use the most recent version of PyTorch if you plan to use this code.
+It is developed [against a fork](https://github.com/cpuhrsch/pytorchnestedtensor) of PyTorch to enable cutting-edge features such as improved performance or better torch.vmap integration.
 
-## Motivation
+Developers wills thus need to build from source, but users can use the binary we will ship on a nightly basis once the prototype is released.
 
-We often want to manipulate collections of Tensors of different shapes. For example, paragraphs of text, images of different sizes or audio files of different lengths. We don't have a first class generalization that eases the concurrent manipulation of collections of this type of data. We further often want to batch arbitrary data and operations for efficiency, which then leads us to write awkward workarounds such as padding.
+
+## Who can use this?
+
+If you want to use the binaries you need to run on Linux, use Python 3.8+ and have a CUDA GPU with CUDA11.
+
+If you want to build from source you can probably get it to work on many platforms, but supporting this won't take priority over development on the main platform. We're happy to review community contributions that achieve this however.
+
+## Why use this?
+
+In general we batch data for efficiency, but one batched kernels need regular, statically-shaped data.
+
+One way of dealing with dynamic shapes then, is via padding and masking.
+[Various](https://github.com/pytorch/fairseq/blob/54b934417d95baa1b0076089c61bde32728e34cf/fairseq/data/audio/raw_audio_dataset.py#L92)
+[projects](https://github.com/facebookresearch/ParlAI/blob/8200396cdd08cfd26b01fe52b4a3bd0654081182/parlai/agents/drqa/utils.py#L143)
+[construct](https://github.com/facebookresearch/detr/blob/4e1a9281bc5621dcd65f3438631de25e255c4269/util/misc.py#L306)
+[masks](https://github.com/pytorch/vision/blob/24f16a338391d6f45aa6291c48eb6d5513771631/references/detection/utils.py#L102)
+[that](https://github.com/pytorch/audio/blob/3250d3df168c956389bd16956aa458ce111570d0/examples/pipeline_wav2letter/datasets.py#L90)
+, together with a data Tensor, are used as a representation for lists of dynamically shaped Tensors.
+
+Obviously this is inefficient from a memory and compute perspective if the Tensors within this list are sufficient diverse.
+
+You can also trace through the codebase where these masks are used and what kind of code that might cause (for example [universal_sentence_embedding](https://github.com/facebookresearch/ParlAI/blob/8200396cdd08cfd26b01fe52b4a3bd0654081182/parlai/agents/drqa/utils.py#L143)).
+
+Otherwise we also have 
+[one-off](https://pytorch.org/docs/master/generated/torch.nn.utils.rnn.pack_padded_sequence.html?highlight=pack_padded_sequence)
+[operator](https://pytorch.org/docs/master/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss)
+[support](https://pytorch.org/docs/master/generated/torch.nn.MultiheadAttention.html#torch.nn.MultiheadAttention)
+[in](https://pytorch.org/docs/master/generated/torch.nn.EmbeddingBag.html#torch.nn.EmbeddingBag) 
+PyTorch that aim to support dynamic shapes via extra arguments such as a
+[padding index](https://pytorch.org/docs/master/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss).
+Of course the upside here is that these are fast and sometimes memory efficient, but don't provide a consistent interface.
+
+Other users simply gave up and started writing [for-loops](https://github.com/pytorch/vision/blob/1aef87d01eec2c0989458387fa04baebcc86ea7b/torchvision/models/detection/transform.py#L97), or discovered that batching didn't help.
+
+We want to have a single abstraction that is consistent, fast, memory efficient and readable and the nestedtensor project aims to provide that.
 
 ## Description
 
-NestedTensors are a generalization of torch Tensor which eases working with data of different sizes and length. 
-In general, there are two cases for which NestedTensors provide computational representations: list of tensors and lists of NestedTensors.
+NestedTensors are a generalization of torch Tensors which eases working with data of different sizes and length. 
+In a nutshell, Tensors have scalar entries (e.g. floats) and NestedTensors have Tensor entries. However, note that
+a NestedTensor still is a Tensor. That means it needs to have a single dimension, single dtype, single device and single layout.
 
-## Constraints
- - Each Tensor constituent of the list it represents, if any, must be of its dtype, layout and device. 
- - The dimension of a constituent Tensor must be one less than the dimension of the NestedTensor. 
- - An empty list of Tensors yields a NestedTensor of dimension zero.
- - Each constituent NestedTensor must be of its dtype, layout and device. 
- - The dimension of a constituent NestedTensor must be one less than the dimension of the NestedTensor.
+## Tensor entry constraints
+ - Each Tensor constituent is of the dtype, layout and device of the containing NestedTensor.
+ - The dimension of a constituent Tensor must be less than the dimension of the NestedTensor. 
+ - An empty NestedTensor is of dimension zero.
 
 ## Prerequisites
 
-- pytorch
-- torchvision (needed for examples)
+- pytorch (installed from nestedtensor/third_party/pytorch submodule)
+- torchvision (needed for examples and tests)
 - ipython (needed for examples)
 - notebook (needed for examples)
 
-If you have conda installed on your machine, you can install these via
-```
-conda install ipython pytorch notebook torchvision -c pytorch-nightly
-```
+## Build for development
 
-## Build 
-Run 
-```
-python setup.py develop
-```
-
-NOTE: This repository uses a C++ extension. Please file an issue if you want into compilation errors.
-
-## Usage
-Import nested tensors and torch via ```from nestedtensor import torch```
-
-### Creation
+Get the source
 
 ```
-nt = nestedtensor.nested_tensor(
-    [
-        [
-            torch.rand(2, 3),
-            torch.rand(4, 5)
-        ],
-        [
-            torch.rand(1, 2)
-        ]
-    ])
+git clone --recursive https://github.com/pytorch/nestedtensor
+cd nestedtensor
+# if you are updating an existing checkout
+git submodule sync
+git submodule update --init --recursive
 ```
 
-```
-a = torch.tensor([1])
-b = torch.tensor([[2, 2],
-                  [3, 3],
-                  [4, 4],
-                  [5, 5]])
-nt2 = nestedtensor.nested_tensor([[a],[b]])
-```
-
-The level of nesting is inferred from the input. The constructor always copies. Whatever you pass into the constructor will share no data with what the constructor returns. This matches torch.tensor's behavior.
-
-If given a NestedTensor or Tensor it will return a detached copy, which is consistent with the behavior of torch.tensor. Remember that you cannot mix Tensors and NestedTensors within a given list.
-
-A side-note on naming: nestedtensor is a python packed and as such [shouldn't have underscores and is lower case](https://www.python.org/dev/peps/pep-0008/#package-and-module-names), but nested_tensor is a python function and as [such should use underscores](https://www.python.org/dev/peps/pep-0008/#function-and-variable-names) in contrast to the [CapWorded NestedTensor class](https://www.python.org/dev/peps/pep-0008/#class-names).
-
-### Conversion/unbind()
-A user can retrieve the constituent Tensors via unbind. Unbind is currently used by torch to turn Tensors into tuples of Tensors. Unbind always returns a tuple of views.
+Install the build tools
 
 ```
->>> from nestedtensor import torch
->>>
->>> a = [
-...        [torch.rand(1, 2), torch.rand(2, 1)],
-...        [torch.rand(3, 2)]
-...     ]
->>>
->>> b = nestedtensor.nested_tensor(a)
->>> print(b)
-nested_tensor([
-    [
-        tensor([[0.5356, 0.5609]]),
-        tensor([[0.1567],
-                [0.8880]])
-    ],
-    [
-        tensor([[0.4060, 0.4359],
-                [0.4069, 0.3802],
-                [0.0040, 0.3759]])
-    ]
-])
->>> b1 = b.unbind() # Tuple of 2 NestedTensors
->>> print(b1)
-(nested_tensor([
-    tensor([[0.5356, 0.5609]]),
-    tensor([[0.1567],
-            [0.8880]])
-]), nested_tensor([
-    tensor([[0.4060, 0.4359],
-            [0.4069, 0.3802],
-            [0.0040, 0.3759]])
-]))
->>> b2 = b1[0].unbind() # Tuple of 2 Tensors
->>> print(b2)
-(tensor([[0.5356, 0.5609]]),
- tensor([[0.1567],
-		 [0.8880]]))
+conda install numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests
+conda install -c pytorch magma-cuda110
 ```
 
-### Other Ops
-We currently lack detailed documentation for all supported ops. Please see the examples and stay tuned for updates on this front.
-
-
-## The tensorwise decorator
-The nestedtensor package allows the user to decorate existing functions with a tensorwise decorator. This decorator lifts the given function to check for NestedTensor arguments and recursively apply it to their constituents.
-
+Build from scratch
 ```
->>> from nestedtensor import torch
->>>
->>> @torch.tensorwise()
-... def simple_fn(t1, t2):
-...     return t1 + 1 + t2
-...
->>>
->>> a = torch.tensor([1, 2])
->>> b = torch.tensor([7, 8])
->>> print(simple_fn(a, b))
-tensor([ 9, 11])
->>> c = torch.tensor([4, 3])
->>> d = torch.tensor([5, 6])
->>> print(simple_fn(c, d))
-tensor([10, 10])
->>>
->>> n = nestedtensor.nested_tensor([a, c])
->>> m = nestedtensor.nested_tensor([b, d])
->>> print(simple_fn(n, m))
-nested_tensor([
-    tensor([ 9, 11]),
-    tensor([10, 10])
-])
->>> print(simple_fn(a, m)) # Broadcasting
-nested_tensor([
-    tensor([ 9, 11]),
-    tensor([7, 9])
-])
->>> print(a)
-tensor([1, 2])
->>> print(m)
-nested_tensor([
-    tensor([7, 8]),
-    tensor([5, 6])
-])
->>> print(simple_fn(a, m)) # Broadcasting
-nested_tensor([
-    tensor([ 9, 11]),
-    tensor([7, 9])
-])
+./clean_build_with_submodule.sh
 ```
+
+Incremental builds
+```
+./build_with_submodule.sh
+```
+
+## Tutorials
+
+Please see the notebooks under [examples](https://github.com/pytorch/nestedtensor/tree/master/examples).
 
 ## Contribution
 The project is under active development. If you have a suggestions or found an bug, please file an issue!
