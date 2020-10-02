@@ -21,4 +21,4 @@ $ cd nestedtensor/examples
 $ ipython notebook --no-browser
 ```
 
-You can then use ipython to launch these notebooks and try them out!
+You can then follow the notebook server link to launch these notebooks and try them out!
