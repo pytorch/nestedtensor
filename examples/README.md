@@ -6,7 +6,7 @@ To use this you can either install nestedtensor from source or use the nightly b
 
 ## From source
 
-[Build nestedtensor from source](https://github.com/pytorch/nestedtensor)).
+[Build nestedtensor from source](https://github.com/pytorch/nestedtensor).
 
 Install ipython and notebook.
 
