@@ -101,7 +101,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         self._impl = impl
 
     def __getattr__(self, name):
-        if getattr(self._impl, name):
+        if hasattr(self._impl, name):
             def _wrapped_fn(*args, **kwargs):
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
                 result = getattr(self._impl, name)(*impl_args, **impl_kwargs)
@@ -210,6 +210,14 @@ class NestedTensor(metaclass=NestedTensorMeta):
         calls to backward() will accumulate (add) gradients into it.
         """
         return _wrap_result(self._impl.grad)
+
+    @property
+    def data(self):
+        return _wrap_result(self._impl.data)
+
+    @property
+    def is_sparse(self):
+        return self._impl.is_sparse
 
     def requires_grad_(self, requires_grad=True):
         """

@@ -1,7 +1,3 @@
-import traceback
-import functools
-import pdb
-import sys
 import torch
 import nestedtensor
 import unittest
@@ -9,12 +5,16 @@ from utils import TestCase
 from utils import get_unary_functions
 from utils import get_binary_functions
 from utils import get_python_binary_arithmetic_operations
-import random
 import utils
 
 
-def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
+def ntnt(x, device=None):
+    return nestedtensor.nested_tensor(
+        x, requires_grad=True, device=device)
+
+
+def ntnt_nograd(x, device=None):
+    return nestedtensor.nested_tensor(x, device=device)
 
 
 class DynamicClassBase(TestCase):
@@ -33,8 +33,6 @@ def _gen_test_unary(func__, nested_dim, device):
         if func__ in ['mvlgamma']:
             data = utils.nested_map(lambda x: x.clamp(min=1), data)
 
-        a1 = nestedtensor.nested_tensor(data, device=device)
-        a3 = nestedtensor.nested_tensor(data, device=device)
         func_ = getattr(torch, func__)
         method_ = getattr(nestedtensor.NestedTensor, func__)
         method_inplace_ = getattr(nestedtensor.NestedTensor, func__ + "_")
@@ -92,21 +90,27 @@ def _gen_test_unary(func__, nested_dim, device):
             method = method_
             method_inplace = method_inplace_
 
-        a2 = nestedtensor.nested_tensor(
-            utils.nested_map(func, data), device=device)
-
-        self.assertTrue(a1.nested_dim() == a2.nested_dim())
-        self.assertTrue(a2.nested_dim() == a3.nested_dim())
-
         def _close(t1, t2):
             self.assertAlmostEqual(t1, t2, ignore_contiguity=True)
+
+        a1 = ntnt(data, device=device)
+        a2 = ntnt(
+            utils.nested_map(func, data), device=device)
+        _close(func(a1), a2)
+        _close(method(a1), a2)
+
+        a1 = ntnt_nograd(data, device=device)
+        a2 = ntnt_nograd(
+            utils.nested_map(func, data), device=device)
+        a3 = ntnt_nograd(data, device=device)
+
+        self.assertEqual(a1.nested_dim(), a2.nested_dim())
+        self.assertEqual(a2.nested_dim(), a3.nested_dim())
 
         if func__ not in ['mvlgamma']:
             func(a1, out=a3)
             # TODO: Abstract this
             _close(func(a1), a3)
-        _close(func(a1), a2)
-        _close(method(a1), a2)
         _close(method_inplace(a1), a2)
         _close(a1, a2)
     return _test_unary
