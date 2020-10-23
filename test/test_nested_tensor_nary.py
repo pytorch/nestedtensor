@@ -222,8 +222,6 @@ def _gen_test_binary(func):
             # gradient calculation.
             a1 = ntnt([a, b, c])
             result = torch_func(a1, c)
-            print(result)
-            print(result.sum())
             result.sum().backward()
             a_0 = a.clone().detach().requires_grad_()
             b_0 = b.clone().detach().requires_grad_()
