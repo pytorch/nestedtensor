@@ -155,14 +155,19 @@ def _gen_test_binary(func):
 
         # TODO: Add check for broadcasting smaller tensors / tensor constiuents
 
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match or be greater than dimension of other.",
-        #                        lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
-        # if func == "remainder":
-        #     a1.detach_()
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
-        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
-        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        self.assertEqual(ntnt([getattr(torch, func)(a, c),
+                               getattr(torch, func)(b, c)
+                               ]),
+                         getattr(torch, func)(a1, c.reshape(1, 2, 3)))
+
+        result = ntnt([getattr(torch, func)(c, a),
+                       getattr(torch, func)(c, b)
+                       ])
+        if func == "remainder":
+            a1.detach_()
+            result.detach_()
+        self.assertEqual(result,
+                         getattr(torch, func)(c.reshape(1, 2, 3), a1))
 
         a1 = a1.detach()
         a3 = a3.detach()
@@ -178,9 +183,6 @@ def _gen_test_binary(func):
             a2.detach_()
             a3.detach_()
         self.assertEqual(a3, getattr(torch, func)(a1, a2))
-        # TODO: This depends on https://github.com/pytorch/rfcs/pull/3
-        # RFC-0001: Add method __torch_function__ RFC.
-        # TODO: This causes a segfault likely due https://github.com/pytorch/pytorch/pull/37091
         self.assertEqual(a3, getattr(a1, func)(a2))
         # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
         # TODO: Only sub doesn't adhere to this rule but with irregular behavior
