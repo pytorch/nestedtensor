@@ -141,10 +141,10 @@ def _gen_test_binary(func):
             self.assertIsNotNone(a2.grad)
         self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
-        a1 = a1.detach()
-        a3.detach_()
+        a1.detach_()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
+        a3.detach_()
 
         # The constructor is supposed to copy!
         a1 = ntnt([a, b])
@@ -222,6 +222,8 @@ def _gen_test_binary(func):
             # gradient calculation.
             a1 = ntnt([a, b, c])
             result = torch_func(a1, c)
+            print(result)
+            print(result.sum())
             result.sum().backward()
             a_0 = a.clone().detach().requires_grad_()
             b_0 = b.clone().detach().requires_grad_()
