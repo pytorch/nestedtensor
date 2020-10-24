@@ -121,48 +121,58 @@ def _gen_test_binary(func):
         a = utils.gen_float_tensor(1, (2, 3)) * 0 + 1
         b = utils.gen_float_tensor(2, (2, 3)) * 0 + 2
         c = utils.gen_float_tensor(3, (2, 3)) * 0 + 3
+        d = utils.gen_float_tensor(4, (3, 2)) * 0 + 4
+        s = utils.gen_float_tensor(5, (1,)) * 0 + 5
+        torch_func = getattr(torch, func)
 
-        # The constructor is supposed to copy!
         a1 = ntnt([a, b])
         if func == "remainder":
             a2 = ntnt_nograd([b, c])
         else:
             a2 = ntnt([b, c])
-        a3 = ntnt([getattr(torch, func)(a, b),
-                   getattr(torch, func)(b, c)])
-        res1 = getattr(torch, func)(a1, a2)
+        a3 = ntnt([torch_func(a, b),
+                   torch_func(b, c)])
+        res1 = torch_func(a1, a2)
         res1.sum().backward()
         self.assertIsNotNone(a1.grad)
         if func == "remainder":
             self.assertIsNone(a2.grad)
         else:
             self.assertIsNotNone(a2.grad)
-        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
-        a1 = a1.detach()
-        a3.detach_()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
+        a1.detach_()
+        a3.detach_()
 
         # The constructor is supposed to copy!
         a1 = ntnt([a, b])
         a2 = c
-        a3 = ntnt([getattr(torch, func)(a, a2),
-                   getattr(torch, func)(b, a2)])
+        a3 = ntnt([torch_func(a, a2),
+                   torch_func(b, a2)])
 
-        self.assertEqual(a3, getattr(torch, func)(a1, a2))
+        self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
 
-        # TODO: Add check for broadcasting smaller tensors / tensor constiuents
+        a1 = ntnt([a, d])
+        self.assertEqual(ntnt([torch_func(a, s), torch_func(d, s)]),
+                         torch_func(a1, s))
 
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of self must match or be greater than dimension of other.",
-        #                        lambda: getattr(torch, func)(a1, c.reshape(1, 2, 3)))
-        # if func == "remainder":
-        #     a1.detach_()
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
-        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
-        # self.assertRaisesRegex(RuntimeError, "tensor dimension of other must match or be greater than dimension of self.",
-        #                        lambda: getattr(torch, func)(c.reshape(1, 2, 3), a1))
+        a1 = ntnt([a, b])
+        self.assertEqual(ntnt([torch_func(a, c),
+                               torch_func(b, c)
+                               ]),
+                         torch_func(a1, c.reshape(1, 2, 3)))
+
+        result = ntnt([torch_func(c, a),
+                       torch_func(c, b)
+                       ])
+        if func == "remainder":
+            a1.detach_()
+            result.detach_()
+        self.assertEqual(result,
+                         torch_func(c.reshape(1, 2, 3), a1))
 
         a1 = a1.detach()
         a3 = a3.detach()
@@ -172,15 +182,12 @@ def _gen_test_binary(func):
         # The constructor is supposed to copy!
         a1 = c
         a2 = ntnt([a, b])
-        a3 = ntnt([getattr(torch, func)(c, a),
-                   getattr(torch, func)(c, b)])
+        a3 = ntnt([torch_func(c, a),
+                   torch_func(c, b)])
         if func == "remainder":
             a2.detach_()
             a3.detach_()
-        self.assertEqual(a3, getattr(torch, func)(a1, a2))
-        # TODO: This depends on https://github.com/pytorch/rfcs/pull/3
-        # RFC-0001: Add method __torch_function__ RFC.
-        # TODO: This causes a segfault likely due https://github.com/pytorch/pytorch/pull/37091
+        self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
         # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
         # TODO: Only sub doesn't adhere to this rule but with irregular behavior
@@ -198,13 +205,13 @@ def _gen_test_binary(func):
         else:
             a2 = ntnt([b, c])
         if func == "remainder":
-            a3 = ntnt([getattr(torch, func)(a, b.detach()),
-                       getattr(torch, func)(b, c.detach())])
+            a3 = ntnt([torch_func(a, b.detach()),
+                       torch_func(b, c.detach())])
         else:
-            a3 = ntnt([getattr(torch, func)(a, b),
-                       getattr(torch, func)(b, c)])
+            a3 = ntnt([torch_func(a, b),
+                       torch_func(b, c)])
         # print(a3.requires_grad)
-        result = getattr(torch, func)(a1, a2)
+        result = torch_func(a1, a2)
         # print(result.requires_grad)
         result.sum().backward()
         if func == "remainder":
@@ -214,15 +221,15 @@ def _gen_test_binary(func):
             # This is used to exercise the tree reduction in the
             # gradient calculation.
             a1 = ntnt([a, b, c])
-            result = getattr(torch, func)(a1, c)
+            result = torch_func(a1, c)
             result.sum().backward()
             a_0 = a.clone().detach().requires_grad_()
             b_0 = b.clone().detach().requires_grad_()
             c_0 = c.clone().detach().requires_grad_()
             c_1 = c.clone().detach().requires_grad_()
-            result_a = getattr(torch, func)(a_0, c_1)
-            result_b = getattr(torch, func)(b_0, c_1)
-            result_c = getattr(torch, func)(c_0, c_1)
+            result_a = torch_func(a_0, c_1)
+            result_b = torch_func(b_0, c_1)
+            result_c = torch_func(c_0, c_1)
             result_a.sum().backward()
             result_b.sum().backward()
             result_c.sum().backward()
@@ -231,7 +238,7 @@ def _gen_test_binary(func):
         # print(result.requires_grad)
         if func == "remainder":
             a1.detach_()
-        result = getattr(torch, func)(c, a1)
+        result = torch_func(c, a1)
         # print(result.requires_grad)
 
     return _test_binary
