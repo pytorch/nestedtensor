@@ -21,6 +21,12 @@ class TestReduce(TestCase):
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
 
+        print('nt')
+        print(nt)
+        print('-1-')
+        print(fn(nt, 2))
+        print('-2-')
+        print(fn(nt, (0, 2)))
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))
         self.assertRaises(RuntimeError, lambda: fn(nt, 1))
         self.assertEqual(nestedtensor.nested_tensor([[fn(t0, 0), fn(t1, 0)],
