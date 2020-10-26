@@ -27,6 +27,10 @@ class TestReduce(TestCase):
         print(fn(nt, 2))
         print('-2-')
         print(fn(nt, (0, 2)))
+        print('-3-')
+        print(fn(nt, (0, 1, 2)))
+        print('-4-')
+        print(fn(nt))
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))
         self.assertRaises(RuntimeError, lambda: fn(nt, 1))
         self.assertEqual(nestedtensor.nested_tensor([[fn(t0, 0), fn(t1, 0)],
