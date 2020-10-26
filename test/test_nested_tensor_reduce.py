@@ -18,7 +18,7 @@ class TestReduce(TestCase):
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
         t2 = torch.arange(9).float().reshape(3, 3)
-        ts = [[t0, t1], [t2]]
+        ts = [[t0, t1], [t2, t1]]
         nt = nestedtensor.nested_tensor(ts)
 
         print('nt')

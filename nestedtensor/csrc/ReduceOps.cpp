@@ -42,6 +42,7 @@ Tensor NestedTensor_cumsum(
     std::vector<int64_t> newdims;                                                                                                 \
     for (auto dim : dims) {                                                                                                       \
       dim = maybe_wrap_dim(dim, nt_impl->dim());                                                                                  \
+      newdims.push_back(dim);                                                                                                     \
     }                                                                                                                             \
     std::sort(newdims.begin(), newdims.end(), std::greater<int>());                                                               \
     std::vector<int64_t> tensordims;                                                                                              \
@@ -55,15 +56,16 @@ Tensor NestedTensor_cumsum(
       }                                                                                                                           \
     }                                                                                                                             \
     if (tensordims.size() > 0) {                                                                                                  \
-      std::cout << "0303" << std::endl; \
+      std::cout << "0303" << std::endl;                                                                                           \
       output = map_nested_tensor(                                                                                                 \
           [tensordims, keepdims](at::Tensor tensor) {                                                                             \
             return FUNC(tensor, c10::ArrayRef<int64_t>(tensordims), keepdims);                                                    \
           },                                                                                                                      \
-          output);                                                                                                                  \
+          output);                                                                                                                \
     }                                                                                                                             \
     if (nesteddims.size() > 0) {                                                                                                  \
-      std::cout << "0202" << std::endl; \
+      std::cout << "0202" << std::endl;                                                                                           \
+      nt_impl = get_nested_tensor_impl(output);                                                                                   \
       std::vector<c10::optional<int64_t>> opt_sizes = nt_impl->opt_sizes();                                                       \
       for (auto opt_size : opt_sizes) {                                                                                           \
         TORCH_CHECK(                                                                                                              \
