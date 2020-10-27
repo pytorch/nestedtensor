@@ -25,11 +25,6 @@ Tensor NestedTensor_cumsum(
       },
       self);
 }
-// TORCH_CHECK(                                                            \
-      //     dim >= nested_dim,                                                  \
-      //     MSG " of nested dimensions is not implemented yet for dimension " + \
-      //         std::to_string(dim));                                           \
-      // newdims.push_back(dim - nested_dim);                                \
 
 #define REDUCE_DIM_LIST_FUNC(NAME, FUNC, MSG)                                                                                     \
   Tensor NestedTensor_##NAME(                                                                                                     \

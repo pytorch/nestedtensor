@@ -20,11 +20,6 @@ class TestReduce(TestCase):
         t2 = torch.arange(9).float().reshape(3, 3)
         ts = [[t0, t1], [t2, t1]]
         nt = ntnt(ts)
-        # result = ntnt([fn(fn(t0, 0), fn(t1, 0), fn(t2, 0) + fn(t1, 0)])
-        # print(nt)
-        # print(result)
-        # print(fn(nt, (0, 2)))
-        # print(fn(nt, (1, 2)))
         if associative:
             t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0) 
             t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0) 
