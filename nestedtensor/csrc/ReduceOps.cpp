@@ -72,8 +72,13 @@ Tensor NestedTensor_cumsum(
             "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6."); \
       }                                                                                                                           \
       at::Tensor data_tensor = NestedTensor_to_tensor(output, c10::nullopt);                                                      \
+      std::cout << "data_tensor: " << data_tensor << std::endl; \
       output =                                                                                                                    \
           FUNC(data_tensor, c10::ArrayRef<int64_t>(nesteddims), keepdims);                                                        \
+      for (auto dim : nesteddims) { \
+        std::cout << "nesteddim: " << dim << std::endl; \
+      } \
+      std::cout << "output: " << output << std::endl; \
     }                                                                                                                             \
     return output;                                                                                                                \
   }

@@ -26,6 +26,7 @@ class TestReduce(TestCase):
         print('-1-')
         print(fn(nt, 2))
         print(fn(nt, (1, 2)))
+        print(fn(nt, (0, 2)))
         # print('-2-')
         # print(fn(nt, (0, 2)))
         # print('-3-')
