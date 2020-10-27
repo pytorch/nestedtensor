@@ -282,9 +282,23 @@ static inline at::Tensor get_buffer(const at::Tensor& tensor) {
   return *(get_nested_tensor_structure(tensor).buffer());
 }
 
+static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
+    at::Tensor tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->opt_sizes();
+}
+
 static inline SizeNode get_nested_size(at::Tensor tensor) {
-  TORCH_CHECK(is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_size();
+}
+
+static inline int64_t get_nested_dim(const at::Tensor& tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->nested_dim();
 }
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);

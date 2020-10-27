@@ -26,60 +26,63 @@ Tensor NestedTensor_cumsum(
       self);
 }
 
-#define REDUCE_DIM_LIST_FUNC(NAME, FUNC, MSG)                                                                                     \
-  Tensor NestedTensor_##NAME(                                                                                                     \
-      const Tensor& self,                                                                                                         \
-      c10::ArrayRef<int64_t> dims,                                                                                                \
-      bool keepdims,                                                                                                              \
-      c10::optional<ScalarType> dtype) {                                                                                          \
-    auto nt_impl = get_nested_tensor_impl(self);                                                                                  \
-    int64_t nested_dim = nt_impl->nested_dim();                                                                                   \
-    std::vector<int64_t> newdims;                                                                                                 \
-    for (auto dim : dims) {                                                                                                       \
-      dim = maybe_wrap_dim(dim, nt_impl->dim());                                                                                  \
-      newdims.push_back(dim);                                                                                                     \
-    }                                                                                                                             \
-    std::sort(newdims.begin(), newdims.end(), std::greater<int64_t>());                                                           \
-    std::vector<int64_t> tensordims;                                                                                              \
-    std::vector<int64_t> nesteddims;                                                                                              \
-    at::Tensor output = self;                                                                                                     \
-    for (int64_t dim : newdims) {                                                                                                 \
-      if (dim < nested_dim) {                                                                                                     \
-        nesteddims.push_back(dim);                                                                                                \
-      } else {                                                                                                                    \
-        tensordims.push_back(dim - nested_dim);                                                                                   \
-      }                                                                                                                           \
-    }                                                                                                                             \
-    if (tensordims.size() > 0) {                                                                                                  \
-      output = map_nested_tensor(                                                                                                 \
-          [tensordims, keepdims](at::Tensor tensor) {                                                                             \
-            return FUNC(tensor, c10::ArrayRef<int64_t>(tensordims), keepdims);                                                    \
-          },                                                                                                                      \
-          output);                                                                                                                \
-    }                                                                                                                             \
-    if (nesteddims.size() > 0) {                                                                                                  \
-      nt_impl = get_nested_tensor_impl(output);                                                                                   \
-      std::vector<c10::optional<int64_t>> opt_sizes = nt_impl->opt_sizes();                                                       \
-      for (auto opt_size : opt_sizes) {                                                                                           \
-        TORCH_CHECK(                                                                                                              \
-            opt_size,                                                                                                             \
-            "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6."); \
-      }                                                                                                                           \
-      at::Tensor data_tensor = NestedTensor_to_tensor(output, c10::nullopt);                                                      \
-      data_tensor =                                                                                                               \
-          FUNC(data_tensor, c10::ArrayRef<int64_t>(nesteddims), keepdims);                                                        \
-      auto new_nested_size = nt_impl->nested_size();                                                                              \
-      for (auto dim : nesteddims) {                                                                                               \
-        new_nested_size = squeeze(new_nested_size, dim);                                                                          \
-      }                                                                                                                           \
-      return wrap_buffer(data_tensor.reshape({-1}), new_nested_size);                                                             \
-    }                                                                                                                             \
-    return output;                                                                                                                \
+std::tuple<std::vector<int64_t>, std::vector<int64_t>> make_split_dims(
+    const Tensor& self,
+    c10::ArrayRef<int64_t> dims) {
+  auto nt_impl = get_nested_tensor_impl(self);
+  int64_t nested_dim = nt_impl->nested_dim();
+  std::vector<int64_t> newdims(dims);
+  maybe_wrap_dim(newdims, self.dim());
+  std::vector<int64_t> tensordims;
+  std::vector<int64_t> nesteddims;
+  at::Tensor output = self;
+  for (int64_t dim : newdims) {
+    if (dim < nested_dim) {
+      nesteddims.push_back(dim);
+    } else {
+      tensordims.push_back(dim - nested_dim);
+    }
   }
+  return std : make_tuple(tensordims, nesteddims);
+}
 
-REDUCE_DIM_LIST_FUNC(mean_dim, at::mean, "mean");
-REDUCE_DIM_LIST_FUNC(sum_dim, at::sum, "sum");
-#undef REDUCE_DIM_LIST_FUNC
+Tensor NestedTensor_sum_dim(
+    const Tensor& self,
+    c10::ArrayRef<int64_t> dims,
+    bool keepdims,
+    c10::optional<ScalarType> dtype) {
+  std::vector<int64_t> tensordims;
+  std::vector<int64_t> nesteddims;
+  std::tie(tensordims, nesteddims) = make_split_dims(self, dims);
+  at::Tensor output = self;
+  if (tensordims.size() > 0) {
+    output = map_nested_tensor(
+        [tensordims, keepdims](at::Tensor tensor) {
+          return at::sum(tensor, c10::ArrayRef<int64_t>(tensordims), keepdims);
+        },
+        output);
+  }
+  if (nesteddims.size() > 0) {
+    auto opt_sizes = get_opt_sizes(output);
+    for (auto opt_size : opt_sizes) {
+      TORCH_CHECK(
+          opt_size,
+          "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6.");
+    }
+    at::Tensor buffer = at::sum(
+        NestedTensor_to_tensor(output, c10::nullopt),
+        IntArrayRef(nesteddims),
+        keepdims);
+    auto new_nested_size = get_nested_size(output);
+    for (auto dim : nesteddims) {
+      if (!keepdims) {
+        new_nested_size = squeeze(new_nested_size, dim);
+      }
+    }
+    return wrap_buffer(data_tensor.reshape({-1}), new_nested_size);
+  }
+  return output;
+}
 
 Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
   auto tensors = flatten(
@@ -126,8 +129,8 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
-  nt_impl(m, "mean.dim", NestedTensor_mean_dim);
-  nt_impl(m, "mean", NestedTensor_mean);
+  // nt_impl(m, "mean.dim", NestedTensor_mean_dim);
+  // nt_impl(m, "mean", NestedTensor_mean);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
 }
