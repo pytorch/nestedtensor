@@ -44,7 +44,6 @@ Tensor NestedTensor_cumsum(
       dim = maybe_wrap_dim(dim, nt_impl->dim());                                                                                  \
       newdims.push_back(dim);                                                                                                     \
     }                                                                                                                             \
-    std::sort(newdims.begin(), newdims.end(), std::greater<int>());                                                               \
     std::vector<int64_t> tensordims;                                                                                              \
     std::vector<int64_t> nesteddims;                                                                                              \
     at::Tensor output = self;                                                                                                     \

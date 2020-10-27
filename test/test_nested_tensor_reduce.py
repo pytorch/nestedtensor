@@ -25,12 +25,18 @@ class TestReduce(TestCase):
         print(nt)
         print('-1-')
         print(fn(nt, 2))
-        print('-2-')
-        print(fn(nt, (0, 2)))
-        print('-3-')
-        print(fn(nt, (0, 1, 2)))
-        print('-4-')
-        print(fn(nt))
+        print(fn(nt, (1, 2)))
+        # print('-2-')
+        # print(fn(nt, (0, 2)))
+        # print('-3-')
+        # print(fn(nt, (0, 1, 2)))
+        # print('-4-')
+        # print(fn(nt))
+        # print('-5-')
+        # print(t0.sum() + t1.sum() + t2.sum() + t1.sum())
+
+        ts = [[t0, t1], [t2]]
+        nt = nestedtensor.nested_tensor(ts)
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))
         self.assertRaises(RuntimeError, lambda: fn(nt, 1))
         self.assertEqual(nestedtensor.nested_tensor([[fn(t0, 0), fn(t1, 0)],
@@ -58,7 +64,6 @@ class TestReduce(TestCase):
         fn(a).backward()
         if with_grad:
             t.backward()
-            print(nt.grad)
             # TODO: Re-enable under autograd
             self.assertEqual(nt.grad[0][0], t0.grad)
             self.assertEqual(nt.grad[0][1], t1.grad)
