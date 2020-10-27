@@ -14,27 +14,24 @@ def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 class TestReduce(TestCase):
 
-    def _test_reduce_dim(self, fn):
+    def _test_reduce_dim(self, fn, associative=True):
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
         t2 = torch.arange(9).float().reshape(3, 3)
         ts = [[t0, t1], [t2, t1]]
-        nt = nestedtensor.nested_tensor(ts)
-
-        print('nt')
-        print(nt)
-        print('-1-')
-        print(fn(nt, 2))
-        print(fn(nt, (1, 2)))
-        print(fn(nt, (0, 2)))
-        # print('-2-')
+        nt = ntnt(ts)
+        # result = ntnt([fn(fn(t0, 0), fn(t1, 0), fn(t2, 0) + fn(t1, 0)])
+        # print(nt)
+        # print(result)
         # print(fn(nt, (0, 2)))
-        # print('-3-')
-        # print(fn(nt, (0, 1, 2)))
-        # print('-4-')
-        # print(fn(nt))
-        # print('-5-')
-        # print(t0.sum() + t1.sum() + t2.sum() + t1.sum())
+        # print(fn(nt, (1, 2)))
+        if associative:
+            t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0) 
+            t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0) 
+            t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0) 
+            t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0) 
+            self.assertEqual(ntnt([t01, t21]), fn(nt, (1, 2)))
+            self.assertEqual(ntnt([t02, t11]), fn(nt, (0, 2)))
 
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
@@ -47,7 +44,7 @@ class TestReduce(TestCase):
         self.assertRaises(IndexError, lambda: fn(nt, 4))
 
     def test_cumsum(self):
-        self._test_reduce_dim(torch.cumsum)
+        self._test_reduce_dim(torch.cumsum, False)
 
     def _test_allreduce(self, fn, with_grad=False):
         t0 = torch.randn(3, 3, requires_grad=True)

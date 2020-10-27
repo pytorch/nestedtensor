@@ -514,5 +514,14 @@ inline TensorNode pack(TensorNode&& structure) {
   return impl::build_structure(at::cat(tensors, 0), nested_size);
 }
 
+// Remove singleton nodes across given level.
+template <class A>
+inline NestedNode<A> squeeze(NestedNode<A> structure, int64_t level) {
+  if (level <= 0) {
+    return structure.children(0);
+  }
+  return NestedNode<A>(squeeze(structure, level - 1));
+}
+
 } // namespace nested_tensor
 } // namespace torch
