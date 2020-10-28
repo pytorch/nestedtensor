@@ -45,14 +45,23 @@ class TestReduce(TestCase):
         t0 = torch.randn(3, 3, requires_grad=True)
         t1 = torch.randn(2, 3, requires_grad=True)
         t2 = torch.randn(3, 3, requires_grad=True)
-        ts = [[t0, t1], [t2]]
+        t0 = torch.arange(3 * 3).reshape(3, 3).float()
+        t1 = torch.arange(2 * 3).reshape(2, 3).float()
+        t2 = torch.arange(3 * 3).reshape(3, 3).float()
+        ts = [[t0, t1]] #, [t2]]
         # nt = nestedtensor.nested_tensor(ts) #, requires_grad=True)
         if with_grad:
             nt = ntnt(ts)
         else:
             nt = nestedtensor.nested_tensor(ts)
         t = fn(nt)
-        a = torch.stack([fn(t0), fn(t1), fn(t2)])
+        print("--")
+        print(nt)
+        print(t)
+        print("--")
+        a = torch.cat([t0.reshape(-1), t1.reshape(-1)]) # , fn(t2)])
+        print(a)
+        print(fn(a))
         self.assertEqual(t, fn(a))
         fn(a).backward()
         if with_grad:
@@ -72,6 +81,9 @@ class TestReduce(TestCase):
 
     def test_prod(self):
         self._test_allreduce(lambda x: x.prod())
+
+    def test_var(self):
+        self._test_allreduce(lambda x: x.var(unbiased=False))
 
 
 if __name__ == "__main__":

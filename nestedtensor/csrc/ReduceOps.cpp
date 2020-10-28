@@ -145,6 +145,30 @@ Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::mean(all_tensor, dtype);
 }
 
+Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
+  auto m2_tensors = flatten(
+      map([unbiased](at::Tensor tensor) { return ((tensor - at::mean(tensor, c10::nullopt)) * (tensor - at::mean(tensor, c10::nullopt))).sum(); },
+          get_nested_tensor_structure(self)));
+  auto mean_tensors = flatten(
+      map([unbiased](at::Tensor tensor) { return at::mean(tensor, c10::nullopt); },
+          get_nested_tensor_structure(self)));
+  at::Tensor numel = torch::tensor(flatten(
+      map([](at::Tensor tensor) { return tensor.numel(); },
+          get_nested_tensor_structure(self)))).reshape({-1});
+  if (m2_tensors.size() == 0) {
+    return at::ones({0});
+  }
+  at::Tensor m2_tensor = at::stack(m2_tensors).reshape({-1});
+  at::Tensor mean_tensor = at::stack(mean_tensors).reshape({-1});
+  at::Tensor output_m2 = (m2_tensor[0] + m2_tensor[1]) + 
+    ((mean_tensor[0] - mean_tensor[1]) * (mean_tensor[0] - mean_tensor[1])) * ((numel[0] * numel[1]) / (numel[0] + numel[1]));
+  at::Tensor output = output_m2 / (numel[0] + numel[1]);
+  std::cout << "m2_tensor: " << m2_tensor << std::endl;
+  std::cout << "mean_tensor: " << mean_tensor << std::endl;
+  std::cout << "numel: " << numel << std::endl;
+  return output;
+}
+
 Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   auto tensors = flatten(
       map([&dtype](at::Tensor tensor) { return at::prod(tensor, dtype); },
@@ -162,8 +186,9 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
-  nt_impl(m, "mean.dim", NestedTensor_mean_dim);
   nt_impl(m, "mean", NestedTensor_mean);
+  nt_impl(m, "mean.dim", NestedTensor_mean_dim);
+  nt_impl(m, "var", NestedTensor_var);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
 }
