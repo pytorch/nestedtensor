@@ -48,7 +48,10 @@ class TestReduce(TestCase):
         t0 = torch.arange(3 * 3).reshape(3, 3).float()
         t1 = torch.arange(2 * 3).reshape(2, 3).float()
         t2 = torch.arange(3 * 3).reshape(3, 3).float()
-        ts = [[t0, t1]] #, [t2]]
+        ts = [[t0, t1], [t2]]
+        ts = [[t0, t1, t2]]
+        ts = [[t0, t1]]
+        ts = [[t0, t1, t2, t0]]
         # nt = nestedtensor.nested_tensor(ts) #, requires_grad=True)
         if with_grad:
             nt = ntnt(ts)
@@ -59,7 +62,7 @@ class TestReduce(TestCase):
         print(nt)
         print(t)
         print("--")
-        a = torch.cat([t0.reshape(-1), t1.reshape(-1)]) # , fn(t2)])
+        a = torch.cat([t0.reshape(-1), t1.reshape(-1), t2.reshape(-1), t0.reshape(-1)]) # , fn(t2)])
         print(a)
         print(fn(a))
         self.assertEqual(t, fn(a))
@@ -84,6 +87,7 @@ class TestReduce(TestCase):
 
     def test_var(self):
         self._test_allreduce(lambda x: x.var(unbiased=False))
+        self._test_allreduce(lambda x: x.var(unbiased=True))
 
 
 if __name__ == "__main__":
