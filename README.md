@@ -1,19 +1,12 @@
 # The nestedtensor package
 
-The nestedtensor package is now on road to beta release. There is no definitive timeline yet.
+If you are here because you ran into a runtime error due to a missing feature or some kind of bug, please [open an issue and fill in the appropiate template](https://github.com/pytorch/nestedtensor/issues/new/choose). Thank you for contributing to this project!
 
-It is developed [against a fork](https://github.com/cpuhrsch/pytorchnestedtensor) of PyTorch to enable cutting-edge features such as improved performance or better torch.vmap integration.
+## Tutorials
 
-Developers wills thus need to build from source, but users can use the binary we will start shipping soon ([see the related issue](https://github.com/pytorch/nestedtensor/issues/262)).
+Please see the notebooks under [examples](https://github.com/pytorch/nestedtensor/tree/master/examples).
 
-
-## Who can use this?
-
-If you want to use the binaries you need to run on Linux, use Python 3.8+ and have a CUDA GPU with CUDA11.
-
-If you want to build from source you can probably get it to work on many platforms, but supporting this won't take priority over development on the main platform. We're happy to review community contributions that achieve this however.
-
-## Why use this?
+## Why consider using this? / Dealing with dynamic shapes
 
 In general we batch data for efficiency, but usually batched kernels need, or greatly benefit from, regular, statically-shaped data.
 
@@ -41,18 +34,32 @@ Other users simply gave up and started writing [for-loops](https://github.com/py
 
 We want to have a single abstraction that is consistent, fast, memory efficient and readable and the nestedtensor project aims to provide that.
 
-## Description
+## How does nestedtensor help here?
 
 NestedTensors are a generalization of torch Tensors which eases working with data of different sizes and length. 
 In a nutshell, Tensors have scalar entries (e.g. floats) and NestedTensors have Tensor entries. However, note that
 a NestedTensor still is a Tensor. That means it needs to have a single dimension, single dtype, single device and single layout.
 
-## Tensor entry constraints
+ Tensor entry constraints
  - Each Tensor constituent is of the dtype, layout and device of the containing NestedTensor.
  - The dimension of a constituent Tensor must be less than the dimension of the NestedTensor. 
  - An empty NestedTensor is of dimension zero.
 
-## Prerequisites
+## Protoype classification
+
+The nestedtensor package is a protoype intended for early stage feedback and testing. It is on the road to a beta classification, but there is no definitive timeline yet. See [PyTorch feature classification](https://pytorch.org/docs/stable/index.html) for what prototype, beta and stale means, if you desire further detail.
+
+## Supported platforms
+
+It is developed [against a fork](https://github.com/cpuhrsch/pytorchnestedtensor) of PyTorch to enable cutting-edge features such as improved performance or better torch.vmap integration.
+
+Developers wills thus need to build from source, but users can use the binary we will start shipping soon ([see the related issue](https://github.com/pytorch/nestedtensor/issues/262)).
+
+If you want to use the binaries you need to run on Linux, use Python 3.8+ and have a CUDA GPU with CUDA11.
+
+If you want to build from source you can probably get it to work on many platforms, but supporting this won't take priority over development on the main platform. We're happy to review community contributions that achieve this however.
+
+## Dependencies
 
 - pytorch (installed from nestedtensor/third_party/pytorch submodule)
 - torchvision (needed for examples and tests)
@@ -88,9 +95,6 @@ Incremental builds
 ./build_with_submodule.sh
 ```
 
-## Tutorials
-
-Please see the notebooks under [examples](https://github.com/pytorch/nestedtensor/tree/master/examples).
 
 ## Contribution
 The project is under active development. If you have a suggestions or found an bug, please file an issue!
