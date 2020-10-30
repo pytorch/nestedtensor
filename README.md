@@ -1,10 +1,10 @@
 # The nestedtensor package
 
-The nestedtensor package is now on road to prototype release (end of October 2020).
+The nestedtensor package is now on road to beta release. There is no definitive timeline yet.
 
 It is developed [against a fork](https://github.com/cpuhrsch/pytorchnestedtensor) of PyTorch to enable cutting-edge features such as improved performance or better torch.vmap integration.
 
-Developers wills thus need to build from source, but users can use the binary we will ship on a nightly basis once the prototype is released.
+Developers wills thus need to build from source, but users can use the binary we will start shipping soon ([see the related issue](https://github.com/pytorch/nestedtensor/issues/262)).
 
 
 ## Who can use this?
@@ -15,7 +15,7 @@ If you want to build from source you can probably get it to work on many platfor
 
 ## Why use this?
 
-In general we batch data for efficiency, but one batched kernels need regular, statically-shaped data.
+In general we batch data for efficiency, but usually batched kernels need, or greatly benefit from, regular, statically-shaped data.
 
 One way of dealing with dynamic shapes then, is via padding and masking.
 [Various](https://github.com/pytorch/fairseq/blob/54b934417d95baa1b0076089c61bde32728e34cf/fairseq/data/audio/raw_audio_dataset.py#L92)
