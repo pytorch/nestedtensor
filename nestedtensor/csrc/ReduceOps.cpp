@@ -145,15 +145,26 @@ Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::mean(all_tensor, dtype);
 }
 
-Tensor _merge_m2(
-    const Tensor& m2_tensor,
-    const Tensor& mean_tensor,
-    const Tensor& numel) {
+Tensor _merge_mean(
+    const Tensor& mean_0,
+    const Tensor& numel_0,
+    const Tensor& mean_1,
+    const Tensor& numel_1) {
+  at::Tensor numel_sum = numel_0 + numel_1;
+  at::Tensor new_mean = (numel_0 / numel_sum) * mean_0;
+  new_mean = new_mean + (numel_1 / numel_sum) * mean_1;
+  return new_mean;
+}
+
+std::tuple<Tensor, Tensor, Tensor> _merge_m2(
+    Tensor m2_tensor,
+    Tensor mean_tensor,
+    Tensor numel) {
   TORCH_CHECK(
       m2_tensor.dim() == 1 && mean_tensor.dim() == 1 && numel.dim() == 1,
       "merge tensors aren't of dimension 1.");
   if (m2_tensor.size(0) <= 1) {
-    return m2_tensor;
+    return std::make_tuple(m2_tensor, mean_tensor, numel);
   }
   int64_t mid = m2_tensor.size(0) / 2;
   int64_t start = 0;
@@ -169,12 +180,20 @@ Tensor _merge_m2(
   at::Tensor m2_1 = at::slice(m2_tensor, 0, mid, end);
   at::Tensor m2_sum = m2_0 + m2_1;
   at::Tensor output_m2 = m2_sum + delta * delta * (numel_prod / numel_sum);
-  if (output_m2.size(0) > 1) {
-    at::Tensor new_mean = (numel_0 / numel_sum) * mean_0;
-    new_mean = new_mean + (numel_1 / numel_sum) * mean_1;
-    output_m2 = _merge_m2(output_m2, new_mean, numel_sum);
+  at::Tensor new_mean = _merge_mean(mean_0, mean_1, numel_0, numel_1);
+  if (end < m2_tensor.size(0)) {
+    m2_tensor = torch::stack({output_m2[0], at::select(m2_tensor, 0, end)});
+    new_mean = _merge_mean(
+        new_mean,
+        numel_sum,
+        at::slice(mean_tensor, 0, end),
+        at::slice(numel, 0, end));
+    numel_sum = torch::stack({numel_sum[0], at::select(numel, 0, end)});
+    std::tie(output_m2, new_mean, numel_sum) =
+        _merge_m2(m2_tensor, new_mean, numel_sum);
   }
-  return output_m2;
+  return _merge_m2(output_m2, new_mean, numel_sum);
+  // return std::make_tuple(output_m2, new_mean, numel_sum);
 }
 
 Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
@@ -185,6 +204,9 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
             .sum();
       },
       get_nested_tensor_structure(self)));
+  if (m2_tensors.size() == 0) {
+    return at::ones({0});
+  }
   auto mean_tensors = flatten(
       map([](at::Tensor tensor) { return at::mean(tensor, c10::nullopt); },
           get_nested_tensor_structure(self)));
@@ -193,16 +215,15 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
                         map([](at::Tensor tensor) { return tensor.numel(); },
                             get_nested_tensor_structure(self))))
           .reshape({-1});
-  if (m2_tensors.size() == 0) {
-    return at::ones({0});
-  }
   at::Tensor m2_tensor = at::stack(m2_tensors).reshape({-1});
   at::Tensor mean_tensor = at::stack(mean_tensors).reshape({-1});
-  at::Tensor output_m2 = _merge_m2(m2_tensor, mean_tensor, numel);
+  std::tie(m2_tensor, mean_tensor, numel) =
+      _merge_m2(m2_tensor, mean_tensor, numel);
+  TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
   if (unbiased) {
-    return output_m2 / (numel.sum() - 1);
+    return m2_tensor[0]/ (numel[0] - 1);
   }
-  return output_m2 / (numel.sum());
+  return m2_tensor[0] / numel[0];
 }
 
 Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {

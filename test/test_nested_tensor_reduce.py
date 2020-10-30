@@ -50,8 +50,8 @@ class TestReduce(TestCase):
         t2 = torch.arange(3 * 3).reshape(3, 3).float()
         ts = [[t0, t1], [t2]]
         ts = [[t0, t1, t2]]
-        ts = [[t0, t1]]
-        ts = [[t0, t1, t2, t0]]
+        # ts = [[t0, t1]]
+        # ts = [[t0, t1, t2, t0]]
         # nt = nestedtensor.nested_tensor(ts) #, requires_grad=True)
         if with_grad:
             nt = ntnt(ts)
