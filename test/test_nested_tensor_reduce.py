@@ -104,7 +104,7 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.prod())
 
     def test_var(self):
-        self._test_allreduce(lambda x: x.var(unbiased=False))
+        # self._test_allreduce(lambda x: x.var(unbiased=False))
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
 
