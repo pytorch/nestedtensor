@@ -187,19 +187,19 @@ std::tuple<Tensor, Tensor, Tensor> _merge_m2(
   if (end < m2_tensor.size(0)) {
     std::cout << "output_m2: " << output_m2 << std::endl;
     std::cout << "m2_tensor: " << m2_tensor << std::endl;
-    std::cout << "at::select(m2_tensor, 0, end): " <<  at::select(m2_tensor, 0, end) << std::endl;
+    std::cout << "at::slice(m2_tensor, 0, end): " <<  at::slice(m2_tensor, 0, end) << std::endl;
     std::cout << "new_mean: " << new_mean << std::endl;
     std::cout << "numel_sum: " << numel_sum << std::endl;
     std::cout << "mean_tensor: " << mean_tensor << std::endl;
     std::cout << "numel: " << numel << std::endl;
-    m2_tensor = torch::stack({output_m2[0], at::select(m2_tensor, 0, end)});
+    m2_tensor = torch::cat({output_m2, at::slice(m2_tensor, 0, end)});
     // new_mean = _merge_mean(
     //     new_mean,
     //     numel_sum,
     //     at::slice(mean_tensor, 0, end),
     //     at::slice(numel, 0, end));
-    new_mean = torch::stack({new_mean[0], at::select(mean_tensor, 0, end)});
-    numel_sum = torch::stack({numel_sum[0], at::select(numel, 0, end)});
+    new_mean =  torch::cat({new_mean, at::slice(mean_tensor, 0, end)});
+    numel_sum = torch::cat({numel_sum, at::slice(numel, 0, end)});
     std::cout << "POST m2_tensor: " << m2_tensor << std::endl;
     std::cout << "POST numel_sum: " << numel_sum << std::endl;
     std::cout << "POST new_mean: " << new_mean << std::endl;

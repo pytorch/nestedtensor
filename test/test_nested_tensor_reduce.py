@@ -77,8 +77,8 @@ class TestReduce(TestCase):
         t1 = torch.randn(2, 3, requires_grad=True)
         t2 = torch.randn(3, 3, requires_grad=True)
         t0 = torch.arange(3 * 3).reshape(3, 3).float()
-        t1 = torch.arange(2 * 3).reshape(2, 3).float()
-        t2 = torch.arange(3 * 3).reshape(3, 3).float()
+        t1 = torch.arange(2 * 3).reshape(2, 3).float() + 9
+        t2 = torch.arange(3 * 3).reshape(3, 3).float() + 15
         t0.requires_grad_()
         t1.requires_grad_()
         t2.requires_grad_()
