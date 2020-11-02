@@ -166,9 +166,12 @@ std::tuple<Tensor, Tensor, Tensor> _merge_m2(
   if (m2_tensor.size(0) <= 1) {
     return std::make_tuple(m2_tensor, mean_tensor, numel);
   }
-  int64_t mid = m2_tensor.size(0) / 2;
   int64_t start = 0;
+  int64_t mid = m2_tensor.size(0) / 2;
   int64_t end = mid * 2;
+  std::cout << "start: " << start << std::endl;
+  std::cout << "mid: " << mid << std::endl;
+  std::cout << "end: " << end << std::endl;
   at::Tensor numel_0 = at::slice(numel, 0, start, mid);
   at::Tensor numel_1 = at::slice(numel, 0, mid, end);
   at::Tensor numel_prod = numel_0 * numel_1;
@@ -182,13 +185,24 @@ std::tuple<Tensor, Tensor, Tensor> _merge_m2(
   at::Tensor output_m2 = m2_sum + delta * delta * (numel_prod / numel_sum);
   at::Tensor new_mean = _merge_mean(mean_0, mean_1, numel_0, numel_1);
   if (end < m2_tensor.size(0)) {
+    std::cout << "output_m2: " << output_m2 << std::endl;
+    std::cout << "m2_tensor: " << m2_tensor << std::endl;
+    std::cout << "at::select(m2_tensor, 0, end): " <<  at::select(m2_tensor, 0, end) << std::endl;
+    std::cout << "new_mean: " << new_mean << std::endl;
+    std::cout << "numel_sum: " << numel_sum << std::endl;
+    std::cout << "mean_tensor: " << mean_tensor << std::endl;
+    std::cout << "numel: " << numel << std::endl;
     m2_tensor = torch::stack({output_m2[0], at::select(m2_tensor, 0, end)});
-    new_mean = _merge_mean(
-        new_mean,
-        numel_sum,
-        at::slice(mean_tensor, 0, end),
-        at::slice(numel, 0, end));
+    // new_mean = _merge_mean(
+    //     new_mean,
+    //     numel_sum,
+    //     at::slice(mean_tensor, 0, end),
+    //     at::slice(numel, 0, end));
+    new_mean = torch::stack({new_mean[0], at::select(mean_tensor, 0, end)});
     numel_sum = torch::stack({numel_sum[0], at::select(numel, 0, end)});
+    std::cout << "POST m2_tensor: " << m2_tensor << std::endl;
+    std::cout << "POST numel_sum: " << numel_sum << std::endl;
+    std::cout << "POST new_mean: " << new_mean << std::endl;
     std::tie(output_m2, new_mean, numel_sum) =
         _merge_m2(m2_tensor, new_mean, numel_sum);
   }
@@ -219,6 +233,10 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   at::Tensor mean_tensor = at::stack(mean_tensors).reshape({-1});
   std::tie(m2_tensor, mean_tensor, numel) =
       _merge_m2(m2_tensor, mean_tensor, numel);
+  std::cout << "->->-" << std::endl;
+  std::cout << "m2_tensor: " << m2_tensor << std::endl;
+  std::cout << "mean_tensor: " << mean_tensor << std::endl;
+  std::cout << "numel: " << numel << std::endl;
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
   if (unbiased) {
     return m2_tensor[0]/ (numel[0] - 1);
