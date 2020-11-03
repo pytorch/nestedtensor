@@ -26,7 +26,7 @@ conda activate ./env
 printf "Checking out submodules for pytorch build\n"
 git submodule sync
 git submodule update --init --recursive
-conda install -y numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses
+conda install -y numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses hypothesis
 if [ "${CU_VERSION:-}" == cpu ] ; then
     printf "* Installing NT-specific pytorch and nestedtensor cpu-only\n"
     pushd third_party/pytorch
