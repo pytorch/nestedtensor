@@ -23,8 +23,8 @@ conda activate ./env
 #     cudatoolkit="cudatoolkit=${version}"
 # fi
 
-WHEELS_FOLDER=$~/project/wheels
-mkdir $WHEELS_FOLDER
+WHEELS_FOLDER=${HOME}/project/wheels
+mkdir -p $WHEELS_FOLDER
 
 printf "Checking out submodules for pytorch build\n"
 git submodule sync
