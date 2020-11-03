@@ -123,7 +123,7 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);

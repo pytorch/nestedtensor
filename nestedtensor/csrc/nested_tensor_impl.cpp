@@ -456,16 +456,16 @@ Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
-      c10::DispatchKey::AutogradPrivateUse1);
+      c10::DispatchKey::AutogradNestedTensor);
   op.callBoxed(stack);
 }
 
-TORCH_LIBRARY_IMPL(_, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(_, AutogradNestedTensor, m) {
   // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
   m.fallback(torch::CppFunction::makeFallthrough());
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "squeeze_", NestedTensor_squeeze_);
   nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
@@ -476,7 +476,7 @@ TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "expand_as", NestedTensor_expand_as);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "as_strided", NestedTensor_as_strided);
   nt_impl(m, "as_strided_", NestedTensor_as_strided_);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
