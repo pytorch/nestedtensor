@@ -1,4 +1,5 @@
 | Name | Implemented |
+| ---- | ----------- |
 | argmax | [ ] |
 | argmin | [ ] |
 | amax | [ ] |
