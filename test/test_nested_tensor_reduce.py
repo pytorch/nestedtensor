@@ -19,6 +19,11 @@ def _flatten_list(ts):
         return [ts]
     return sum(map(_flatten_list, ts), [])
 
+def _flatten_nt(nt):
+    if not isinstance(nt, nestedtensor.NestedTensor):
+        return [nt]
+    return sum(map(_flatten_list, nt), [])
+
 
 class TestReduce(TestCase):
 
@@ -55,42 +60,33 @@ class TestReduce(TestCase):
                 nt = ntnt(ts)
             else:
                 nt = nestedtensor.nested_tensor(ts)
-            print("--")
-            print(nt)
             t = fn(nt)
-            print(t)
-            print("--")
-            # , fn(t2)])
-            a = torch.cat([x.reshape(-1) for x in _flatten_list(ts)])
-            print(a)
-            print(fn(a))
+            flat_ts = _flatten_list(ts)
+            a = torch.cat([x.reshape(-1) for x in flat_ts])
             self.assertEqual(t, fn(a))
-            fn(a).backward()
+            a_res = fn(a)
             if with_grad:
+                a_res.backward()
                 t.backward()
-                # TODO: Re-enable under autograd
-                self.assertEqual(nt.grad[0][0], t0.grad)
-                self.assertEqual(nt.grad[0][1], t1.grad)
-                self.assertEqual(nt.grad[1][0], t2.grad)
+                nt_grads = _flatten_nt(nt.grad)
+                for a, b in zip(nt_grads, flat_ts):
+                    print(a)
+                    print(b.grad)
+                    print("--")
+                    self.assertEqual(a, b.grad)
 
-        t0 = torch.randn(3, 3, requires_grad=True)
+        t0 = torch.randn(4, 3, requires_grad=True)
         t1 = torch.randn(2, 3, requires_grad=True)
-        t2 = torch.randn(3, 3, requires_grad=True)
-        # t0 = torch.arange(2 * 1).reshape(2, 1).float()
-        # t1 = torch.arange(2 * 1).reshape(2, 1).float() + t0.numel()
-        # t1 = t1 * 2
-        # t2 = torch.arange(2 * 1).reshape(2, 1).float() + t1.numel() + t0.numel()
-        # t2 = t2 * 4
-        # t0.requires_grad_()
-        # t1.requires_grad_()
-        # t2.requires_grad_()
+        t2 = torch.randn(3, 4, requires_grad=True)
+
         test([t0])
         test([t0, t1])
         test([t0, t1, t2])
-        test([[t0], [t1]])
-        test([[t0]])
+        test([t0, t1, t2, t1])
+        test([[t0], [t1, t2]])
         test([[t0, t1], [t2]])
-        test([[t0, t1, t2]])
+        test([[t0, t1], [t2, t1]])
+        test([[t0, t1], [t2, t1], [t1]])
 
     def test_sum(self):
         self._test_allreduce(lambda x: x.sum(), True)
@@ -104,7 +100,7 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.prod())
 
     def test_var(self):
-        self._test_allreduce(lambda x: x.var(unbiased=False))
+        self._test_allreduce(lambda x: x.var(unbiased=False), True)
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
 

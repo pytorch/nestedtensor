@@ -145,15 +145,6 @@ Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::mean(all_tensor, dtype);
 }
 
-Tensor _merge_mean(
-    const Tensor& mean_0,
-    const Tensor& mean_1,
-    const Tensor& numel_0,
-    const Tensor& numel_1) {
-  at::Tensor numel_sum = numel_0 + numel_1;
-  return (numel_0 / numel_sum) * mean_0 + (numel_1 / numel_sum) * mean_1;
-}
-
 std::tuple<Tensor, Tensor, Tensor> _merge_m2(
     Tensor m2_tensor,
     Tensor mean_tensor,
@@ -169,21 +160,21 @@ std::tuple<Tensor, Tensor, Tensor> _merge_m2(
   int64_t end = mid * 2;
   at::Tensor numel_0 = at::slice(numel, 0, start, mid);
   at::Tensor numel_1 = at::slice(numel, 0, mid, end);
-  at::Tensor numel_prod = numel_0 * numel_1;
-  at::Tensor numel_sum = numel_0 + numel_1;
   at::Tensor mean_0 = at::slice(mean_tensor, 0, start, mid);
   at::Tensor mean_1 = at::slice(mean_tensor, 0, mid, end);
-  at::Tensor delta = mean_0 - mean_1;
   at::Tensor m2_0 = at::slice(m2_tensor, 0, start, mid);
   at::Tensor m2_1 = at::slice(m2_tensor, 0, mid, end);
-  at::Tensor m2_sum = m2_0 + m2_1;
-  at::Tensor output_m2 = m2_sum + delta * delta * (numel_prod / numel_sum);
-  at::Tensor new_mean = _merge_mean(mean_0, mean_1, numel_0, numel_1);
+  at::Tensor numel_prod = numel_0 * numel_1;
+  at::Tensor numel_sum = numel_0 + numel_1;
+  at::Tensor delta = mean_0 - mean_1;
+  at::Tensor output_m2 =
+      (m2_0 + m2_1) + delta * delta * (numel_prod / numel_sum);
+  at::Tensor new_mean =
+      (numel_0 / numel_sum) * mean_0 + (numel_1 / numel_sum) * mean_1;
   if (end < m2_tensor.size(0)) {
-    m2_tensor = torch::cat({output_m2, at::slice(m2_tensor, 0, end)});
-    new_mean =  torch::cat({new_mean, at::slice(mean_tensor, 0, end)});
+    output_m2 = torch::cat({output_m2, at::slice(m2_tensor, 0, end)});
+    new_mean = torch::cat({new_mean, at::slice(mean_tensor, 0, end)});
     numel_sum = torch::cat({numel_sum, at::slice(numel, 0, end)});
-    return _merge_m2(m2_tensor, new_mean, numel_sum);
   }
   return _merge_m2(output_m2, new_mean, numel_sum);
 }
@@ -213,7 +204,7 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
       _merge_m2(m2_tensor, mean_tensor, numel);
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
   if (unbiased) {
-    return m2_tensor[0]/ (numel[0] - 1);
+    return m2_tensor[0] / (numel[0] - 1);
   }
   return m2_tensor[0] / numel[0];
 }
