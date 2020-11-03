@@ -63,8 +63,11 @@ class TestReduce(TestCase):
             t = fn(nt)
             flat_ts = _flatten_list(ts)
             a = torch.cat([x.reshape(-1) for x in flat_ts])
-            self.assertEqual(t, fn(a))
             a_res = fn(a)
+            print("_0_")
+            print(t)
+            print(a_res)
+            self.assertEqual(t, a_res)
             if with_grad:
                 a_res.backward()
                 t.backward()
@@ -92,8 +95,10 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.sum(), True)
         self._test_reduce_dim(torch.sum)
 
-    def test_mean(self):
+    def test_mean_all(self):
         self._test_allreduce(lambda x: x.mean())
+
+    def test_mean_dim(self):
         self._test_reduce_dim(torch.mean)
 
     def test_prod(self):
