@@ -76,17 +76,17 @@ class TestReduce(TestCase):
         t0 = torch.randn(3, 3, requires_grad=True)
         t1 = torch.randn(2, 3, requires_grad=True)
         t2 = torch.randn(3, 3, requires_grad=True)
-        t0 = torch.arange(3 * 3).reshape(3, 3).float()
-        t1 = torch.arange(2 * 3).reshape(2, 3).float() + 9
-        t2 = torch.arange(3 * 3).reshape(3, 3).float() + 15
-        t0.requires_grad_()
-        t1.requires_grad_()
-        t2.requires_grad_()
-        # test([t0])
-        # test([t0, t1])
+        # t0 = torch.arange(2 * 1).reshape(2, 1).float()
+        # t1 = torch.arange(2 * 1).reshape(2, 1).float() + t0.numel()
+        # t1 = t1 * 2
+        # t2 = torch.arange(2 * 1).reshape(2, 1).float() + t1.numel() + t0.numel()
+        # t2 = t2 * 4
+        # t0.requires_grad_()
+        # t1.requires_grad_()
+        # t2.requires_grad_()
+        test([t0])
+        test([t0, t1])
         test([t0, t1, t2])
-        import sys
-        sys.exit(1)
         test([[t0], [t1]])
         test([[t0]])
         test([[t0, t1], [t2]])
@@ -104,7 +104,7 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.prod())
 
     def test_var(self):
-        # self._test_allreduce(lambda x: x.var(unbiased=False))
+        self._test_allreduce(lambda x: x.var(unbiased=False))
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
 
