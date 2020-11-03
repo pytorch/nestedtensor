@@ -73,7 +73,7 @@ Tensor NestedTensor_softmax(
       input);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "softmax.int", NestedTensor_softmax);
 }
 

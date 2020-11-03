@@ -127,7 +127,7 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
       [&base](Tensor exp) { return at::pow(base, exp); }, exp);
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "sub_.Tensor", NestedTensor_sub_);
   nt_impl(m, "sub.out", NestedTensor_sub_out);
 

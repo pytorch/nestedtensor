@@ -256,7 +256,7 @@ Tensor NestedTensor_addmm(
 #endif
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "addmm", NestedTensor_addmm);
   nt_impl(m, "matmul", NestedTensor_matmul);
   nt_impl(m, "matmul.out", NestedTensor_matmul_out);
