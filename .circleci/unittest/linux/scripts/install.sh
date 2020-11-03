@@ -23,7 +23,7 @@ conda activate ./env
 #     cudatoolkit="cudatoolkit=${version}"
 # fi
 
-WHEELS_FOLDER=$CIRCLE_WORKING_DIRECTORY/wheels
+WHEELS_FOLDER=$~/project/wheels
 mkdir $WHEELS_FOLDER
 
 printf "Checking out submodules for pytorch build\n"
