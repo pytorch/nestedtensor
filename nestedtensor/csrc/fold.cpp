@@ -44,7 +44,7 @@ Tensor NestedTensor_col2im(
       self);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "im2col", NestedTensor_im2col);
   nt_impl(m, "col2im", NestedTensor_col2im);
 }
