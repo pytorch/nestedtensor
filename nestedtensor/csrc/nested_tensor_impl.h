@@ -26,8 +26,8 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-constexpr auto NestedTensorKey_PreAutograd = DispatchKey::AutogradPrivateUse1;
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
+constexpr auto NestedTensorKey_PreAutograd = DispatchKey::AutogradNestedTensor;
+constexpr auto NestedTensorKey = DispatchKey::NestedTensor;
 
 struct NestedTensorImpl;
 

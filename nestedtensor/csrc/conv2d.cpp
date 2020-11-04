@@ -267,7 +267,7 @@ Tensor NestedTensor_conv2d(
       weight);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "conv2d", NestedTensor_conv2d);
 }
 } // namespace at
