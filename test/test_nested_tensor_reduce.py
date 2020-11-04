@@ -22,7 +22,7 @@ def _flatten_list(ts):
 def _flatten_nt(nt):
     if not isinstance(nt, nestedtensor.NestedTensor):
         return [nt]
-    return sum(map(_flatten_list, nt), [])
+    return sum(map(_flatten_nt, nt.unbind()), [])
 
 
 class TestReduce(TestCase):
@@ -64,35 +64,49 @@ class TestReduce(TestCase):
             flat_ts = _flatten_list(ts)
             a = torch.cat([x.reshape(-1) for x in flat_ts])
             a_res = fn(a)
-            print("_0_")
-            print(t)
-            print(a_res)
+            # print("_0_")
+            # print(t)
+            # print(a_res)
             self.assertEqual(t, a_res)
             if with_grad:
                 a_res.backward()
                 t.backward()
                 nt_grads = _flatten_nt(nt.grad)
                 for a, b in zip(nt_grads, flat_ts):
-                    print(a)
-                    print(b.grad)
-                    print("--")
+                    # print(a)
+                    # print(b.grad)
+                    # print("--")
                     self.assertEqual(a, b.grad)
 
-        t0 = torch.randn(4, 3, requires_grad=True)
-        t1 = torch.randn(2, 3, requires_grad=True)
-        t2 = torch.randn(3, 4, requires_grad=True)
+        def gen_ts():
+            t0 = torch.randn(4, 3, requires_grad=True)
+            t1 = torch.randn(2, 3, requires_grad=True)
+            t2 = torch.randn(3, 4, requires_grad=True)
+            t3 = torch.randn(3, 4, requires_grad=True)
+            t4 = torch.randn(3, 4, requires_grad=True)
+            return t0, t1, t2, t3, t4
 
+        t0, t1, t2, t3, t4 = gen_ts()
         test([t0])
+        t0, t1, t2, t3, t4 = gen_ts()
         test([t0, t1])
+        t0, t1, t2, t3, t4 = gen_ts()
         test([t0, t1, t2])
-        test([t0, t1, t2, t1])
+        t0, t1, t2, t3, t4 = gen_ts()
+        test([t0, t1, t2, t3])
+        t0, t1, t2, t3, t4 = gen_ts()
         test([[t0], [t1, t2]])
+        t0, t1, t2, t3, t4 = gen_ts()
         test([[t0, t1], [t2]])
-        test([[t0, t1], [t2, t1]])
-        test([[t0, t1], [t2, t1], [t1]])
+        t0, t1, t2, t3, t4 = gen_ts()
+        test([[t0, t1], [t2, t3]])
+        t0, t1, t2, t3, t4 = gen_ts()
+        test([[t0, t1], [t2, t3], [t4]])
 
-    def test_sum(self):
+    def test_sum_all(self):
         self._test_allreduce(lambda x: x.sum(), True)
+
+    def test_sum_dim(self):
         self._test_reduce_dim(torch.sum)
 
     def test_mean_all(self):

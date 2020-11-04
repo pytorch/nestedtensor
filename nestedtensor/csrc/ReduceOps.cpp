@@ -132,17 +132,7 @@ Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
 }
 
 Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::mean(tensor, dtype); },
-          get_nested_tensor_structure(self)));
-  if (tensors.size() == 0) {
-    if (dtype) {
-      return at::ones({0}, *dtype);
-    }
-    return at::ones({0});
-  }
-  auto all_tensor = at::stack(tensors);
-  return at::mean(all_tensor, dtype);
+  return at::sum(self, dtype).div_(torch::tensor(self.numel()));
 }
 
 std::tuple<Tensor, Tensor, Tensor> _merge_m2(
