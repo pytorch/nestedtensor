@@ -6,7 +6,12 @@ To use this you can either install nestedtensor from source or use the nightly b
 
 ## On colab
 
-[basic](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/basic_ipynb_txt.ipynb)
+[basic](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/basic.ipynb)
+[indexing](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/indexing.ipynb)
+[models](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/models.ipynb)
+[naryops_and_reduce](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/naryops_and_reduce.ipynb)
+
+
 
 ## From source
 
