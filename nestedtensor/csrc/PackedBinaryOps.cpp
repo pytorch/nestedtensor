@@ -18,7 +18,7 @@ Tensor& NestedTensor_binary_(Tensor& self_, const Tensor& other_) {
 
 template <Tensor (*func)(const Tensor&, Scalar)>
 Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);
 }
 
@@ -27,7 +27,7 @@ Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_) {
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](Tensor s, Tensor o) { return func(s, o); }, self, other);
 }
 
@@ -39,7 +39,7 @@ Tensor NestedTensor_binary(
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&scalar](Tensor self, Tensor other) {
         return func(self, other, scalar);
       },
@@ -71,35 +71,6 @@ Tensor& NestedTensor_binary_out(
   return result;
 }
 
-struct NestedTensorFunction_packed_add
-    : torch::autograd::Function<NestedTensorFunction_packed_add> {
-  static Tensor forward(
-      torch::autograd::AutogradContext* ctx,
-      const Tensor& self,
-      const Tensor& other,
-      Scalar alpha) {
-    ctx->saved_data["0"] = alpha;
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        at::add(get_buffer(self), get_buffer(other)),
-        get_nested_tensor_impl(self)->nested_size()));
-  }
-  static torch::autograd::variable_list backward(
-      torch::autograd::AutogradContext* ctx,
-      // TODO: To prevent double backward (for now) check that grad_output
-      // doesn't require gradients.
-      torch::autograd::variable_list grad_output) {
-    auto alpha = ctx->saved_data["0"].toScalar();
-    TORCH_CHECK(
-        grad_output.size() == 1,
-        "Expected grad_output of size 1 for packed binary op.");
-    auto grad = grad_output[0];
-    TORCH_CHECK(
-        !grad.requires_grad(), "addmm does not support double backward.");
-    at::Tensor undef;
-    return {grad, maybe_multiply(grad, alpha), undef};
-  }
-};
-
 Tensor NestedTensor_add(
     const Tensor& self_,
     const Tensor& other_,
@@ -111,9 +82,11 @@ Tensor NestedTensor_add(
 #ifdef TRACEPACKED
     std::cout << "calling packed add" << std::endl;
 #endif
-    return NestedTensorFunction_packed_add::apply(self, other, alpha);
+    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
+        at::add(get_buffer(self), get_buffer(other), alpha),
+        get_nested_tensor_impl(self)->nested_size()));
   }
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
       self,
       other);
@@ -139,7 +112,7 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
 // XXX: We need to disable binary ops below autograd between NT and T, because
 // in the backwards pass autograd/engine.cpp uses .sizes() which
 // doesn't compare between NTs and Ts.
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "add.Tensor", NestedTensor_add);
   nt_impl(m, "add_.Tensor", NestedTensor_add_);
   BINARY_OP(div)
