@@ -4,6 +4,10 @@
 
 To use this you can either install nestedtensor from source or use the nightly binaries once they are available.
 
+## On colab
+
+[basic](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/basic_ipynb_txt.ipynb)
+
 ## From source
 
 [Build nestedtensor from source](https://github.com/pytorch/nestedtensor).
