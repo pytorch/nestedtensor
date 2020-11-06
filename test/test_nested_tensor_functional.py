@@ -61,17 +61,10 @@ class TestFunctional(TestCase):
         x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
         torch.manual_seed(0)
         emb = torch.nn.EmbeddingBag(100, 8)
-        print(x)
-        print("--")
         y = emb(x)
-        print(y)
         s = y.sum()
-        print("--")
-        print(s)
         s.backward()
-        # import sys; sys.exit(1)
-        # for i, inp in enumerate(inputs):
-        #     self.assertEqual(emb(inp), y[i])
+
 
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)

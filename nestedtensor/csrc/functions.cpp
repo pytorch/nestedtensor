@@ -34,13 +34,13 @@ Tensor NestedTensor_embedding(
 std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
     const Tensor& weight,
     const Tensor& indices_,
-    const Tensor& offsets_,
+    const Tensor& offsets,
     const bool scale_grad_by_freq,
     const int64_t mode,
     bool sparse,
     const c10::optional<Tensor>& per_sample_weights,
     bool include_last_offset) {
-  at::Tensor indices = indices_.contiguous();
+  at::Tensor indices = get_buffer(indices_.contiguous());
   int64_t emb_dim = weight.size(1);
   SizeNode output_size = map(
       [&emb_dim](at::Tensor inp) {
@@ -48,20 +48,11 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
         new_size.push_back(emb_dim);
         return new_size;
       },
-      get_nested_tensor_structure(indices));
-  std::vector<int64_t> vector_size_0 = flatten(
-      map([&emb_dim](at::Tensor inp) { return inp.size(0); },
-          get_nested_tensor_structure(indices)));
-  std::vector<int64_t> vector_offsets;
-  vector_offsets.push_back(0);
-  for (size_t i = 0; i < vector_size_0.size() - 1; i++) {
-    vector_offsets.push_back(
-        vector_offsets[vector_offsets.size() - 1] + vector_size_0[i]);
-  }
-  at::Tensor offsets = torch::tensor(vector_offsets);
-  std::tuple<Tensor, Tensor, Tensor, Tensor> emb_outputs = at::embedding_bag(
+      get_nested_tensor_structure(indices_));
+  c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::NestedTensor);
+  std::tuple<Tensor, Tensor, Tensor, Tensor> emb_outputs = at::_embedding_bag(
       weight,
-      get_buffer(indices),
+      indices,
       offsets,
       scale_grad_by_freq,
       mode,
@@ -80,7 +71,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
 Tensor NestedTensor__embedding_bag_dense_backward(
     const Tensor& grad_,
     const Tensor& indices_,
-    const Tensor& offsets_,
+    const Tensor& offsets,
     const Tensor& offset2bag,
     const Tensor& bag_size_,
     const Tensor& max_indices_,
@@ -88,37 +79,12 @@ Tensor NestedTensor__embedding_bag_dense_backward(
     bool scale_grad_by_freq,
     int64_t mode,
     const c10::optional<Tensor>& per_sample_weights) {
-  c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::NestedTensor);
-  std::cout << "is_nested_tensor_impl(grad_): " << is_nested_tensor_impl(grad_)
-            << std::endl;
-  auto tmp = map_nested_tensor(
-      [](at::Tensor t) {
-        std::cout << "t: " << t << std::endl;
-        return t;
-      },
-      grad_);
   TORCH_CHECK(is_nested_tensor_impl(grad_), "grad expected to be NestedTensor");
   TORCH_CHECK(
       is_nested_tensor_impl(indices_), "indices expected to be NestedTensor");
   at::Tensor grad = NestedTensor_to_tensor(grad_, c10::nullopt);
   at::Tensor indices = get_buffer(indices_).contiguous();
-
-  int64_t emb_dim = grad.size(1);
-  std::vector<int64_t> vector_size_0 = flatten(
-      map([&emb_dim](at::Tensor inp) { return inp.size(0); },
-          get_nested_tensor_structure(indices_)));
-  std::vector<int64_t> vector_offsets;
-  vector_offsets.push_back(0);
-  for (size_t i = 0; i < vector_size_0.size() - 1; i++) {
-    vector_offsets.push_back(
-        vector_offsets[vector_offsets.size() - 1] + vector_size_0[i]);
-  }
-  at::Tensor offsets = torch::tensor(vector_offsets);
-  std::cout << "grad: " << grad << std::endl;
-  std::cout << "indices: " << indices << std::endl;
-  std::cout << "offsets: " << offsets << std::endl;
-  std::cout << "offset2bag: " << offset2bag << std::endl;
-  std::cout << "bag_size_: " << bag_size_ << std::endl;
+  c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::NestedTensor);
   return at::_embedding_bag_dense_backward(
       grad,
       indices,

@@ -77,6 +77,12 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
                              ", as input is treated is a mini-batch of"
                              " fixed length sequences. However, found "
                              "offsets of type {}".format(type_str))
+        offsets_ = NestedTensor(input).nested_size()
+        offsets = torch.zeros(len(offsets_), dtype=torch.int64)
+        for i in range(1, len(offsets)):
+            offsets[i] = offsets[i - 1] + offsets_[i - 1][0]
+        offsets = offsets.to(input.device)
+        print(offsets)
     elif input.dim() == 1:
         raise ValueError("input has to be 2D NestedTensor,"
                          " but got NestedTensor of dimension {}".format(input.dim()))
@@ -106,7 +112,7 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
     ret, _, _, _ = torch.embedding_bag(
         weight,
         input,
-        torch.tensor([], dtype=torch.int64),
+        offsets,
         scale_grad_by_freq,
         mode_enum,
         sparse,
