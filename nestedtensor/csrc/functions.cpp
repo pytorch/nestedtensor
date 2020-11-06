@@ -31,7 +31,7 @@ Tensor NestedTensor_embedding(
       indices);
 }
 
-std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor_embedding_bag(
+std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
     const Tensor& weight,
     const Tensor& indices,
     const Tensor& offsets,
@@ -49,7 +49,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor_embedding_bag(
       wrap_tensor_node(weight[0]), offsets, offsets, offsets);
 }
 
-Tensor NestedTensor__embedding_bag_backward(
+Tensor NestedTensor__embedding_bag_dense_backward(
     const Tensor& grad,
     const Tensor& indices,
     const Tensor& offsets,
@@ -260,9 +260,9 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  nt_impl(m, "_embedding_bag", NestedTensor_embedding_bag);
+  nt_impl(m, "_embedding_bag", NestedTensor__embedding_bag);
   nt_impl(
-      m, "_embedding_bag_dense_backward", NestedTensor__embedding_bag_backward);
+      m, "_embedding_bag_dense_backward", NestedTensor__embedding_bag_dense_backward);
 }
 
 } // namespace at
