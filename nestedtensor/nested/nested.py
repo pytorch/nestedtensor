@@ -8,6 +8,12 @@ import nestedtensor
 from torch._C import _disabled_torch_function_impl
 
 
+def _not_impl_raise(cond, msg):
+    if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
+        raise NotImplementedError(
+            msg + " is not supported yet. Please file an issue on https://github.com/pytorch/nestedtensor")
+
+
 def _new_torch_stack(tensors, dim=0, out=None):
     result = torch.ops.nestedtensor.stack(list(
         t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
@@ -39,9 +45,10 @@ def _nn_functional_linear(input, weight, bias=None):
         output = output + bias
     return output
 
+
 def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
-                  scale_grad_by_freq=False, mode='mean', sparse=False,
-                  per_sample_weights=None, include_last_offset=False):
+                                 scale_grad_by_freq=False, mode='mean', sparse=False,
+                                 per_sample_weights=None, include_last_offset=False):
     # Check for backward compatibility.
     # Used to be embedding_bag(weight, input, ...)
     # Now is     embedding_bag(input, weight, ...)
@@ -56,6 +63,10 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
                          "then it must have the same shape as the input ({})"
                          .format(per_sample_weights.shape, input.shape))
 
+    _not_impl_raise(sparse, "sparse")
+    _not_impl_raise(max_norm, "max_norm")
+    _not_impl_raise(per_sample_weights, "per_sample_weights")
+
     if input.dim() == 2:
         if offsets is not None:
             type_str = "<unknown>"
@@ -66,12 +77,6 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
                              ", as input is treated is a mini-batch of"
                              " fixed length sequences. However, found "
                              "offsets of type {}".format(type_str))
-        offsets = torch.arange(0, input.numel(), input.size(1),
-                               dtype=torch.long, device=input.device)
-
-        input = input.reshape(-1)
-        if per_sample_weights is not None:
-            per_sample_weights = per_sample_weights.reshape(-1)
     elif input.dim() == 1:
         raise ValueError("input has to be 2D NestedTensor,"
                          " but got NestedTensor of dimension {}".format(input.dim()))
@@ -83,20 +88,14 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
         mode_enum = 2
 
         if scale_grad_by_freq:
-            raise ValueError("max mode does not support scaling the gradient by the frequency")
+            raise ValueError(
+                "max mode does not support scaling the gradient by the frequency")
 
         if sparse:
             raise ValueError("max mode does not support sparse weights")
 
     else:
         raise ValueError("mode has to be one of sum, mean or max")
-
-    if max_norm is not None:
-        # XXX: equivalent to
-        # with torch.no_grad():
-        #   torch.nembedding_renorm_
-        # remove once script supports set_grad_enabled
-        raise NotImplementedError("max_norm is not supported yet. Please file an issue on https://github.com/pytorch/nestedtensor")
 
     if per_sample_weights is not None and mode != 'sum':
         raise NotImplementedError("embedding_bag: per_sample_weights was not None. "
@@ -107,7 +106,7 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
     ret, _, _, _ = torch.embedding_bag(
         weight,
         input,
-        offsets,
+        torch.tensor([], dtype=torch.int64),
         scale_grad_by_freq,
         mode_enum,
         sparse,
@@ -302,7 +301,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return _wrap_result(self._impl.requires_grad_(requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        self._impl.backward(gradient._impl if gradient else None, retain_graph, create_graph)
+        self._impl.backward(
+            gradient._impl if gradient else None, retain_graph, create_graph)
 
     def nested_dim(self):
         """

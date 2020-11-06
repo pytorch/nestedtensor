@@ -57,10 +57,19 @@ class TestFunctional(TestCase):
             self.assertEqual(emb(inp), y[i])
 
     def test_nn_embedding_bag(self):
-        inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
+        inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (2,))]
         x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
+        torch.manual_seed(0)
         emb = torch.nn.EmbeddingBag(100, 8)
         y = emb(x)
+        print(x)
+        print("--")
+        print(y)
+        s = y.sum()
+        print("--")
+        print(s)
+        s.backward()
+        import sys; sys.exit(1)
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 

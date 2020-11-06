@@ -31,14 +31,37 @@ Tensor NestedTensor_embedding(
       indices);
 }
 
-std::tuple<Tensor, Tensor, Tensor, Tensor>
-embedding_bag(const Tensor &weight, const Tensor &indices,
-              const Tensor &offsets, const bool scale_grad_by_freq,
-              const int64_t mode, bool sparse,
-              const Tensor &per_sample_weights,
-              bool include_last_offset) {
-  std::cout << "ASDF" << std::endl;
-  return std::make_tuple(weight[0], weight[0], weight[0], weight[0]);
+std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor_embedding_bag(
+    const Tensor& weight,
+    const Tensor& indices,
+    const Tensor& offsets,
+    const bool scale_grad_by_freq,
+    const int64_t mode,
+    bool sparse,
+    const c10::optional<Tensor>& per_sample_weights,
+    bool include_last_offset) {
+  std::cout << "ASDF0" << std::endl;
+  // TODO:
+  // Get offsets via nested_size
+  // assert that nested_dim is 1
+  //
+  return std::make_tuple(
+      wrap_tensor_node(weight[0]), offsets, offsets, offsets);
+}
+
+Tensor NestedTensor__embedding_bag_backward(
+    const Tensor& grad,
+    const Tensor& indices,
+    const Tensor& offsets,
+    const Tensor& offset2bag,
+    const Tensor& bag_size_,
+    const Tensor& max_indices_,
+    int64_t num_weights,
+    bool scale_grad_by_freq,
+    int64_t mode,
+    const c10::optional<Tensor>& per_sample_weights) {
+  std::cout << "ASDF1" << std::endl;
+  return grad;
 }
 
 Tensor NestedTensor_layer_norm(
@@ -58,10 +81,7 @@ Tensor NestedTensor_layer_norm(
       std::to_string(input.dim() - 1));
   if (weight && bias) {
     return autograd_map_nested_tensor(
-        [normalized_shape, eps](
-            const at::Tensor t,
-            Tensor w,
-            Tensor b) {
+        [normalized_shape, eps](const at::Tensor t, Tensor w, Tensor b) {
           return at::layer_norm(t, normalized_shape, w, b, eps, true);
         },
         input,
@@ -237,6 +257,12 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "stack.out", NestedTensor_stack_out);
   nt_impl(m, "cat", NestedTensor_cat);
   nt_impl(m, "cat.out", NestedTensor_cat_out);
+}
+
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+  nt_impl(m, "_embedding_bag", NestedTensor_embedding_bag);
+  nt_impl(
+      m, "_embedding_bag_dense_backward", NestedTensor__embedding_bag_backward);
 }
 
 } // namespace at
