@@ -82,7 +82,6 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
         for i in range(1, len(offsets)):
             offsets[i] = offsets[i - 1] + offsets_[i - 1][0]
         offsets = offsets.to(input.device)
-        print(offsets)
     elif input.dim() == 1:
         raise ValueError("input has to be 2D NestedTensor,"
                          " but got NestedTensor of dimension {}".format(input.dim()))
