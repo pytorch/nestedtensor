@@ -31,6 +31,16 @@ Tensor NestedTensor_embedding(
       indices);
 }
 
+std::tuple<Tensor, Tensor, Tensor, Tensor>
+embedding_bag(const Tensor &weight, const Tensor &indices,
+              const Tensor &offsets, const bool scale_grad_by_freq,
+              const int64_t mode, bool sparse,
+              const Tensor &per_sample_weights,
+              bool include_last_offset) {
+  std::cout << "ASDF" << std::endl;
+  return std::make_tuple(weight[0], weight[0], weight[0], weight[0]);
+}
+
 Tensor NestedTensor_layer_norm(
     const Tensor& input,
     IntArrayRef normalized_shape,

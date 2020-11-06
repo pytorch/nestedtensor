@@ -56,6 +56,14 @@ class TestFunctional(TestCase):
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 
+    def test_nn_embedding_bag(self):
+        inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
+        x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
+        emb = torch.nn.EmbeddingBag(100, 8)
+        y = emb(x)
+        for i, inp in enumerate(inputs):
+            self.assertEqual(emb(inp), y[i])
+
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
         tensor2 = torch.rand(3, 300, 400)
