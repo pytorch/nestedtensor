@@ -114,7 +114,6 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
       m,
       "_embedding_bag_sparse_backward",
       NestedTensor__embedding_bag_sparse_backward);
-  nt_impl(m, "_embedding_bag_backward", NestedTensor__embedding_bag_backward);
 }
 
 } // namespace at
