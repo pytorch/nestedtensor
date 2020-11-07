@@ -105,13 +105,11 @@ Tensor NestedTensor__embedding_bag_sparse_backward(
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  nt_impl(m, "_embedding_bag", NestedTensor__embedding_bag);
-  nt_impl(
-      m,
+  m.impl("_embedding_bag", NestedTensor__embedding_bag);
+  m.impl(
       "_embedding_bag_dense_backward",
       NestedTensor__embedding_bag_dense_backward);
-  nt_impl(
-      m,
+  m.impl(
       "_embedding_bag_sparse_backward",
       NestedTensor__embedding_bag_sparse_backward);
 }
