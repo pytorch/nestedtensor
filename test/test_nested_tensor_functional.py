@@ -80,15 +80,10 @@ class TestFunctional(TestCase):
             self.assertEqual(s, s_t)
             self.assertEqual(emb.weight.grad, emb_t.weight.grad)
 
-        print("1")
         run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (5,)), torch.randint(100, (5,))])
-        print("2")
         run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
-        print("3")
         run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (5,)), torch.randint(100, (5,))])
-        print("4")
         run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
-        print("5")
 
 
     def test_nn_functional_conv2d(self):

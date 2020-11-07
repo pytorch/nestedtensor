@@ -85,7 +85,6 @@ Tensor NestedTensor__embedding_bag_sparse_backward(
     bool scale_grad_by_freq,
     int64_t mode,
     const c10::optional<Tensor>& per_sample_weights) {
-  std::cout << "ASDF SPARSE" << std::endl;
   TORCH_CHECK(is_nested_tensor_impl(grad_), "grad expected to be NestedTensor");
   TORCH_CHECK(
       is_nested_tensor_impl(indices_), "indices expected to be NestedTensor");
@@ -105,11 +104,13 @@ Tensor NestedTensor__embedding_bag_sparse_backward(
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  m.impl("_embedding_bag", NestedTensor__embedding_bag);
-  m.impl(
+  nt_impl(m, "_embedding_bag", NestedTensor__embedding_bag);
+}
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+  nt_impl(m, 
       "_embedding_bag_dense_backward",
       NestedTensor__embedding_bag_dense_backward);
-  m.impl(
+  nt_impl(m, 
       "_embedding_bag_sparse_backward",
       NestedTensor__embedding_bag_sparse_backward);
 }
