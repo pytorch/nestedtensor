@@ -10,8 +10,7 @@ To use this you can either install nestedtensor from source or use the nightly b
 - [indexing](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/indexing.ipynb)
 - [models](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/models.ipynb)
 - [naryops_and_reduce](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/naryops_and_reduce.ipynb)
-
-
+- [text_classification](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/examples/text_classification.ipynb)
 
 ## From source
 
