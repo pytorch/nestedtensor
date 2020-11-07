@@ -58,10 +58,10 @@ class TestFunctional(TestCase):
 
     def test_nn_embedding_bag(self):
 
-        def run_test(inputs):
+        def run_test(EmbeddingBag, inputs):
             x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
             torch.manual_seed(0)
-            emb = torch.nn.EmbeddingBag(100, 8)
+            emb = EmbeddingBag()
             y = emb(x)
             s = y.sum()
             s.backward()
@@ -71,7 +71,7 @@ class TestFunctional(TestCase):
                 input_offset.append(len(inp) + input_offset[-1])
             input_offset = torch.tensor(input_offset)
             torch.manual_seed(0)
-            emb_t = torch.nn.EmbeddingBag(100, 8)
+            emb_t = EmbeddingBag()
             y_t = emb_t(input_tensor, input_offset)
             s_t = y_t.sum()
             s_t.backward()
@@ -80,8 +80,10 @@ class TestFunctional(TestCase):
             self.assertEqual(s, s_t)
             self.assertEqual(emb.weight.grad, emb_t.weight.grad)
 
-        run_test([torch.randint(100, (5,)), torch.randint(100, (5,))])
-        run_test([torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (5,)), torch.randint(100, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (5,)), torch.randint(100, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
 
 
     def test_nn_functional_conv2d(self):

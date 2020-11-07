@@ -63,7 +63,6 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
                          "then it must have the same shape as the input ({})"
                          .format(per_sample_weights.shape, input.shape))
 
-    _not_impl_raise(sparse, "sparse")
     _not_impl_raise(max_norm, "max_norm")
     _not_impl_raise(per_sample_weights, "per_sample_weights")
 
