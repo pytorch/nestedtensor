@@ -108,6 +108,7 @@ Tensor NestedTensor__embedding_bag_sparse_backward(
     bool scale_grad_by_freq,
     int64_t mode,
     const c10::optional<Tensor>& per_sample_weights) {
+  std::cout << "ASDF SPARSE" << std::endl;
   TORCH_CHECK(is_nested_tensor_impl(grad_), "grad expected to be NestedTensor");
   TORCH_CHECK(
       is_nested_tensor_impl(indices_), "indices expected to be NestedTensor");
@@ -124,6 +125,73 @@ Tensor NestedTensor__embedding_bag_sparse_backward(
       scale_grad_by_freq,
       mode,
       per_sample_weights);
+}
+
+// Assumes all input tensors are contiguous.
+// See NOTE [ embedding_bag Native Functions ] in native_functions.yaml for
+// details
+Tensor NestedTensor__embedding_bag_backward(
+    const Tensor& grad,
+    const Tensor& indices,
+    const Tensor& offsets,
+    const Tensor& offset2bag,
+    const Tensor& bag_size_,
+    const Tensor& max_indices_,
+    int64_t num_weights,
+    bool scale_grad_by_freq,
+    int64_t mode,
+    bool sparse,
+    const c10::optional<Tensor>& per_sample_weights) {
+  auto indices_arg = TensorArg(indices, "indices", 1);
+  checkScalarType("embedding_bag", indices_arg, kLong);
+  if (!is_nested_tensor_impl(indices)) {
+    checkContiguous("embedding_bag", indices_arg);
+  }
+  auto offsets_arg = TensorArg(offsets, "offsets", 1);
+  checkScalarType("embedding_bag", offsets_arg, kLong);
+  checkContiguous("embedding_bag", offsets_arg);
+
+  Tensor offset2bag_;
+  if (indices.numel() != 0 && offset2bag.numel() == 0) {
+    TORCH_CHECK(false, "not implemented");
+    // offset2bag_ = at::zeros(
+    //    {indices.sizes()[0] + 1}, indices.options()); // offset2bag = [0 0 0 0
+    //    0]
+
+    // make_offset2bag(offsets, indices, offset2bag_);
+
+    // offset2bag_.resize_({indices.sizes()[0]});
+  } else {
+    auto offset2bag_arg = TensorArg(offset2bag, "offset2bag", 1);
+    checkScalarType("embedding_bag", offset2bag_arg, kLong);
+    checkContiguous("embedding_bag", offset2bag_arg);
+    offset2bag_ = offset2bag;
+  }
+
+  if (sparse) {
+    return at::_embedding_bag_sparse_backward(
+        grad,
+        indices,
+        offsets,
+        offset2bag_,
+        bag_size_,
+        num_weights,
+        scale_grad_by_freq,
+        mode,
+        per_sample_weights);
+  } else {
+    return at::_embedding_bag_dense_backward(
+        grad,
+        indices,
+        offsets,
+        offset2bag_,
+        bag_size_,
+        max_indices_,
+        num_weights,
+        scale_grad_by_freq,
+        mode,
+        per_sample_weights);
+  }
 }
 
 Tensor NestedTensor_layer_norm(
@@ -331,6 +399,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
       m,
       "_embedding_bag_sparse_backward",
       NestedTensor__embedding_bag_sparse_backward);
+  nt_impl(m, "_embedding_bag_backward", NestedTensor__embedding_bag_backward);
 }
 
 } // namespace at
