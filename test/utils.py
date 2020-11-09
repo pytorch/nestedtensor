@@ -221,7 +221,7 @@ def get_unary_functions():
         'exp',
         'expm1',
         'floor',
-        'fill',
+        # 'fill', Not a unary op
         # 'fmod',  # Requires extra kwargs
         'frac',
         # 'hardshrink', # TODO: Not part of aten
