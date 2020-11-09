@@ -1,7 +1,8 @@
 Below are tables built on top of the stable 1.7 ops [documention](https://pytorch.org/docs/1.7.0/torch.html), which aim to track the implementation of various operations.
 
-## Unary Ops
+### Unary Ops
 <details>
+  
 | Name | Native | Derivative |
 | ---- | ------ | ---------- |
 |abs|&#9745;||
@@ -91,9 +92,12 @@ Below are tables built on top of the stable 1.7 ops [documention](https://pytorc
 |tanh|&#9745;||
 |true_divide|||
 |trunc|&#9745;||
+
 </details>
 
-## Reduction Ops
+### Reduction Ops
+
+<details>
 
 | Name | Native | Derivative |
 | ---- | ------ | ---------- |
@@ -122,3 +126,5 @@ Below are tables built on top of the stable 1.7 ops [documention](https://pytorc
 | var |||
 | var_mean |||
 | count_nonzero |||
+
+</details>
