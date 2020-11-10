@@ -196,6 +196,10 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   return m2_tensor[0] / numel[0];
 }
 
+Tensor NestedTensor_var_dim(const Tensor& self, IntArrayRef dim, bool unbiased, bool keepdim) {
+  return at::sum(self, dim, keepdim);
+}
+
 Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   auto tensors = flatten(
       map([&dtype](at::Tensor tensor) { return at::prod(tensor, dtype); },
@@ -251,6 +255,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "mean", NestedTensor_mean);
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
   nt_impl(m, "var", NestedTensor_var);
+  nt_impl(m, "var.dim", NestedTensor_var_dim);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
   nt_impl(m, "sum_to", NestedTensor_sum_to);
