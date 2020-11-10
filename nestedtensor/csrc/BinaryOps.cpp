@@ -258,13 +258,19 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "floor_divide.out", NestedTensor_binary_out<at::floor_divide_out>);
 
   nt_impl(m, "eq.Tensor", NestedTensor_binary<at::eq>);
-  nt_impl(m, "ne.Tensor", NestedTensor_binary<at::ne>);
   nt_impl(m, "eq.Scalar", NestedTensor_binary_scalar<at::eq>);
+  nt_impl(m, "ne.Tensor", NestedTensor_binary<at::ne>);
   nt_impl(m, "ne.Scalar", NestedTensor_binary_scalar<at::ne>);
+  nt_impl(m, "ge.Tensor", NestedTensor_binary<at::ge>);
+  nt_impl(m, "ge.Scalar", NestedTensor_binary_scalar<at::ge>);
 
   nt_impl(m, "atan2", NestedTensor_binary<at::atan2>);
   nt_impl(m, "atan2_", NestedTensor_binary_<at::native::atan2_>);
   nt_impl(m, "atan2.out", NestedTensor_binary_out<at::atan2_out>);
+
+  nt_impl(m, "logical_and", NestedTensor_binary<at::logical_and>);
+  nt_impl(m, "logical_and_", NestedTensor_binary_<at::native::logical_and_>);
+  nt_impl(m, "logical_and.out", NestedTensor_binary_out<at::logical_and_out>);
 
   nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
   nt_impl(m, "pow.Tensor_Tensor", NestedTensor_binary<at::pow>);

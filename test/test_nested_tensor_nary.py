@@ -116,7 +116,7 @@ def _gen_test_unary(func__, nested_dim, device):
     return _test_unary
 
 
-def _gen_test_binary(func):
+def _gen_test_binary(func, no_grad):
     def _test_binary(self):
         a = utils.gen_float_tensor(1, (2, 3)) * 0 + 1
         b = utils.gen_float_tensor(2, (2, 3)) * 0 + 2
@@ -126,16 +126,17 @@ def _gen_test_binary(func):
         torch_func = getattr(torch, func)
 
         a1 = ntnt([a, b])
-        if func == "remainder":
+        if no_grad:
             a2 = ntnt_nograd([b, c])
         else:
             a2 = ntnt([b, c])
         a3 = ntnt([torch_func(a, b),
                    torch_func(b, c)])
         res1 = torch_func(a1, a2)
-        res1.sum().backward()
-        self.assertIsNotNone(a1.grad)
-        if func == "remainder":
+        if not no_grad:
+            res1.sum().backward()
+            self.assertIsNotNone(a1.grad)
+        if no_grad:
             self.assertIsNone(a2.grad)
         else:
             self.assertIsNotNone(a2.grad)
@@ -169,7 +170,7 @@ def _gen_test_binary(func):
         result = ntnt([torch_func(c, a),
                        torch_func(c, b)
                        ])
-        if func == "remainder":
+        if no_grad:
             a1.detach_()
             result.detach_()
         self.assertEqual(result,
@@ -185,7 +186,7 @@ def _gen_test_binary(func):
         a2 = ntnt([a, b])
         a3 = ntnt([torch_func(c, a),
                    torch_func(c, b)])
-        if func == "remainder":
+        if no_grad:
             a2.detach_()
             a3.detach_()
         self.assertEqual(a3, torch_func(a1, a2))
@@ -201,11 +202,11 @@ def _gen_test_binary(func):
         c = utils.gen_float_tensor(3, (2, 3)).requires_grad_()
 
         a1 = ntnt([a, b])
-        if func == "remainder":
+        if no_grad:
             a2 = ntnt_nograd([b, c])
         else:
             a2 = ntnt([b, c])
-        if func == "remainder":
+        if no_grad:
             a3 = ntnt([torch_func(a, b.detach()),
                        torch_func(b, c.detach())])
         else:
@@ -214,17 +215,16 @@ def _gen_test_binary(func):
         # print(a3.requires_grad)
         result = torch_func(a1, a2)
         # print(result.requires_grad)
-        result.sum().backward()
-        if func == "remainder":
+        if not no_grad:
+            result.sum().backward()
+        if no_grad:
             c.detach_()
 
-        if func != "remainder":
+        if not no_grad:
             # This is used to exercise the tree reduction in the
             # gradient calculation.
             a1 = ntnt([a, b, c])
             result = torch_func(a1, c)
-            print("result")
-            print(result)
             result.sum().backward()
             a_0 = a.clone().detach().requires_grad_()
             b_0 = b.clone().detach().requires_grad_()
@@ -239,7 +239,7 @@ def _gen_test_binary(func):
             self.assertEqual(c.grad, c_1.grad)
 
         # print(result.requires_grad)
-        if func == "remainder":
+        if no_grad:
             a1.detach_()
         result = torch_func(c, a1)
         # print(result.requires_grad)
@@ -287,8 +287,11 @@ for func__ in get_unary_functions():
 
 TestBinary = type('TestBinary', (DynamicClassBase,), {})
 for func in get_binary_functions():
+    no_grad = False
+    if func == "remainder" or func == "pow":
+        no_grad = True
     setattr(TestBinary, "test_{0}".format(func),
-            _gen_test_binary(func))
+            _gen_test_binary(func, no_grad))
 
 TestBinaryMethod = type('TestBinaryMethod', (DynamicClassBase,), {})
 for func in get_python_binary_arithmetic_operations():
