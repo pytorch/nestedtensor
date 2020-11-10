@@ -1,14 +1,123 @@
 import torch
 import numbers
-from functools import wraps
 from . import masking
-import collections
-import os
 
 from . import creation
 
 import nestedtensor
-import itertools
+from torch._C import _disabled_torch_function_impl
+
+
+def _not_impl_raise(cond, msg):
+    if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
+        raise NotImplementedError(
+            msg + " is not supported yet. Please file an issue on https://github.com/pytorch/nestedtensor")
+
+
+def _new_torch_stack(tensors, dim=0, out=None):
+    result = torch.ops.nestedtensor.stack(list(
+        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
+    result = _wrap_result(result)
+    if out is None:
+        return result
+    out.copy_(result)
+
+
+def _new_torch_cat(tensors, dim=0, out=None):
+    result = torch.ops.nestedtensor.cat(list(
+        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
+    result = _wrap_result(result)
+    if out is None:
+        return result
+    out.copy_(result)
+
+
+def _nn_functional_linear(input, weight, bias=None):
+    # TODO: This is done because autograd/engine.cpp has an is_expandable_to check
+    # that doesn't support NT's extension of the .sizes() function. Therefore
+    # we need to disable the addition of NTs and Ts below autograd, but we still need
+    # it for linear (hence add lives above autograd). Also linear insists on using the
+    # in-place version, for which we don't have an op above autograd, since the custom
+    # function wrapper autograd_map_nested_tensor doesn't suport it.
+    # And that's why we're writing our own version of linear here.
+    output = input.matmul(weight.t())
+    if bias is not None:
+        output = output + bias
+    return output
+
+
+def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
+                                 scale_grad_by_freq=False, mode='mean', sparse=False,
+                                 per_sample_weights=None, include_last_offset=False):
+    # Check for backward compatibility.
+    # Used to be embedding_bag(weight, input, ...)
+    # Now is     embedding_bag(input, weight, ...)
+    if weight.dtype == torch.long and input.is_floating_point():
+        warnings.warn("Argument order of nn.functional.embedding_bag was changed. "
+                      "Usage `embedding_bag(weight, input, ...)` is deprecated, "
+                      "and should now be `embedding_bag(input, weight, ...)`.")
+        weight, input = input, weight
+
+    if per_sample_weights is not None and input.size() != per_sample_weights.size():
+        raise ValueError("embedding_bag: If per_sample_weights ({}) is not None, "
+                         "then it must have the same shape as the input ({})"
+                         .format(per_sample_weights.shape, input.shape))
+
+    _not_impl_raise(max_norm, "max_norm")
+    _not_impl_raise(per_sample_weights, "per_sample_weights")
+
+    if input.dim() == 2:
+        if offsets is not None:
+            type_str = "<unknown>"
+            # TODO: Remove this once script supports type() calls
+            if not torch.jit.is_scripting():
+                type_str = str(type(offsets))
+            raise ValueError("if input is 2D, then offsets has to be None"
+                             ", as input is treated is a mini-batch of"
+                             " fixed length sequences. However, found "
+                             "offsets of type {}".format(type_str))
+        offsets_ = NestedTensor(input).nested_size()
+        offsets = torch.zeros(len(offsets_), dtype=torch.int64)
+        for i in range(1, len(offsets)):
+            offsets[i] = offsets[i - 1] + offsets_[i - 1][0]
+        offsets = offsets.to(input.device)
+    elif input.dim() == 1:
+        raise ValueError("input has to be 2D NestedTensor,"
+                         " but got NestedTensor of dimension {}".format(input.dim()))
+    if mode == 'sum':
+        mode_enum = 0
+    elif mode == 'mean':
+        mode_enum = 1
+    elif mode == 'max':
+        mode_enum = 2
+
+        if scale_grad_by_freq:
+            raise ValueError(
+                "max mode does not support scaling the gradient by the frequency")
+
+        if sparse:
+            raise ValueError("max mode does not support sparse weights")
+
+    else:
+        raise ValueError("mode has to be one of sum, mean or max")
+
+    if per_sample_weights is not None and mode != 'sum':
+        raise NotImplementedError("embedding_bag: per_sample_weights was not None. "
+                                  "per_sample_weights is only supported for mode='sum' "
+                                  "(got mode='{}'). Please open a feature request on GitHub."
+                                  .format(mode))
+
+    ret, _, _, _ = torch.embedding_bag(
+        weight,
+        input,
+        offsets,
+        scale_grad_by_freq,
+        mode_enum,
+        sparse,
+        per_sample_weights,
+        include_last_offset)
+    return ret
+
 
 def _wrap_result(result):
     if isinstance(result, list):
@@ -21,6 +130,7 @@ def _wrap_result(result):
         else result
     )
 
+
 def _filter_impl(args, kwargs):
     if kwargs is None:
         kwargs = {}
@@ -30,18 +140,23 @@ def _filter_impl(args, kwargs):
     }
     return impl_args, impl_kwargs
 
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
             def _wrapped_fn(*args, **kwargs):
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
-                result = getattr(impl_args[0], name)(*(impl_args[1:]), **impl_kwargs)
+                result = getattr(impl_args[0], name)(
+                    *(impl_args[1:]), **impl_kwargs)
                 return _wrap_result(result)
             return _wrapped_fn
         return self.__dict__[name]
 
 # -------------------------NestedTensor core---------------------------
-class NestedTensor(metaclass = NestedTensorMeta):
+
+
+class NestedTensor(metaclass=NestedTensorMeta):
+    __torch_function__ = _disabled_torch_function_impl
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its
@@ -58,13 +173,14 @@ class NestedTensor(metaclass = NestedTensorMeta):
     #     is_pinned()
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
+
     def __init__(self, impl):
         if not torch.ops.nestedtensor.is_nested_tensor_impl(impl):
             raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
     def __getattr__(self, name):
-        if getattr(self._impl, name):
+        if hasattr(self._impl, name):
             def _wrapped_fn(*args, **kwargs):
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
                 result = getattr(self._impl, name)(*impl_args, **impl_kwargs)
@@ -74,15 +190,26 @@ class NestedTensor(metaclass = NestedTensorMeta):
 
     # --- magic methods ---
 
+    def __hash__(self):
+        return hash(self._impl)
+
     def __eq__(self, other):
-        return _wrap_result(self._impl.__eq__(other._impl))
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl.__eq__(other._impl))
+        return _wrap_result(self._impl.__eq__(other))
 
     def __ne__(self, other):
-        return _wrap_result(self._impl.__ne__(other._impl))
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl.__ne__(other._impl))
+        return _wrap_result(self._impl.__ne__(other))
 
     def __add__(self, other):
         if isinstance(other, NestedTensor):
             return _wrap_result(self._impl + other._impl)
+        return _wrap_result(self._impl + other)
+
+    def __radd__(self, other):
+        assert not isinstance(other, NestedTensor)
         return _wrap_result(self._impl + other)
 
     def __mul__(self, other):
@@ -90,9 +217,36 @@ class NestedTensor(metaclass = NestedTensorMeta):
             return _wrap_result(self._impl * other._impl)
         return _wrap_result(self._impl * other)
 
+    def __rmul__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(self._impl * other)
+
+    def __sub__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl - other._impl)
+        return _wrap_result(self._impl - other)
+
+    def __rsub__(self, other):
+        assert not isinstance(other, NestedTensor)
+        return _wrap_result(other - self._impl)
+
+    def __truediv__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl / other._impl)
+        return _wrap_result(self._impl / other)
+
+    def __floordiv__(self, other):
+        if isinstance(other, NestedTensor):
+            return _wrap_result(self._impl // other._impl)
+        return _wrap_result(self._impl // other)
+
     def __pow__(self, *args, **kwargs):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
+
+    def __rpow__(self, exponent):
+        assert not isinstance(exponent, NestedTensor)
+        return _wrap_result(torch.pow(exponent, self._impl))
 
     @property
     def shape(self):
@@ -124,7 +278,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return torch.ops.nestedtensor.requires_grad(self._impl)
+        return self._impl.requires_grad
 
     @property
     def grad(self):
@@ -134,16 +288,25 @@ class NestedTensor(metaclass = NestedTensorMeta):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        return _wrap_result(torch.ops.nestedtensor.grad(self._impl))
+        return _wrap_result(self._impl.grad)
+
+    @property
+    def data(self):
+        return _wrap_result(self._impl.data)
+
+    @property
+    def is_sparse(self):
+        return self._impl.is_sparse
 
     def requires_grad_(self, requires_grad=True):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
+        return _wrap_result(self._impl.requires_grad_(requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
+        self._impl.backward(
+            gradient._impl if gradient else None, retain_graph, create_graph)
 
     def nested_dim(self):
         """
@@ -172,11 +335,8 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
-        # TODO: to is currently not supported by impls due to argparsing.
-        new_tensors = [t.to(*args, **kwargs) for t in self.unbind()]
-        # TODO: Make contiguous by default? Heavy operation...
-        # NOTE: Needs grad support, which nestedtensor.nested_tensor
-        # constructor doesn't have.
+        raise NotImplementedError(
+            "NestedTensor.to is currently not implemented.")
         return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
@@ -188,19 +348,6 @@ class NestedTensor(metaclass = NestedTensorMeta):
     # --- impl forward ends ---
 
     # --- dependent on impl ---
-
-    def unbind(self, dim=0):
-        """
-        unbind returns a tuple containing the entries
-        of the list ```self``` represents. 
-
-        For now unbind does not accept a dim argument akin
-        to torch.Tensor.unbind
-
-        Returns a tuple of views. Results might not be contiguous.
-        """
-        # TODO: Design choice: Return zip_longest or zip?
-        return tuple(_wrap_result(t) for t in self._impl.unbind(dim))
 
     def to_tensor(self, dim=0):
         """
@@ -224,6 +371,13 @@ class NestedTensor(metaclass = NestedTensorMeta):
     def __torch_function__(self, func, types, args=(), kwargs=None):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
+        # TODO:This was disabled for now to focus on DETR
+        if func is torch.nn.functional.linear:
+            return _wrap_result(_nn_functional_linear(*impl_args, **impl_kwargs))
+        if func is torch.nn.functional.embedding_bag:
+            return _wrap_result(_nn_functional_embedding_bag(*impl_args, **impl_kwargs))
+        if func is torch.nn.functional.multi_head_attention_forward:
+            return _wrap_result(nestedtensor.nn.mha.multi_head_attention_forward(*args, **kwargs))
         if func is torch.nn.functional.interpolate:
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         # Need a specialized implementation to dodge call to view in nll_loss
@@ -235,7 +389,8 @@ class NestedTensor(metaclass = NestedTensorMeta):
 
     # Might require nonzero
     def __bool__(self):
-        raise NotImplementedError("NestedTensor doesn't support function __bool__")
+        raise NotImplementedError(
+            "NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
         return _wrap_result(nestedtensor._C.get_item(self._impl, key))
@@ -267,5 +422,5 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return masking.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
+        tensor, mask = masking.to_tensor_mask(self, mask_dim)
         return tensor.masked_fill(~mask, padding)

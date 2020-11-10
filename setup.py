@@ -88,8 +88,12 @@ def get_extensions():
     extra_link_args = []
     extra_compile_args = {"cxx": ["-O3", "-g", "-std=c++14"]}
     if int(os.environ.get("DEBUG", 0)):
-        extra_compile_args = {"cxx": ["-O0", "-fno-inline", "-g", "-std=c++14"]}
+        extra_compile_args = {
+            "cxx": ["-O0", "-fno-inline", "-g", "-std=c++14"]}
         extra_link_args = ["-O0", "-g"]
+    if int(os.environ.get("USE_SUBMODULE", 0)):
+        extra_compile_args["cxx"] = extra_compile_args["cxx"] + \
+            ["-DUSE_SUBMODULE=1"]
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv(
         "FORCE_CUDA", "0"
     ) == "1":
@@ -168,7 +172,7 @@ setuptools.setup(
     cmdclass={
         "clean": clean,
         "build_ext": BuildExtension.with_options(
-            use_ninja=os.environ.get("NT_USE_NINJA", False)
+            use_ninja=os.environ.get("USE_NINJA", False)
         ),
     },
     install_requires=requirements,
