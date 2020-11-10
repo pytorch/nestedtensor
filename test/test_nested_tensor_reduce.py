@@ -107,13 +107,13 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.sum(), True)
 
     def test_sum_dim(self):
-        self._test_reduce_dim(torch.sum)
+        self._test_reduce_dim(torch.sum, True)
 
     def test_mean_all(self):
         self._test_allreduce(lambda x: x.mean())
 
     def test_mean_dim(self):
-        self._test_reduce_dim(torch.mean)
+        self._test_reduce_dim(torch.mean, True)
 
     def test_prod(self):
         self._test_allreduce(lambda x: x.prod())

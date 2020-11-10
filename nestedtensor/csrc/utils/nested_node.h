@@ -516,8 +516,14 @@ inline TensorNode pack(TensorNode&& structure) {
 
 // Remove singleton nodes across given level.
 template <class A>
-inline NestedNode<A> squeeze(NestedNode<A> structure, int64_t level) {
+inline NestedNode<A> squeeze(
+    NestedNode<A> structure,
+    int64_t level,
+    bool keep_dim = false) {
   if (level <= 0) {
+    if (keep_dim) {
+      return NestedNode<A>(structure.children(0));
+    }
     return structure.children(0);
   }
   return NestedNode<A>(squeeze(structure, level - 1));

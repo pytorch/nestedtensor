@@ -71,18 +71,15 @@ Tensor NestedTensor_func_dim(
           "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6.");
     }
     auto new_nested_size = get_nested_size(output);
-    for (auto dim : nesteddims) {
-      if (!keepdims) {
-        new_nested_size = squeeze(new_nested_size, dim);
-      }
+    for (size_t i = nesteddims.size(); i > 0; i--) {
+      new_nested_size = squeeze(new_nested_size, nesteddims[i - 1], keepdims);
     }
-    return wrap_buffer(
+    auto tmp =
         fn(NestedTensor_to_tensor(output, c10::nullopt),
            IntArrayRef(nesteddims),
            keepdims,
-           dtype)
-            .reshape({-1}),
-        new_nested_size);
+           dtype);
+    return wrap_buffer(tmp.reshape({-1}), new_nested_size);
   }
   return output;
 }
@@ -213,6 +210,41 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
+// Sums `tensor` repeatedly to produce a tensor of shape `shape`.
+// Precondition: is_expandable_to(shape, tensor.sizes()) must be true
+Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
+  if (shape.size() == 0) {
+    return tensor_.sum();
+  }
+  auto nt_impl = get_nested_tensor_impl(tensor_);
+
+  TORCH_CHECK(
+      tensor_.dim() >= nt_impl->nested_dim() + shape.size(),
+      "sum_to only supported along tensor dimensions.");
+
+  at::Tensor tensor = tensor_;
+
+  std::vector<int64_t> reduce_dims;
+  const int64_t leading_dims = tensor.dim() - shape.size();
+  for (int64_t i = 0; i < leading_dims; ++i) {
+    reduce_dims.push_back(i);
+  }
+  if (!reduce_dims.empty()) {
+    tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
+  }
+  reduce_dims.clear();
+  const at::IntArrayRef sizes = tensor.sizes();
+  for (int64_t i = leading_dims; i < static_cast<int64_t>(sizes.size()); ++i) {
+    if (shape[i - leading_dims] == 1 && sizes[i] != 1) {
+      reduce_dims.push_back(i);
+    }
+  }
+  if (!reduce_dims.empty()) {
+    tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
+  }
+  return leading_dims > 0 ? tensor.view(shape) : tensor;
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
@@ -221,6 +253,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "var", NestedTensor_var);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
+  nt_impl(m, "sum_to", NestedTensor_sum_to);
 }
 
 } // namespace at

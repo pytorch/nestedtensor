@@ -1,6 +1,6 @@
 Below are tables built on top of the stable 1.7 ops [documention](https://pytorch.org/docs/1.7.0/torch.html), which aim to track the implementation of various operations.
 
-### Unary Ops
+### Pointwise Ops
 <details>
   
 | Name | Native | Derivative |
