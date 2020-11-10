@@ -108,7 +108,7 @@ Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
 }
 
 Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [exp](Tensor base) { return at::pow(base, exp); }, base);
 }
 
@@ -123,7 +123,7 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
 }
 
 Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&base](Tensor exp) { return at::pow(base, exp); }, exp);
 }
 
@@ -141,7 +141,7 @@ Tensor& NestedTensor_binary_(Tensor& self_, const Tensor& other_) {
 
 template <Tensor (*func)(const Tensor&, Scalar)>
 Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);
 }
 
@@ -150,7 +150,7 @@ Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_) {
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](Tensor s, Tensor o) { return func(s, o); }, self, other);
 }
 
@@ -162,7 +162,7 @@ Tensor NestedTensor_binary(
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&scalar](Tensor self, Tensor other) {
         return func(self, other, scalar);
       },
@@ -209,7 +209,7 @@ Tensor NestedTensor_add(
         at::add(get_buffer(self), get_buffer(other)),
         get_nested_tensor_impl(self)->nested_size()));
   }
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
       self,
       other);
@@ -232,7 +232,7 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sub_.Tensor", NestedTensor_sub_);
   nt_impl(m, "sub.out", NestedTensor_sub_out);
 
