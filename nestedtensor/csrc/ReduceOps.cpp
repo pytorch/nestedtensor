@@ -71,18 +71,15 @@ Tensor NestedTensor_func_dim(
           "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6.");
     }
     auto new_nested_size = get_nested_size(output);
-    for (auto dim : nesteddims) {
-      if (!keepdims) {
-        new_nested_size = squeeze(new_nested_size, dim);
-      }
+    for (size_t i = nesteddims.size(); i > 0; i--) {
+      new_nested_size = squeeze(new_nested_size, nesteddims[i - 1], keepdims);
     }
-    return wrap_buffer(
+    auto tmp =
         fn(NestedTensor_to_tensor(output, c10::nullopt),
            IntArrayRef(nesteddims),
            keepdims,
-           dtype)
-            .reshape({-1}),
-        new_nested_size);
+           dtype);
+    return wrap_buffer(tmp.reshape({-1}), new_nested_size);
   }
   return output;
 }
@@ -216,21 +213,10 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 // Sums `tensor` repeatedly to produce a tensor of shape `shape`.
 // Precondition: is_expandable_to(shape, tensor.sizes()) must be true
 Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
-  std::cout << "ASKDLJSKDL" << std::endl;
-  for (size_t i = 0; i < shape.size(); i++) {
-    std::cout << "shape[" << i << "]: " << shape[i] << std::endl;
-  }
   if (shape.size() == 0) {
     return tensor_.sum();
   }
   auto nt_impl = get_nested_tensor_impl(tensor_);
-  std::cout << "nt_impl->nested_dim(): " << nt_impl->nested_dim() << std::endl;
-  auto asdf = map_nested_tensor(
-      [](at::Tensor t) {
-        std::cout << "t: " << t << std::endl;
-        return t;
-      },
-      tensor_);
 
   TORCH_CHECK(
       tensor_.dim() >= nt_impl->nested_dim() + shape.size(),
