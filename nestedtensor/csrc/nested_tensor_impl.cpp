@@ -428,6 +428,13 @@ Tensor& NestedTensor_as_strided_(
   return self;
 }
 
+Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
+  auto nt_impl = get_nested_tensor_impl(tensor);
+  std::vector<int64_t> out;
+  torch::nested_tensor::serialize(nt_impl->nested_size(), out);
+  return torch::tensor(out);
+}
+
 Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
   at::Tensor self = self_;
   if (is_nested_tensor_impl(self, other)) {
@@ -451,6 +458,17 @@ Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
   }
   return autograd_map_nested_tensor(
       [](at::Tensor s, at::Tensor o) { return s.expand_as(o); }, self, other);
+}
+
+bool NestedTensor_sizes_equal_nt_other(
+    const Tensor& self,
+    IntArrayRef size_other) {
+  if (is_nested_tensor_impl(self)) {
+    std::cout << "SE1" << std::endl;
+    return true;
+  }
+  std::cout << "SE2" << std::endl;
+  return true;
 }
 
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
@@ -483,5 +501,9 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "select.int", NestedTensor_select);
   nt_impl(m, "slice.Tensor", NestedTensor_slice);
   nt_impl(m, "unsqueeze", NestedTensor_unsqueeze);
+  nt_impl(m, "serialize_nested_size", NestedTensor_serialize_nested_size);
+}
+TORCH_LIBRARY_IMPL(aten, Autograd, m) {
+  nt_impl(m, "sizes_equal_nt_other", NestedTensor_sizes_equal_nt_other);
 }
 } // namespace at
