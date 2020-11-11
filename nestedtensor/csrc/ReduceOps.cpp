@@ -245,6 +245,16 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   return leading_dims > 0 ? tensor.view(shape) : tensor;
 }
 
+Tensor NestedTensor_sum_to_nt(const Tensor& tensor_, IntArrayRef shape) {
+  std::cout << "NestedTensor_sum_to_nt" << std::endl;
+  if (is_nested_tensor_impl(tensor_)) {
+    std::cout << "STN0" << std::endl;
+    return tensor_;
+  }
+  std::cout << "STN1" << std::endl;
+  return tensor_;
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
@@ -254,6 +264,10 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
   nt_impl(m, "sum_to", NestedTensor_sum_to);
+}
+
+TORCH_LIBRARY_IMPL(aten, Autograd, m) {
+  nt_impl(m, "sum_to_nt", NestedTensor_sum_to_nt);
 }
 
 } // namespace at

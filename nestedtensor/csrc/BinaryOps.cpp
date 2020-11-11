@@ -219,8 +219,13 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   // at::Tensor self;
   // at::Tensor other;
   // std::tie(self, other) = _expand_other_as(self_, other_);
+  check_binary_shape(self, other);
   apply_nested_tensor(
-      [&](at::Tensor& s, at::Tensor o) { at::native::add_(s, o, alpha); },
+      [&](at::Tensor& s, at::Tensor o) { 
+      // std::cout << "s: " << s << std::endl;
+      // std::cout << "o: " << o << std::endl;
+      at::native::add_(s, o, alpha); 
+      },
       self,
       other);
   return self;
