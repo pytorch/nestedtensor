@@ -463,13 +463,44 @@ Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
 
 bool NestedTensor_sizes_equal_nt_other(
     const Tensor& self,
-    IntArrayRef size_other) {
+    IntArrayRef nested_size_other) {
+  auto tmp =
+      torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
+  SizeNode nested_size = std::get<1>(tmp);
   if (is_nested_tensor_impl(self)) {
-    std::cout << "SE1" << std::endl;
-    return true;
+    // std::cout << "SE1" << std::endl;
+    return false;
+    // return torch::nested_tensor::shape_matches(
+    //     get_nested_tensor_impl(self)->nested_size(), nested_size);
   }
-  std::cout << "SE2" << std::endl;
+  // std::cout << "SE2" << std::endl;
+  return false;
+}
+
+// Can nested_size_other be expanded to match the shape of grad?
+// If this is true, a call to sum_to_nt will follow next in autograd/engine.cpp
+bool NestedTensor_native_is_expandable_to_nt_other(
+    const Tensor& self,
+    IntArrayRef nested_size_other) {
+  auto tmp =
+      torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
+  SizeNode nested_size = std::get<1>(tmp);
+  if (is_nested_tensor_impl(self)) {
+    std::cout << "NTNE1" << std::endl;
+    return false;
+    // return torch::nested_tensor::shape_matches(
+    //     get_nested_tensor_impl(self)->nested_size(), nested_size);
+  }
+  std::cout << "NTNE2" << std::endl;
+  return false;
+}
+
+bool NestedTensor_native_is_expandable_to(
+    const Tensor& grad,
+    IntArrayRef metadata_shape) {
+  std::cout << "2830283" << std::endl;
   return true;
+  // return at::is_expandable_to(metadata_shape, grad.sizes());
 }
 
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
@@ -503,8 +534,20 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "slice.Tensor", NestedTensor_slice);
   nt_impl(m, "unsqueeze", NestedTensor_unsqueeze);
   nt_impl(m, "serialize_nested_size", NestedTensor_serialize_nested_size);
+  nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
 }
+// TORCH_LIBRARY_IMPL(aten, BackendSelect, m) {
+//   nt_impl(m, "sizes_equal_nt_other", NestedTensor_sizes_equal_nt_other);
+//   nt_impl(
+//       m,
+//       "native_is_expandable_to_nt_other",
+//       NestedTensor_native_is_expandable_to_nt_other);
+// }
 TORCH_LIBRARY_IMPL(aten, Autograd, m) {
   nt_impl(m, "sizes_equal_nt_other", NestedTensor_sizes_equal_nt_other);
+  nt_impl(
+      m,
+      "native_is_expandable_to_nt_other",
+      NestedTensor_native_is_expandable_to_nt_other);
 }
 } // namespace at
