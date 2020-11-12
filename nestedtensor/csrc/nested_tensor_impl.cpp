@@ -500,7 +500,6 @@ bool NestedTensor_native_is_expandable_to(
     IntArrayRef metadata_shape) {
   std::cout << "2830283" << std::endl;
   return true;
-  // return at::is_expandable_to(metadata_shape, grad.sizes());
 }
 
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
