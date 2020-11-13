@@ -258,12 +258,14 @@ Tensor NestedTensor_sum_to_nt(
       torch::nested_tensor::deserialize_size_node(serial_nested_size.vec(), 0);
   SizeNode nested_size = std::get<1>(tmp);
   if (is_nested_tensor_impl(self)) {
+    std::cout << "AAA" << std::endl;
     TORCH_CHECK(
         torch::nested_tensor::shape_matches(
             get_nested_tensor_impl(self)->nested_size(), nested_size),
         "sum_to_nt needs both NT arguments to be the same shape");
     return self;
   }
+  std::cout << "BBB" << std::endl;
   return wrap_buffer(self.reshape({-1}).contiguous(), nested_size);
 }
 

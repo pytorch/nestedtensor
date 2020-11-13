@@ -125,8 +125,10 @@ class TestReduce(TestCase):
 
     def test_sum_to(self):
         a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        b = ntnt([torch.randn(1), torch.randn(1)])
         print(a)
         print(nestedtensor.nested.nested.sum_to(a._impl, a.nested_size()))
+        print(nestedtensor.nested.nested.sum_to(a._impl, b.nested_size()))
         pass
 
 
