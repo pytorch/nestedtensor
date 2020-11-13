@@ -15,7 +15,7 @@ using namespace c10;
 bool NestedTensor_sizes_equal_nt_other(
     const Tensor& self,
     IntArrayRef nested_size_other) {
-  TORCH_CHECK(false, "NestedTensor_sizes_equal_nt_other NOT IMPLEMENTED.");
+  // TODO: This does nothing right now
   auto tmp =
       torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
   SizeNode nested_size = std::get<1>(tmp);
