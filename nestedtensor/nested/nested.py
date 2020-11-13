@@ -252,39 +252,39 @@ class NestedTensor(metaclass=NestedTensorMeta):
         assert not isinstance(exponent, NestedTensor)
         return _wrap_result(torch.pow(exponent, self._impl))
 
-    @ property
+    @property
     def shape(self):
         return self.size()
 
-    @ property
+    @property
     def dtype(self):
         """
         The data type of ```self``` NestedTensor.
         """
         return self._impl.dtype
 
-    @ property
+    @property
     def layout(self):
         """
         The layout of ```self``` NestedTensor.
         """
         return self._impl.layout
 
-    @ property
+    @property
     def device(self):
         """
         The device of ```self``` NestedTensor.
         """
         return self._impl.device
 
-    @ property
+    @property
     def requires_grad(self):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
         return self._impl.requires_grad
 
-    @ property
+    @property
     def grad(self):
         """
         This attribute is None by default and becomes a NestedTensor the
@@ -294,11 +294,11 @@ class NestedTensor(metaclass=NestedTensorMeta):
         """
         return _wrap_result(self._impl.grad)
 
-    @ property
+    @property
     def data(self):
         return _wrap_result(self._impl.data)
 
-    @ property
+    @property
     def is_sparse(self):
         return self._impl.is_sparse
 
