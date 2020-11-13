@@ -16,41 +16,27 @@ def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 class TestNestedTensorAutograd(TestCase):
     def test_autograd_size_equal_nt(self):
-        # a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        # TODO: Right now this only exercises the mechanisms
         a = ntnt([torch.randn(1, 2)])
-        # print("\n000")
         s = a.sum()
-        # print(s)
         s.backward()
-        # print('a')
-        # print(a)
-        # print('a.grad')
-        # print(a.grad)
-        # print("\n111")
+
         a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
         b = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
         c = a + b
         c.backward(a)
-        # print("\n222")
+
         a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
         t0 = torch.randn(2, 2, requires_grad=True)
         d = t0 + a
-        # print(d)
-        # print("\n333")
         d.sum().backward()
-        # print("\n444")
+
         t1 = torch.randn(1, 2, requires_grad=True)
         t1.sum().backward()
-        # print("\n555")
+
         e = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
-        # print(a)
-        # print(b)
         a0 = a + b
-        # print('a0')
-        # print(a0)
         a1 = a0 + e
-        # print('a1')
-        # print(a1)
         a2 = a1.sum()
 
     def test_basic_grad(self):

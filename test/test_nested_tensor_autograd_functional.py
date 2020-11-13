@@ -153,10 +153,8 @@ class TestAutogradFunctional(TestCase):
 
     def test_nn_relu(self):
         inputs = [
-            # torch.randn(3, 500, 600, requires_grad=True),
-            # torch.randn(3, 128, 128, requires_grad=True)
-            torch.randn(3, 5, 6, requires_grad=True),
-            torch.randn(3, 8, 2, requires_grad=True)
+            torch.randn(3, 500, 600, requires_grad=True),
+            torch.randn(3, 128, 128, requires_grad=True)
         ]
 
         relu = torch.nn.ReLU()
