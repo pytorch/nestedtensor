@@ -19,6 +19,7 @@ def _flatten_list(ts):
         return [ts]
     return sum(map(_flatten_list, ts), [])
 
+
 def _flatten_nt(nt):
     if not isinstance(nt, nestedtensor.NestedTensor):
         return [nt]
@@ -121,6 +122,12 @@ class TestReduce(TestCase):
     def test_var(self):
         self._test_allreduce(lambda x: x.var(unbiased=False), True)
         self._test_allreduce(lambda x: x.var(unbiased=True))
+
+    def test_sum_to(self):
+        a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        print(a)
+        print(nestedtensor.nested.nested.sum_to(a._impl, a.nested_size()))
+        pass
 
 
 if __name__ == "__main__":

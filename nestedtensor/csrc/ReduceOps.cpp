@@ -217,6 +217,7 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 // Sums `tensor` repeatedly to produce a tensor of shape `shape`.
 // Precondition: is_expandable_to(shape, tensor.sizes()) must be true
 Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
+  std::cout << "00" << std::endl;
   if (shape.size() == 0) {
     return tensor_.sum();
   }
@@ -252,6 +253,7 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
 Tensor NestedTensor_sum_to_nt(
     const Tensor& self,
     IntArrayRef serial_nested_size) {
+  std::cout << "11" << std::endl;
   auto tmp =
       torch::nested_tensor::deserialize_size_node(serial_nested_size.vec(), 0);
   SizeNode nested_size = std::get<1>(tmp);

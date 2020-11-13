@@ -204,6 +204,24 @@ static auto registry =
               });
         });
 } // namespace
+
+SizeNode py_node_to_size_node(NestedNode<py::object> py_node) {
+  if (py_node.is_leaf()) {
+    py::object payload = py_node.payload();
+    std::vector<int64_t> sizes_vec = py::cast<std::vector<int64_t>>(payload);
+    c10::List<int64_t> sizes;
+    for (size_t i = 0; i < sizes_vec.size(); i++) {
+      sizes.push_back(sizes_vec[i]);
+    }
+    return SizeNode(std::move(sizes));
+  }
+  std::vector<SizeNode> size_nodes;
+  for (size_t i = 0; i < py_node.degree(); i++) {
+    size_nodes.push_back(py_node_to_size_node(py_node.children(i)));
+  }
+  return SizeNode(std::move(size_nodes));
+}
+
 } // namespace nested_tensor
 } // namespace torch
 
@@ -261,7 +279,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return out;
   });
 
-  m.def("deserialize_nested_size", [](std::vector<int64_t> out) { 
+  m.def("deserialize_nested_size", [](std::vector<int64_t> out) {
     auto result = deserialize_size_node(out, 0);
     SizeNode nested_size = std::get<1>(result);
     return py::cast(THPPythonNode(
@@ -288,6 +306,30 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
   });
+
+  m.def("sum_to", [](Tensor self, py::object shape) {
+    if (py::isinstance<THPPythonNode>(shape)) {
+      THPPythonNode thppnode = py::cast<THPPythonNode>(shape);
+      SizeNode nested_size =
+          torch::nested_tensor::py_node_to_size_node(thppnode.get_node());
+      auto tmp = torch::nested_tensor::map(
+          [](c10::List<int64_t> s) {
+            for (size_t i = 0; i < s.size(); i++) {
+              std::cout << "s[" << i << "]: " << s[i] << std::endl;
+            }
+            return s;
+          },
+          nested_size);
+      std::cout << "is nested size givben." << std::endl;
+      std::vector<int64_t> serialized_nested_size;
+      torch::nested_tensor::serialize(nested_size, serialized_nested_size);
+      return at::sum_to_nt(self, serialized_nested_size);
+    } else {
+      std::cout << "nah" << std::endl;
+    }
+    return self;
+  });
+
   // m.def("_test", []() {
   //     std::vector<at:Tensor> ts;
   //     ts.push_back(torch::rand({1}));
