@@ -248,11 +248,11 @@ class TestNestedTensor(TestCase):
     def test_serialize_nested_size(self):
         a = ntnt([[torch.randn(1, 2)],
                   [torch.randn(2, 1), torch.randn(1, 1)]])
-        print(a)
-        print(a.nested_size())
         result = nestedtensor._C.serialize_nested_size(a._impl)
-        print(result)
-        print(nestedtensor._C.deserialize_nested_size(result))
+        result_a = nestedtensor._C.deserialize_nested_size(result)
+        self.assertEqual(a.nested_size()[0][0], result_a[0][0])
+        self.assertEqual(a.nested_size()[1][0], result_a[1][0])
+        self.assertEqual(a.nested_size()[1][1], result_a[1][1])
 
     def test_nested_stride(self):
         for constructor in _iter_constructors():

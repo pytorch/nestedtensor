@@ -214,7 +214,6 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 // Precondition: is_expandable_to(shape, tensor.sizes()) must be true
 Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   if (shape.size() == 0) {
-  // std::cout << "040" << std::endl;
     return tensor_.sum();
   }
   auto nt_impl = get_nested_tensor_impl(tensor_);
@@ -243,7 +242,6 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   if (!reduce_dims.empty()) {
     tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
   }
-  // std::cout << "030" << std::endl;
   return leading_dims > 0 ? tensor.view(shape) : tensor;
 }
 
@@ -258,10 +256,8 @@ Tensor NestedTensor_sum_to_nt(
         torch::nested_tensor::shape_matches(
             get_nested_tensor_impl(self)->nested_size(), nested_size),
         "sum_to_nt needs both NT arguments to be the same shape");
-  // std::cout << "020" << std::endl;
     return self;
   }
-  // std::cout << "010" << std::endl;
   return wrap_buffer(self.reshape({-1}).contiguous(), nested_size);
 }
 
