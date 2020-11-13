@@ -10,7 +10,35 @@ import random
 from utils import TestCase
 
 
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
+
+
 class TestNestedTensorAutograd(TestCase):
+    def test_autograd_size_equal_nt(self):
+        # TODO: Right now this only exercises the mechanisms
+        a = ntnt([torch.randn(1, 2)])
+        s = a.sum()
+        s.backward()
+
+        a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        b = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        c = a + b
+        c.backward(a)
+
+        a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        t0 = torch.randn(2, 2, requires_grad=True)
+        d = t0 + a
+        d.sum().backward()
+
+        t1 = torch.randn(1, 2, requires_grad=True)
+        t1.sum().backward()
+
+        e = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        a0 = a + b
+        a1 = a0 + e
+        a2 = a1.sum()
+
     def test_basic_grad(self):
         def some_func(x):
             return torch.sum(x ** 2 + x ** 3)
@@ -36,7 +64,7 @@ class TestNestedTensorAutograd(TestCase):
         # nested_tensor constructor
         tensor2 = torch.tensor(
             [[1, 2], [3, 4]], dtype=torch.float, requires_grad=True)
-        nt2 = nestedtensor.nested_tensor([tensor2]) #, requires_grad=True)
+        nt2 = nestedtensor.nested_tensor([tensor2])  # , requires_grad=True)
         nt_sum_res2 = some_func(nt2)
         # TODO: Re-enable under autograd
         self.assertRaises(RuntimeError, lambda: nt_sum_res2.backward())
@@ -50,9 +78,9 @@ class TestNestedTensorAutograd(TestCase):
             return torch.sum(x ** 2 + x ** 3)
 
         nt1 = nestedtensor.nested_tensor([torch.tensor([1, 2, 3, 4]),
-                                             torch.tensor([1, 2, 3]),
-                                             torch.tensor([1, 2])],
-                                            dtype=torch.float) #, requires_grad=True)
+                                          torch.tensor([1, 2, 3]),
+                                          torch.tensor([1, 2])],
+                                         dtype=torch.float)  # , requires_grad=True)
         nt_sum_res = some_func(nt1)
         # nt_sum_res.backward()
         # TODO: Re-enable under autograd
@@ -63,9 +91,9 @@ class TestNestedTensorAutograd(TestCase):
         # self.assertEqual(nt1[2].grad, torch.tensor([ 5., 16.]))
 
         nt2 = nestedtensor.nested_tensor([torch.tensor([1, 2, 3, 4]),
-                                             torch.tensor([1, 2, 3]),
-                                             torch.tensor([1, 2])],
-                                            dtype=torch.float) # , requires_grad=True)
+                                          torch.tensor([1, 2, 3]),
+                                          torch.tensor([1, 2])],
+                                         dtype=torch.float)  # , requires_grad=True)
         tensor, mask = nt2.to_tensor_mask(mask_dim=2)
         sum_res = some_func(tensor)
         # sum_res.backward()
@@ -139,7 +167,6 @@ class TestNestedTensorAutograd(TestCase):
     #     self.assertEqual(result2[0][1], torch.matmul(t22, t1))
     #     self.assertEqual(result2[1][0], torch.matmul(t22, t1))
     #     self.assertEqual(result2[1][1], torch.matmul(t21, t1))
-
 
 
 if __name__ == "__main__":
