@@ -153,8 +153,10 @@ class TestAutogradFunctional(TestCase):
 
     def test_nn_relu(self):
         inputs = [
-            torch.randn(3, 500, 600, requires_grad=True),
-            torch.randn(3, 128, 128, requires_grad=True)
+            # torch.randn(3, 500, 600, requires_grad=True),
+            # torch.randn(3, 128, 128, requires_grad=True)
+            torch.randn(3, 5, 6, requires_grad=True),
+            torch.randn(3, 8, 2, requires_grad=True)
         ]
 
         relu = torch.nn.ReLU()
@@ -167,10 +169,16 @@ class TestAutogradFunctional(TestCase):
             tensor_res[i].sum().backward()
         layer_grad0 = [p.grad for (n, p) in relu.named_parameters()]
 
+        print(0)
         nt = ntnt(inputs)
+        print(1)
         nt_res = relu(nt)
+        print(2)
         nt_res = relu_(nt_res)
+        print(3)
+        print(nt_res)
         nt_res.sum().backward()
+        print(4)
         layer_grad1 = [p.grad for (n, p) in relu.named_parameters()]
 
         self.assertEqual(ntnt(tensor_res), nt_res)

@@ -435,32 +435,6 @@ Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
   return torch::tensor(out);
 }
 
-Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
-  std::cout << "JDJDJD" << std::endl;
-  at::Tensor self = self_;
-  if (is_nested_tensor_impl(self, other)) {
-    TORCH_CHECK(
-        get_nested_tensor_impl(self)->nested_dim(),
-        get_nested_tensor_impl(other)->nested_dim(),
-        "Given NestedTensors need to have same nested dimension.");
-    return map_nested_tensor(
-        [](at::Tensor s, at::Tensor o) { return at::native::expand_as(s, o); },
-        self,
-        other);
-  }
-  TORCH_CHECK(
-      !is_nested_tensor_impl(self),
-      "Cannot expand a NestedTensor as a Tensor.");
-  TORCH_CHECK(
-      self.dim() <= other.dim(),
-      "Cannot expand to a Tensor of smaller dimension.");
-  while (self.dim() > 0 && self.size(0) == 1) {
-    self = self.squeeze(0);
-  }
-  return map_nested_tensor(
-      [](at::Tensor s, at::Tensor o) { return s.expand_as(o); }, self, other);
-}
-
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
@@ -484,7 +458,6 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  nt_impl(m, "expand_as", NestedTensor_expand_as);
   nt_impl(m, "as_strided", NestedTensor_as_strided);
   nt_impl(m, "as_strided_", NestedTensor_as_strided_);
   nt_impl(m, "unbind.int", NestedTensor_unbind);

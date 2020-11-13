@@ -126,6 +126,7 @@ struct NestedNode<at::Tensor> {
   c10::optional<at::Tensor> _buffer;
 };
 
+// TODO: Should have specialized construction check that all payloads are of same size for SizeNode
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
