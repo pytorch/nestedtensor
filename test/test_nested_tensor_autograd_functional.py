@@ -69,11 +69,7 @@ class TestAutogradFunctional(TestCase):
             linear = linear()
             tensor_res = []
             for i in range(2):
-                print("i: ", i)
-                print(inputs[i].size())
                 t_res = linear(inputs[i].unsqueeze(0).contiguous())
-                print(linear.bias)
-                print(linear.bias.grad)
                 tensor_res.append(t_res.squeeze(0))
                 t_res.sum().backward()
             layer_grad0 = [p.grad for (n, p) in linear.named_parameters()]
