@@ -15,16 +15,15 @@ using namespace c10;
 bool NestedTensor_sizes_equal_nt_other(
     const Tensor& self,
     IntArrayRef nested_size_other) {
+  TORCH_CHECK(false, "NestedTensor_sizes_equal_nt_other NOT IMPLEMENTED.");
   auto tmp =
       torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
   SizeNode nested_size = std::get<1>(tmp);
   if (is_nested_tensor_impl(self)) {
-    // std::cout << "SE1" << std::endl;
     return false;
     // return torch::nested_tensor::shape_matches(
     //     get_nested_tensor_impl(self)->nested_size(), nested_size);
   }
-  // std::cout << "SE2" << std::endl;
   return false;
 }
 
@@ -129,7 +128,7 @@ bool NestedTensor_native_is_expandable_to_nt_other(
 bool NestedTensor_native_is_expandable_to(
     IntArrayRef metadata_shape,
     const Tensor& grad) {
-  std::cout << "2830283" << std::endl;
+  TORCH_CHECK(false, "NestedTensor_native_is_expandable_to NOT IMPLEMENTED.");
   return true;
 }
 
@@ -143,7 +142,6 @@ Tensor NestedTensor_expand_nt(
       nested_size_tensor.data_ptr<int64_t>() + nested_size_tensor.numel());
   auto tmp = torch::nested_tensor::deserialize_size_node(nested_size_, 0);
   SizeNode nested_size = std::get<1>(tmp);
-  // std::cout << "D0D1" << std::endl;
   TORCH_CHECK(
       self.dim() <= _tensor_dim(nested_size),
       "self dim can't exceed nested_size tensor dim.");
@@ -157,7 +155,6 @@ Tensor NestedTensor_expand_nt(
 }
 
 Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
-  // std::cout << "JDJDJD" << std::endl;
   at::Tensor self = self_;
   if (is_nested_tensor_impl(self, other)) {
     TORCH_CHECK(
