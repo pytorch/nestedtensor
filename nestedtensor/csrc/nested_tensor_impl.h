@@ -101,18 +101,14 @@ inline bool tensor_shape_matches(A a, B b, C... c) {
 }
 
 template <class A>
-inline bool nested_size_matches(A a) {
+inline bool nested_size_matches(SizeNode a) {
   TORCH_CHECK(
       is_nested_tensor_impl(a), "Can only compare shapes of NestedTensors.");
   return true;
 }
 
 template <class A, class B>
-inline bool nested_size_matches(A a, B b) {
-  TORCH_CHECK(
-      is_nested_tensor_impl(a, b), "Can only compare shapes of NestedTensors.");
-  auto nested_size_a = get_nested_tensor_impl(a)->nested_size();
-  auto nested_size_b = get_nested_tensor_impl(b)->nested_size();
+inline bool nested_size_matches(A nested_size_a, B nested_size_b) {
   if (!shape_matches(nested_size_a, nested_size_b)) {
     return false;
   }
