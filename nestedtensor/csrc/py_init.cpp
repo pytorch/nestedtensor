@@ -324,10 +324,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       std::vector<int64_t> serialized_nested_size;
       torch::nested_tensor::serialize(nested_size, serialized_nested_size);
       return at::sum_to_nt(self, serialized_nested_size);
-    } else {
-      std::cout << "nah" << std::endl;
     }
-    return self;
+    TORCH_CHECK(py::isinstance<py::list>(shape), "Expected list of ints.");
+    std::vector<int64_t> shape_vec = py::cast<std::vector<int64_t>>(shape);
+    for (size_t i = 0; i < shape_vec.size(); i++) {
+      std::cout << "shape_vec[" << i << "]: " << shape_vec[i] << std::endl;
+    }
+    return at::sum_to(self, IntArrayRef(shape_vec));
   });
 
   // m.def("_test", []() {

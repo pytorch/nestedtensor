@@ -129,6 +129,7 @@ class TestReduce(TestCase):
         print(a)
         print(nestedtensor.nested.nested.sum_to(a._impl, a.nested_size()))
         print(nestedtensor.nested.nested.sum_to(a._impl, b.nested_size()))
+        print(nestedtensor.nested.nested.sum_to(a._impl, [1]))
         pass
 
 
