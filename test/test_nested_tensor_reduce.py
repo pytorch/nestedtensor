@@ -123,14 +123,20 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
     def test_sum_to(self):
-        a = ntnt([torch.randn(1, 2), torch.randn(2, 1)])
+        a = ntnt([torch.arange(2).reshape(1, 2), torch.arange(2).reshape(2, 1) + 2])
         # b = ntnt([torch.randn(1), torch.randn(1)])
         # print(a)
         # print(nestedtensor.nested.nested.sum_to(a._impl, a.nested_size()))
         # print(nestedtensor.nested.nested.sum_to(a._impl, b.nested_size()))
         # print(nestedtensor.nested.nested.sum_to(a._impl, [1, 2]))
         print(a)
-        print(nestedtensor.nested.nested.sum_to(a._impl, [2]))
+        print(nestedtensor.nested.nested.sum_to(a, (2,)))
+        print(nestedtensor.nested.nested.sum_to(a, (2, 2)))
+        a = ntnt([torch.arange(2).reshape(1, 2), torch.arange(2).reshape(1, 2) + 2])
+        print(a)
+        print(nestedtensor.nested.nested.sum_to(a, (1, 2)))
+        print(nestedtensor.nested.nested.sum_to(a, (1, 2)).shape)
+        # b = ntnt([torch.randn(1), torch.randn(1)])
         pass
 
 if __name__ == "__main__":

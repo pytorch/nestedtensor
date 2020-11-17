@@ -289,8 +289,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
-  m.def("sum_to", [](Tensor self, py::object shape) {
-    TORCH_CHECK(py::isinstance<py::tuple>(shape), "Expected tuple of ints.");
+  m.def("sum_to", [](Tensor self, py::tuple shape) {
     std::vector<int64_t> shape_vec = py::cast<std::vector<int64_t>>(shape);
     for (size_t i = 0; i < shape_vec.size(); i++) {
       std::cout << "shape_vec[" << i << "]: " << shape_vec[i] << std::endl;
