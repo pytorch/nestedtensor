@@ -89,14 +89,50 @@ Tensor NestedTensor_sum_dim(
     c10::ArrayRef<int64_t> dims,
     bool keepdims,
     c10::optional<ScalarType> dtype) {
-  auto my_sum = [](const Tensor& self,
-                   IntArrayRef dims,
-                   bool keepdims,
-                   c10::optional<ScalarType> dtype) {
-    return at::sum(self, dims, keepdims, dtype);
-  };
-  return NestedTensor_func_dim<decltype(my_sum)>(
-      my_sum, self, dims, keepdims, dtype);
+  std::vector<int64_t> tensordims;
+  std::vector<int64_t> nesteddims;
+  std::tie(tensordims, nesteddims) = make_split_dims(self, dims);
+  at::Tensor output = self;
+  if (tensordims.size() > 0) {
+    output = map_nested_tensor(
+        [tensordims, keepdims, dtype](at::Tensor tensor) {
+          return at::sum(
+              tensor, c10::ArrayRef<int64_t>(tensordims), keepdims, dtype);
+        },
+        output);
+  }
+  if (nesteddims.size() > 0) {
+    if (nesteddims.size() == 1 && nesteddims[0] == 0 &&
+        get_nested_tensor_impl(self)->nested_dim() == 1) {
+      std::vector<at::Tensor> tensors =
+          flatten(get_nested_tensor_structure(self));
+      if (tensors.size() == 0) {
+        return torch::tensor({}, self.options());
+      }
+      at::Tensor result = tensors[0];
+      for (size_t i = 1; i < tensors.size(); i++) {
+        result = at::add(result, tensors[i]);
+      }
+      return result;
+    }
+    auto opt_sizes = get_opt_sizes(output);
+    for (auto opt_size : opt_sizes) {
+      TORCH_CHECK(
+          opt_size,
+          "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6.");
+    }
+    auto new_nested_size = get_nested_size(output);
+    for (size_t i = nesteddims.size(); i > 0; i--) {
+      new_nested_size = squeeze(new_nested_size, nesteddims[i - 1], keepdims);
+    }
+    auto tmp = at::sum(
+        NestedTensor_to_tensor(output, c10::nullopt),
+        IntArrayRef(nesteddims),
+        keepdims,
+        dtype);
+    return wrap_buffer(tmp.reshape({-1}), new_nested_size);
+  }
+  return output;
 }
 
 Tensor NestedTensor_mean_dim(
@@ -196,7 +232,11 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   return m2_tensor[0] / numel[0];
 }
 
-Tensor NestedTensor_var_dim(const Tensor& self, IntArrayRef dim, bool unbiased, bool keepdim) {
+Tensor NestedTensor_var_dim(
+    const Tensor& self,
+    IntArrayRef dim,
+    bool unbiased,
+    bool keepdim) {
   return at::sum(self, dim, keepdim);
 }
 
@@ -247,7 +287,8 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   if (!reduce_dims.empty()) {
     tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
   }
-  return leading_dims > 0 ? tensor.view(shape) : tensor;
+  return tensor;
+  // return leading_dims > 0 ? tensor.view(shape) : tensor;
 }
 
 Tensor NestedTensor_sum_to_nt(

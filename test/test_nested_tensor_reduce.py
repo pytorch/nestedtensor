@@ -32,6 +32,8 @@ class TestReduce(TestCase):
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
         t2 = torch.arange(9).float().reshape(3, 3)
+        t3 = torch.arange(3).float().reshape(3, 1)
+        t4 = torch.arange(3).float().reshape(1, 3)
         ts = [[t0, t1], [t2, t1]]
         nt = ntnt(ts)
         if associative:
@@ -41,6 +43,11 @@ class TestReduce(TestCase):
             t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0)
             self.assertEqual(ntnt([t01, t21]), fn(nt, (1, 2)))
             self.assertEqual(ntnt([t02, t11]), fn(nt, (0, 2)))
+
+        ts = [t3, t4]
+        nt = ntnt(ts)
+        print(nt)
+        print(fn(nt, 0))
 
         ts = [[t0, t1], [t2]]
         nt = nestedtensor.nested_tensor(ts)
@@ -129,7 +136,9 @@ class TestReduce(TestCase):
         print(a)
         print(nestedtensor.nested.nested.sum_to(a._impl, a.nested_size()))
         print(nestedtensor.nested.nested.sum_to(a._impl, b.nested_size()))
-        print(nestedtensor.nested.nested.sum_to(a._impl, [1]))
+        print(nestedtensor.nested.nested.sum_to(a._impl, [1, 2]))
+        print(a)
+        print(nestedtensor.nested.nested.sum_to(a._impl, [2]))
         pass
 
 
