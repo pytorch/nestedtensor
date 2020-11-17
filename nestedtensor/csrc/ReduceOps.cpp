@@ -223,9 +223,9 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   }
   auto nt_impl = get_nested_tensor_impl(tensor_);
 
-  TORCH_CHECK(
-      tensor_.dim() >= nt_impl->nested_dim() + shape.size(),
-      "sum_to only supported along tensor dimensions.");
+  // TORCH_CHECK(
+  //     tensor_.dim() >= nt_impl->nested_dim() + shape.size(),
+  //     "sum_to only supported along tensor dimensions.");
 
   at::Tensor tensor = tensor_;
 
