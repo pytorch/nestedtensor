@@ -239,6 +239,10 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
     TORCH_CHECK(
         nested_reduce_dims.size() == 1 && nested_reduce_dims[0] == 0,
         "Expected nested_reduce_dims of size 1 and with entry 0.");
+    auto opt_sizes = get_nested_tensor_impl(tensor)->opt_sizes();
+    for (size_t i = 0; i < opt_sizes.size(); i++) {
+      TORCH_CHECK(opt_sizes[i], "Expected shape to be tensor compliant.")
+    }
     std::vector<at::Tensor> tensors =
         flatten(get_nested_tensor_structure(tensor));
     if (tensors.size() == 0) {
