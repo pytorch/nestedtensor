@@ -145,34 +145,36 @@ inline std::vector<std::string> split_str(
   result.push_back(s);
   return result;
 }
-TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
-    m.def("is_nested_tensor_impl",
-            [](Tensor tensor) { return is_nested_tensor_impl(tensor); });
-    m.def("nested_dim",
+
+static auto registry =
+    torch::RegisterOperators()
+        .op("nestedtensor::is_nested_tensor_impl",
+            [](Tensor tensor) { return is_nested_tensor_impl(tensor); })
+        .op("nestedtensor::nested_dim",
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->nested_dim();
-            });
-    m.def("stack",
+            })
+        .op("nestedtensor::stack",
             [](std::vector<Tensor> tensors, int64_t dim) {
               return at::stack(TensorList(tensors), dim);
-            });
-    m.def("cat",
+            })
+        .op("nestedtensor::cat",
             [](std::vector<Tensor> tensors, int64_t dim) {
               return at::cat(TensorList(tensors), dim);
-            });
-    m.def("to_nested_tensor",
+            })
+        .op("nestedtensor::to_nested_tensor",
             [](Tensor tensor, c10::optional<int64_t> dim) {
               return get_nested_tensor_impl(tensor)->to_nested_tensor(dim);
-            });
-    m.def("sizes",
+            })
+        .op("nestedtensor::sizes",
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->opt_sizes();
-            });
-    m.def("len",
+            })
+        .op("nestedtensor::len",
             [](Tensor self) {
               return (int64_t)(get_nested_tensor_structure(self).degree());
-            });
-    m.def("str", [](Tensor tensor) {
+            })
+        .op("nestedtensor::str", [](Tensor tensor) {
           auto node = get_nested_tensor_structure(tensor);
           return NestedNode___str__(
               node,
@@ -201,8 +203,6 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
                 return result;
               });
         });
-}
-
 } // namespace
 } // namespace nested_tensor
 } // namespace torch

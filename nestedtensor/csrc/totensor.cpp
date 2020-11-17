@@ -109,11 +109,10 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   // return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
-    m.def("to_tensor",
+static auto registry = torch::RegisterOperators().op(
+    "nestedtensor::to_tensor",
     [](Tensor tensor, c10::optional<int64_t> dim) {
       return NestedTensor_to_tensor(tensor, dim);
     });
-}
 
 } // namespace at

@@ -62,9 +62,8 @@ at::Tensor min_mha(
   return attn_output;
 }
 
-TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
-    m.def("min_mha", min_mha);
-}
+static auto registry =
+    torch::RegisterOperators().op("nestedtensor::min_mha", &min_mha);
 
 } // namespace nested_tensor
 } // namespace torch
