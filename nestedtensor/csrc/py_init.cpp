@@ -291,9 +291,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   m.def("sum_to", [](Tensor self, py::tuple shape) {
     std::vector<int64_t> shape_vec = py::cast<std::vector<int64_t>>(shape);
-    for (size_t i = 0; i < shape_vec.size(); i++) {
-      std::cout << "shape_vec[" << i << "]: " << shape_vec[i] << std::endl;
-    }
     return at::sum_to(self, IntArrayRef(shape_vec));
   });
   // m.def("_test", []() {

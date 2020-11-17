@@ -260,7 +260,6 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   if (!reduce_dims.empty()) {
     tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
   }
-  std::cout << "tensor: " << tensor << std::endl;
   return leading_dims > 0 ? tensor.view(shape) : tensor;
 }
 
