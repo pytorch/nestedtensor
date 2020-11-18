@@ -144,26 +144,8 @@ std::tuple<Tensor, Tensor, Tensor> _make_m2(
     mean_tensors.push_back(mean);
     numels.push_back(tensors[i].numel());
   }
-  // auto m2_tensors = flatten(map(
-  //     [](at::Tensor tensor) {
-  //       return ((tensor - at::mean(tensor, c10::nullopt)) *
-  //               (tensor - at::mean(tensor, c10::nullopt)))
-  //           .sum();
-  //     },
-  //     get_nested_tensor_structure(self)));
-  if (m2_tensors.size() == 0) {
-    return std::make_tuple(at::ones({0}), at::ones({0}), at::ones({0}));
-  }
-  // auto mean_tensors = flatten(
-  //     map([](at::Tensor tensor) { return at::mean(tensor, c10::nullopt); },
-  //         get_nested_tensor_structure(self)));
   at::Tensor m2_tensor = at::stack(m2_tensors).reshape({-1});
   at::Tensor mean_tensor = at::stack(mean_tensors).reshape({-1});
-  // at::Tensor numel =
-  //     torch::tensor(flatten(
-  //                       map([](at::Tensor tensor) { return tensor.numel(); },
-  //                           get_nested_tensor_structure(self))))
-  //         .reshape({-1});
   at::Tensor numel = torch::tensor(numels).reshape({-1});
   return std::make_tuple(m2_tensor, mean_tensor, numel);
 }
@@ -204,11 +186,12 @@ std::tuple<Tensor, Tensor, Tensor> _merge_m2(
 
 Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   at::Tensor m2_tensor, mean_tensor, numel;
-  std::tie(m2_tensor, mean_tensor, numel) =
-      _make_m2(flatten(get_nested_tensor_structure(self)));
-  if (m2_tensor.numel() == 1) {
-    return m2_tensor;
+  std::vector<at::Tensor> tensors = flatten(get_nested_tensor_structure(self));
+  if (tensors.size() == 0) {
+    return at::ones({0});
   }
+  std::tie(m2_tensor, mean_tensor, numel) =
+      _make_m2(tensors);
   std::tie(m2_tensor, mean_tensor, numel) =
       _merge_m2(m2_tensor, mean_tensor, numel);
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
