@@ -122,6 +122,16 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.var(unbiased=False), True)
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
+    def test_var_dim(self):
+        t0 = torch.arange(9).float().reshape(3, 3)
+        t1 = torch.arange(6).float().reshape(2, 3)
+        t2 = torch.arange(9).float().reshape(3, 3)
+        ts = [[t0, t1], [t0, t1]]
+        nt = ntnt(ts)
+        print(nt)
+        print(torch.var(nt, 0))
+        print(torch.var(nt, 1))
+
     def test_sum_to(self):
         a = ntnt([torch.arange(2).reshape(1, 2), torch.arange(2).reshape(2, 1) + 2])
         # b = ntnt([torch.randn(1), torch.randn(1)])
