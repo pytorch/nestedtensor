@@ -193,7 +193,7 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
     return at::ones({0});
   }
   std::vector<int64_t> tensordims;
-  for (size_t i = 0; i < tensors[i].dim(); i++) {
+  for (int64_t i = 0; i < tensors[0].dim(); i++) {
     tensordims.push_back(i);
   }
   std::tie(m2_tensor, mean_tensor, numel) =
