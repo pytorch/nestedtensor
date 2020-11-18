@@ -133,21 +133,23 @@ Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
 }
 
 std::tuple<Tensor, Tensor, Tensor> _make_m2(
-    const std::vector<at::Tensor>& tensors) {
+    const std::vector<at::Tensor>& tensors,
+    IntArrayRef tensordims) {
   std::vector<at::Tensor> m2_tensors;
   std::vector<at::Tensor> mean_tensors;
-  std::vector<int64_t> numels;
+  std::vector<at::Tensor> numel_tensors;
   for (size_t i = 0; i < tensors.size(); i++) {
-    at::Tensor mean = at::mean(tensors[i], c10::nullopt);
+    at::Tensor mean = at::mean(tensors[i], tensordims);
     at::Tensor centered = tensors[i] - mean;
-    m2_tensors.push_back((centered * centered).sum());
+    m2_tensors.push_back((centered * centered).sum(tensordims));
     mean_tensors.push_back(mean);
-    numels.push_back(tensors[i].numel());
+    int64_t numel = tensors[i].numel() / mean.numel();
+    numel_tensors.push_back(torch::tensor({numel}));
   }
   at::Tensor m2_tensor = at::stack(m2_tensors).reshape({-1});
   at::Tensor mean_tensor = at::stack(mean_tensors).reshape({-1});
-  at::Tensor numel = torch::tensor(numels).reshape({-1});
-  return std::make_tuple(m2_tensor, mean_tensor, numel);
+  at::Tensor numel_tensor = at::stack(numel_tensors).reshape({-1});
+  return std::make_tuple(m2_tensor, mean_tensor, numel_tensor);
 }
 
 std::tuple<Tensor, Tensor, Tensor> _merge_m2(
@@ -190,8 +192,15 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   if (tensors.size() == 0) {
     return at::ones({0});
   }
+  std::vector<int64_t> tensordims;
+  for (size_t i = 0; i < tensors[i].dim(); i++) {
+    tensordims.push_back(i);
+  }
   std::tie(m2_tensor, mean_tensor, numel) =
-      _make_m2(tensors);
+      _make_m2(tensors, IntArrayRef(tensordims));
+  std::cout << "0 m2_tensor: " << std::endl << m2_tensor << std::endl;
+  std::cout << "0 mean_tensor: " << std::endl << mean_tensor << std::endl;
+  std::cout << "0 numel: " << std::endl << numel << std::endl;
   std::tie(m2_tensor, mean_tensor, numel) =
       _merge_m2(m2_tensor, mean_tensor, numel);
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
@@ -213,8 +222,7 @@ Tensor NestedTensor_var_dim(
   if (tensordims.size() > 0) {
     output = map_nested_tensor(
         [tensordims, keepdims](at::Tensor tensor) {
-          return at::var(
-              tensor, c10::ArrayRef<int64_t>(tensordims), keepdims);
+          return at::var(tensor, c10::ArrayRef<int64_t>(tensordims), keepdims);
         },
         output);
   }
