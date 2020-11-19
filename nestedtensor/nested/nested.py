@@ -141,6 +141,11 @@ def _filter_impl(args, kwargs):
     return impl_args, impl_kwargs
 
 
+def sum_to(tensor, shape):
+    impl_args, _ = _filter_impl([tensor, shape], {})
+    return _wrap_result(nestedtensor._C.sum_to(*impl_args))
+
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
