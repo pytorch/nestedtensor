@@ -250,4 +250,4 @@ workflows:
             branches:
               only: nightly
           requires:
-            - unittest_linux_<< matrix.cu_version >>_py<< matrix.python_version >>
+            - unittest_linux_<< matrix.subfolder >>_py<< matrix.python_version >>
