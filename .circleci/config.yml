@@ -135,7 +135,7 @@ jobs:
             export AWS_SECRET_ACCESS_KEY="${PYTORCH_BINARY_AWS_SECRET_ACCESS_KEY}"
             set -x
             for pkg in ~/workspace/*.whl; do
-              aws s3 cp "$pkg" "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>" --acl public-read
+              aws s3 cp "$pkg" "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/" --acl public-read
             done
 
   unittest_linux_cpu:
