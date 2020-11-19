@@ -175,7 +175,12 @@ jobs:
             fi
       - run:
           name: Install nestedtensor
-          command: .circleci/unittest/linux/scripts/install.sh
+          command: |
+            # For some reason circleci isn't automatically sourcing this within the builds
+            if [[ -f ${BASH_ENV} ]]; then
+              source ${BASH_ENV}
+            fi
+            .circleci/unittest/linux/scripts/install.sh
       - persist_to_workspace:
           root: wheels
           paths:
