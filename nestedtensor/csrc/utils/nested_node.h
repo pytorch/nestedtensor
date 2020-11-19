@@ -126,6 +126,7 @@ struct NestedNode<at::Tensor> {
   c10::optional<at::Tensor> _buffer;
 };
 
+// TODO: Should have specialized construction check that all payloads are of same size for SizeNode
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
@@ -512,6 +513,68 @@ inline TensorNode pack(TensorNode&& structure) {
     return impl::build_structure(at::ones({0}), nested_size);
   }
   return impl::build_structure(at::cat(tensors, 0), nested_size);
+}
+
+// Remove singleton nodes across given level.
+template <class A>
+inline NestedNode<A> squeeze(
+    NestedNode<A> structure,
+    int64_t level,
+    bool keep_dim = false) {
+  if (level <= 0) {
+    if (keep_dim) {
+      return NestedNode<A>(structure.children(0));
+    }
+    return structure.children(0);
+  }
+  return NestedNode<A>(squeeze(structure, level - 1));
+}
+
+template <typename A>
+inline void serialize(NestedNode<A>, std::vector<int64_t>&);
+
+template <>
+inline void serialize(SizeNode nested_node, std::vector<int64_t>& out) {
+  if (nested_node.is_leaf()) {
+    out.push_back(1);
+    auto payload = nested_node.payload();
+    out.push_back(payload.size());
+    for (size_t i = 0; i < payload.size(); i++) {
+      out.push_back(payload[i]);
+    }
+  } else {
+    out.push_back(0);
+    out.push_back(nested_node.degree());
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      serialize(nested_node.children(i), out);
+    }
+  }
+}
+
+inline std::tuple<size_t, SizeNode> deserialize_size_node(std::vector<int64_t> out, size_t index) {
+  if (out[index] == 1) {
+    index++;
+    c10::List<int64_t> payload;
+    int64_t payload_size = out[index];
+    index++;
+    for (int64_t i = 0; i < payload_size; i++) {
+      payload.push_back(out[index]);
+      index++;
+    }
+    return std::make_tuple(index, SizeNode(std::move(payload)));
+  } else {
+    TORCH_CHECK(out[index] == 0, "Expected out[index] to be 0, got ", out[index]);
+    index++;
+    int64_t degree = out[index];
+    index++;
+    std::vector<SizeNode> children;
+    for (int64_t i = 0; i < degree; i++) {
+      auto result_i = deserialize_size_node(out, index);
+      index = std::get<0>(result_i);
+      children.push_back(std::get<1>(result_i));
+    }
+    return std::make_tuple(index, SizeNode(std::move(children)));
+  }
 }
 
 } // namespace nested_tensor

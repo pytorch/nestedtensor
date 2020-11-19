@@ -56,6 +56,36 @@ class TestFunctional(TestCase):
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 
+    def test_nn_embedding_bag(self):
+
+        def run_test(EmbeddingBag, inputs):
+            x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
+            torch.manual_seed(0)
+            emb = EmbeddingBag()
+            y = emb(x)
+            s = y.sum()
+            s.backward()
+            input_tensor = torch.cat(inputs).contiguous()
+            input_offset = [0]
+            for inp in inputs[:-1]:
+                input_offset.append(len(inp) + input_offset[-1])
+            input_offset = torch.tensor(input_offset)
+            torch.manual_seed(0)
+            emb_t = EmbeddingBag()
+            y_t = emb_t(input_tensor, input_offset)
+            s_t = y_t.sum()
+            s_t.backward()
+            for yi, y_ti in zip(y.unbind(), y_t.unbind()):
+                self.assertEqual(yi, y_ti)
+            self.assertEqual(s, s_t)
+            self.assertEqual(emb.weight.grad, emb_t.weight.grad)
+
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (5,)), torch.randint(100, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (5,)), torch.randint(100, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
+
+
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
         tensor2 = torch.rand(3, 300, 400)
@@ -87,7 +117,7 @@ class TestFunctional(TestCase):
                 nt, weight, bias, (2, 2), (3, 3), (1, 1), 1).unbind()]
             self.assertEqual(nt_res, tensor_res)
 
-    @unittest.skip("Not fully implemented")
+    @unittest.skip("Not implemented")
     def test_nn_functional_batch_norm(self):
         inputs = [
             torch.tensor([[[-0.5000]], [[0.5000]]]),
@@ -217,7 +247,7 @@ class TestFunctional(TestCase):
         nt_res = torch.nn.functional.dropout(nt)
         self.assertEqual(ntnt(tensor_res).size(), nt_res.size())
 
-    @ unittest.skip("Not implemented")
+    # @ unittest.skip("Not implemented")
     def test_nn_functional_interpolate(self):
         inputs = [
             torch.randn(3, 200, 300),
@@ -460,13 +490,14 @@ class TestFunctional(TestCase):
                 map(lambda x: fn(x, dim), ts[0])), result[0])
             map(self.assertEqual, tuple(
                 map(lambda x: fn(x, dim), ts[1])), result[1])
+            result.sum().backward()
 
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))
 
     def test_softmax_1(self):
         ts = [[], []]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
     def test_softmax_2(self):
@@ -474,7 +505,7 @@ class TestFunctional(TestCase):
         t1 = torch.randn(2)
         t2 = torch.randn(3)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
     def test_softmax_3(self):
@@ -482,13 +513,13 @@ class TestFunctional(TestCase):
         t1 = torch.randn(2, 3, 1)
         t2 = torch.randn(3, 1, 2)
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
     def test_softmax_4(self):
         ts = torch.randn(6, 4, 3, 2, 5)
         ts = list(map(lambda x: x.unbind(), ts.unbind()))
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
 

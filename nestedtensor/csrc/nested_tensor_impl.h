@@ -26,8 +26,8 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-constexpr auto NestedTensorKey_PreAutograd = DispatchKey::AutogradPrivateUse1;
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
+constexpr auto NestedTensorKey_PreAutograd = DispatchKey::AutogradNestedTensor;
+constexpr auto NestedTensorKey = DispatchKey::NestedTensor;
 
 struct NestedTensorImpl;
 
@@ -101,18 +101,14 @@ inline bool tensor_shape_matches(A a, B b, C... c) {
 }
 
 template <class A>
-inline bool nested_size_matches(A a) {
+inline bool nested_size_matches(SizeNode a) {
   TORCH_CHECK(
       is_nested_tensor_impl(a), "Can only compare shapes of NestedTensors.");
   return true;
 }
 
 template <class A, class B>
-inline bool nested_size_matches(A a, B b) {
-  TORCH_CHECK(
-      is_nested_tensor_impl(a, b), "Can only compare shapes of NestedTensors.");
-  auto nested_size_a = get_nested_tensor_impl(a)->nested_size();
-  auto nested_size_b = get_nested_tensor_impl(b)->nested_size();
+inline bool nested_size_matches(A nested_size_a, B nested_size_b) {
   if (!shape_matches(nested_size_a, nested_size_b)) {
     return false;
   }
@@ -277,14 +273,34 @@ static inline bool is_packed(A first, B second, C... other) {
   return is_packed(first, second) && is_packed(other...);
 }
 
-static inline at::Tensor get_buffer(at::Tensor tensor) {
+static inline at::Tensor get_buffer(const at::Tensor& tensor) {
   TORCH_CHECK(is_packed(tensor), "Given Tensor doesn't have buffer.");
   return *(get_nested_tensor_structure(tensor).buffer());
+}
+
+static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
+    at::Tensor tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->opt_sizes();
+}
+
+static inline SizeNode get_nested_size(at::Tensor tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->nested_size();
+}
+
+static inline int64_t get_nested_dim(const at::Tensor& tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->nested_dim();
 }
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
+at::Tensor wrap_buffer(at::Tensor&&, SizeNode nested_size);
 
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
@@ -619,9 +635,9 @@ struct NestedTensorFunction_mapper
             second_flat.clear();
             size_t flat_size = flat.size() / 2;
             for (size_t j = 0; j < flat_size; j++) {
-              first_flat.push_back(flat[0]);
+              first_flat.push_back(flat[flat.size() - 1]);
               flat.pop_back();
-              second_flat.push_back(flat[0]);
+              second_flat.push_back(flat[flat.size() - 1]);
               flat.pop_back();
             }
             TORCH_CHECK(

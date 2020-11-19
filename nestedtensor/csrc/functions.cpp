@@ -31,25 +31,6 @@ Tensor NestedTensor_embedding(
       indices);
 }
 
-
-Tensor NestedTensor_softmax(
-    const Tensor& input,
-    const int64_t dim_,
-    c10::optional<ScalarType> dtype) {
-  int64_t dim = maybe_wrap_dim(dim_, input.dim());
-  auto input_data = get_nested_tensor_impl(input);
-  int64_t nested_dim = input_data->nested_dim();
-  TORCH_CHECK(
-      dim >= nested_dim,
-      "Cannot apply softmax across nested dimensions ",
-      std::to_string(dim));
-  return autograd_map_nested_tensor(
-      [dim, nested_dim, dtype](const at::Tensor t) {
-        return at::softmax(t, dim - nested_dim, dtype);
-      },
-      input);
-}
-
 Tensor NestedTensor_layer_norm(
     const Tensor& input,
     IntArrayRef normalized_shape,
@@ -67,10 +48,7 @@ Tensor NestedTensor_layer_norm(
       std::to_string(input.dim() - 1));
   if (weight && bias) {
     return autograd_map_nested_tensor(
-        [normalized_shape, eps](
-            const at::Tensor t,
-            Tensor w,
-            Tensor b) {
+        [normalized_shape, eps](const at::Tensor t, Tensor w, Tensor b) {
           return at::layer_norm(t, normalized_shape, w, b, eps, true);
         },
         input,
@@ -234,12 +212,11 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "embedding", NestedTensor_embedding);
   nt_impl(m, "any", NestedTensor_any);
   nt_impl(m, "all", NestedTensor_all);
   nt_impl(m, "_log_softmax", NestedTensor__log_softmax);
-  nt_impl(m, "softmax.int", NestedTensor_softmax);
   nt_impl(m, "layer_norm", NestedTensor_layer_norm);
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
   nt_impl(m, "flatten.using_ints", NestedTensor_flatten);

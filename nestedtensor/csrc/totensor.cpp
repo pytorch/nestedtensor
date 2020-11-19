@@ -71,7 +71,7 @@ struct NestedTensorFunction_to_tensor
     at::Tensor input = saved[0];
     at::Tensor grad_output = grad_output_[0];
     return {wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        std::move(grad_output.clone().reshape({-1})),
+        grad_output.clone().reshape({-1}),
         get_nested_tensor_impl(input)->nested_size()))};
   }
 };
