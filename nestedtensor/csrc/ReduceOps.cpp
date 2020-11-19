@@ -144,7 +144,8 @@ std::tuple<Tensor, Tensor, Tensor> _make_m2(
     m2_tensors.push_back((centered * centered).sum(tensordims));
     mean_tensors.push_back(mean);
     int64_t numel = tensors[i].numel() / mean.numel();
-    numel_tensors.push_back(torch::tensor({numel}));
+    numel_tensors.push_back(torch::zeros_like(mean, torch::kLong).fill_(numel));
+    // numel_tensors.push_back(torch::tensor({numel}));
   }
   at::Tensor m2_tensor = at::stack(m2_tensors).reshape({-1});
   at::Tensor mean_tensor = at::stack(mean_tensors).reshape({-1});
@@ -220,6 +221,16 @@ Tensor NestedTensor_var_dim(
   std::tie(tensordims, nesteddims) = make_split_dims(self, dims);
   at::Tensor output = self;
   if (tensordims.size() > 0) {
+    at::Tensor m2_tensor, mean_tensor, numel;
+    std::vector<at::Tensor> tensors =
+        flatten(get_nested_tensor_structure(self));
+    std::tie(m2_tensor, mean_tensor, numel) =
+        _make_m2(tensors, IntArrayRef(tensordims));
+    std::cout << "01 m2_tensor: " << std::endl << m2_tensor << std::endl;
+    std::cout << "01 mean_tensor: " << std::endl << mean_tensor << std::endl;
+    std::cout << "01 numel: " << std::endl << numel << std::endl;
+    std::cout << "01 m2_tensor / numel: " << m2_tensor / numel << std::endl;
+
     output = map_nested_tensor(
         [tensordims, keepdims](at::Tensor tensor) {
           return at::var(tensor, c10::ArrayRef<int64_t>(tensordims), keepdims);

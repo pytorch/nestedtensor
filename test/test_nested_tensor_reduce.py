@@ -125,12 +125,17 @@ class TestReduce(TestCase):
     def test_var_dim(self):
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
-        t2 = torch.arange(9).float().reshape(3, 3)
+        t2 = (torch.arange(9).float().reshape(3, 3) - 9).pow(2)
         ts = [[t0, t1], [t0, t1]]
+        nt = ntnt(ts)
+        # print(nt)
+        # print(torch.var(nt, 2))
+        ts = [t0, t2]
         nt = ntnt(ts)
         print(nt)
         print(torch.var(nt, 0))
-        print(torch.var(nt, 1))
+        print(torch.var(torch.stack(ts), 0))
+        # print(torch.var(nt, (0, 1)))
 
     def test_sum_to(self):
         a = ntnt([torch.arange(2).reshape(1, 2), torch.arange(2).reshape(2, 1) + 2])
