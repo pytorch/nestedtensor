@@ -235,7 +235,7 @@ workflows:
   unittest:
     jobs:
       - unittest_linux_cpu:
-          name: unittest_linux_cpu_py<< matrix.python_version >>_<< matrix.cu_version >>
+          name: unittest_linux_<< matrix.cu_version >>_py<< matrix.python_version >>
           matrix:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
@@ -250,4 +250,4 @@ workflows:
             branches:
               only: nightly
           requires:
-            - unittest_linux_cpu_py<< matrix.python_version >>_<< matrix.subfolder >>
+            - unittest_linux_<< matrix.cu_version >>_py<< matrix.python_version >>
