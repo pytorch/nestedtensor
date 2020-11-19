@@ -168,7 +168,7 @@ jobs:
           # Done so that they have static versions
           name: Specify nightly versions
           command: |
-            if [[ "<< pipeline.git.branch >>" = "nightly" ]]; then
+            if [[ "${CIRCLE_BRANCH}" = "nightly" ]]; then
               echo "BUILD_VERSION=0.1.1+cpu" >> ${BASH_ENV}
               echo "PYTORCH_BUILD_VERSION=1.7.0+cpu" >> ${BASH_ENV}
               echo "PYTORCH_BUILD_NUMBER=1" >> ${BASH_ENV}
