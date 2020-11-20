@@ -138,10 +138,13 @@ class TestReduce(TestCase):
         # print(torch.var(torch.stack(ts), 0))
         # print("---")
         print(nt)
+        print(torch.var(nt, 0))
+        print(torch.var(nt, 1))
+        print(torch.var(nt, 2))
         print(torch.var(nt, (0, 1)))
         print("-|-")
         print(torch.stack(ts))
-        print(torch.var(torch.stack(ts), (0, 1), unbiased=False))
+        print(torch.var(torch.stack(ts), (0, 1)))
         # print(torch.var(nt, (0, 1)))
 
     def test_sum_to(self):

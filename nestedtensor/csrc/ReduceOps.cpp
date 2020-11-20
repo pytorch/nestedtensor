@@ -199,9 +199,9 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   }
   std::tie(m2_tensor, mean_tensor, numel) =
       _make_m2(tensors, IntArrayRef(tensordims));
-  std::cout << "0 m2_tensor: " << std::endl << m2_tensor << std::endl;
-  std::cout << "0 mean_tensor: " << std::endl << mean_tensor << std::endl;
-  std::cout << "0 numel: " << std::endl << numel << std::endl;
+  // std::cout << "0 m2_tensor: " << std::endl << m2_tensor << std::endl;
+  // std::cout << "0 mean_tensor: " << std::endl << mean_tensor << std::endl;
+  // std::cout << "0 numel: " << std::endl << numel << std::endl;
   std::tie(m2_tensor, mean_tensor, numel) =
       _merge_m2(m2_tensor, mean_tensor, numel);
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
@@ -219,36 +219,14 @@ Tensor NestedTensor_var_dim(
   std::vector<int64_t> tensordims;
   std::vector<int64_t> nesteddims;
   std::tie(tensordims, nesteddims) = make_split_dims(self, dims);
-  at::Tensor m2_tensor, mean_tensor, numel;
-  std::vector<at::Tensor> tensors = flatten(get_nested_tensor_structure(self));
-  if (tensordims.size() > 0) {
-    std::tie(m2_tensor, mean_tensor, numel) =
-        _make_m2(tensors, IntArrayRef(tensordims));
-    std::cout << "01 m2_tensor: " << std::endl << m2_tensor << std::endl;
-    std::cout << "01 mean_tensor: " << std::endl << mean_tensor << std::endl;
-    std::cout << "01 numel: " << std::endl << numel << std::endl;
-    std::cout << "01 m2_tensor / numel: " << m2_tensor / numel << std::endl;
 
-    // output = map_nested_tensor(
-    //     [tensordims, keepdims](at::Tensor tensor) {
-    //       return at::var(tensor, c10::ArrayRef<int64_t>(tensordims),
-    //       keepdims);
-    //     },
-    //     output);
-  }
-  // auto opt_sizes = get_opt_sizes(output);
-  // for (auto opt_size : opt_sizes) {
-  //   TORCH_CHECK(
-  //       opt_size,
-  //       "Current shape doesn't support reduction across nested dimension.
-  //       Please open a feature request https://t.ly/62F6.");
-  // }
   auto nested_size = get_nested_size(self);
+  int64_t nested_dim = get_nested_tensor_impl(self)->nested_dim();
   auto new_nested_size = map(
       [&tensordims](c10::List<int64_t> sizes) {
         c10::List<int64_t> new_sizes;
         for (size_t i = 0; i < sizes.size(); i++) {
-          if (std::find(tensordims.begin(), tensordims.end(), sizes[i]) ==
+          if (std::find(tensordims.begin(), tensordims.end(), i) ==
               tensordims.end()) {
             new_sizes.push_back(sizes[i]);
           }
@@ -256,18 +234,60 @@ Tensor NestedTensor_var_dim(
         return new_sizes;
       },
       nested_size);
-
-  for (size_t i = nesteddims.size(); i > 0; i--) {
-    new_nested_size = squeeze(new_nested_size, nesteddims[i - 1], keepdims);
+  if (nesteddims.size() > 0) {
+    TORCH_CHECK(
+        nesteddims.size() == 1 && nesteddims[0] == 0,
+        "Can only reduce across nested dimension 0.");
+    TORCH_CHECK(
+        nested_dim == 1,
+        "Can only reduce across nested dimensions if given nested tensor is of nested dimension 1.");
+    auto opt_sizes = construct_size(new_nested_size);
+    for (size_t i = 1; i < opt_sizes.size(); i++) {
+      TORCH_CHECK(
+          opt_sizes[i],
+          "Can only reduce across nested dimensions of Tensor compliant shapes.")
+    }
+    new_nested_size = squeeze(new_nested_size, 0, keepdims);
   }
+  if (tensordims.size() == 0) {
+    return wrap_buffer(
+        at::var(NestedTensor_to_tensor(self, c10::nullopt), 0, unbiased, keepdims).reshape({-1}),
+        new_nested_size);
+  }
+
+  at::Tensor m2_tensor, mean_tensor, numel;
+  std::vector<at::Tensor> tensors = flatten(get_nested_tensor_structure(self));
+  // if (tensordims.size() > 0) {
   std::tie(m2_tensor, mean_tensor, numel) =
-      _merge_m2(m2_tensor, mean_tensor, numel);
-    std::cout << "02 m2_tensor: " << std::endl << m2_tensor << std::endl;
-    std::cout << "02 mean_tensor: " << std::endl << mean_tensor << std::endl;
-    std::cout << "02 numel: " << std::endl << numel << std::endl;
-    std::cout << "02 m2_tensor / numel: " << m2_tensor / numel << std::endl;
-  auto tmp = m2_tensor / numel;
-  return tmp;
+      _make_m2(tensors, IntArrayRef(tensordims));
+  // std::cout << "01 m2_tensor: " << std::endl << m2_tensor << std::endl;
+  // std::cout << "01 mean_tensor: " << std::endl << mean_tensor << std::endl;
+  // std::cout << "01 numel: " << std::endl << numel << std::endl;
+  // std::cout << "01 m2_tensor / numel: " << m2_tensor / numel << std::endl;
+
+  if (nesteddims.size() > 0) {
+    std::tie(m2_tensor, mean_tensor, numel) =
+        _merge_m2(m2_tensor, mean_tensor, numel);
+  }
+  // auto tmp = map(
+  //     [](c10::List<int64_t> sizes) {
+  //       for (size_t i = 0; i < sizes.size(); i++) {
+  //         std::cout << "sizes[" << i << "]: " << sizes[i] << std::endl;
+  //       }
+  //       return sizes;
+  //     },
+  //     new_nested_size);
+  // std::cout << "02 m2_tensor: " << std::endl << m2_tensor << std::endl;
+  // std::cout << "02 mean_tensor: " << std::endl << mean_tensor << std::endl;
+  // std::cout << "02 numel: " << std::endl << numel << std::endl;
+  // std::cout << "02 m2_tensor / numel: " << m2_tensor / numel << std::endl;
+  // std::cout << "02 m2_tensor / (numel - 1): " << m2_tensor / (numel - 1)
+  //           << std::endl;
+  if (unbiased) {
+    return wrap_buffer(
+        (m2_tensor / (numel - 1)).reshape({-1}), new_nested_size);
+  }
+  return wrap_buffer((m2_tensor / numel).reshape({-1}), new_nested_size);
   // auto tmp = at::var(
   //     NestedTensor_to_tensor(output, c10::nullopt),
   //     IntArrayRef(nesteddims));
