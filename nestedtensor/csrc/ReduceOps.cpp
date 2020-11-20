@@ -218,21 +218,43 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   }
   auto nt_impl = get_nested_tensor_impl(tensor_);
 
-  TORCH_CHECK(
-      tensor_.dim() >= nt_impl->nested_dim() + shape.size(),
-      "sum_to only supported along tensor dimensions.");
-
   at::Tensor tensor = tensor_;
 
   std::vector<int64_t> reduce_dims;
+  std::vector<int64_t> nested_reduce_dims;
   const int64_t leading_dims = tensor.dim() - shape.size();
   for (int64_t i = 0; i < leading_dims; ++i) {
-    reduce_dims.push_back(i);
+    if (i < nt_impl->nested_dim()) {
+      nested_reduce_dims.push_back(i);
+    } else {
+      reduce_dims.push_back(i);
+    }
   }
   if (!reduce_dims.empty()) {
     tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
   }
   reduce_dims.clear();
+  if (!nested_reduce_dims.empty()) {
+    TORCH_CHECK(nt_impl->nested_dim() == 1, "Expected nested dim to be 1.");
+    TORCH_CHECK(
+        nested_reduce_dims.size() == 1 && nested_reduce_dims[0] == 0,
+        "Expected nested_reduce_dims of size 1 and with entry 0.");
+    auto opt_sizes = get_nested_tensor_impl(tensor)->opt_sizes();
+    for (size_t i = 0; i < opt_sizes.size(); i++) {
+      TORCH_CHECK(opt_sizes[i], "Expected shape to be tensor compliant.")
+    }
+    std::vector<at::Tensor> tensors =
+        flatten(get_nested_tensor_structure(tensor));
+    if (tensors.size() == 0) {
+      tensor = torch::tensor({}, tensor.options());
+    } else {
+      at::Tensor result = tensors[0];
+      for (size_t i = 1; i < tensors.size(); i++) {
+        result = at::add(result, tensors[i]);
+      }
+      tensor = result.unsqueeze(0);
+    }
+  }
   const at::IntArrayRef sizes = tensor.sizes();
   for (int64_t i = leading_dims; i < static_cast<int64_t>(sizes.size()); ++i) {
     if (shape[i - leading_dims] == 1 && sizes[i] != 1) {
@@ -245,6 +267,22 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
   return leading_dims > 0 ? tensor.view(shape) : tensor;
 }
 
+Tensor NestedTensor_sum_to_nt(
+    const Tensor& self,
+    IntArrayRef serial_nested_size) {
+  auto tmp =
+      torch::nested_tensor::deserialize_size_node(serial_nested_size.vec(), 0);
+  SizeNode nested_size = std::get<1>(tmp);
+  if (is_nested_tensor_impl(self)) {
+    TORCH_CHECK(
+        torch::nested_tensor::shape_matches(
+            get_nested_tensor_impl(self)->nested_size(), nested_size),
+        "sum_to_nt needs both NT arguments to be the same shape");
+    return self;
+  }
+  return wrap_buffer(self.reshape({-1}).contiguous(), nested_size);
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
@@ -254,6 +292,10 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
   nt_impl(m, "sum_to", NestedTensor_sum_to);
+}
+
+TORCH_LIBRARY_IMPL(aten, Autograd, m) {
+  nt_impl(m, "sum_to_nt", NestedTensor_sum_to_nt);
 }
 
 } // namespace at

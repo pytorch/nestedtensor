@@ -255,6 +255,26 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
+  m.def("serialize_nested_size", [](Tensor self) {
+    std::vector<int64_t> out;
+    serialize(get_nested_tensor_impl(self)->nested_size(), out);
+    return out;
+  });
+
+  m.def("deserialize_nested_size", [](std::vector<int64_t> out) { 
+    auto result = deserialize_size_node(out, 0);
+    SizeNode nested_size = std::get<1>(result);
+    return py::cast(THPPythonNode(
+        map(
+            [](c10::List<int64_t> e) {
+              std::vector<int64_t> e_vec = e.vec();
+              return py::reinterpret_steal<py::object>(
+                  THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
+            },
+            nested_size),
+        "NestedSize"));
+  });
+
   m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor_impl(self);
     if (!index_) {
@@ -267,6 +287,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
     SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
+  });
+
+  m.def("sum_to", [](Tensor self, py::tuple shape) {
+    std::vector<int64_t> shape_vec = py::cast<std::vector<int64_t>>(shape);
+    return at::sum_to(self, IntArrayRef(shape_vec));
   });
   // m.def("_test", []() {
   //     std::vector<at:Tensor> ts;

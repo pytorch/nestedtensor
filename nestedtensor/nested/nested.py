@@ -141,6 +141,11 @@ def _filter_impl(args, kwargs):
     return impl_args, impl_kwargs
 
 
+def sum_to(tensor, shape):
+    impl_args, _ = _filter_impl([tensor, shape], {})
+    return _wrap_result(nestedtensor._C.sum_to(*impl_args))
+
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
@@ -305,8 +310,13 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return _wrap_result(self._impl.requires_grad_(requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        self._impl.backward(
-            gradient._impl if gradient else None, retain_graph, create_graph)
+        impl = None
+        if gradient is not None:
+            if torch.is_tensor(gradient):
+                impl = gradient
+            else:
+                impl = gradient._impl
+        self._impl.backward(impl, retain_graph, create_graph)
 
     def nested_dim(self):
         """
