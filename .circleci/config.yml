@@ -238,19 +238,19 @@ workflows:
   unittest:
     jobs:
       - unittest_linux_cpu:
-          name: unittest_linux_cpu_py<< matrix.python_version >>
+          name: unittest_linux_<< matrix.cu_version >>_py<< matrix.python_version >>
           matrix:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
-              cu_version: ["cpu"]
+              cu_version: ["cpu", "cu101"]
       - binary_wheel_upload:
           context: org-member
           matrix:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
-              subfolder: ["cpu"]
+              subfolder: ["cpu", "cu101"]
           filters:
             branches:
               only: nightly
           requires:
-            - unittest_linux_cpu_py<< matrix.python_version >>
+            - unittest_linux_<< matrix.subfolder >>_py<< matrix.python_version >>
