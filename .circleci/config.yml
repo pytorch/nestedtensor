@@ -115,6 +115,9 @@ jobs:
       subfolder:
         description: "What whl subfolder to upload to, e.g., blank or cu100/ (trailing slash is important)"
         type: string
+      python_version:
+        description: "Dummy param to make circleci configuration happy for matrix"
+        type: string
     docker:
       - image: circleci/python:3.7
     steps:
@@ -132,7 +135,7 @@ jobs:
             export AWS_SECRET_ACCESS_KEY="${PYTORCH_BINARY_AWS_SECRET_ACCESS_KEY}"
             set -x
             for pkg in ~/workspace/*.whl; do
-              aws s3 cp "$pkg" "s3://pytorch/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>" --acl public-read
+              aws s3 cp "$pkg" "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/" --acl public-read
             done
 
   unittest_linux_cpu:
@@ -162,8 +165,24 @@ jobs:
             - conda
             - env
       - run:
+          # Done so that they have static versions
+          name: Specify nightly versions
+          command: |
+            if [[ "${CIRCLE_BRANCH}" = "nightly" ]]; then
+              echo "export BUILD_VERSION=0.1.1+cpu" >> ${BASH_ENV}
+              echo "export PYTORCH_BUILD_VERSION=1.7.0+cpu" >> ${BASH_ENV}
+              echo "export PYTORCH_BUILD_NUMBER=1" >> ${BASH_ENV}
+            fi
+      - run:
           name: Install nestedtensor
-          command: .circleci/unittest/linux/scripts/install.sh
+          command: |
+            touch ${BASH_ENV}
+            # For some reason circleci isn't automatically sourcing this within the builds
+            source ${BASH_ENV} && .circleci/unittest/linux/scripts/install.sh
+      - persist_to_workspace:
+          root: wheels
+          paths:
+            - "*"
       - store_artifacts:
           path: wheels
       - run:
@@ -219,14 +238,19 @@ workflows:
   unittest:
     jobs:
       - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.6
-          python_version: '3.6'
-      - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.7
-          python_version: '3.7'
-      - unittest_linux_cpu:
-          cu_version: cpu
-          name: unittest_linux_cpu_py3.8
-          python_version: '3.8'
+          name: unittest_linux_<< matrix.cu_version >>_py<< matrix.python_version >>
+          matrix:
+            parameters:
+              python_version: ["3.6", "3.7", "3.8"]
+              cu_version: ["cpu", "cu101"]
+      - binary_wheel_upload:
+          context: org-member
+          matrix:
+            parameters:
+              python_version: ["3.6", "3.7", "3.8"]
+              subfolder: ["cpu", "cu101"]
+          filters:
+            branches:
+              only: nightly
+          requires:
+            - unittest_linux_<< matrix.subfolder >>_py<< matrix.python_version >>
