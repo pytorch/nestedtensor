@@ -139,9 +139,9 @@ std::tuple<Tensor, Tensor, Tensor> _make_m2(
   std::vector<at::Tensor> mean_tensors;
   std::vector<at::Tensor> numel_tensors;
   for (size_t i = 0; i < tensors.size(); i++) {
-    at::Tensor mean = at::mean(tensors[i], tensordims);
+    at::Tensor mean = at::mean(tensors[i], tensordims, true);
     at::Tensor centered = tensors[i] - mean;
-    m2_tensors.push_back((centered * centered).sum(tensordims));
+    m2_tensors.push_back((centered * centered).sum(tensordims, true));
     mean_tensors.push_back(mean);
     int64_t numel = tensors[i].numel() / mean.numel();
     numel_tensors.push_back(torch::zeros_like(mean, torch::kLong).fill_(numel));
@@ -251,47 +251,30 @@ Tensor NestedTensor_var_dim(
   }
   if (tensordims.size() == 0) {
     return wrap_buffer(
-        at::var(NestedTensor_to_tensor(self, c10::nullopt), 0, unbiased, keepdims).reshape({-1}),
+        at::var(
+            NestedTensor_to_tensor(self, c10::nullopt), 0, unbiased, keepdims)
+            .reshape({-1}),
         new_nested_size);
+  }
+  if (nesteddims.size() == 0) {
+    return map_nested_tensor(
+        [tensordims, unbiased, keepdims](at::Tensor t) {
+          return at::var(t, tensordims, unbiased, keepdims);
+        },
+        self);
   }
 
   at::Tensor m2_tensor, mean_tensor, numel;
   std::vector<at::Tensor> tensors = flatten(get_nested_tensor_structure(self));
-  // if (tensordims.size() > 0) {
   std::tie(m2_tensor, mean_tensor, numel) =
       _make_m2(tensors, IntArrayRef(tensordims));
-  // std::cout << "01 m2_tensor: " << std::endl << m2_tensor << std::endl;
-  // std::cout << "01 mean_tensor: " << std::endl << mean_tensor << std::endl;
-  // std::cout << "01 numel: " << std::endl << numel << std::endl;
-  // std::cout << "01 m2_tensor / numel: " << m2_tensor / numel << std::endl;
-
-  if (nesteddims.size() > 0) {
-    std::tie(m2_tensor, mean_tensor, numel) =
-        _merge_m2(m2_tensor, mean_tensor, numel);
-  }
-  // auto tmp = map(
-  //     [](c10::List<int64_t> sizes) {
-  //       for (size_t i = 0; i < sizes.size(); i++) {
-  //         std::cout << "sizes[" << i << "]: " << sizes[i] << std::endl;
-  //       }
-  //       return sizes;
-  //     },
-  //     new_nested_size);
-  // std::cout << "02 m2_tensor: " << std::endl << m2_tensor << std::endl;
-  // std::cout << "02 mean_tensor: " << std::endl << mean_tensor << std::endl;
-  // std::cout << "02 numel: " << std::endl << numel << std::endl;
-  // std::cout << "02 m2_tensor / numel: " << m2_tensor / numel << std::endl;
-  // std::cout << "02 m2_tensor / (numel - 1): " << m2_tensor / (numel - 1)
-  //           << std::endl;
+  std::tie(m2_tensor, mean_tensor, numel) =
+      _merge_m2(m2_tensor, mean_tensor, numel);
   if (unbiased) {
     return wrap_buffer(
         (m2_tensor / (numel - 1)).reshape({-1}), new_nested_size);
   }
   return wrap_buffer((m2_tensor / numel).reshape({-1}), new_nested_size);
-  // auto tmp = at::var(
-  //     NestedTensor_to_tensor(output, c10::nullopt),
-  //     IntArrayRef(nesteddims));
-  // return wrap_buffer(tmp.reshape({-1}), new_nested_size);
 }
 
 Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
