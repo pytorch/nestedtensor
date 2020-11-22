@@ -95,7 +95,11 @@ class TestAutogradFunctional(TestCase):
             batch_norm = BatchNorm2d()
 
             t_res = batch_norm(inputs)
-            nt = ntnt(inputs)
+            t_res.sum().backward()
+            layer_grad0 = [p.grad for (n, p) in batch_norm.named_parameters()]
+
+            batch_norm.zero_grad()
+            nt = ntnt(inputs.unbind())
             nt_res = batch_norm(nt)
             print("--")
             print(t_res.sum())
@@ -104,7 +108,11 @@ class TestAutogradFunctional(TestCase):
 
             self.assertEqual(ntnt(t_res.unbind()), nt_res)
             nt_res.sum().backward()
-            layer_grad0 = [p.grad for (n, p) in batch_norm.named_parameters()]
+            layer_grad1 = [p.grad for (n, p) in batch_norm.named_parameters()]
+            map(self.assertEqual, zip(layer_grad0, layer_grad1))
+            self.assertEqual(nt.grad[0], inputs.grad[0])
+            self.assertEqual(nt.grad[1], inputs.grad[1])
+            return None
 
             inputs = [
                 torch.randn(3, 50, 60, requires_grad=True),
@@ -217,13 +225,13 @@ class TestAutogradFunctional(TestCase):
 
             b = Bottleneck()
             print(b)
-            x = b(inputs)
-            import torchviz
-            dot = torchviz.make_dot(x.sum())
+            x = b(inputs).sum()
+            # import torchviz
+            # dot = torchviz.make_dot(x)
             # dot.format = 'svg'
-            # dot.render('asdf.svg')
-            import sys; sys.exit(1)
-            b(inputs).sum().backward()
+            # dot.render('asdf')
+            # x.backward()
+            # import sys; sys.exit(1)
             g0 = list(p.grad for (n, p) in b.named_parameters())
 
             b.zero_grad()
