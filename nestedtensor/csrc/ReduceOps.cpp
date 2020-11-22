@@ -206,9 +206,9 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
       _merge_m2(m2_tensor, mean_tensor, numel);
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
   if (unbiased) {
-    return m2_tensor[0] / (numel[0] - 1);
+    return (m2_tensor / (numel - 1)).reshape({});
   }
-  return m2_tensor[0] / numel[0];
+  return (m2_tensor / numel).reshape({});
 }
 
 Tensor NestedTensor_var_dim(
