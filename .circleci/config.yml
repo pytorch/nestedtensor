@@ -169,18 +169,16 @@ jobs:
           name: Specify nightly versions
           command: |
             if [[ "${CIRCLE_BRANCH}" = "nightly" ]]; then
-              echo "BUILD_VERSION=0.1.1+cpu" >> ${BASH_ENV}
-              echo "PYTORCH_BUILD_VERSION=1.7.0+cpu" >> ${BASH_ENV}
-              echo "PYTORCH_BUILD_NUMBER=1" >> ${BASH_ENV}
+              echo "export BUILD_VERSION=0.1.1+cpu" >> ${BASH_ENV}
+              echo "export PYTORCH_BUILD_VERSION=1.7.0+cpu" >> ${BASH_ENV}
+              echo "export PYTORCH_BUILD_NUMBER=1" >> ${BASH_ENV}
             fi
       - run:
           name: Install nestedtensor
           command: |
+            touch ${BASH_ENV}
             # For some reason circleci isn't automatically sourcing this within the builds
-            if [[ -f ${BASH_ENV} ]]; then
-              source ${BASH_ENV}
-            fi
-            .circleci/unittest/linux/scripts/install.sh
+            source ${BASH_ENV} && .circleci/unittest/linux/scripts/install.sh
       - persist_to_workspace:
           root: wheels
           paths:
