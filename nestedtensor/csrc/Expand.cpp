@@ -17,7 +17,8 @@ bool NestedTensor_sizes_equal_nt_other(
     const Tensor& self,
     IntArrayRef nested_size_other) {
   // TODO: This does nothing right now
-  SizeNode nested_size = torch::nested_tensor::deserialize_size_node(nested_size_other);
+  SizeNode nested_size =
+      torch::nested_tensor::deserialize_size_node(nested_size_other);
   if (is_nested_tensor_impl(self)) {
     return false;
     // return torch::nested_tensor::shape_matches(
@@ -99,39 +100,33 @@ bool _sizes_nested_size_expands(
 // Can nested_size_other be expanded to match the shape of grad?
 // If this is true, a call to sum_to_nt will follow next in autograd/engine.cpp
 // to reduce grad down to the shape of nested_size_other.
-bool NestedTensor_native_is_expandable_to_nt_other(
-    IntArrayRef nested_size_other /* shape */,
-    const Tensor& grad /* desired */) {
-  SizeNode nested_size =
-      torch::nested_tensor::deserialize_size_node(nested_size_other);
-  if (is_nested_tensor_impl(grad)) {
-    std::cout << "A0" << std::endl;
-    return torch::nested_tensor::shape_matches(
-        get_nested_size(grad), nested_size);
-  }
-  int64_t nested_size_dim = nested_size.height() + _tensor_dim(nested_size);
-  if (nested_size_dim > grad.dim()) {
-    std::cout << "A1" << std::endl;
-    return false;
-  }
-  std::vector<int64_t> grad_shape = grad.sizes().vec();
-  if (nested_size_dim < grad.dim()) {
-    std::vector<int64_t> new_grad_shape;
-    for (int64_t i = grad.dim() - nested_size_dim; i < grad.dim(); i++) {
-      new_grad_shape.push_back(grad_shape[i]);
-    }
-    grad_shape = new_grad_shape;
-  }
-    std::cout << "A2" << std::endl;
-  return _sizes_nested_size_expands(nested_size, grad_shape);
-}
-
 bool NestedTensor_native_is_expandable_to(
     IntArrayRef metadata_shape, /* shape */
     const Tensor& grad /* desired */) {
+  if (is_nested_tensor_impl(grad) && is_serialized_size_node(metadata_shape)) {
+    std::cout << "A0" << std::endl;
+    SizeNode nested_size = deserialize_size_node(metadata_shape);
+    SizeNode nested_size_desired = get_nested_size(grad);
+    return shape_matches(get_nested_size(grad), nested_size);
+  }
   if (torch::nested_tensor::is_serialized_size_node(metadata_shape)) {
-    std::cout << "A3" << std::endl;
-    return NestedTensor_native_is_expandable_to_nt_other(metadata_shape, grad);
+    SizeNode nested_size =
+        torch::nested_tensor::deserialize_size_node(metadata_shape);
+    int64_t nested_size_dim = nested_size.height() + _tensor_dim(nested_size);
+    if (nested_size_dim > grad.dim()) {
+      std::cout << "A1" << std::endl;
+      return false;
+    }
+    std::vector<int64_t> grad_shape = grad.sizes().vec();
+    if (nested_size_dim < grad.dim()) {
+      std::vector<int64_t> new_grad_shape;
+      for (int64_t i = grad.dim() - nested_size_dim; i < grad.dim(); i++) {
+        new_grad_shape.push_back(grad_shape[i]);
+      }
+      grad_shape = new_grad_shape;
+    }
+    std::cout << "A2" << std::endl;
+    return _sizes_nested_size_expands(nested_size, grad_shape);
   }
   if (is_nested_tensor_impl(grad)) {
     auto fn = [&metadata_shape](at::Tensor leaf, bool input) {
@@ -141,7 +136,7 @@ bool NestedTensor_native_is_expandable_to(
     return reduce<decltype(fn), bool, at::Tensor>(
         get_nested_tensor_structure(grad), fn, true);
   }
-    std::cout << "A5" << std::endl;
+  std::cout << "A5" << std::endl;
   return at::is_expandable_to(metadata_shape, grad.sizes());
 }
 
