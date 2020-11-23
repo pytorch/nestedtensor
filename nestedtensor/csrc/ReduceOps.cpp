@@ -351,9 +351,8 @@ Tensor NestedTensor_sum_to(const Tensor& tensor_, IntArrayRef shape) {
 Tensor NestedTensor_sum_to_nt(
     const Tensor& self,
     IntArrayRef serial_nested_size) {
-  auto tmp =
-      torch::nested_tensor::deserialize_size_node(serial_nested_size.vec(), 0);
-  SizeNode nested_size = std::get<1>(tmp);
+  SizeNode nested_size =
+      torch::nested_tensor::deserialize_size_node(serial_nested_size);
   if (is_nested_tensor_impl(self)) {
     TORCH_CHECK(
         torch::nested_tensor::shape_matches(

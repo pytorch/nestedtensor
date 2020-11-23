@@ -16,9 +16,7 @@ bool NestedTensor_sizes_equal_nt_other(
     const Tensor& self,
     IntArrayRef nested_size_other) {
   // TODO: This does nothing right now
-  auto tmp =
-      torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
-  SizeNode nested_size = std::get<1>(tmp);
+  SizeNode nested_size = torch::nested_tensor::deserialize_size_node(nested_size_other);
   if (is_nested_tensor_impl(self)) {
     return false;
     // return torch::nested_tensor::shape_matches(
@@ -103,9 +101,8 @@ bool _sizes_nested_size_expands(
 bool NestedTensor_native_is_expandable_to_nt_other(
     IntArrayRef nested_size_other,
     const Tensor& grad) {
-  auto tmp =
-      torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
-  SizeNode nested_size = std::get<1>(tmp);
+  SizeNode nested_size =
+      torch::nested_tensor::deserialize_size_node(nested_size_other);
   if (is_nested_tensor_impl(grad)) {
     return torch::nested_tensor::shape_matches(
         get_nested_size(grad), nested_size);
@@ -137,11 +134,8 @@ Tensor NestedTensor_expand_nt(
     const Tensor& nested_size_tensor,
     bool implicit) {
   TORCH_CHECK(!is_nested_tensor_impl(self), "Expected regular tensor as self.");
-  std::vector<int64_t> nested_size_(
-      nested_size_tensor.data_ptr<int64_t>(),
-      nested_size_tensor.data_ptr<int64_t>() + nested_size_tensor.numel());
-  auto tmp = torch::nested_tensor::deserialize_size_node(nested_size_, 0);
-  SizeNode nested_size = std::get<1>(tmp);
+  SizeNode nested_size =
+      torch::nested_tensor::deserialize_size_node(nested_size_tensor);
   TORCH_CHECK(
       self.dim() <= _tensor_dim(nested_size),
       "self dim can't exceed nested_size tensor dim.");
