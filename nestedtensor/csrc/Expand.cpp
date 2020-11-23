@@ -17,8 +17,7 @@ bool NestedTensor_sizes_equal_nt_other(
     const Tensor& self,
     IntArrayRef nested_size_other) {
   // TODO: This does nothing right now
-  SizeNode nested_size =
-      torch::nested_tensor::deserialize_size_node(nested_size_other);
+  SizeNode nested_size = torch::nested_tensor::deserialize_size_node(nested_size_other);
   if (is_nested_tensor_impl(self)) {
     return false;
     // return torch::nested_tensor::shape_matches(
