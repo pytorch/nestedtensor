@@ -101,8 +101,8 @@ bool _sizes_nested_size_expands(
 // If this is true, a call to sum_to_nt will follow next in autograd/engine.cpp
 // to reduce grad down to the shape of nested_size_other.
 bool NestedTensor_native_is_expandable_to_nt_other(
-    IntArrayRef nested_size_other,
-    const Tensor& grad) {
+    IntArrayRef nested_size_other /* shape */,
+    const Tensor& grad /* desired */) {
   SizeNode nested_size =
       torch::nested_tensor::deserialize_size_node(nested_size_other);
   if (is_nested_tensor_impl(grad)) {
@@ -125,14 +125,18 @@ bool NestedTensor_native_is_expandable_to_nt_other(
 }
 
 bool NestedTensor_native_is_expandable_to(
-    IntArrayRef metadata_shape,
-    const Tensor& grad) {
+    IntArrayRef metadata_shape, /* shape */
+    const Tensor& grad /* desired */) {
   if (torch::nested_tensor::is_serialized_size_node(metadata_shape)) {
     return NestedTensor_native_is_expandable_to_nt_other(metadata_shape, grad);
   }
-  TORCH_CHECK(
-      !is_nested_tensor_impl(grad),
-      "NestedTensor_native_is_expandable_to not implemented for NT grad.");
+  if (is_nested_tensor_impl(grad)) {
+    auto fn = [&metadata_shape](at::Tensor leaf, bool input) {
+      return input && at::is_expandable_to(metadata_shape, leaf.sizes());
+    };
+    return reduce<decltype(fn), bool, at::Tensor>(
+        get_nested_tensor_structure(grad), fn, true);
+  }
   return at::is_expandable_to(metadata_shape, grad.sizes());
 }
 

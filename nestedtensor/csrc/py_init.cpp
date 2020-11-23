@@ -290,6 +290,19 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     std::vector<int64_t> shape_vec = py::cast<std::vector<int64_t>>(shape);
     return at::sum_to(self, IntArrayRef(shape_vec));
   });
+
+  m.def("native_is_expandable_to", [](Tensor shape, Tensor desired) {
+    std::vector<int64_t> shape_vec;
+    if (is_nested_tensor_impl(shape)) {
+      at::Tensor out = serialize_nested_size(shape);
+      std::vector<int64_t> nested_size(
+          out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
+      shape_vec = nested_size;
+    } else {
+      shape_vec = shape.sizes().vec();
+    }
+    return at::native_is_expandable_to(IntArrayRef(shape_vec), desired);
+  });
   // m.def("_test", []() {
   //     std::vector<at:Tensor> ts;
   //     ts.push_back(torch::rand({1}));
