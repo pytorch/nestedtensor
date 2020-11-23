@@ -558,6 +558,21 @@ inline std::vector<int64_t> serialize(SizeNode nested_node) {
   return out;
 }
 
+inline bool is_serialized_size_node(const std::vector<int64_t>& out) {
+  return out.size() > 2 && out[out.size() - 1] == 8589935681 &&
+      out[out.size() - 2] == 2097593 && out[out.size() - 3] == 32993;
+}
+
+inline bool is_serialized_size_node(at::IntArrayRef out) {
+  return is_serialized_size_node(out.vec());
+}
+
+inline bool is_serialized_size_node(at::Tensor out) {
+  std::vector<int64_t> nested_size_(
+      out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
+  return is_serialized_size_node(nested_size_);
+}
+
 inline std::tuple<size_t, SizeNode> _deserialize_size_node(
     std::vector<int64_t> out,
     size_t index) {
@@ -588,12 +603,9 @@ inline std::tuple<size_t, SizeNode> _deserialize_size_node(
 }
 
 inline SizeNode deserialize_size_node(std::vector<int64_t> out) {
-  TORCH_CHECK(out.size() > 2, "out needs to be at least of length 2.");
-  TORCH_CHECK(out[out.size() - 1] == 8589935681, "out is of wrong format.");
+  TORCH_CHECK(is_serialized_size_node(out), "out has the wrong format.");
   out.pop_back();
-  TORCH_CHECK(out[out.size() - 1] == 2097593, "out is of wrong format.");
   out.pop_back();
-  TORCH_CHECK(out[out.size() - 1] == 32993, "out is of wrong format.");
   out.pop_back();
   auto tmp = _deserialize_size_node(out, 0);
   return std::get<1>(tmp);
