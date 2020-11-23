@@ -256,14 +256,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   });
 
   m.def("serialize_nested_size", [](Tensor self) {
-    std::vector<int64_t> out;
-    serialize(get_nested_tensor_impl(self)->nested_size(), out);
-    return out;
+    return serialize(get_nested_tensor_impl(self)->nested_size());
   });
 
-  m.def("deserialize_nested_size", [](std::vector<int64_t> out) { 
-    auto result = deserialize_size_node(out, 0);
-    SizeNode nested_size = std::get<1>(result);
+  m.def("deserialize_nested_size", [](std::vector<int64_t> out) {
+    SizeNode nested_size = deserialize_size_node(out);
     return py::cast(THPPythonNode(
         map(
             [](c10::List<int64_t> e) {
