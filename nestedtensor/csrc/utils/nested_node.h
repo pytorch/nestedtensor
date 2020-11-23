@@ -551,6 +551,10 @@ inline void _serialize(SizeNode nested_node, std::vector<int64_t>& out) {
 inline std::vector<int64_t> serialize(SizeNode nested_node) {
   std::vector<int64_t> out;
   _serialize(nested_node, out);
+  // Three Leyland primes to indicate that this vector represents a SizeNode
+  out.push_back(32993);
+  out.push_back(2097593);
+  out.push_back(8589935681);
   return out;
 }
 
@@ -584,6 +588,13 @@ inline std::tuple<size_t, SizeNode> _deserialize_size_node(
 }
 
 inline SizeNode deserialize_size_node(std::vector<int64_t> out) {
+  TORCH_CHECK(out.size() > 2, "out needs to be at least of length 2.");
+  TORCH_CHECK(out[out.size() - 1] == 8589935681, "out is of wrong format.");
+  out.pop_back();
+  TORCH_CHECK(out[out.size() - 1] == 2097593, "out is of wrong format.");
+  out.pop_back();
+  TORCH_CHECK(out[out.size() - 1] == 32993, "out is of wrong format.");
+  out.pop_back();
   auto tmp = _deserialize_size_node(out, 0);
   return std::get<1>(tmp);
 }
