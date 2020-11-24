@@ -363,6 +363,24 @@ Tensor NestedTensor_sum_to_nt(
   return wrap_buffer(self.reshape({-1}).contiguous(), nested_size);
 }
 
+Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef size) {
+  // TORCH_CHECK(
+  //     native_is_expandable_to(size, self),
+  //     "size {",
+  //     size,
+  //     "} is not expandable to size {",
+  //     self.sizes(),
+  //     "}.");
+
+  if (is_serialized_size_node(size)) {
+    return NestedTensor_sum_to_nt(self, size);
+  }
+  if (is_nested_tensor_impl(self)) {
+    return NestedTensor_sum_to(self, size);
+  }
+  return at::sum_to(self, size);
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
@@ -376,7 +394,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
 }
 
 TORCH_LIBRARY_IMPL(aten, Autograd, m) {
-  nt_impl(m, "sum_to_nt", NestedTensor_sum_to_nt);
+  nt_impl(m, "sum_to_size", NestedTensor_sum_to_size);
 }
 
 } // namespace at
