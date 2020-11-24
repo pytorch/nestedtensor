@@ -187,25 +187,23 @@ class TestReduce(TestCase):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
         print(a)
-        print(nestedtensor.nested.nested.sum_to_size(a, (1, 2)))
-        print(nestedtensor.nested.nested.sum_to_size(a, (1, 2)).shape)
+        print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)))
+        print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)).shape)
         # b = ntnt([torch.randn(1), torch.randn(1)])
         pass
 
     def test_native_is_expandable_to(self):
-        # self.assertEqual(True, native_is_expandable_to(a, a))
-        # self.assertEqual(False, native_is_expandable_to(a, torch.randn(1, 2)))
-        # self.assertEqual(True, native_is_expandable_to(torch.randn(1, 2), a))
-        # self.assertEqual(True, native_is_expandable_to(torch.randn(2), a))
-        # self.assertEqual(False, native_is_expandable_to(torch.randn(2, 1), a))
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
+        self.assertEqual(True, native_is_expandable_to(a, a))
+        self.assertEqual(False, native_is_expandable_to(a, torch.randn(1, 2)))
+        self.assertEqual(True, native_is_expandable_to(torch.randn(1, 2), a))
+        self.assertEqual(True, native_is_expandable_to(torch.randn(2), a))
+        self.assertEqual(False, native_is_expandable_to(torch.randn(2, 1), a))
         b = ntnt([torch.arange(2).reshape(2),
                   torch.arange(2).reshape(2) + 2])
         c = ntnt([[torch.arange(2).reshape(1, 2)],
                   [torch.arange(2).reshape(1, 2) + 2]])
-        print(a)
-        print(b)
         # Both NT
         self.assertEqual(True, native_is_expandable_to(b, a))
         self.assertEqual(False, native_is_expandable_to(a, b))

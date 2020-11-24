@@ -286,9 +286,17 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
-  m.def("sum_to_size", [](Tensor self, py::tuple shape) {
-    std::vector<int64_t> shape_vec = py::cast<std::vector<int64_t>>(shape);
-    return self.sum_to_size(IntArrayRef(shape_vec));
+  m.def("sum_to_size", [](Tensor self, Tensor desired) {
+    std::vector<int64_t> desired_vec;
+    if (is_nested_tensor_impl(desired)) {
+      at::Tensor out = serialize_nested_size(desired);
+      std::vector<int64_t> nested_size(
+          out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
+      desired_vec = nested_size;
+    } else {
+      desired_vec = desired.sizes().vec();
+    }
+    return self.sum_to_size(IntArrayRef(desired_vec));
   });
 
   m.def("sizes_equal", [](Tensor self, Tensor other) {
