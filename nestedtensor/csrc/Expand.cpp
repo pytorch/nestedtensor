@@ -13,19 +13,6 @@ namespace at {
 using namespace torch::nested_tensor;
 using namespace c10;
 
-bool NestedTensor_sizes_equal_nt_other(
-    const Tensor& self,
-    IntArrayRef nested_size_other) {
-  // TODO: This does nothing right now
-  SizeNode nested_size = torch::nested_tensor::deserialize_size_node(nested_size_other);
-  if (is_nested_tensor_impl(self)) {
-    return false;
-    // return torch::nested_tensor::shape_matches(
-    //     get_nested_tensor_impl(self)->nested_size(), nested_size);
-  }
-  return false;
-}
-
 int64_t _tensor_dim(SizeNode nested_size) {
   if (nested_size.is_leaf()) {
     return nested_size.payload().size();
@@ -34,41 +21,49 @@ int64_t _tensor_dim(SizeNode nested_size) {
   return _tensor_dim(nested_size.children(0));
 }
 
-bool _sizes_nested_size_equal(
-    SizeNode nested_size,
-    std::vector<int64_t> grad_shape) {
-  if (grad_shape.size() == 0) {
-    return false;
-  }
-  if (nested_size.is_leaf()) {
-    auto payload = nested_size.payload();
-    for (size_t i = 0; i < payload.size(); i++) {
-      if (payload[i] != grad_shape[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-  if (nested_size.degree() != grad_shape[0]) {
-    return false;
-  }
-  std::vector<int64_t> new_grad_shape;
-  for (size_t i = 1; i < grad_shape.size(); i++) {
-    new_grad_shape.push_back(grad_shape[i]);
-  }
-  for (size_t i = 0; i < nested_size.degree(); i++) {
-    if (!_sizes_nested_size_equal(nested_size.children(i), new_grad_shape)) {
-      return false;
-    }
-  }
-  return true;
-}
+// bool _sizes_nested_size_equal(
+//     SizeNode nested_size,
+//     std::vector<int64_t> grad_shape) {
+//   if (grad_shape.size() == 0) {
+//     return false;
+//   }
+//   if (nested_size.is_leaf()) {
+//     auto payload = nested_size.payload();
+//     for (size_t i = 0; i < payload.size(); i++) {
+//       if (payload[i] != grad_shape[i]) {
+//         return false;
+//       }
+//     }
+//     return true;
+//   }
+//   if (nested_size.degree() != grad_shape[0]) {
+//     return false;
+//   }
+//   std::vector<int64_t> new_grad_shape;
+//   for (size_t i = 1; i < grad_shape.size(); i++) {
+//     new_grad_shape.push_back(grad_shape[i]);
+//   }
+//   for (size_t i = 0; i < nested_size.degree(); i++) {
+//     if (!_sizes_nested_size_equal(nested_size.children(i), new_grad_shape)) {
+//       return false;
+//     }
+//   }
+//   return true;
+// }
 
 bool NestedTensor_sizes_equal(const Tensor& self, IntArrayRef size_other) {
-  if (self.dim() != size_other.size()) {
+  if (is_nested_tensor_impl(self) && !is_serialized_size_node(size_other)) {
     return false;
   }
-  return _sizes_nested_size_equal(get_nested_size(self), size_other.vec());
+  if (!is_nested_tensor_impl(self) && is_serialized_size_node(size_other)) {
+    return false;
+  }
+  if (is_serialized_size_node(size_other)) {
+    SizeNode nested_size_other =
+        torch::nested_tensor::deserialize_size_node(size_other);
+    return nested_size_matches(get_nested_size(self), nested_size_other);
+  }
+  return self.sizes().equals(size_other);
 }
 
 bool _sizes_nested_size_expands(
@@ -96,38 +91,62 @@ bool _sizes_nested_size_expands(
   return true;
 }
 
+bool _nested_size_nested_size_expands(SizeNode shape, SizeNode desired) {
+  if (shape.is_leaf() && desired.is_leaf()) {
+    return at::is_expandable_to(
+        IntArrayRef(shape.payload().vec()),
+        IntArrayRef(desired.payload().vec()));
+  }
+  if (shape.is_leaf()) {
+    for (size_t i = 0; i < shape.degree(); i++) {
+      if (!_nested_size_nested_size_expands(shape, desired.children(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (desired.is_leaf()) {
+    return false;
+  }
+  if (shape.degree() != desired.degree()) {
+    return false;
+  }
+  for (size_t i = 0; i < shape.degree(); i++) {
+    if (!_nested_size_nested_size_expands(
+            shape.children(i), desired.children(i))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Can nested_size_other be expanded to match the shape of grad?
 // If this is true, a call to sum_to_nt will follow next in autograd/engine.cpp
 // to reduce grad down to the shape of nested_size_other.
-bool NestedTensor_native_is_expandable_to_nt_other(
-    IntArrayRef nested_size_other /* shape */,
-    const Tensor& grad /* desired */) {
-  SizeNode nested_size =
-      torch::nested_tensor::deserialize_size_node(nested_size_other);
-  if (is_nested_tensor_impl(grad)) {
-    return torch::nested_tensor::shape_matches(
-        get_nested_size(grad), nested_size);
-  }
-  int64_t nested_size_dim = nested_size.height() + _tensor_dim(nested_size);
-  if (nested_size_dim > grad.dim()) {
-    return false;
-  }
-  std::vector<int64_t> grad_shape = grad.sizes().vec();
-  if (nested_size_dim < grad.dim()) {
-    std::vector<int64_t> new_grad_shape;
-    for (int64_t i = grad.dim() - nested_size_dim; i < grad.dim(); i++) {
-      new_grad_shape.push_back(grad_shape[i]);
-    }
-    grad_shape = new_grad_shape;
-  }
-  return _sizes_nested_size_expands(nested_size, grad_shape);
-}
-
 bool NestedTensor_native_is_expandable_to(
     IntArrayRef metadata_shape, /* shape */
     const Tensor& grad /* desired */) {
+  if (is_nested_tensor_impl(grad) && is_serialized_size_node(metadata_shape)) {
+    SizeNode nested_size = deserialize_size_node(metadata_shape);
+    SizeNode nested_size_desired = get_nested_size(grad);
+    return _nested_size_nested_size_expands(nested_size, nested_size_desired);
+  }
   if (torch::nested_tensor::is_serialized_size_node(metadata_shape)) {
-    return NestedTensor_native_is_expandable_to_nt_other(metadata_shape, grad);
+    SizeNode nested_size =
+        torch::nested_tensor::deserialize_size_node(metadata_shape);
+    int64_t nested_size_dim = nested_size.height() + _tensor_dim(nested_size);
+    if (nested_size_dim > grad.dim()) {
+      return false;
+    }
+    std::vector<int64_t> grad_shape = grad.sizes().vec();
+    if (nested_size_dim < grad.dim()) {
+      std::vector<int64_t> new_grad_shape;
+      for (int64_t i = grad.dim() - nested_size_dim; i < grad.dim(); i++) {
+        new_grad_shape.push_back(grad_shape[i]);
+      }
+      grad_shape = new_grad_shape;
+    }
+    return _sizes_nested_size_expands(nested_size, grad_shape);
   }
   if (is_nested_tensor_impl(grad)) {
     auto fn = [&metadata_shape](at::Tensor leaf, bool input) {
@@ -185,11 +204,10 @@ Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "expand_as", NestedTensor_expand_as);
-  nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
 }
 TORCH_LIBRARY_IMPL(aten, Autograd, m) {
   nt_impl(m, "expand_nt", NestedTensor_expand_nt);
-  nt_impl(m, "sizes_equal_nt_other", NestedTensor_sizes_equal_nt_other);
   nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
+  nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
 }
 } // namespace at

@@ -146,6 +146,11 @@ def sum_to(tensor, shape):
     return _wrap_result(nestedtensor._C.sum_to(*impl_args))
 
 
+def sizes_equal(tensor, shape):
+    impl_args, _ = _filter_impl([tensor, shape], {})
+    return _wrap_result(nestedtensor._C.sizes_equal(*impl_args))
+
+
 def native_is_expandable_to(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
     return _wrap_result(nestedtensor._C.native_is_expandable_to(*impl_args))
