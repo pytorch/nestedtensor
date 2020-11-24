@@ -126,7 +126,8 @@ struct NestedNode<at::Tensor> {
   c10::optional<at::Tensor> _buffer;
 };
 
-// TODO: Should have specialized construction check that all payloads are of same size for SizeNode
+// TODO: Should have specialized construction check that all payloads are of
+// same size for SizeNode
 using SizeNode = NestedNode<c10::List<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
@@ -530,11 +531,7 @@ inline NestedNode<A> squeeze(
   return NestedNode<A>(squeeze(structure, level - 1));
 }
 
-template <typename A>
-inline void serialize(NestedNode<A>, std::vector<int64_t>&);
-
-template <>
-inline void serialize(SizeNode nested_node, std::vector<int64_t>& out) {
+inline void _serialize(SizeNode nested_node, std::vector<int64_t>& out) {
   if (nested_node.is_leaf()) {
     out.push_back(1);
     auto payload = nested_node.payload();
@@ -546,12 +543,39 @@ inline void serialize(SizeNode nested_node, std::vector<int64_t>& out) {
     out.push_back(0);
     out.push_back(nested_node.degree());
     for (size_t i = 0; i < nested_node.degree(); i++) {
-      serialize(nested_node.children(i), out);
+      _serialize(nested_node.children(i), out);
     }
   }
 }
 
-inline std::tuple<size_t, SizeNode> deserialize_size_node(std::vector<int64_t> out, size_t index) {
+inline std::vector<int64_t> serialize(SizeNode nested_node) {
+  std::vector<int64_t> out;
+  _serialize(nested_node, out);
+  // Three Leyland primes to indicate that this vector represents a SizeNode
+  out.push_back(32993);
+  out.push_back(2097593);
+  out.push_back(8589935681);
+  return out;
+}
+
+inline bool is_serialized_size_node(const std::vector<int64_t>& out) {
+  return out.size() > 2 && out[out.size() - 1] == 8589935681 &&
+      out[out.size() - 2] == 2097593 && out[out.size() - 3] == 32993;
+}
+
+inline bool is_serialized_size_node(at::IntArrayRef out) {
+  return is_serialized_size_node(out.vec());
+}
+
+inline bool is_serialized_size_node(at::Tensor out) {
+  std::vector<int64_t> nested_size_(
+      out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
+  return is_serialized_size_node(nested_size_);
+}
+
+inline std::tuple<size_t, SizeNode> _deserialize_size_node(
+    std::vector<int64_t> out,
+    size_t index) {
   if (out[index] == 1) {
     index++;
     c10::List<int64_t> payload;
@@ -563,18 +587,38 @@ inline std::tuple<size_t, SizeNode> deserialize_size_node(std::vector<int64_t> o
     }
     return std::make_tuple(index, SizeNode(std::move(payload)));
   } else {
-    TORCH_CHECK(out[index] == 0, "Expected out[index] to be 0, got ", out[index]);
+    TORCH_CHECK(
+        out[index] == 0, "Expected out[index] to be 0, got ", out[index]);
     index++;
     int64_t degree = out[index];
     index++;
     std::vector<SizeNode> children;
     for (int64_t i = 0; i < degree; i++) {
-      auto result_i = deserialize_size_node(out, index);
+      auto result_i = _deserialize_size_node(out, index);
       index = std::get<0>(result_i);
       children.push_back(std::get<1>(result_i));
     }
     return std::make_tuple(index, SizeNode(std::move(children)));
   }
+}
+
+inline SizeNode deserialize_size_node(std::vector<int64_t> out) {
+  TORCH_CHECK(is_serialized_size_node(out), "out has the wrong format.");
+  out.pop_back();
+  out.pop_back();
+  out.pop_back();
+  auto tmp = _deserialize_size_node(out, 0);
+  return std::get<1>(tmp);
+}
+
+inline SizeNode deserialize_size_node(at::IntArrayRef out) {
+  return deserialize_size_node(out.vec());
+}
+
+inline SizeNode deserialize_size_node(at::Tensor out) {
+  std::vector<int64_t> nested_size_(
+      out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
+  return deserialize_size_node(nested_size_);
 }
 
 } // namespace nested_tensor

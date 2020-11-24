@@ -10,6 +10,8 @@ import random
 
 import utils
 
+from nestedtensor.nested.nested import native_is_expandable_to
+
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
@@ -175,6 +177,15 @@ class TestReduce(TestCase):
         print(nestedtensor.nested.nested.sum_to(a, (1, 2)))
         print(nestedtensor.nested.nested.sum_to(a, (1, 2)).shape)
         # b = ntnt([torch.randn(1), torch.randn(1)])
+        pass
+
+    def test_native_is_expandable_to(self):
+        a = ntnt([torch.arange(2).reshape(1, 2), torch.arange(2).reshape(1, 2) + 2])
+        self.assertEqual(True, native_is_expandable_to(a, a))
+        self.assertEqual(False, native_is_expandable_to(a, torch.randn(1, 2)))
+        self.assertEqual(True, native_is_expandable_to(torch.randn(1, 2), a))
+        self.assertEqual(True, native_is_expandable_to(torch.randn(2), a))
+        self.assertEqual(False, native_is_expandable_to(torch.randn(2, 1), a))
         pass
 
 if __name__ == "__main__":

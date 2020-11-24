@@ -1,4 +1,5 @@
 #include <ATen/ATen.h>
+#include <ATen/ExpandUtils.h>
 #include <ATen/NamedTensorUtils.h>
 #include <ATen/WrapDimUtils.h>
 #include <ATen/core/op_registration/op_registration.h>
@@ -16,9 +17,7 @@ bool NestedTensor_sizes_equal_nt_other(
     const Tensor& self,
     IntArrayRef nested_size_other) {
   // TODO: This does nothing right now
-  auto tmp =
-      torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
-  SizeNode nested_size = std::get<1>(tmp);
+  SizeNode nested_size = torch::nested_tensor::deserialize_size_node(nested_size_other);
   if (is_nested_tensor_impl(self)) {
     return false;
     // return torch::nested_tensor::shape_matches(
@@ -101,11 +100,10 @@ bool _sizes_nested_size_expands(
 // If this is true, a call to sum_to_nt will follow next in autograd/engine.cpp
 // to reduce grad down to the shape of nested_size_other.
 bool NestedTensor_native_is_expandable_to_nt_other(
-    IntArrayRef nested_size_other,
-    const Tensor& grad) {
-  auto tmp =
-      torch::nested_tensor::deserialize_size_node(nested_size_other.vec(), 0);
-  SizeNode nested_size = std::get<1>(tmp);
+    IntArrayRef nested_size_other /* shape */,
+    const Tensor& grad /* desired */) {
+  SizeNode nested_size =
+      torch::nested_tensor::deserialize_size_node(nested_size_other);
   if (is_nested_tensor_impl(grad)) {
     return torch::nested_tensor::shape_matches(
         get_nested_size(grad), nested_size);
@@ -126,10 +124,19 @@ bool NestedTensor_native_is_expandable_to_nt_other(
 }
 
 bool NestedTensor_native_is_expandable_to(
-    IntArrayRef metadata_shape,
-    const Tensor& grad) {
-  TORCH_CHECK(false, "NestedTensor_native_is_expandable_to NOT IMPLEMENTED.");
-  return true;
+    IntArrayRef metadata_shape, /* shape */
+    const Tensor& grad /* desired */) {
+  if (torch::nested_tensor::is_serialized_size_node(metadata_shape)) {
+    return NestedTensor_native_is_expandable_to_nt_other(metadata_shape, grad);
+  }
+  if (is_nested_tensor_impl(grad)) {
+    auto fn = [&metadata_shape](at::Tensor leaf, bool input) {
+      return input && at::is_expandable_to(metadata_shape, leaf.sizes());
+    };
+    return reduce<decltype(fn), bool, at::Tensor>(
+        get_nested_tensor_structure(grad), fn, true);
+  }
+  return at::is_expandable_to(metadata_shape, grad.sizes());
 }
 
 Tensor NestedTensor_expand_nt(
@@ -137,11 +144,8 @@ Tensor NestedTensor_expand_nt(
     const Tensor& nested_size_tensor,
     bool implicit) {
   TORCH_CHECK(!is_nested_tensor_impl(self), "Expected regular tensor as self.");
-  std::vector<int64_t> nested_size_(
-      nested_size_tensor.data_ptr<int64_t>(),
-      nested_size_tensor.data_ptr<int64_t>() + nested_size_tensor.numel());
-  auto tmp = torch::nested_tensor::deserialize_size_node(nested_size_, 0);
-  SizeNode nested_size = std::get<1>(tmp);
+  SizeNode nested_size =
+      torch::nested_tensor::deserialize_size_node(nested_size_tensor);
   TORCH_CHECK(
       self.dim() <= _tensor_dim(nested_size),
       "self dim can't exceed nested_size tensor dim.");
@@ -182,14 +186,10 @@ Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "expand_as", NestedTensor_expand_as);
   nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
-  nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
 }
 TORCH_LIBRARY_IMPL(aten, Autograd, m) {
   nt_impl(m, "expand_nt", NestedTensor_expand_nt);
   nt_impl(m, "sizes_equal_nt_other", NestedTensor_sizes_equal_nt_other);
-  nt_impl(
-      m,
-      "native_is_expandable_to_nt_other",
-      NestedTensor_native_is_expandable_to_nt_other);
+  nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
 }
 } // namespace at

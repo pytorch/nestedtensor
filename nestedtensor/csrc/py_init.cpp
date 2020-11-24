@@ -256,14 +256,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   });
 
   m.def("serialize_nested_size", [](Tensor self) {
-    std::vector<int64_t> out;
-    serialize(get_nested_tensor_impl(self)->nested_size(), out);
-    return out;
+    return serialize(get_nested_tensor_impl(self)->nested_size());
   });
 
-  m.def("deserialize_nested_size", [](std::vector<int64_t> out) { 
-    auto result = deserialize_size_node(out, 0);
-    SizeNode nested_size = std::get<1>(result);
+  m.def("deserialize_nested_size", [](std::vector<int64_t> out) {
+    SizeNode nested_size = deserialize_size_node(out);
     return py::cast(THPPythonNode(
         map(
             [](c10::List<int64_t> e) {
@@ -292,6 +289,19 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("sum_to", [](Tensor self, py::tuple shape) {
     std::vector<int64_t> shape_vec = py::cast<std::vector<int64_t>>(shape);
     return at::sum_to(self, IntArrayRef(shape_vec));
+  });
+
+  m.def("native_is_expandable_to", [](Tensor shape, Tensor desired) {
+    std::vector<int64_t> shape_vec;
+    if (is_nested_tensor_impl(shape)) {
+      at::Tensor out = serialize_nested_size(shape);
+      std::vector<int64_t> nested_size(
+          out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
+      shape_vec = nested_size;
+    } else {
+      shape_vec = shape.sizes().vec();
+    }
+    return at::native_is_expandable_to(IntArrayRef(shape_vec), desired);
   });
   // m.def("_test", []() {
   //     std::vector<at:Tensor> ts;

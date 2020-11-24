@@ -431,8 +431,7 @@ Tensor& NestedTensor_as_strided_(
 Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
   auto nt_impl = get_nested_tensor_impl(tensor);
   std::vector<int64_t> out;
-  torch::nested_tensor::serialize(nt_impl->nested_size(), out);
-  return torch::tensor(out);
+  return torch::tensor(torch::nested_tensor::serialize(nt_impl->nested_size()));
 }
 
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
