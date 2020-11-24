@@ -220,12 +220,15 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
           torch::nested_tensor::shape_matches(
               get_nested_tensor_impl(self)->nested_size(), nested_size),
           "sum_to_nt needs both NT arguments to be the same shape");
+      std::cout << "A0" << std::endl;
       return self;
     }
+      std::cout << "A1" << std::endl;
     return wrap_buffer(self.reshape({-1}).contiguous(), nested_size);
   }
   if (is_nested_tensor_impl(self)) {
     if (shape.size() == 0) {
+      std::cout << "A2" << std::endl;
       return self.sum();
     }
     auto nt_impl = get_nested_tensor_impl(self);
@@ -277,8 +280,10 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
     if (!reduce_dims.empty()) {
       tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
     }
+      std::cout << "A3" << std::endl;
     return leading_dims > 0 ? tensor.view(shape) : tensor;
   }
+      std::cout << "A4" << std::endl;
   return at::sum_to(self, shape);
 }
 

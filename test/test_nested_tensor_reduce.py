@@ -187,6 +187,8 @@ class TestReduce(TestCase):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
         print(a)
+        print(nestedtensor.nested.nested.sum_to_size(a, a))
+        print(nestedtensor.nested.nested.sum_to_size(torch.randn(1, 2), a))
         print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)))
         print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)).shape)
         # b = ntnt([torch.randn(1), torch.randn(1)])
