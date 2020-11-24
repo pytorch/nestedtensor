@@ -21,52 +21,49 @@ int64_t _tensor_dim(SizeNode nested_size) {
   return _tensor_dim(nested_size.children(0));
 }
 
-bool _sizes_nested_size_equal(
-    SizeNode nested_size,
-    std::vector<int64_t> grad_shape) {
-  if (grad_shape.size() == 0) {
-    return false;
-  }
-  if (nested_size.is_leaf()) {
-    auto payload = nested_size.payload();
-    for (size_t i = 0; i < payload.size(); i++) {
-      if (payload[i] != grad_shape[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-  if (nested_size.degree() != grad_shape[0]) {
-    return false;
-  }
-  std::vector<int64_t> new_grad_shape;
-  for (size_t i = 1; i < grad_shape.size(); i++) {
-    new_grad_shape.push_back(grad_shape[i]);
-  }
-  for (size_t i = 0; i < nested_size.degree(); i++) {
-    if (!_sizes_nested_size_equal(nested_size.children(i), new_grad_shape)) {
-      return false;
-    }
-  }
-  return true;
-}
+// bool _sizes_nested_size_equal(
+//     SizeNode nested_size,
+//     std::vector<int64_t> grad_shape) {
+//   if (grad_shape.size() == 0) {
+//     return false;
+//   }
+//   if (nested_size.is_leaf()) {
+//     auto payload = nested_size.payload();
+//     for (size_t i = 0; i < payload.size(); i++) {
+//       if (payload[i] != grad_shape[i]) {
+//         return false;
+//       }
+//     }
+//     return true;
+//   }
+//   if (nested_size.degree() != grad_shape[0]) {
+//     return false;
+//   }
+//   std::vector<int64_t> new_grad_shape;
+//   for (size_t i = 1; i < grad_shape.size(); i++) {
+//     new_grad_shape.push_back(grad_shape[i]);
+//   }
+//   for (size_t i = 0; i < nested_size.degree(); i++) {
+//     if (!_sizes_nested_size_equal(nested_size.children(i), new_grad_shape)) {
+//       return false;
+//     }
+//   }
+//   return true;
+// }
 
 bool NestedTensor_sizes_equal(const Tensor& self, IntArrayRef size_other) {
+  if (is_nested_tensor_impl(self) && !is_serialized_size_node(size_other)) {
+    return false;
+  }
+  if (!is_nested_tensor_impl(self) && is_serialized_size_node(size_other)) {
+    return false;
+  }
   if (is_serialized_size_node(size_other)) {
     SizeNode nested_size_other =
         torch::nested_tensor::deserialize_size_node(size_other);
-    if (is_nested_tensor_impl(self)) {
-      return nested_size_matches(get_nested_size(self), nested_size_other);
-    }
-    return false;
+    return nested_size_matches(get_nested_size(self), nested_size_other);
   }
-  if (self.dim() != size_other.size()) {
-    return false;
-  }
-  if (!is_nested_tensor_impl(self)) {
-    return self.sizes().equals(size_other);
-  }
-  return _sizes_nested_size_equal(get_nested_size(self), size_other.vec());
+  return self.sizes().equals(size_other);
 }
 
 bool _sizes_nested_size_expands(
