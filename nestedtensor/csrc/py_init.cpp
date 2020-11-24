@@ -291,6 +291,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return at::sum_to(self, IntArrayRef(shape_vec));
   });
 
+  m.def("sizes_equal", [](Tensor self, Tensor other) {
+    if (is_nested_tensor_impl(other)) {
+      return at::sizes_equal(
+          self, serialize(get_nested_tensor_impl(other)->nested_size()));
+    }
+    return at::sizes_equal(self, other.sizes());
+  });
+
   m.def("native_is_expandable_to", [](Tensor shape, Tensor desired) {
     std::vector<int64_t> shape_vec;
     if (is_nested_tensor_impl(shape)) {
