@@ -53,10 +53,10 @@ bool _sizes_nested_size_equal(
 
 bool NestedTensor_sizes_equal(const Tensor& self, IntArrayRef size_other) {
   if (is_serialized_size_node(size_other)) {
-    SizeNode nested_size =
+    SizeNode nested_size_other =
         torch::nested_tensor::deserialize_size_node(size_other);
     if (is_nested_tensor_impl(self)) {
-      return false;
+      return nested_size_matches(get_nested_size(self), nested_size_other);
     }
     return false;
   }

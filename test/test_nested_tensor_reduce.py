@@ -214,6 +214,20 @@ class TestReduce(TestCase):
         # Shape NT, desired T
         pass
 
+    def test_sizes_equal(self):
+        a = ntnt([torch.arange(2).reshape(1, 2),
+                  torch.arange(2).reshape(1, 2) + 2])
+        b = ntnt([torch.arange(2).reshape(2),
+                  torch.arange(2).reshape(2) + 2])
+        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(a, a))
+        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(a, b))
+        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(b, a))
+        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), a))
+        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(a, torch.randn(1, 2)))
+        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), torch.randn(1, 2)))
+        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(torch.randn(2, 1), torch.randn(1, 2)))
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()
