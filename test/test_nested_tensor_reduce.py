@@ -173,7 +173,7 @@ class TestReduce(TestCase):
         self.assertEqual(
             ntnt([[t0_var1, t1_var1], [t2_var1, t3_var1]]), torch.var(nt, 3))
 
-    def test_sum_to(self):
+    def test_sum_to_size(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(2, 1) + 2])
         # b = ntnt([torch.randn(1), torch.randn(1)])
@@ -187,8 +187,8 @@ class TestReduce(TestCase):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
         print(a)
-        print(nestedtensor.nested.nested.sum_to(a, (1, 2)))
-        print(nestedtensor.nested.nested.sum_to(a, (1, 2)).shape)
+        print(nestedtensor.nested.nested.sum_to_size(a, (1, 2)))
+        print(nestedtensor.nested.nested.sum_to_size(a, (1, 2)).shape)
         # b = ntnt([torch.randn(1), torch.randn(1)])
         pass
 

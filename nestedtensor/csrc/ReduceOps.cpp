@@ -390,7 +390,6 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "var.dim", NestedTensor_var_dim);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
-  nt_impl(m, "sum_to", NestedTensor_sum_to);
 }
 
 TORCH_LIBRARY_IMPL(aten, Autograd, m) {
