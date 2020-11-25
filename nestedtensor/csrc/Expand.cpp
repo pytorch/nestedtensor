@@ -233,69 +233,62 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
   }
 
   const int64_t leading_dims = self.dim() - desired_dim;
-
-  if (is_nested_tensor_impl(self) && is_serialized_size_node(shape)) {
-    SizeNode nested_size = deserialize_size_node(shape);
-    TORCH_CHECK(
-        nested_size_matches(
-            get_nested_tensor_impl(self)->nested_size(), nested_size),
-        "sum_to_nt needs both NT arguments to be the same shape");
-    return self;
+  std::vector<int64_t> reduce_dims;
+  for (int64_t i = 0; i < leading_dims; i++) {
+    reduce_dims.push_back(i);
   }
-
-  if (!is_nested_tensor_impl(self) && is_serialized_size_node(shape)) {
-    SizeNode nested_size = torch::nested_tensor::deserialize_size_node(shape);
-    // self is a regular Tensor and the shape is nested
-    return wrap_buffer(self.reshape({-1}).contiguous(), nested_size);
-  }
-
-  // (is_nested_tensor_impl(self) && is_serialized_size_node(shape))
-  auto nt_impl = get_nested_tensor_impl(self);
 
   at::Tensor tensor = self;
+  if (!reduce_dims.empty()) {
+    tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
+  }
+  TORCH_CHECK(
+      self.dim() == tensor.dim(),
+      "internal error: expected self and tensor to be same dim.")
 
-  std::vector<int64_t> reduce_dims;
-  std::vector<int64_t> nested_reduce_dims;
-  for (int64_t i = 0; i < leading_dims; ++i) {
-    if (i < nt_impl->nested_dim()) {
-      nested_reduce_dims.push_back(i);
-    } else {
-      reduce_dims.push_back(i);
-    }
-  }
-  if (!reduce_dims.empty()) {
-    tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
-  }
   reduce_dims.clear();
-  if (!nested_reduce_dims.empty()) {
-    TORCH_CHECK(nt_impl->nested_dim() == 1, "Expected nested dim to be 1.");
-    TORCH_CHECK(
-        nested_reduce_dims.size() == 1 && nested_reduce_dims[0] == 0,
-        "Expected nested_reduce_dims of size 1 and with entry 0.");
+  if (is_nested_tensor_impl(tensor) && is_serialized_size_node(shape)) {
     auto opt_sizes = get_nested_tensor_impl(tensor)->opt_sizes();
-    for (size_t i = 0; i < opt_sizes.size(); i++) {
-      TORCH_CHECK(opt_sizes[i], "Expected shape to be tensor compliant.")
-    }
-    std::vector<at::Tensor> tensors =
-        flatten(get_nested_tensor_structure(tensor));
-    if (tensors.size() == 0) {
-      tensor = torch::tensor({}, tensor.options());
-    } else {
-      at::Tensor result = tensors[0];
-      for (size_t i = 1; i < tensors.size(); i++) {
-        result = at::add(result, tensors[i]);
+    SizeNode nested_size = deserialize_size_node(shape);
+    auto opt_sizes_desired = construct_size(nested_size);
+    for (int64_t i = leading_dims; i < static_cast<int64_t>(self.dim()); ++i) {
+      if (opt_sizes_desired[i - leading_dims] &&
+          (*opt_sizes_desired[i - leading_dims]) == 1 &&
+          !(opt_sizes[i] && (*opt_sizes[i]) == 1)) {
+        reduce_dims.push_back(i);
       }
-      tensor = result.unsqueeze(0);
     }
   }
-  const at::IntArrayRef sizes = tensor.sizes();
-  for (int64_t i = leading_dims; i < static_cast<int64_t>(sizes.size()); ++i) {
-    if (shape[i - leading_dims] == 1 && sizes[i] != 1) {
-      reduce_dims.push_back(i);
+  if (!is_nested_tensor_impl(tensor) && is_serialized_size_node(shape)) {
+    auto sizes = tensor.sizes();
+    SizeNode nested_size = deserialize_size_node(shape);
+    auto opt_sizes_desired = construct_size(nested_size);
+    for (int64_t i = leading_dims; i < static_cast<int64_t>(self.dim()); ++i) {
+      if (opt_sizes_desired[i - leading_dims] &&
+          (*opt_sizes_desired[i - leading_dims]) == 1 && !(sizes[i] == 1)) {
+        reduce_dims.push_back(i);
+      }
+    }
+  }
+  if (is_nested_tensor_impl(tensor) && !is_serialized_size_node(shape)) {
+    auto sizes = tensor.sizes();
+    SizeNode nested_size = deserialize_size_node(shape);
+    auto opt_sizes_desired = construct_size(nested_size);
+    for (int64_t i = leading_dims; i < static_cast<int64_t>(self.dim()); ++i) {
+      if (shape[i - leading_dims] == 1 && !(sizes[i] == 1)) {
+        reduce_dims.push_back(i);
+      }
     }
   }
   if (!reduce_dims.empty()) {
     tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
+  }
+  if (is_serialized_size_node(shape)) {
+    return wrap_tensor_node(
+        map([](at::Tensor t,
+               c10::List<int64_t> s) { return t.view(IntArrayRef(s.vec())); },
+            get_nested_tensor_structure(tensor),
+            deserialize_size_node(shape)));
   }
   return leading_dims > 0 ? tensor.view(shape) : tensor;
 }
