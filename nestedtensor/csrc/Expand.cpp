@@ -271,11 +271,10 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
     }
   }
   if (is_nested_tensor_impl(tensor) && !is_serialized_size_node(shape)) {
-    auto sizes = tensor.sizes();
-    SizeNode nested_size = deserialize_size_node(shape);
-    auto opt_sizes_desired = construct_size(nested_size);
+    auto opt_sizes = get_nested_tensor_impl(tensor)->opt_sizes();
     for (int64_t i = leading_dims; i < static_cast<int64_t>(self.dim()); ++i) {
-      if (shape[i - leading_dims] == 1 && !(sizes[i] == 1)) {
+      if (shape[i - leading_dims] == 1 &&
+          !(opt_sizes[i] && (*opt_sizes[i]) == 1)) {
         reduce_dims.push_back(i);
       }
     }
@@ -283,12 +282,23 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
   if (!reduce_dims.empty()) {
     tensor = tensor.sum(reduce_dims, /*keepdim=*/true);
   }
-  if (is_serialized_size_node(shape)) {
+  if (is_nested_tensor_impl(tensor) && is_serialized_size_node(shape)) {
+    SizeNode desired_nested_size = deserialize_size_node(shape);
+    TORCH_CHECK(
+        get_nested_size(tensor).height() == desired_nested_size.height(),
+        "internal error: expected result tensor height and desired shape to match.");
     return wrap_tensor_node(
         map([](at::Tensor t,
                c10::List<int64_t> s) { return t.view(IntArrayRef(s.vec())); },
             get_nested_tensor_structure(tensor),
-            deserialize_size_node(shape)));
+            desired_nested_size));
+  }
+  if (!is_nested_tensor_impl(tensor) && is_serialized_size_node(shape)) {
+    SizeNode desired_nested_size = deserialize_size_node(shape);
+    return wrap_buffer(tensor.reshape({-1}), desired_nested_size);
+  }
+  if (is_nested_tensor_impl(tensor) && !is_serialized_size_node(shape)) {
+    tensor = NestedTensor_to_tensor(tensor, c10::nullopt);
   }
   return leading_dims > 0 ? tensor.view(shape) : tensor;
 }

@@ -44,14 +44,29 @@ class TestReduce(TestCase):
             self.assertEqual(ntnt([t01, t21]), fn(nt, (1, 2)))
             self.assertEqual(ntnt([t02, t11]), fn(nt, (0, 2)))
 
+            t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0, True)
+            t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0, True)
+            t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0, True)
+            t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0, True)
+            print(nt)
+            print(nt.dim())
+            print(fn(nt, (1, 2), True))
+            print(fn(nt, (1, 2), True).dim())
+            self.assertEqual(ntnt([[t01, t21]]), fn(nt, (1, 2), True))
+            self.assertEqual(ntnt([[t02, t11]]), fn(nt, (0, 2), True))
+
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))
         self.assertRaises(RuntimeError, lambda: fn(nt, 1))
-        self.assertEqual(nestedtensor.nested_tensor([[fn(t0, 0), fn(t1, 0)],
-                                                     [fn(t2, 0)]]), fn(nt, 2))
-        self.assertEqual(nestedtensor.nested_tensor([[fn(t0, 1), fn(t1, 1)],
-                                                     [fn(t2, 1)]]), fn(nt, 3))
+        self.assertEqual(ntnt([[fn(t0, 0), fn(t1, 0)],
+                               [fn(t2, 0)]]), fn(nt, 2))
+        self.assertEqual(ntnt([[fn(t0, 0, True), fn(t1, 0, True)],
+                               [fn(t2, 0, True)]]), fn(nt, 2, True))
+        self.assertEqual(ntnt([[fn(t0, 1), fn(t1, 1)],
+                               [fn(t2, 1)]]), fn(nt, 3))
+        self.assertEqual(ntnt([[fn(t0, 1, True), fn(t1, 1, True)],
+                               [fn(t2, 1, True)]]), fn(nt, 3, True))
         self.assertRaises(IndexError, lambda: fn(nt, 4))
 
     def test_cumsum(self):
@@ -190,7 +205,8 @@ class TestReduce(TestCase):
                   torch.arange(2).reshape(2) + 2])
         print(a)
         print(nestedtensor.nested.nested.sum_to_size(a, a))
-        self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(a, b))
+        self.assertRaises(
+            RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(a, b))
         self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(
             torch.randn(1, 2), a))
         print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)))
