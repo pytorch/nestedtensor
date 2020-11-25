@@ -30,7 +30,7 @@ def _flatten_nt(nt):
 
 class TestReduce(TestCase):
 
-    def _test_reduce_dim(self, fn, associative=True):
+    def _test_reduce_dim(self, fn, associative=True, test_keep_dim=True):
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
         t2 = torch.arange(9).float().reshape(3, 3)
@@ -44,18 +44,31 @@ class TestReduce(TestCase):
             self.assertEqual(ntnt([t01, t21]), fn(nt, (1, 2)))
             self.assertEqual(ntnt([t02, t11]), fn(nt, (0, 2)))
 
+            if test_keep_dim:
+                t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0, True)
+                t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0, True)
+                t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0, True)
+                t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0, True)
+                self.assertEqual(ntnt([[t01, t21]]), fn(nt, (1, 2), True))
+                self.assertEqual(ntnt([[t02, t11]]), fn(nt, (0, 2), True))
+
         ts = [[t0, t1], [t2]]
-        nt = nestedtensor.nested_tensor(ts)
+        nt = ntnt(ts)
         self.assertRaises(RuntimeError, lambda: fn(nt, 0))
         self.assertRaises(RuntimeError, lambda: fn(nt, 1))
-        self.assertEqual(nestedtensor.nested_tensor([[fn(t0, 0), fn(t1, 0)],
-                                                     [fn(t2, 0)]]), fn(nt, 2))
-        self.assertEqual(nestedtensor.nested_tensor([[fn(t0, 1), fn(t1, 1)],
-                                                     [fn(t2, 1)]]), fn(nt, 3))
+        self.assertEqual(ntnt([[fn(t0, 0), fn(t1, 0)],
+                               [fn(t2, 0)]]), fn(nt, 2))
+        self.assertEqual(ntnt([[fn(t0, 1), fn(t1, 1)],
+                               [fn(t2, 1)]]), fn(nt, 3))
+        if test_keep_dim:
+            self.assertEqual(ntnt([[fn(t0, 0, True), fn(t1, 0, True)],
+                                   [fn(t2, 0, True)]]), fn(nt, 2, True))
+            self.assertEqual(ntnt([[fn(t0, 1, True), fn(t1, 1, True)],
+                                   [fn(t2, 1, True)]]), fn(nt, 3, True))
         self.assertRaises(IndexError, lambda: fn(nt, 4))
 
     def test_cumsum(self):
-        self._test_reduce_dim(torch.cumsum, False)
+        self._test_reduce_dim(torch.cumsum, False, False)
 
     def _test_allreduce(self, fn, with_grad=False):
         def test(ts):
@@ -186,7 +199,14 @@ class TestReduce(TestCase):
         # print(nestedtensor.nested.nested.sum_to(a, (2, 2)))
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
+        b = ntnt([torch.arange(2).reshape(2),
+                  torch.arange(2).reshape(2) + 2])
         print(a)
+        print(nestedtensor.nested.nested.sum_to_size(a, a))
+        self.assertRaises(
+            RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(a, b))
+        self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(
+            torch.randn(1, 2), a))
         print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)))
         print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)).shape)
         # b = ntnt([torch.randn(1), torch.randn(1)])
@@ -220,10 +240,14 @@ class TestReduce(TestCase):
         self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(a, a))
         self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(a, b))
         self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(b, a))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), a))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(a, torch.randn(1, 2)))
-        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), torch.randn(1, 2)))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(torch.randn(2, 1), torch.randn(1, 2)))
+        self.assertEqual(
+            False, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), a))
+        self.assertEqual(
+            False, nestedtensor.nested.nested.sizes_equal(a, torch.randn(1, 2)))
+        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(
+            torch.randn(1, 2), torch.randn(1, 2)))
+        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(
+            torch.randn(2, 1), torch.randn(1, 2)))
         pass
 
 
