@@ -1,4 +1,4 @@
-# The nestedtensor package
+# The nestedtensor package [prototype](https://pytorch.org/blog/pytorch-feature-classification-changes/#prototype)
 
 If you are here because you ran into a runtime error due to a missing feature or some kind of bug, please [open an issue and fill in the appropiate template](https://github.com/pytorch/nestedtensor/issues/new/choose). Thank you for contributing to this project!
 
