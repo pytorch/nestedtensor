@@ -293,6 +293,48 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
+Tensor NestedTensor_var_backward(const Tensor & grad, const Tensor & self, bool unbiased) {
+  std::cout << "V0" << std::endl;
+  return (2.0 / (self.numel() - unbiased)) * grad * (self - self.mean());
+}
+
+int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
+  int64_t size = 1;
+  if (sizes.size() == 0) {
+    return 1;
+  }
+  for (auto d : dim) {
+    d = at::maybe_wrap_dim(d, sizes.size());
+    size *= sizes[d];
+  }
+  return size;
+}
+
+Tensor unsqueeze_multiple(const Tensor & t, IntArrayRef dim, size_t n_dims) {
+    auto dims_to_unsqueeze = at::dim_list_to_bitset(dim, n_dims);
+    Tensor res = t;
+    for (size_t i = 0; i < n_dims; i++){
+      if (dims_to_unsqueeze[i]) {
+        res = res.unsqueeze(i);
+      }
+    }
+    return res;
+}
+
+Tensor NestedTensor_var_backward_dim(const Tensor& grad_, const Tensor & self, IntArrayRef dim, bool unbiased, bool keepdim) {
+  at::Tensor grad = grad_;
+  if (self.dim() == 0) {
+  std::cout << "V1" << std::endl;
+    return at::var_backward(grad, self, unbiased);
+  }
+  if (!keepdim && self.dim() > 1) {
+  std::cout << "V2" << std::endl;
+    grad = unsqueeze_multiple(grad, dim, self.dim());
+  }
+  std::cout << "V3" << std::endl;
+  return (2.0 / (_safe_size(self.sizes(), dim) - unbiased)) * grad * (self - self.mean(dim, true));
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
@@ -300,6 +342,8 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
   nt_impl(m, "var", NestedTensor_var);
   nt_impl(m, "var.dim", NestedTensor_var_dim);
+  nt_impl(m, "var_backward", NestedTensor_var_backward);
+  nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
 }

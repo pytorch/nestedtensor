@@ -149,18 +149,32 @@ class TestReduce(TestCase):
 
         ts = [t0, t1]
         nt = ntnt(ts)
+        res = torch.var(nt, 1)
         self.assertEqual(
-            ntnt([torch.var(t0, 0), torch.var(t1, 0)]), torch.var(nt, 1))
+            ntnt([torch.var(t0, 0), torch.var(t1, 0)]), res)
+        res.sum.backward()
+
+        res = torch.var(nt, 2)
         self.assertEqual(
-            ntnt([torch.var(t0, 1), torch.var(t1, 1)]), torch.var(nt, 2))
+            ntnt([torch.var(t0, 1), torch.var(t1, 1)]), res)
+        res.sum.backward()
 
         ts = [t0, t2]
         nt = ntnt(ts)
-        self.assertEqual(torch.stack(ts).var(0), torch.var(nt, 0))
+        res = torch.var(nt, 0)
+        self.assertEqual(torch.stack(ts).var(0), res)
+        res.sum.backward()
+
+        res = torch.var(nt, 1)
         self.assertEqual(
-            ntnt([torch.var(t0, 0), torch.var(t2, 0)]), torch.var(nt, 1))
+            ntnt([torch.var(t0, 0), torch.var(t2, 0)]), res)
+        res.sum.backward()
+
+        res = torch.var(nt, 2)
         self.assertEqual(
-            ntnt([torch.var(t0, 1), torch.var(t2, 1)]), torch.var(nt, 2))
+            ntnt([torch.var(t0, 1), torch.var(t2, 1)]), res)
+        res.sum.backward()
+
         self.assertEqual(torch.stack(ts).var(
             (0, 1), unbiased=False), torch.var(nt, (0, 1), unbiased=False))
 
