@@ -1,3 +1,4 @@
+#include <ATen/WrapDimUtilsMulti.h>
 #include <ATen/core/op_registration/op_registration.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <torch/library.h>
@@ -293,7 +294,10 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
-Tensor NestedTensor_var_backward(const Tensor & grad, const Tensor & self, bool unbiased) {
+Tensor NestedTensor_var_backward(
+    const Tensor& grad,
+    const Tensor& self,
+    bool unbiased) {
   std::cout << "V0" << std::endl;
   return (2.0 / (self.numel() - unbiased)) * grad * (self - self.mean());
 }
@@ -310,29 +314,35 @@ int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
   return size;
 }
 
-Tensor unsqueeze_multiple(const Tensor & t, IntArrayRef dim, size_t n_dims) {
-    auto dims_to_unsqueeze = at::dim_list_to_bitset(dim, n_dims);
-    Tensor res = t;
-    for (size_t i = 0; i < n_dims; i++){
-      if (dims_to_unsqueeze[i]) {
-        res = res.unsqueeze(i);
-      }
+Tensor unsqueeze_multiple(const Tensor& t, IntArrayRef dim, size_t n_dims) {
+  auto dims_to_unsqueeze = at::dim_list_to_bitset(dim, n_dims);
+  Tensor res = t;
+  for (size_t i = 0; i < n_dims; i++) {
+    if (dims_to_unsqueeze[i]) {
+      res = res.unsqueeze(i);
     }
-    return res;
+  }
+  return res;
 }
 
-Tensor NestedTensor_var_backward_dim(const Tensor& grad_, const Tensor & self, IntArrayRef dim, bool unbiased, bool keepdim) {
+Tensor NestedTensor_var_backward_dim(
+    const Tensor& grad_,
+    const Tensor& self,
+    IntArrayRef dim,
+    bool unbiased,
+    bool keepdim) {
   at::Tensor grad = grad_;
   if (self.dim() == 0) {
-  std::cout << "V1" << std::endl;
+    std::cout << "V1" << std::endl;
     return at::var_backward(grad, self, unbiased);
   }
   if (!keepdim && self.dim() > 1) {
-  std::cout << "V2" << std::endl;
+    std::cout << "V2" << std::endl;
     grad = unsqueeze_multiple(grad, dim, self.dim());
   }
   std::cout << "V3" << std::endl;
-  return (2.0 / (_safe_size(self.sizes(), dim) - unbiased)) * grad * (self - self.mean(dim, true));
+  return (2.0 / (_safe_size(self.sizes(), dim) - unbiased)) * grad *
+      (self - self.mean(dim, true));
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
