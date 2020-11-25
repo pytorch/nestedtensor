@@ -142,7 +142,7 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
 }
 
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
-  return squeeze(structure, dim);
+  return squeeze(structure, dim, false);
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {

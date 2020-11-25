@@ -41,6 +41,8 @@ std::tuple<std::vector<int64_t>, std::vector<int64_t>> make_split_dims(
       tensordims.push_back(dim - nested_dim);
     }
   }
+  std::sort(tensordims.begin(), tensordims.end());
+  std::sort(nesteddims.begin(), nesteddims.end());
   return std::make_tuple(tensordims, nesteddims);
 }
 

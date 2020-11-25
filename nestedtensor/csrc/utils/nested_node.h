@@ -23,6 +23,11 @@ struct NestedNode {
         _height = child.height() + 1;
       }
     }
+    // for (const auto& child : children) {
+    //   TORCH_CHECK(
+    //       child.height() == _height - 1,
+    //       "internal error: expected a full tree.");
+    // }
   }
   // NestedNode(NestedNode&) = delete;
   // NestedNode(const NestedNode&) = delete;
@@ -521,14 +526,16 @@ template <class A>
 inline NestedNode<A> squeeze(
     NestedNode<A> structure,
     int64_t level,
-    bool keep_dim = false) {
+    bool keep_dim) {
   if (level <= 0) {
     if (keep_dim) {
-      return NestedNode<A>(structure.children(0));
+      std::vector<NestedNode<A>> children;
+      children.push_back(structure.children(0));
+      return NestedNode<A>(std::move(children));
     }
     return structure.children(0);
   }
-  return NestedNode<A>(squeeze(structure, level - 1));
+  return NestedNode<A>(squeeze(structure, level - 1, keep_dim));
 }
 
 inline void _serialize(SizeNode nested_node, std::vector<int64_t>& out) {
