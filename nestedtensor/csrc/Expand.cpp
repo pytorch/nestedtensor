@@ -289,7 +289,7 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
         "internal error: expected result tensor height and desired shape to match.");
     return wrap_tensor_node(
         map([](at::Tensor t,
-               c10::List<int64_t> s) { return t.view(IntArrayRef(s.vec())); },
+               c10::List<int64_t> s) { return t.sum_to_size(IntArrayRef(s.vec())); },
             get_nested_tensor_structure(tensor),
             desired_nested_size));
   }
