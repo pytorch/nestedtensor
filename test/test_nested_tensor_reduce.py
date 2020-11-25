@@ -186,9 +186,13 @@ class TestReduce(TestCase):
         # print(nestedtensor.nested.nested.sum_to(a, (2, 2)))
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
+        b = ntnt([torch.arange(2).reshape(2),
+                  torch.arange(2).reshape(2) + 2])
         print(a)
         print(nestedtensor.nested.nested.sum_to_size(a, a))
-        print(nestedtensor.nested.nested.sum_to_size(torch.randn(1, 2), a))
+        self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(a, b))
+        self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(
+            torch.randn(1, 2), a))
         print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)))
         print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)).shape)
         # b = ntnt([torch.randn(1), torch.randn(1)])
@@ -222,10 +226,14 @@ class TestReduce(TestCase):
         self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(a, a))
         self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(a, b))
         self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(b, a))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), a))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(a, torch.randn(1, 2)))
-        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), torch.randn(1, 2)))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(torch.randn(2, 1), torch.randn(1, 2)))
+        self.assertEqual(
+            False, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), a))
+        self.assertEqual(
+            False, nestedtensor.nested.nested.sizes_equal(a, torch.randn(1, 2)))
+        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(
+            torch.randn(1, 2), torch.randn(1, 2)))
+        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(
+            torch.randn(2, 1), torch.randn(1, 2)))
         pass
 
 
