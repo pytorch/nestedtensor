@@ -23,11 +23,11 @@ struct NestedNode {
         _height = child.height() + 1;
       }
     }
-    for (const auto& child : children) {
-      TORCH_CHECK(
-          child.height() == _height - 1,
-          "internal error: expected a full tree.");
-    }
+    // for (const auto& child : children) {
+    //   TORCH_CHECK(
+    //       child.height() == _height - 1,
+    //       "internal error: expected a full tree.");
+    // }
   }
   // NestedNode(NestedNode&) = delete;
   // NestedNode(const NestedNode&) = delete;
