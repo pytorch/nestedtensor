@@ -13,6 +13,9 @@ from torchvision.models._utils import IntermediateLayerGetter
 from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 
 
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+
+
 class ConfusionMatrix(object):
     def __init__(self, num_classes):
         self.num_classes = num_classes
@@ -61,7 +64,6 @@ class TestIntegration(TestCase):
     # @unittest.skipIf(
     #     not utils.internet_on(), "Cannot reach internet to download reference model."
     # )
-    @unittest.skip("Not supported")
     def test_segmentation_pretrained_test_only(self):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):
@@ -126,12 +128,10 @@ class TestIntegration(TestCase):
                 self.assertEqual(confmat.mat, confmat2.mat)
 
             # grad test
-            output1_sum = output1.sum()
-            output2_sum = output2.sum()
-            self.assertEqual(output1_sum, output2_sum)
+            self.assertEqual(ntnt(output1.unbind()), output2)
 
-            output1_sum.backward()
-            output2_sum.backward()
+            output1.sum().backward()
+            output2.sum().backward()
 
             for (n1, p1), (n2, p2) in zip(model1.named_parameters(), model2.named_parameters()):
                 if p1.grad is not None:
@@ -147,9 +147,9 @@ class TestIntegration(TestCase):
             num_classes=21, aux_loss="store_true", pretrained=True
         ).eval(), True)
 
-        # _test(10, lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
+        # _test(1010, lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
         #     replace_stride_with_dilation=[False, False, False],
-        #     pretrained=True, norm_layer=FrozenBatchNorm2d), {'layer4': "0"}), False)
+        #     pretrained=True, norm_layer=NTFrozenBatchNorm2d), {'layer4': "0"}), False)
 
 
 if __name__ == "__main__":

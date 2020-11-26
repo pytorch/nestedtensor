@@ -247,7 +247,6 @@ class TestFunctional(TestCase):
         nt_res = torch.nn.functional.dropout(nt)
         self.assertEqual(ntnt(tensor_res).size(), nt_res.size())
 
-    # @ unittest.skip("Not implemented")
     def test_nn_functional_interpolate(self):
         inputs = [
             torch.randn(3, 200, 300),

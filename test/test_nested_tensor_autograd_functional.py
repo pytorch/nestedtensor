@@ -88,64 +88,50 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
-    @unittest.skip("Not implemented")
     def test_nn_batch_norm(self):
-        def _test(BatchNorm2d):
-            inputs = [
-                torch.randn(3, 50, 60, requires_grad=True),
-                torch.randn(3, 18, 18, requires_grad=True)
-            ]
+        def _test(BatchNorm2d, has_grad=True):
+            inputs = torch.randn(5, 3, 18, 18, requires_grad=True)
 
             batch_norm = BatchNorm2d()
 
-            tensor_res = []
-            for i in range(2):
-                t_res = batch_norm(inputs[i].unsqueeze(0).contiguous())
-                tensor_res.append(t_res.squeeze(0))
-                t_res.sum().backward()
+            t_res = batch_norm(inputs)
+            t_res.sum().backward()
             layer_grad0 = [p.grad for (n, p) in batch_norm.named_parameters()]
 
             batch_norm.zero_grad()
-            nt = ntnt(inputs)
+            nt = ntnt(inputs.unbind())
             nt_res = batch_norm(nt)
-            nt_res.sum().backward()
-            layer_grad1 = [p.grad for (n, p) in batch_norm.named_parameters()]
 
-            self.assertEqual(ntnt(tensor_res), nt_res)
-            map(self.assertEqual, zip(layer_grad0, layer_grad1))
-            self.assertEqual(nt.grad[0], inputs[0].grad)
-            self.assertEqual(nt.grad[1], inputs[1].grad)
-
-            inputs = torch.randn(2, 3, 50, 60, requires_grad=True)
-            nt = ntnt(inputs.detach().unbind())
-
-            batch_norm = BatchNorm2d()
-            t_res = batch_norm(inputs)
-
-            batch_norm = BatchNorm2d()
-            nt_res = batch_norm(nt)
-            self.assertEqual(nt_res[0], t_res[0])
-            self.assertEqual(nt_res[1], t_res[1])
+            self.assertEqual(ntnt(t_res.unbind()), nt_res)
+            if has_grad:
+                nt_res.sum().backward()
+                layer_grad1 = [p.grad for (
+                    n, p) in batch_norm.named_parameters()]
+                map(self.assertEqual, zip(layer_grad0, layer_grad1))
+                self.assertEqual(nt.grad[0], inputs.grad[0])
+                self.assertEqual(nt.grad[1], inputs.grad[1])
+            else:
+                self.assertRaises(
+                    RuntimeError, lambda: nt_res.sum().backward())
 
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=True, track_running_stats=True))
+                                           momentum=0.1, affine=True, track_running_stats=True), False)
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
                                            affine=True, track_running_stats=True).eval())
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=True, track_running_stats=False))
+                                           momentum=0.1, affine=True, track_running_stats=False), False)
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-                                           affine=True, track_running_stats=False).eval())
+                                           affine=True, track_running_stats=False).eval(), False)
 
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=False, track_running_stats=False))
+                                           momentum=0.1, affine=False, track_running_stats=False), False)
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-                                           affine=False, track_running_stats=False).eval())
+                                           affine=False, track_running_stats=False).eval(), False)
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=False, track_running_stats=True))
+                                           momentum=0.1, affine=False, track_running_stats=True), False)
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
                                            affine=False, track_running_stats=True).eval())
-
-        _test(lambda: torch.nn.BatchNorm2d(3))
+        _test(lambda: torch.nn.BatchNorm2d(3), False)
 
     def test_nn_relu(self):
         inputs = [
@@ -191,18 +177,24 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(inputs0.grad.sum(),
                          inputs1.grad.sum() + inputs1.grad.sum())
 
-    @unittest.skip("Not supported")
     def test_resnet_bottleneck(self):
         import torchvision
 
-        def _test(Bottleneck):
+        def _test(Bottleneck, has_grad=True):
             inputs_ = [
                 torch.randn(256, 50, 60, requires_grad=True)
             ]
             inputs = ntnt(inputs_)
 
             b = Bottleneck()
-            b(inputs).sum().backward()
+            print(b)
+            x = b(inputs).sum()
+            # import torchviz
+            # dot = torchviz.make_dot(x)
+            # dot.format = 'svg'
+            # dot.render('asdf')
+            # x.backward()
+            # import sys; sys.exit(1)
             g0 = list(p.grad for (n, p) in b.named_parameters())
 
             b.zero_grad()
@@ -217,21 +209,21 @@ class TestAutogradFunctional(TestCase):
             ]
             b = Bottleneck()
             inputs = ntnt(inputs_)
-            b(inputs).sum().backward()
-            # print(list((n, p.grad is None) for (n, p) in b.named_parameters()))
+            if has_grad:
+                b(inputs).sum().backward()
+                # print(list((n, p.grad is None) for (n, p) in b.named_parameters()))
 
-            b.zero_grad()
-            b(inputs_[0].unsqueeze(0)).sum().backward()
+                b.zero_grad()
+                b(inputs_[0].unsqueeze(0)).sum().backward()
 
-            b.zero_grad()
-            b(inputs_[1].unsqueeze(0)).sum().backward()
+                b.zero_grad()
+                b(inputs_[1].unsqueeze(0)).sum().backward()
 
-            self.assertEqual(inputs_[0].grad, inputs.grad[0])
-            self.assertEqual(inputs_[1].grad, inputs.grad[1])
-        _test(lambda: torchvision.models.resnet.Bottleneck(256, 64))
+                self.assertEqual(inputs_[0].grad, inputs.grad[0])
+                self.assertEqual(inputs_[1].grad, inputs.grad[1])
+        _test(lambda: torchvision.models.resnet.Bottleneck(256, 64), False)
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64).eval())
 
-    @unittest.skip("Not supported")
     def test_resnet_classification(self):
         import torchvision
 

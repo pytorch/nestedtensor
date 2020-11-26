@@ -294,14 +294,6 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
-Tensor NestedTensor_var_backward(
-    const Tensor& grad,
-    const Tensor& self,
-    bool unbiased) {
-  TORCH_CHECK(false, "var gradient not implemented yet.");
-  return grad;
-}
-
 Tensor NestedTensor_var_backward_dim(
     const Tensor& grad_,
     const Tensor& self,
@@ -319,10 +311,13 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
   nt_impl(m, "var", NestedTensor_var);
   nt_impl(m, "var.dim", NestedTensor_var_dim);
-  nt_impl(m, "var_backward", NestedTensor_var_backward);
   nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
+}
+
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+  nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
 }
 
 } // namespace at
