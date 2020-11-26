@@ -147,9 +147,9 @@ class TestIntegration(TestCase):
             num_classes=21, aux_loss="store_true", pretrained=True
         ).eval(), True)
 
-        # _test(10, lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
+        # _test(1010, lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
         #     replace_stride_with_dilation=[False, False, False],
-        #     pretrained=True, norm_layer=FrozenBatchNorm2d), {'layer4': "0"}), False)
+        #     pretrained=True, norm_layer=NTFrozenBatchNorm2d), {'layer4': "0"}), False)
 
 
 if __name__ == "__main__":
