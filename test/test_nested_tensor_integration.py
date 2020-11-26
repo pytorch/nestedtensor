@@ -143,7 +143,7 @@ class TestIntegration(TestCase):
             self.assertEqual(t1.grad, nt_input.grad[0])
             self.assertEqual(t2.grad, nt_input.grad[1])
 
-        _test(1010, lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
+        _test(10, lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
             num_classes=21, aux_loss="store_true", pretrained=True
         ).eval(), True)
 
