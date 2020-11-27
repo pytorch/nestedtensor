@@ -306,7 +306,19 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "expand_as", NestedTensor_expand_as);
 }
-TORCH_LIBRARY_IMPL(aten, Autograd, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+  nt_impl(m, "expand_nt", NestedTensor_expand_nt);
+  nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
+  nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
+  nt_impl(m, "sum_to_size", NestedTensor_sum_to_size);
+}
+TORCH_LIBRARY_IMPL(aten, AutogradCPU, m) {
+  nt_impl(m, "expand_nt", NestedTensor_expand_nt);
+  nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
+  nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
+  nt_impl(m, "sum_to_size", NestedTensor_sum_to_size);
+}
+TORCH_LIBRARY_IMPL(aten, AutogradCUDA, m) {
   nt_impl(m, "expand_nt", NestedTensor_expand_nt);
   nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
   nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
