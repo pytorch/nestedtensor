@@ -4,7 +4,7 @@ If you are here because you ran into a runtime error due to a missing feature or
 
 ## Tutorials
 
-Please see the notebooks under [examples](https://github.com/pytorch/nestedtensor/tree/master/examples).
+If you are new to this project, we recommend you take a look at the [tutorials](https://github.com/pytorch/nestedtensor/tree/master/tutorials) to get started.
 
 ## Why consider using this? / Dealing with dynamic shapes
 
