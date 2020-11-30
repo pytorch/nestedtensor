@@ -360,10 +360,24 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
-        return torch.ops.nestedtensor.str(self._impl)
+        def _str(x, indent=0, tab="  "):
+            if x.nested_dim() == 0:
+                return ""
+            s = indent*tab + "[\n"
+            if x.nested_dim() == 1:
+                strs = list(map(str, x.unbind()))
+                strs = list(map(lambda xi: "\n".join(
+                    map(lambda xij: (indent + 1)*tab + xij, xi.split("\n"))), strs))
+                s += ",\n".join(strs)
+            else:
+                s += ",\n".join(list(map(
+                    lambda xi: _str(xi, indent + 1), x.unbind())))
+            s += "\n" + indent * tab + "]"
+            return s
+        return "nested_tensor(" + _str(self) + ")"
 
     def __repr__(self):
-        return torch.ops.nestedtensor.str(self._impl)
+        return str(self)
 
     # --- impl forward ends ---
 
