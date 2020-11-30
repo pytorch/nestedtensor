@@ -131,21 +131,6 @@ namespace torch {
 namespace nested_tensor {
 namespace {
 
-inline std::vector<std::string> split_str(
-    std::string s,
-    std::string delimiter) {
-  std::vector<std::string> result;
-  size_t pos = 0;
-  std::string token;
-  while ((pos = s.find(delimiter)) != std::string::npos) {
-    token = s.substr(0, pos);
-    result.push_back(token);
-    s.erase(0, pos + delimiter.length());
-  }
-  result.push_back(s);
-  return result;
-}
-
 static auto registry =
     torch::RegisterOperators()
         .op("nestedtensor::is_nested_tensor_impl",
@@ -170,39 +155,10 @@ static auto registry =
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->opt_sizes();
             })
-        .op("nestedtensor::len",
-            [](Tensor self) {
-              return (int64_t)(get_nested_tensor_structure(self).degree());
-            })
-        .op("nestedtensor::str", [](Tensor tensor) {
-          auto node = get_nested_tensor_structure(tensor);
-          return NestedNode___str__(
-              node,
-              "nested_tensor",
-              [](c10::IValue payload, const std::string& tabs) {
-                std::stringstream ss;
-                ss << payload;
-                std::vector<std::string> tokens = split_str(ss.str(), "\n");
-                size_t data_lines = tokens.size() - 1;
-                std::string result;
-                size_t max_lines = 3;
-                size_t i = 0;
-                for (; i < std::min(max_lines, data_lines); i++) {
-                  result += "\n";
-                  result += tabs + tokens[i];
-                }
-                if (2 * max_lines < data_lines) {
-                  i = std::max(i, data_lines - max_lines);
-                  result += "\n" + tabs + "...";
-                }
-                for (; i < data_lines; i++) {
-                  result += "\n";
-                  result += tabs + tokens[i];
-                }
-                result += "\n" + tabs + tokens[data_lines];
-                return result;
-              });
+        .op("nestedtensor::len", [](Tensor self) {
+          return (int64_t)(get_nested_tensor_structure(self).degree());
         });
+
 } // namespace
 } // namespace nested_tensor
 } // namespace torch
