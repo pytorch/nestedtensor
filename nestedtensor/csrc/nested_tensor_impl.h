@@ -225,9 +225,11 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
+    TORCH_CHECK(
+        false,
+        "Internal error: NestedTensorImpl doesn't support sizes. Please file an issue on https://github.com/pytorch/nestedtensor");
     return IntArrayRef(_sizes);
   }
-  int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
  private:

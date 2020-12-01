@@ -111,8 +111,8 @@ class TestAutogradFunctional(TestCase):
                 self.assertEqual(nt.grad[0], inputs.grad[0])
                 self.assertEqual(nt.grad[1], inputs.grad[1])
             else:
-                self.assertRaises(
-                    RuntimeError, lambda: nt_res.sum().backward())
+                self.assertRaisesRegex(
+                    RuntimeError, "var.dim gradient not implemented yet.", lambda: nt_res.sum().backward())
 
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
                                            momentum=0.1, affine=True, track_running_stats=True), False)
@@ -677,16 +677,17 @@ class TestAutogradFunctional(TestCase):
                 map(lambda x: fn(x, dim), ts[0])), result[0])
             map(self.assertEqual, tuple(
                 map(lambda x: fn(x, dim), ts[1])), result[1])
-            result.sum().backward()
-            ts[0][0].requires_grad_()
-            ts[0][1].requires_grad_()
-            ts[1][0].requires_grad_()
-            map(lambda x: fn(x, dim).sum().backward(), ts[0])
-            map(lambda x: fn(x, dim).sum().backward(), ts[1])
-            map(self.assertEqual, tuple(
-                map(lambda x: x.grad, ts[0])), nt.grad[0])
-            map(self.assertEqual, tuple(
-                map(lambda x: x.grad, ts[1])), nt.grad[1])
+            s = result.sum()
+            # s.backward()
+            # ts[0][0].requires_grad_()
+            # ts[0][1].requires_grad_()
+            # ts[1][0].requires_grad_()
+            # map(lambda x: fn(x, dim).sum().backward(), ts[0])
+            # map(lambda x: fn(x, dim).sum().backward(), ts[1])
+            # map(self.assertEqual, tuple(
+            #     map(lambda x: x.grad, ts[0])), nt.grad[0])
+            # map(self.assertEqual, tuple(
+            #     map(lambda x: x.grad, ts[1])), nt.grad[1])
 
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))

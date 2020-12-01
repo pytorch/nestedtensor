@@ -128,3 +128,15 @@ Below are tables built on top of the stable 1.7 ops [documention](https://pytorc
 | count_nonzero |||
 
 </details>
+
+### Non-linear Activations
+
+<details>
+| Name | Native | Derivative |
+| ---- | ------ | ---------- |
+| nn.Softmin |||
+| nn.Softmax |&#9745;||
+| nn.Softmax2d |||
+| nn.LogSoftmax |||
+| nn.AdaptiveLogSoftmaxWithLoss |||
+</details>

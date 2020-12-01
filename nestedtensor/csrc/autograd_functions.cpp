@@ -84,29 +84,29 @@ Tensor NestedTensor_batch_norm(
     double momentum,
     double eps,
     bool cudnn_enabled) {
-  auto num_features = input.sizes()[1];
+  auto opt_sizes = get_nested_tensor_impl(input)->opt_sizes();
+  TORCH_CHECK(opt_sizes[1], "batch norm requires regular second dimension.");
+  int64_t n_input = *opt_sizes[1];
   if (running_mean) {
     check_dims_match_num_input_features(
-        "running_mean", num_features, running_mean->numel());
+        "running_mean", n_input, running_mean->numel());
   } else if (!training) {
     AT_ERROR("running_mean must be defined in evaluation mode");
   }
   if (running_var) {
     check_dims_match_num_input_features(
-        "running_var", num_features, running_var->numel());
+        "running_var", n_input, running_var->numel());
   } else if (!training) {
     AT_ERROR("running_var must be defined in evaluation mode");
   }
   if (weight) {
-    check_dims_match_num_input_features("weight", num_features, weight->numel());
+    check_dims_match_num_input_features(
+        "weight", n_input, weight->numel());
   }
   if (bias) {
-    check_dims_match_num_input_features("bias", num_features, bias->numel());
+    check_dims_match_num_input_features("bias", n_input, bias->numel());
   }
 
-  Tensor output = at::empty_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
-
-  int64_t n_input = input.size(1);
   auto scalar_shape = make_scalar_shape(input.dim(), n_input);
 
   at::Tensor mean;
@@ -124,7 +124,8 @@ Tensor NestedTensor_batch_norm(
     if (running_mean) {
       at::Tensor running_mean_(running_mean->getIntrusivePtr());
       running_mean_ = running_mean_.detach();
-      running_mean_.copy_(momentum * save_mean + (1 - momentum) * running_mean_);
+      running_mean_.copy_(
+          momentum * save_mean + (1 - momentum) * running_mean_);
     }
 
     if (running_var) {
@@ -142,7 +143,7 @@ Tensor NestedTensor_batch_norm(
     invstd = 1 / at::sqrt(*running_var + eps);
   }
 
-  output = input;
+  Tensor output = input;
   output = output - mean.reshape(IntArrayRef(scalar_shape));
   output = output * invstd.reshape(IntArrayRef(scalar_shape));
 
