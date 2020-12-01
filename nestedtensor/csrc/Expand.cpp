@@ -76,7 +76,7 @@ bool NestedTensor_sizes_equal_tensor(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
     return nested_size_matches(get_nested_size(self), get_nested_size(other));
   }
-  return self.sizes().vec() != other.sizes().vec();
+  return self.sizes().vec() == other.sizes().vec();
 }
 
 bool _sizes_nested_size_expands(
