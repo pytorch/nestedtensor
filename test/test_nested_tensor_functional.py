@@ -489,7 +489,8 @@ class TestFunctional(TestCase):
                 map(lambda x: fn(x, dim), ts[0])), result[0])
             map(self.assertEqual, tuple(
                 map(lambda x: fn(x, dim), ts[1])), result[1])
-            result.sum().backward()
+            s = result.sum()
+            # s.backward()
 
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))

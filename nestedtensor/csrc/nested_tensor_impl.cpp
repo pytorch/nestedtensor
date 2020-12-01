@@ -145,8 +145,8 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   return squeeze(structure, dim, false);
 }
 
-int64_t NestedTensorImpl::size(int64_t dim) const {
-  std::vector<c10::optional<int64_t>> size = opt_sizes();
+int64_t NestedTensor_size_int(const Tensor& self, int64_t dim) {
+  std::vector<c10::optional<int64_t>> size = get_nested_tensor_impl(self)->opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
@@ -454,6 +454,7 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
+  nt_impl(m, "size.int", NestedTensor_size_int);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
 }
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
@@ -464,5 +465,6 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "slice.Tensor", NestedTensor_slice);
   nt_impl(m, "unsqueeze", NestedTensor_unsqueeze);
   nt_impl(m, "serialize_nested_size", NestedTensor_serialize_nested_size);
+  nt_impl(m, "size.int", NestedTensor_size_int);
 }
 } // namespace at

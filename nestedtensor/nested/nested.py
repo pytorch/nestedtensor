@@ -419,7 +419,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
         if func is torch.nn.functional.embedding_bag:
             return _wrap_result(_nn_functional_embedding_bag(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.batch_norm:
-            print("HDHD")
             return _wrap_result(_nn_functional_batch_norm(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.multi_head_attention_forward:
             return _wrap_result(nestedtensor.nn.mha.multi_head_attention_forward(*args, **kwargs))
