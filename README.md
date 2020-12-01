@@ -6,6 +6,10 @@ If you are here because you ran into a runtime error due to a missing feature or
 
 If you are new to this project, we recommend you take a look at the [tutorials](https://github.com/pytorch/nestedtensor/tree/master/tutorials) to get started.
 
+## Operator support
+
+Please see [the list of currently supported operators](https://github.com/pytorch/nestedtensor/blob/master/nestedtensor/csrc/README.md) and [open an issue](https://github.com/pytorch/nestedtensor/issues/new/choose) if you find you need one for your project that's not listed.
+
 ## Why consider using this? / Dealing with dynamic shapes
 
 In general we batch data for efficiency, but usually batched kernels need, or greatly benefit from, regular, statically-shaped data.
