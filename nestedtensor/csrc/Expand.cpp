@@ -66,6 +66,19 @@ bool NestedTensor_sizes_equal(const Tensor& self, IntArrayRef size_other) {
   return self.sizes().equals(size_other);
 }
 
+bool NestedTensor_sizes_equal_tensor(const Tensor& self, const Tensor& other) {
+  if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
+    return false;
+  }
+  if (!is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
+    return false;
+  }
+  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
+    return nested_size_matches(get_nested_size(self), get_nested_size(other));
+  }
+  return self.sizes().vec() == other.sizes().vec();
+}
+
 bool _sizes_nested_size_expands(
     SizeNode nested_size,
     std::vector<int64_t> grad_shape) {
@@ -287,11 +300,12 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
     TORCH_CHECK(
         get_nested_size(tensor).height() == desired_nested_size.height(),
         "internal error: expected result tensor height and desired shape to match.");
-    return wrap_tensor_node(
-        map([](at::Tensor t,
-               c10::List<int64_t> s) { return t.sum_to_size(IntArrayRef(s.vec())); },
-            get_nested_tensor_structure(tensor),
-            desired_nested_size));
+    return wrap_tensor_node(map(
+        [](at::Tensor t, c10::List<int64_t> s) {
+          return t.sum_to_size(IntArrayRef(s.vec()));
+        },
+        get_nested_tensor_structure(tensor),
+        desired_nested_size));
   }
   if (!is_nested_tensor_impl(tensor) && is_serialized_size_node(shape)) {
     SizeNode desired_nested_size = deserialize_size_node(shape);
@@ -310,18 +324,21 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "expand_nt", NestedTensor_expand_nt);
   nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
   nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
+  nt_impl(m, "sizes_equal.tensor", NestedTensor_sizes_equal_tensor);
   nt_impl(m, "sum_to_size", NestedTensor_sum_to_size);
 }
 TORCH_LIBRARY_IMPL(aten, AutogradCPU, m) {
   nt_impl(m, "expand_nt", NestedTensor_expand_nt);
   nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
   nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
+  nt_impl(m, "sizes_equal.tensor", NestedTensor_sizes_equal_tensor);
   nt_impl(m, "sum_to_size", NestedTensor_sum_to_size);
 }
 TORCH_LIBRARY_IMPL(aten, AutogradCUDA, m) {
   nt_impl(m, "expand_nt", NestedTensor_expand_nt);
   nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
   nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);
+  nt_impl(m, "sizes_equal.tensor", NestedTensor_sizes_equal_tensor);
   nt_impl(m, "sum_to_size", NestedTensor_sum_to_size);
 }
 } // namespace at

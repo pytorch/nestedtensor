@@ -46,6 +46,14 @@ def _nn_functional_linear(input, weight, bias=None):
     return output
 
 
+def _nn_functional_batch_norm(input, running_mean, running_var, weight=None, bias=None,
+                              training=False, momentum=0.1, eps=1e-5):
+    return torch.batch_norm(
+        input, weight, bias, running_mean, running_var,
+        training, momentum, eps, torch.backends.cudnn.enabled
+    )
+
+
 def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
                                  scale_grad_by_freq=False, mode='mean', sparse=False,
                                  per_sample_weights=None, include_last_offset=False):
@@ -410,6 +418,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return _wrap_result(_nn_functional_linear(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.embedding_bag:
             return _wrap_result(_nn_functional_embedding_bag(*impl_args, **impl_kwargs))
+        if func is torch.nn.functional.batch_norm:
+            return _wrap_result(_nn_functional_batch_norm(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.multi_head_attention_forward:
             return _wrap_result(nestedtensor.nn.mha.multi_head_attention_forward(*args, **kwargs))
         if func is torch.nn.functional.interpolate:

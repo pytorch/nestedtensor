@@ -61,18 +61,19 @@ def multi_head_attention_forward(query,
     assert head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
     scaling = float(head_dim) ** -0.5
 
-    return torch.ops.nestedtensor.min_mha(num_heads,
-                                          head_dim,
-                                          dropout_p,
-                                          training,
-                                          query._impl,
-                                          key._impl,
-                                          value._impl,
-                                          in_proj_weight,
-                                          in_proj_bias,
-                                          scaling,
-                                          out_proj_weight,
-                                          out_proj_bias), None
+    return nestedtensor.nested.nested._wrap_result(
+        torch.ops.nestedtensor.min_mha(num_heads,
+                                       head_dim,
+                                       dropout_p,
+                                       training,
+                                       query._impl,
+                                       key._impl,
+                                       value._impl,
+                                       in_proj_weight,
+                                       in_proj_bias,
+                                       scaling,
+                                       out_proj_weight,
+                                       out_proj_bias)), None
 
 
 class MultiheadAttention(Module):
