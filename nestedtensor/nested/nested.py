@@ -54,6 +54,14 @@ def _nn_functional_batch_norm(input, running_mean, running_var, weight=None, bia
     )
 
 
+def _nn_functional_adaptive_avg_pool2d(input, output_size):
+    size = NestedTensor(input).size()
+    if None in size:
+        raise RuntimeError("input NestedTensor must have regular shape.")
+    _output_size = torch.nn.modules.utils._list_with_default(output_size, size)
+    return torch._C._nn.adaptive_avg_pool2d(input, _output_size)
+
+
 def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
                                  scale_grad_by_freq=False, mode='mean', sparse=False,
                                  per_sample_weights=None, include_last_offset=False):
@@ -420,6 +428,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return _wrap_result(_nn_functional_embedding_bag(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.batch_norm:
             return _wrap_result(_nn_functional_batch_norm(*impl_args, **impl_kwargs))
+        if func is torch.nn.functional.adaptive_avg_pool2d:
+            return _wrap_result(_nn_functional_adaptive_avg_pool2d(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.multi_head_attention_forward:
             return _wrap_result(nestedtensor.nn.mha.multi_head_attention_forward(*args, **kwargs))
         if func is torch.nn.functional.interpolate:
