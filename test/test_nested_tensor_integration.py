@@ -70,6 +70,10 @@ class TestIntegration(TestCase):
         for t0, t1 in zip(result_model_nt, result_model):
             self.assertEqual(t0, t1)
 
+        # non-regular shape smoke test
+        EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 100 * i, 100) for i in range(1, 4)]
+        model(nestedtensor.nested_tensor(EXAMPLE_IMAGE_TENSORS))
+
     def test_segmentation_pretrained_test_only(self):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):
