@@ -61,9 +61,15 @@ class ConfusionMatrix(object):
 
 
 class TestIntegration(TestCase):
-    # @unittest.skipIf(
-    #     not utils.internet_on(), "Cannot reach internet to download reference model."
-    # )
+    def test_resnet18(self):
+        EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 10, 10) for _ in range(3)]
+        model = torchvision.models.resnet.resnet18(pretrained=True).eval()
+        result_model_nt = model(nestedtensor.nested_tensor(
+            EXAMPLE_IMAGE_TENSORS)).unbind()
+        result_model = model(torch.stack(EXAMPLE_IMAGE_TENSORS)).unbind()
+        for t0, t1 in zip(result_model_nt, result_model):
+            self.assertEqual(t0, t1)
+
     def test_segmentation_pretrained_test_only(self):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):
