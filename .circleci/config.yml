@@ -134,8 +134,8 @@ jobs:
             export AWS_ACCESS_KEY_ID="${PYTORCH_BINARY_AWS_ACCESS_KEY_ID}"
             export AWS_SECRET_ACCESS_KEY="${PYTORCH_BINARY_AWS_SECRET_ACCESS_KEY}"
             set -x
-            aws s3 cp torch*.whl "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/<< parameters.python_version >>/torch.whl" --acl public-read
-            aws s3 cp nestedtensor*.whl "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/<< parameters.python_version >>/nestedtensor.whl" --acl public-read
+            aws s3 cp ~/workspace/torch*.whl "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/<< parameters.python_version >>/torch.whl" --acl public-read
+            aws s3 cp ~/workspace/nestedtensor*.whl "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/<< parameters.python_version >>/nestedtensor.whl" --acl public-read
 
   unittest_linux_cpu:
     <<: *binary_common
