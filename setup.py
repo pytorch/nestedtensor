@@ -27,7 +27,10 @@ def read(*names, **kwargs):
 
 latest_release = "0.0.1"
 
-package_version = latest_release
+dt = datetime.datetime.utcnow()
+package_version = "{0}.dev{1}{2}{3}{4}".format(
+    latest_release, dt.year, dt.month, dt.day, dt.hour
+)
 
 sha = "Unknown"
 package_name = "nestedtensor"
