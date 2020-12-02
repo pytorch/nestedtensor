@@ -142,7 +142,7 @@ jobs:
   unittest_linux_cpu:
     <<: *binary_common
     docker:
-      - image: "pytorch/manylinux-cuda102"
+      - image: "pytorch/latest"
     resource_class: 2xlarge+
     steps:
       - checkout
