@@ -55,10 +55,8 @@ def _nn_functional_batch_norm(input, running_mean, running_var, weight=None, bia
 
 
 def _nn_functional_adaptive_avg_pool2d(input, output_size):
-    size = NestedTensor(input).size()
-    if None in size:
-        raise RuntimeError("input NestedTensor must have regular shape.")
-    _output_size = torch.nn.modules.utils._list_with_default(output_size, size)
+    serialized_nested_size = nestedtensor._C.serialize_nested_size(input)
+    _output_size = torch.nn.modules.utils._list_with_default(output_size, serialized_nested_size)
     return torch._C._nn.adaptive_avg_pool2d(input, _output_size)
 
 
