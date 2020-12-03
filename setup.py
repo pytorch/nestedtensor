@@ -25,13 +25,7 @@ def read(*names, **kwargs):
         return fp.read()
 
 
-latest_release = "0.0.1"
-
-dt = datetime.datetime.utcnow()
-package_version = "{0}.dev{1}{2}{3}".format(
-    latest_release, dt.year, dt.month, dt.day
-)
-
+version = "0.0.1"
 sha = "Unknown"
 package_name = "nestedtensor"
 
@@ -49,9 +43,8 @@ except Exception:
 if os.getenv("BUILD_VERSION"):
     version = os.getenv("BUILD_VERSION")
 elif sha != "Unknown":
-    version = package_version + "+" + sha[:7]
-else:
-    version = package_version
+    version = version + "+" + sha[:7]
+
 print("Building wheel {}-{}".format(package_name, version))
 
 
@@ -156,7 +149,7 @@ class clean(distutils.command.clean.clean):
 
 setuptools.setup(
     name=package_name,
-    version=package_version,
+    version=version,
     author="Christian Puhrsch",
     author_email="cpuhrsch@fb.com",
     description="NestedTensors for PyTorch",
