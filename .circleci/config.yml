@@ -171,8 +171,8 @@ jobs:
           name: Specify nightly versions
           command: |
             if [[ "${CIRCLE_BRANCH}" = "nightly" ]]; then
-              echo "export BUILD_VERSION=0.1.1-<< parameters.subfolder >>-py<< parameters.python_version >>" >> ${BASH_ENV}
-              echo "export PYTORCH_BUILD_VERSION=1.7.0-<< parameters.subfolder >>-py<< parameters.python_version >>" >> ${BASH_ENV}
+              echo "export BUILD_VERSION=0.1.1-<< parameters.cu_version >>-py<< parameters.python_version >>" >> ${BASH_ENV}
+              echo "export PYTORCH_BUILD_VERSION=1.7.0-<< parameters.cu_version >>-py<< parameters.python_version >>" >> ${BASH_ENV}
               echo "export PYTORCH_BUILD_NUMBER=1" >> ${BASH_ENV}
             fi
       - run:
