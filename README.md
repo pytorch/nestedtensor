@@ -10,6 +10,16 @@ If you are new to this project, we recommend you take a look at the [tutorials](
 
 Please see [the list of currently supported operators](https://github.com/pytorch/nestedtensor/blob/master/nestedtensor/csrc/README.md) and [open an issue](https://github.com/pytorch/nestedtensor/issues/new/choose) if you find you need one for your project that's not listed.
 
+## Binaries
+
+The nestedtensor project is built on top of a torch fork for improved interoperability and also ships with torchvision binaries that were built against this fork. To use NestedTensors you need to install this version of torch, which is frequently rebased upon PyTorch's [viable/strict](https://github.com/pytorch/pytorch/tree/viable/strict) branch (most recent master where all tests pass).
+
+| Version | Python | CUDA | Wheels |
+| --- | ---- | ------ | ---- |
+| 0.1.1 | 3.6 | CPU-only | [torch](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/torch-1.8.0_nestedtensor_0.1.1_cpu-cp36-cp36m-linux_x86_64.whl), [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/nestedtensor-0.1.1_cpu-cp36-cp36m-linux_x86_64.whl), [torchvision](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/torchvision-0.1.1_cpu-cp36-cp36m-linux_x86_64.whl) |
+| 0.1.1 | 3.7 | CPU-only | [torch](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/torch-1.8.0_nestedtensor_0.1.1_cpu-cp37-cp37m-linux_x86_64.whl), [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/nestedtensor-0.1.1_cpu-cp37-cp37m-linux_x86_64.whl), [torchvision](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/torchvision-0.1.1_cpu-cp37-cp37m-linux_x86_64.whl) |
+| 0.1.1 | 3.8 | CPU-only | [torch](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/torch-1.8.0_nestedtensor_0.1.1_cpu-cp38-cp38m-linux_x86_64.whl), [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/nestedtensor-0.1.1_cpu-cp38-cp38m-linux_x86_64.whl), [torchvision](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/torchvision-0.1.1_cpu-cp38-cp38m-linux_x86_64.whl) |
+
 ## Why consider using this? / Dealing with dynamic shapes
 
 In general we batch data for efficiency, but usually batched kernels need, or greatly benefit from, regular, statically-shaped data.
