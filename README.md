@@ -1,6 +1,6 @@
 # The nestedtensor package [prototype](https://pytorch.org/blog/pytorch-feature-classification-changes/#prototype)
 
-If you are here because you ran into a runtime error due to a missing feature or some kind of bug, please [open an issue and fill in the appropiate template](https://github.com/pytorch/nestedtensor/issues/new/choose). Thank you for contributing to this project!
+If you are here because you ran into a runtime error due to a missing feature or some kind of bug, please [open an issue and fill in the appropiate template](https://github.com/pytorch/nestedtensor/issues/new/choose). If you have general feedback about this prototype [you can use our suggested template](https://github.com/pytorch/nestedtensor/issues/new?assignees=&labels=&template=prototype-feedback.md&title=) or just open a free-form issue if you like. Thank you for contributing to this project!
 
 ## Tutorials
 
