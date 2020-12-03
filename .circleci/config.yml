@@ -135,9 +135,9 @@ jobs:
             export AWS_SECRET_ACCESS_KEY="${PYTORCH_BINARY_AWS_SECRET_ACCESS_KEY}"
             set -x
             ls ~/workspace
-            mv ~/workspace/torch.*whl ~/workspace/torch.whl
-            mv ~/workspace/nestedtensor.*whl ~/workspace/nestedtensor.whl
-            mv ~/workspace/torchvision.*whl ~/workspace/torchvision.whl
+            mv ~/workspace/torch*.whl ~/workspace/torch.whl
+            mv ~/workspace/nestedtensor*.whl ~/workspace/nestedtensor.whl
+            mv ~/workspace/torchvision*.whl ~/workspace/torchvision.whl
             ls ~/workspace
             aws s3 cp "~/workspace/torch.whl" "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/py<< parameters.python_version >>/torch.whl" --acl public-read
             aws s3 cp "~/workspace/nestedtensor.whl" "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/py<< parameters.python_version >>/nestedtensor.whl" --acl public-read
