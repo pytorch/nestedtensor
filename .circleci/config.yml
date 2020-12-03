@@ -172,7 +172,7 @@ jobs:
           command: |
             if [[ "${CIRCLE_BRANCH}" = "nightly" ]]; then
               echo "export BUILD_VERSION=0.1.1-<< parameters.cu_version >>" >> ${BASH_ENV}
-              echo "export PYTORCH_BUILD_VERSION=1.7.0-<< parameters.cu_version >>" >> ${BASH_ENV}
+              echo "export PYTORCH_BUILD_VERSION=1.8.0-nestedtensor-0.1.1-<< parameters.cu_version >>" >> ${BASH_ENV}
               echo "export PYTORCH_BUILD_NUMBER=1" >> ${BASH_ENV}
             fi
       - run:
