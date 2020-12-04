@@ -240,3 +240,5 @@ TAGS
 # Files generated when a patch is rejected
 *.orig
 *.rej
+
+!build_with_submodule.sh
