@@ -1,0 +1,36 @@
+import traceback
+import functools
+import pdb
+import sys
+import torch
+import nestedtensor
+import unittest
+import random
+from torch.nn import functional as F
+from torch import nn
+
+from utils import TestCase
+
+
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
+
+
+# Various smoke tests to confirm coverage of an operator
+
+class TestCoverage(TestCase):
+
+    def test_issues_313(self):
+        # Based on https://github.com/pytorch/nestedtensor/issues/313
+
+        linear = nn.Linear(9, 64)
+        norm = nn.BatchNorm1d(64)
+        # 3 voxel with 40, 50 and 90 points respectively
+        x = ntnt([torch.randn(i, 9) for i in [40, 50, 90]])
+        x = linear(x)
+        x = norm(x.transpose(2, 1).contiguous()).transpose(2, 1).contiguous()
+        x = F.relu(x)
+        x_max = torch.max(x, dim=1, keepdim=True)[0]
+
+if __name__ == "__main__":
+    unittest.main()

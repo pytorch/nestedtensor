@@ -102,6 +102,51 @@ Tensor NestedTensor_sum_dim(
       my_sum, self, dims, keepdims, dtype);
 }
 
+Tensor NestedTensor_max_dim(
+    const Tensor& self,
+    int64_t dim,
+    bool keepdims,
+    c10::optional<ScalarType> dtype) {
+  std::vector<int64_t> tensordims;
+  std::vector<int64_t> nesteddims;
+  std::tie(tensordims, nesteddims) = make_split_dims(self, dim);
+  at::Tensor output = self;
+  if (dim >= get_nested_tensor_impl(self)->nested_dim()) {
+    return map_nested_tensor(
+        [tensordims, keepdims, dtype](at::Tensor tensor) {
+          return at::max(
+              tensor, c10::ArrayRef<int64_t>(tensordims), keepdims, dtype);
+        },
+        output);
+  }
+  auto opt_sizes = get_opt_sizes(output);
+  TORCH_CHECK(
+      opt_sizes[dim],
+      "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6.");
+  auto new_nested_size = get_nested_size(output);
+  new_nested_size = squeeze(new_nested_size, dim, keepdims);
+  auto tmp = at::max(
+      NestedTensor_to_tensor(output, c10::nullopt),
+      IntArrayRef(nesteddims),
+      keepdims,
+      dtype);
+  return wrap_buffer(tmp.reshape({-1}), new_nested_size);
+}
+
+Tensor NestedTensor_max(const Tensor& self, c10::optional<ScalarType> dtype) {
+  auto tensors = flatten(
+      map([&dtype](at::Tensor tensor) { return at::max(tensor, dtype); },
+          get_nested_tensor_structure(self)));
+  if (tensors.size() == 0) {
+    if (dtype) {
+      return at::ones({0}, *dtype);
+    }
+    return at::ones({0});
+  }
+  auto all_tensor = at::stack(tensors);
+  return at::max(all_tensor, dtype);
+}
+
 Tensor NestedTensor_mean_dim(
     const Tensor& self,
     c10::ArrayRef<int64_t> dims,
@@ -336,6 +381,8 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean", NestedTensor_mean);
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
+  nt_impl(m, "max", NestedTensor_max);
+  nt_impl(m, "max.dim", NestedTensor_max_dim);
   nt_impl(m, "var", NestedTensor_var);
   nt_impl(m, "var.dim", NestedTensor_var_dim);
   nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
