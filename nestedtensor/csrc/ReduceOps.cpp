@@ -102,22 +102,25 @@ Tensor NestedTensor_sum_dim(
       my_sum, self, dims, keepdims, dtype);
 }
 
-Tensor NestedTensor_max_dim(
+std::tuple<Tensor, Tensor> NestedTensor_max_dim(
     const Tensor& self,
     int64_t dim,
-    bool keepdims,
-    c10::optional<ScalarType> dtype) {
-  std::vector<int64_t> tensordims;
-  std::vector<int64_t> nesteddims;
-  std::tie(tensordims, nesteddims) = make_split_dims(self, dim);
+    bool keepdims) {
+  int64_t nested_dim = get_nested_tensor_impl(self)->nested_dim();
   at::Tensor output = self;
-  if (dim >= get_nested_tensor_impl(self)->nested_dim()) {
-    return map_nested_tensor(
-        [tensordims, keepdims, dtype](at::Tensor tensor) {
-          return at::max(
-              tensor, c10::ArrayRef<int64_t>(tensordims), keepdims, dtype);
+  if (dim >= nested_dim) {
+    std::vector<TensorNode> result = unzip(map(
+        [nested_dim, dim, keepdims](at::Tensor tensor) {
+          auto tmp = at::max(tensor, dim - nested_dim, keepdims);
+          std::vector<at::Tensor> result;
+          result.push_back(std::get<0>(tmp));
+          result.push_back(std::get<1>(tmp));
+          return result;
         },
-        output);
+        get_nested_tensor_structure(output)));
+    return std::make_tuple(
+        wrap_tensor_node(std::move(result[0])),
+        wrap_tensor_node(std::move(result[1])));
   }
   auto opt_sizes = get_opt_sizes(output);
   TORCH_CHECK(
@@ -125,26 +128,22 @@ Tensor NestedTensor_max_dim(
       "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6.");
   auto new_nested_size = get_nested_size(output);
   new_nested_size = squeeze(new_nested_size, dim, keepdims);
-  auto tmp = at::max(
-      NestedTensor_to_tensor(output, c10::nullopt),
-      IntArrayRef(nesteddims),
-      keepdims,
-      dtype);
-  return wrap_buffer(tmp.reshape({-1}), new_nested_size);
+  auto tmp =
+      at::max(NestedTensor_to_tensor(output, c10::nullopt), dim, keepdims);
+  return std::make_tuple(
+      wrap_buffer(std::get<0>(tmp).reshape({-1}), new_nested_size),
+      wrap_buffer(std::get<1>(tmp).reshape({-1}), new_nested_size));
 }
 
-Tensor NestedTensor_max(const Tensor& self, c10::optional<ScalarType> dtype) {
+Tensor NestedTensor_max(const Tensor& self) {
   auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::max(tensor, dtype); },
+      map([](at::Tensor tensor) { return at::max(tensor); },
           get_nested_tensor_structure(self)));
   if (tensors.size() == 0) {
-    if (dtype) {
-      return at::ones({0}, *dtype);
-    }
     return at::ones({0});
   }
   auto all_tensor = at::stack(tensors);
-  return at::max(all_tensor, dtype);
+  return at::max(all_tensor);
 }
 
 Tensor NestedTensor_mean_dim(

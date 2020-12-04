@@ -126,7 +126,7 @@ class TestReduce(TestCase):
         self._test_reduce_dim(torch.sum, True)
 
     def test_max_all(self):
-        self._test_allreduce(lambda x: x.max(), True)
+        self._test_allreduce(lambda x: x.max()[0], True)
 
     def test_max_dim(self):
         self._test_reduce_dim(torch.max, True)
