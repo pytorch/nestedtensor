@@ -353,8 +353,7 @@ int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
 // This is just numel
 int64_t _safe_size(const Tensor& self, IntArrayRef dim) {
   if (is_nested_tensor_impl(self)) {
-    TORCH_CHECK(false, "_safe_size not implemented for NestedTensor.");
-    return 0;
+    return self.numel() ? self.numel() : 1;
   }
   return _safe_size(self.sizes(), dim);
 }
@@ -372,8 +371,15 @@ Tensor NestedTensor_var_backward_dim(
   if (!keepdim && self.dim() > 1) {
     grad = at::unsqueeze_multiple(grad, dim, self.dim());
   }
-  return (2.0 / (_safe_size(self, dim) - unbiased)) * grad *
-      (self - self.mean(dim, true));
+  int64_t a0 = (_safe_size(self, dim) - unbiased);
+  float a = 2.0 / a0;
+  auto b = a * grad;
+  return b;
+  // auto c = (self - self.mean(dim, true));
+  // return b * c;
+
+  // return (2.0 / (_safe_size(self, dim) - unbiased)) * grad *
+  //     (self - self.mean(dim, true));
 }
 
 Tensor NestedTensor_sum_backward(

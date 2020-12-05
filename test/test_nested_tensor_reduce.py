@@ -143,7 +143,7 @@ class TestReduce(TestCase):
 
     def test_var(self):
         self._test_allreduce(lambda x: x.var(unbiased=False), True)
-        self._test_allreduce(lambda x: x.var(unbiased=True))
+        self._test_allreduce(lambda x: x.var(unbiased=True), True)
 
     def test_var_dim(self):
         t0 = torch.arange(9).float().reshape(3, 3)
@@ -159,28 +159,32 @@ class TestReduce(TestCase):
         res = torch.var(nt, 1)
         self.assertEqual(
             ntnt([torch.var(t0, 0), torch.var(t1, 0)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
+        print('nt')
+        print(nt)
+        print('nt.grad')
+        print(nt.grad)
 
         res = torch.var(nt, 2)
         self.assertEqual(
             ntnt([torch.var(t0, 1), torch.var(t1, 1)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
 
         ts = [t0, t2]
         nt = ntnt(ts)
         res = torch.var(nt, 0)
         self.assertEqual(torch.stack(ts).var(0), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
 
         res = torch.var(nt, 1)
         self.assertEqual(
             ntnt([torch.var(t0, 0), torch.var(t2, 0)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
 
         res = torch.var(nt, 2)
         self.assertEqual(
             ntnt([torch.var(t0, 1), torch.var(t2, 1)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
 
         self.assertEqual(torch.stack(ts).var(
             (0, 1), unbiased=False), torch.var(nt, (0, 1), unbiased=False))

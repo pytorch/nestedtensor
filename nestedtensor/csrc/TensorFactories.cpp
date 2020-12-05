@@ -14,6 +14,8 @@ Tensor NestedTensor_zeros_like(
     c10::optional<Device> device,
     c10::optional<bool> pin_memory,
     c10::optional<MemoryFormat> memory_format) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(self), "internal error: expected NestedTensor.");
   std::vector<int64_t> numel_array;
   numel_array.push_back(self.numel());
   at::Tensor buffer =
