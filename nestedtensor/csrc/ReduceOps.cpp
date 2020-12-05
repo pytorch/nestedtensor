@@ -344,6 +344,10 @@ Tensor NestedTensor_var_backward_dim(
     IntArrayRef dim,
     bool unbiased,
     bool keepdim) {
+  at::Tensor grad = grad_;
+  if (self.dim() == 0) {
+    return at::var_backward(grad, self, unbiased);
+  }
   TORCH_CHECK(false, "var.dim gradient not implemented yet.");
   return grad_;
 }
@@ -375,15 +379,39 @@ Tensor NestedTensor_mean_backward(
   return grad;
 }
 
-Tensor NestedTensor_value_selecting_reduction_backward(const Tensor& grad, int64_t dim, const Tensor& indices, const Tensor& self, bool keepdim) {
-  std::cout << "HDHDHDH" << std::endl;
-  auto sizes = self.sizes();
-  if (!keepdim && sizes.size() > 0) {
+Tensor& NestedTensor_scatter__src(
+    Tensor& self,
+    int64_t dim,
+    const Tensor& index,
+    const Tensor& source) {
+  int64_t nested_dim = get_nested_dim(self);
+  TORCH_CHECK(
+      dim >= nested_dim,
+      "scatter_ only supported for tensor dimensions, but got dimension ",
+      dim,
+      " instead.");
+  apply(
+      [dim, nested_dim](at::Tensor& self, at::Tensor index, at::Tensor source) {
+        return self.scatter_(dim - nested_dim, index, source);
+      },
+      get_nested_tensor_structure(self),
+      get_nested_tensor_structure(index),
+      get_nested_tensor_structure(source));
+  return self;
+}
+
+Tensor NestedTensor_value_selecting_reduction_backward(
+    const Tensor& grad,
+    int64_t dim,
+    const Tensor& indices,
+    const Tensor& self,
+    bool keepdim) {
+  if (!keepdim && self.dim() > 0) {
     auto grad_ = grad.unsqueeze(dim);
     auto indices_ = indices.unsqueeze(dim);
-    return at::zeros(sizes, grad_.options()).scatter_(dim, indices_, grad_);
+    return at::zeros_like(self, grad_.options()).scatter_(dim, indices_, grad_);
   }
-  return at::zeros(sizes, grad.options()).scatter_(dim, indices, grad);
+  return at::zeros_like(self, grad.options()).scatter_(dim, indices, grad);
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
@@ -401,6 +429,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "mean_backward", NestedTensor_mean_backward);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
+  nt_impl(m, "scatter_.src", NestedTensor_scatter__src);
 }
 
 TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
@@ -408,7 +437,10 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "sum_backward", NestedTensor_sum_backward);
   nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
   nt_impl(m, "mean_backward", NestedTensor_mean_backward);
-  nt_impl(m, "value_selecting_reduction_backward", NestedTensor_value_selecting_reduction_backward);
+  nt_impl(
+      m,
+      "value_selecting_reduction_backward",
+      NestedTensor_value_selecting_reduction_backward);
 }
 
 } // namespace at
