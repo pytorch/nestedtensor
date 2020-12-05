@@ -375,6 +375,17 @@ Tensor NestedTensor_mean_backward(
   return grad;
 }
 
+Tensor NestedTensor_value_selecting_reduction_backward(const Tensor& grad, int64_t dim, const Tensor& indices, const Tensor& self, bool keepdim) {
+  std::cout << "HDHDHDH" << std::endl;
+  auto sizes = self.sizes();
+  if (!keepdim && sizes.size() > 0) {
+    auto grad_ = grad.unsqueeze(dim);
+    auto indices_ = indices.unsqueeze(dim);
+    return at::zeros(sizes, grad_.options()).scatter_(dim, indices_, grad_);
+  }
+  return at::zeros(sizes, grad.options()).scatter_(dim, indices, grad);
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
@@ -397,6 +408,7 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "sum_backward", NestedTensor_sum_backward);
   nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
   nt_impl(m, "mean_backward", NestedTensor_mean_backward);
+  nt_impl(m, "value_selecting_reduction_backward", NestedTensor_value_selecting_reduction_backward);
 }
 
 } // namespace at
