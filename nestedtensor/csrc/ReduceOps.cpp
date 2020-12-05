@@ -338,6 +338,27 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
+int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
+  int64_t size = 1;
+  if (sizes.size() == 0) {
+    return 1;
+  }
+  for (auto d : dim) {
+    d = at::maybe_wrap_dim(d, sizes.size());
+    size *= sizes[d];
+  }
+  return size;
+}
+
+// This is just numel
+int64_t _safe_size(const Tensor& self, IntArrayRef dim) {
+  if (is_nested_tensor_impl(self)) {
+    TORCH_CHECK(false, "_safe_size not implemented for NestedTensor.");
+    return 0;
+  }
+  return _safe_size(self.sizes(), dim);
+}
+
 Tensor NestedTensor_var_backward_dim(
     const Tensor& grad_,
     const Tensor& self,
@@ -348,8 +369,11 @@ Tensor NestedTensor_var_backward_dim(
   if (self.dim() == 0) {
     return at::var_backward(grad, self, unbiased);
   }
-  TORCH_CHECK(false, "var.dim gradient not implemented yet.");
-  return grad_;
+  if (!keepdim && self.dim() > 1) {
+    grad = at::unsqueeze_multiple(grad, dim, self.dim());
+  }
+  return (2.0 / (_safe_size(self, dim) - unbiased)) * grad *
+      (self - self.mean(dim, true));
 }
 
 Tensor NestedTensor_sum_backward(
