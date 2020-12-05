@@ -30,13 +30,13 @@ def _flatten_nt(nt):
 
 class TestReduce(TestCase):
 
-    def _test_reduce_dim(self, fn, associative=True, test_keep_dim=True):
+    def _test_reduce_dim(self, fn, associative=True, test_keep_dim=True, test_multi_dim=True):
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
         t2 = torch.arange(9).float().reshape(3, 3)
         ts = [[t0, t1], [t2, t1]]
         nt = ntnt(ts)
-        if associative:
+        if associative and test_multi_dim:
             t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0)
             t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0)
             t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0)
@@ -124,6 +124,13 @@ class TestReduce(TestCase):
 
     def test_sum_dim(self):
         self._test_reduce_dim(torch.sum, True)
+
+    def test_max_all(self):
+        self._test_allreduce(lambda x: x.max())
+
+    def test_max_dim(self):
+        self._test_reduce_dim(lambda x, dim, keepdim=False: x.max(
+            dim, keepdim)[0], True, test_multi_dim=False)
 
     def test_mean_all(self):
         self._test_allreduce(lambda x: x.mean())
