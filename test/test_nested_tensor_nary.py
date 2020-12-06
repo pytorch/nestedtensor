@@ -125,6 +125,23 @@ def _gen_test_binary(func, no_grad):
         s = utils.gen_float_tensor(5, (1,)) * 0 + 5
         torch_func = getattr(torch, func)
 
+        # Scalar smoke tests
+        if func != "atan2":
+            res = getattr(a1, func)(3.0)
+            # pow is missing conj for backward
+            if func in ["pow"]:
+                self.assertRaises(RuntimeError, lambda: res.sum().backward())
+            else:
+                res.sum().backward()
+            # remainder can't take a float as a first argument
+            if func not in ["remainder"]:
+                res = torch_func(3.0, a1)
+                if func in ["pow"]:
+                    self.assertRaises(RuntimeError, lambda: res.sum().backward())
+                else:
+                    res.sum().backward()
+                print(res)
+
         a1 = ntnt([a, b])
         if no_grad:
             a2 = ntnt_nograd([b, c])
