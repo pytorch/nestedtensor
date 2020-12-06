@@ -63,15 +63,16 @@ class ConfusionMatrix(object):
 class TestIntegration(TestCase):
     def test_resnet18(self):
         EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 10, 10) for _ in range(3)]
+        nt0 = ntnt(EXAMPLE_IMAGE_TENSORS)
         model = torchvision.models.resnet.resnet18(pretrained=True).eval()
-        result_model_nt = model(nestedtensor.nested_tensor(
-            EXAMPLE_IMAGE_TENSORS)).unbind()
+        result_model_nt = model(nt0)
         result_model = model(torch.stack(EXAMPLE_IMAGE_TENSORS)).unbind()
-        for t0, t1 in zip(result_model_nt, result_model):
+        for t0, t1 in zip(result_model_nt.unbind(), result_model):
             self.assertEqual(t0, t1)
 
         # non-regular shape smoke test
-        EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 100 * i, 100) for i in range(1, 4)]
+        EXAMPLE_IMAGE_TENSORS = [torch.randn(
+            3, 100 * i, 100) for i in range(1, 4)]
         model(nestedtensor.nested_tensor(EXAMPLE_IMAGE_TENSORS))
 
     def test_segmentation_pretrained_test_only(self):

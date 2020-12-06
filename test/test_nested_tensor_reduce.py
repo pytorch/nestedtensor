@@ -148,6 +148,25 @@ class TestReduce(TestCase):
     def test_var_dim(self):
         # TODO: Needs keep_dim and multi_dim test
         def _test(unbiased, keepdim):
+
+            def _test_tensor_dim(tensor_dim):
+                t0 = torch.randn(3, 3, requires_grad=True)
+                t1 = torch.randn(2, 3, requires_grad=True)
+                ts = [t0, t1]
+                nt = ntnt(ts)
+                res = torch.var(nt, tensor_dim, unbiased, keepdim)
+                t0_res = torch.var(t0, tensor_dim - 1, unbiased, keepdim)
+                t1_res = torch.var(t1, tensor_dim - 1, unbiased, keepdim)
+                self.assertEqual(
+                    ntnt([t0_res, t1_res]), res)
+                res.sum().backward()
+                t0_res.sum().backward()
+                t1_res.sum().backward()
+                self.assertEqual(nt.grad[0], t0.grad)
+                self.assertEqual(nt.grad[1], t1.grad)
+            _test_tensor_dim(1)
+            _test_tensor_dim(2)
+
             t0 = torch.arange(9).float().reshape(3, 3)
             t1 = torch.arange(6).float().reshape(2, 3)
             t2 = (torch.arange(9).float().reshape(3, 3) - 9).pow(2)
@@ -155,18 +174,6 @@ class TestReduce(TestCase):
             t1 = torch.randn(2, 3)
             t2 = torch.randn(3, 3)
             t3 = torch.randn(2, 3)
-
-            ts = [t0, t1]
-            nt = ntnt(ts)
-            res = torch.var(nt, 1, unbiased, keepdim)
-            self.assertEqual(
-                ntnt([torch.var(t0, 0, unbiased, keepdim), torch.var(t1, 0, unbiased, keepdim)]), res)
-            res.sum().backward()
-
-            res = torch.var(nt, 2, unbiased, keepdim)
-            self.assertEqual(
-                ntnt([torch.var(t0, 1, unbiased, keepdim), torch.var(t1, 1, unbiased, keepdim)]), res)
-            res.sum().backward()
 
             ts = [t0, t2]
             nt = ntnt(ts)

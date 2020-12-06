@@ -112,7 +112,7 @@ class TestAutogradFunctional(TestCase):
                 self.assertEqual(nt.grad[1], inputs.grad[1])
             else:
                 self.assertRaisesRegex(
-                    RuntimeError, "var.dim gradient not implemented yet.", lambda: nt_res.sum().backward())
+                    RuntimeError, "mean_backward not implemented yet.", lambda: nt_res.sum().backward())
 
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
                                            momentum=0.1, affine=True, track_running_stats=True), False)
