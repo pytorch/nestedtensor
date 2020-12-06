@@ -274,6 +274,10 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "logical_and_", NestedTensor_binary_<at::native::logical_and_>);
   nt_impl(m, "logical_and.out", NestedTensor_binary_out<at::logical_and_out>);
 
+  nt_impl(m, "logical_or", NestedTensor_binary<at::logical_or>);
+  nt_impl(m, "logical_or_", NestedTensor_binary_<at::native::logical_or_>);
+  nt_impl(m, "logical_or.out", NestedTensor_binary_out<at::logical_or_out>);
+
   nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
   nt_impl(m, "pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
 }
