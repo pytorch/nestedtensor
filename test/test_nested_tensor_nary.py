@@ -127,6 +127,7 @@ def _gen_test_binary(func, no_grad):
 
         # Scalar smoke tests
         if func != "atan2":
+            a1 = ntnt([a, b])
             res = getattr(a1, func)(3.0)
             # pow is missing conj for backward
             if func in ["pow"]:

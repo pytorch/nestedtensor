@@ -246,9 +246,6 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   }
   std::tie(m2_tensor, mean_tensor, numel) =
       _make_m2(tensors, IntArrayRef(tensordims));
-  // std::cout << "0 m2_tensor: " << std::endl << m2_tensor << std::endl;
-  // std::cout << "0 mean_tensor: " << std::endl << mean_tensor << std::endl;
-  // std::cout << "0 numel: " << std::endl << numel << std::endl;
   std::tie(m2_tensor, mean_tensor, numel) =
       _merge_m2(m2_tensor, mean_tensor, numel);
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
@@ -306,9 +303,9 @@ Tensor NestedTensor_var_dim(
     bool unbiased,
     bool keepdims) {
   auto new_nested_size = var_dim_nested_size(self, dims, keepdims);
-  auto splitdims = make_split_dims(self, dims);
-  auto tensordims = std::get<0>(splitdims);
-  auto nesteddims = std::get<1>(splitdims);
+  std::vector<int64_t> tensordims;
+  std::vector<int64_t> nesteddims;
+  std::tie(tensordims, nesteddims) = make_split_dims(self, dims);
   if (tensordims.size() == 0) {
     return wrap_buffer(
         at::var(
@@ -366,22 +363,28 @@ int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
 // This is the number of elements that are involved in the reduction to
 // get the denominator of the derivative right. It's the number of elements
 // of the input minus the number of elements of the result after the reduction.
-int64_t _safe_size(const Tensor& self, IntArrayRef dim) {
+// NOTE: The number of elements involved in the reduction can vary for
+// NestedTensors per constituent because their size is not necessarily uniform.
+// Hence the generalization needs to return a SizeNode.
+Tensor _safe_size(const Tensor& self, IntArrayRef dim) {
   if (is_nested_tensor_impl(self)) {
-    auto new_nested_size = var_dim_nested_size(self, dim, true);
-    auto fn = [](c10::List<int64_t> sizes_, int64_t acc) {
-      auto sizes = sizes_.vec();
-      int64_t size = 1;
-      for (auto s : sizes) {
-        size *= s;
-      }
-      return acc + size;
-    };
-    return self.numel() -
-        reduce<decltype(fn), int64_t, c10::List<int64_t>>(
-               new_nested_size, fn, 0);
+    std::vector<int64_t> tensordims;
+    std::vector<int64_t> nesteddims;
+    std::tie(tensordims, nesteddims) = make_split_dims(self, dim);
+    auto sizes_nt = map_nested_tensor(
+        [&tensordims](at::Tensor self) {
+          auto sizes = self.sizes();
+          int64_t size =
+              _safe_size(IntArrayRef(sizes), IntArrayRef(tensordims));
+          return torch::tensor({size});
+        },
+        self);
+    if (nesteddims.size() > 0) {
+      return at::sum(sizes_nt, IntArrayRef(nesteddims));
+    }
+    return sizes_nt;
   }
-  return _safe_size(self.sizes(), dim);
+  return torch::tensor({_safe_size(self.sizes(), dim)});
 }
 
 Tensor NestedTensor_var_backward_dim(
@@ -397,7 +400,11 @@ Tensor NestedTensor_var_backward_dim(
   if (!keepdim && self.dim() > 1) {
     grad = at::unsqueeze_multiple(grad, dim, self.dim());
   }
-  return (2.0 / (_safe_size(self, dim) - unbiased)) * grad *
+  Tensor safe_size = _safe_size(self, dim);
+  if (unbiased) {
+    safe_size = safe_size - torch::tensor({1});
+  }
+  return (torch::tensor({2.0}) / (safe_size)) * grad *
       (self - self.mean(dim, true));
 }
 

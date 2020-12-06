@@ -183,6 +183,9 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
                 n.degree(),
                 ".");
           }
+          if (n.degree() > degree) {
+            degree = n.degree();
+          }
           return nullptr;
         });
     if (all_leaf) {
@@ -386,7 +389,9 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
             degree = n.degree();
           }
           if (degree > 0 && n.degree() > 0) {
-            TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
+            TORCH_CHECK(
+                degree == n.degree(),
+                "internal error: apply: NestedNodes don't broadcast (restricted semantics).");
           }
           return nullptr;
         });

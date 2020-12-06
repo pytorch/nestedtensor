@@ -146,12 +146,14 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
     def test_var_dim(self):
-        # TODO: Needs keep_dim and multi_dim test
         def _test(unbiased, keepdim):
 
             def _test_tensor_dim(tensor_dim):
                 t0 = torch.randn(3, 3, requires_grad=True)
                 t1 = torch.randn(2, 3, requires_grad=True)
+                # t0 = torch.arange(9).float().reshape(3, 3)
+                # t0 = torch.arange(6).float().reshape(2, 3).requires_grad_()
+                # t1 = torch.arange(6).float().reshape(2, 3).requires_grad_()
                 ts = [t0, t1]
                 nt = ntnt(ts)
                 res = torch.var(nt, tensor_dim, unbiased, keepdim)
@@ -159,21 +161,33 @@ class TestReduce(TestCase):
                 t1_res = torch.var(t1, tensor_dim - 1, unbiased, keepdim)
                 self.assertEqual(
                     ntnt([t0_res, t1_res]), res)
+                # print("--")
+                # print("tensor_dim: ", tensor_dim)
+                # print(nt)
+                # print(torch.stack(ts).var(tensor_dim, unbiased, keepdim))
+                # print(res)
+                # print('nt.numel()')
+                # print(nt.numel())
+                # print('res.numel()')
+                # print(res.numel())
+                # print("A")
                 res.sum().backward()
+                # print("B")
                 t0_res.sum().backward()
                 t1_res.sum().backward()
+                # print(nt.grad)
+                # print(t0.grad)
+                # print(t1.grad)
                 self.assertEqual(nt.grad[0], t0.grad)
                 self.assertEqual(nt.grad[1], t1.grad)
-            _test_tensor_dim(1)
-            _test_tensor_dim(2)
+            # _test_tensor_dim(1)
+            # _test_tensor_dim(2)
 
-            t0 = torch.arange(9).float().reshape(3, 3)
-            t1 = torch.arange(6).float().reshape(2, 3)
-            t2 = (torch.arange(9).float().reshape(3, 3) - 9).pow(2)
-            t0 = torch.randn(3, 3)
-            t1 = torch.randn(2, 3)
-            t2 = torch.randn(3, 3)
-            t3 = torch.randn(2, 3)
+            t0 = torch.arange(9).float().reshape(3, 3).requires_grad_()
+            # t1 = torch.arange(6).float().reshape(2, 3)
+            t2 = (torch.arange(9).float().reshape(3, 3) - 9).pow(2).requires_grad_()
+            # t0 = torch.randn(3, 3, requires_grad=True)
+            # t2 = torch.randn(3, 3, requires_grad=True)
 
             ts = [t0, t2]
             nt = ntnt(ts)
@@ -183,6 +197,15 @@ class TestReduce(TestCase):
             else:
                 self.assertEqual(torch.stack(ts).var(0, unbiased), res)
             res.sum().backward()
+            t_res = torch.stack(ts).var(0, unbiased)
+            t_res.sum().backward()
+            self.assertEqual(nt.grad[0], t0.grad)
+            self.assertEqual(nt.grad[1], t2.grad)
+
+            t0 = torch.randn(3, 3, requires_grad=True)
+            t1 = torch.randn(2, 3, requires_grad=True)
+            t2 = torch.randn(3, 3, requires_grad=True)
+            t3 = torch.randn(2, 3, requires_grad=True)
 
             ts = [t0, t2]
             nt = ntnt(ts)
