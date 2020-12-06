@@ -162,10 +162,6 @@ Tensor NestedTensor_binary(
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  std::cout << "is_nested_tensor_impl(self): " << is_nested_tensor_impl(self) << std::endl;
-  std::cout << "is_nested_tensor_impl(other): " << is_nested_tensor_impl(other) << std::endl;
-  std::cout << "get_nested_tensor_impl(self)->nested_dim(): " << get_nested_tensor_impl(self)->nested_dim() << std::endl;
-  std::cout << "get_nested_tensor_impl(other)->nested_dim(): " << get_nested_tensor_impl(other)->nested_dim() << std::endl;
   return map_nested_tensor(
       [&scalar](Tensor self, Tensor other) {
         return func(self, other, scalar);

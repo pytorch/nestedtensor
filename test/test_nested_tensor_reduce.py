@@ -146,6 +146,7 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
     def test_var_dim(self):
+        # TODO: Needs keep_dim and multi_dim test
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
         t2 = (torch.arange(9).float().reshape(3, 3) - 9).pow(2)
@@ -170,9 +171,7 @@ class TestReduce(TestCase):
         nt = ntnt(ts)
         res = torch.var(nt, 0)
         self.assertEqual(torch.stack(ts).var(0), res)
-        print(res)
         res.sum().backward()
-        import sys; sys.exit(1)
 
         res = torch.var(nt, 1)
         self.assertEqual(

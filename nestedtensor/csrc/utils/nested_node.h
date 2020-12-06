@@ -173,7 +173,8 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
           if (degree == 0 && n.degree() > 0) {
             degree = n.degree();
           }
-          if (degree > 0 && n.degree() > 0) {
+          if ((degree > 0 && n.degree() > 0) &&
+              !(degree == 1 || n.degree() == 1)) {
             TORCH_CHECK(
                 degree == n.degree(),
                 "internal error: NestedNodes don't broadcast. Got degree: ",
