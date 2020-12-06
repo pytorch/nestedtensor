@@ -269,12 +269,14 @@ SizeNode var_dim_nested_size(
   auto nested_size = get_nested_size(self);
   int64_t nested_dim = get_nested_tensor_impl(self)->nested_dim();
   auto new_nested_size = map(
-      [&tensordims](c10::List<int64_t> sizes) {
+      [&tensordims, &keepdims](c10::List<int64_t> sizes) {
         c10::List<int64_t> new_sizes;
         for (size_t i = 0; i < sizes.size(); i++) {
           if (std::find(tensordims.begin(), tensordims.end(), i) ==
               tensordims.end()) {
             new_sizes.push_back(sizes[i]);
+          } else if (keepdims) {
+            new_sizes.push_back(1);
           }
         }
         return new_sizes;
@@ -363,7 +365,7 @@ int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
 
 // This is the number of elements that are involved in the reduction to
 // get the denominator of the derivative right. It's the number of elements
-// of the input divided by the number of elements of the result.
+// of the input minus the number of elements of the result after the reduction.
 int64_t _safe_size(const Tensor& self, IntArrayRef dim) {
   if (is_nested_tensor_impl(self)) {
     auto new_nested_size = var_dim_nested_size(self, dim, true);
@@ -375,20 +377,11 @@ int64_t _safe_size(const Tensor& self, IntArrayRef dim) {
       }
       return acc + size;
     };
-    return self.numel() /
+    return self.numel() -
         reduce<decltype(fn), int64_t, c10::List<int64_t>>(
                new_nested_size, fn, 0);
   }
-  auto sizes = self.sizes();
-  int64_t size = 1;
-  if (sizes.size() == 0) {
-    return 1;
-  }
-  for (auto d : dim) {
-    d = at::maybe_wrap_dim(d, sizes.size());
-    size *= sizes[d];
-  }
-  return size;
+  return _safe_size(self.sizes(), dim);
 }
 
 Tensor NestedTensor_var_backward_dim(

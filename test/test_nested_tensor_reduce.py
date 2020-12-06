@@ -147,66 +147,84 @@ class TestReduce(TestCase):
 
     def test_var_dim(self):
         # TODO: Needs keep_dim and multi_dim test
-        t0 = torch.arange(9).float().reshape(3, 3)
-        t1 = torch.arange(6).float().reshape(2, 3)
-        t2 = (torch.arange(9).float().reshape(3, 3) - 9).pow(2)
-        t0 = torch.randn(3, 3)
-        t1 = torch.randn(2, 3)
-        t2 = torch.randn(3, 3)
-        t3 = torch.randn(2, 3)
+        def _test(unbiased, keepdim):
+            t0 = torch.arange(9).float().reshape(3, 3)
+            t1 = torch.arange(6).float().reshape(2, 3)
+            t2 = (torch.arange(9).float().reshape(3, 3) - 9).pow(2)
+            t0 = torch.randn(3, 3)
+            t1 = torch.randn(2, 3)
+            t2 = torch.randn(3, 3)
+            t3 = torch.randn(2, 3)
 
-        # ts = [t0, t1]
-        # nt = ntnt(ts)
-        # res = torch.var(nt, 1)
-        # self.assertEqual(
-        #     ntnt([torch.var(t0, 0), torch.var(t1, 0)]), res)
-        # res.sum().backward()
+            ts = [t0, t1]
+            nt = ntnt(ts)
+            res = torch.var(nt, 1, unbiased, keepdim)
+            self.assertEqual(
+                ntnt([torch.var(t0, 0, unbiased, keepdim), torch.var(t1, 0, unbiased, keepdim)]), res)
+            res.sum().backward()
 
-        # res = torch.var(nt, 2)
-        # self.assertEqual(
-        #     ntnt([torch.var(t0, 1), torch.var(t1, 1)]), res)
-        # res.sum().backward()
+            res = torch.var(nt, 2, unbiased, keepdim)
+            self.assertEqual(
+                ntnt([torch.var(t0, 1, unbiased, keepdim), torch.var(t1, 1, unbiased, keepdim)]), res)
+            res.sum().backward()
 
-        ts = [t0, t2]
-        nt = ntnt(ts)
-        res = torch.var(nt, 0)
-        self.assertEqual(torch.stack(ts).var(0), res)
-        res.sum().backward()
+            ts = [t0, t2]
+            nt = ntnt(ts)
+            res = torch.var(nt, 0, unbiased, keepdim)
+            if keepdim:
+                self.assertEqual(ntnt([torch.stack(ts).var(0, unbiased)]), res)
+            else:
+                self.assertEqual(torch.stack(ts).var(0, unbiased), res)
+            res.sum().backward()
 
-        res = torch.var(nt, 1)
-        self.assertEqual(
-            ntnt([torch.var(t0, 0), torch.var(t2, 0)]), res)
-        res.sum().backward()
+            ts = [t0, t2]
+            nt = ntnt(ts)
+            res = torch.var(nt, (0, 1), unbiased, keepdim)
+            if keepdim:
+                self.assertEqual(ntnt([torch.stack(ts).var((0, 1), unbiased, keepdim)[0]]), res)
+            else:
+                self.assertEqual(torch.stack(ts).var((0, 1), unbiased, keepdim), res)
+            res.sum().backward()
 
-        res = torch.var(nt, 2)
-        self.assertEqual(
-            ntnt([torch.var(t0, 1), torch.var(t2, 1)]), res)
-        res.sum().backward()
+            res = torch.var(nt, 1, unbiased, keepdim)
+            self.assertEqual(
+                ntnt([torch.var(t0, 0, unbiased, keepdim), torch.var(t2, 0, unbiased, keepdim)]), res)
+            res.sum().backward()
 
-        self.assertEqual(torch.stack(ts).var(
-            (0, 1), unbiased=False), torch.var(nt, (0, 1), unbiased=False))
+            res = torch.var(nt, 2, unbiased, keepdim)
+            self.assertEqual(
+                ntnt([torch.var(t0, 1, unbiased, keepdim), torch.var(t2, 1, unbiased, keepdim)]), res)
+            res.sum().backward()
 
-        nt = ntnt([t0, t1])
-        self.assertRaisesRegex(
-            RuntimeError, "Can only reduce across nested dimensions of Tensor compliant shapes.", lambda: torch.var(nt, 0))
+            self.assertEqual(torch.stack(ts).var(
+                (0, 1), unbiased=False), torch.var(nt, (0, 1), unbiased=False))
 
-        nt = ntnt([[t0, t1], [t2, t3]])
-        self.assertRaisesRegex(
-            RuntimeError, "Can only reduce across nested dimension 0.", lambda: torch.var(nt, 1))
-        self.assertRaisesRegex(
-            RuntimeError, "Can only reduce across nested dimensions if given nested tensor is of nested dimension 1.", lambda: torch.var(nt, 0))
-        t0_var0 = torch.var(t0, 0)
-        t1_var0 = torch.var(t1, 0)
-        t2_var0 = torch.var(t2, 0)
-        t3_var0 = torch.var(t3, 0)
-        self.assertEqual(
-            ntnt([[t0_var0, t1_var0], [t2_var0, t3_var0]]), torch.var(nt, 2))
-        t0_var1 = torch.var(t0, 1)
-        t1_var1 = torch.var(t1, 1)
-        t2_var1 = torch.var(t2, 1)
-        t3_var1 = torch.var(t3, 1)
-        self.assertEqual(
-            ntnt([[t0_var1, t1_var1], [t2_var1, t3_var1]]), torch.var(nt, 3))
+            nt = ntnt([t0, t1])
+            self.assertRaisesRegex(
+                RuntimeError, "Can only reduce across nested dimensions of Tensor compliant shapes.", lambda: torch.var(nt, 0))
+
+            nt = ntnt([[t0, t1], [t2, t3]])
+            self.assertRaisesRegex(
+                RuntimeError, "Can only reduce across nested dimension 0.", lambda: torch.var(nt, 1, unbiased, keepdim))
+            self.assertRaisesRegex(
+                RuntimeError, "Can only reduce across nested dimensions if given nested tensor is of nested dimension 1.", lambda: torch.var(nt, 0, unbiased, keepdim))
+            t0_var0 = torch.var(t0, 0, unbiased, keepdim)
+            t1_var0 = torch.var(t1, 0, unbiased, keepdim)
+            t2_var0 = torch.var(t2, 0, unbiased, keepdim)
+            t3_var0 = torch.var(t3, 0, unbiased, keepdim)
+            self.assertEqual(
+                ntnt([[t0_var0, t1_var0], [t2_var0, t3_var0]]), torch.var(nt, 2, unbiased, keepdim))
+            t0_var1 = torch.var(t0, 1, unbiased, keepdim)
+            t1_var1 = torch.var(t1, 1, unbiased, keepdim)
+            t2_var1 = torch.var(t2, 1, unbiased, keepdim)
+            t3_var1 = torch.var(t3, 1, unbiased, keepdim)
+            self.assertEqual(
+                ntnt([[t0_var1, t1_var1], [t2_var1, t3_var1]]), torch.var(nt, 3, unbiased, keepdim))
+
+        _test(False, False)
+        _test(True, False)
+        _test(False, True)
+        _test(True, True)
 
     def test_sum_to_size(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
