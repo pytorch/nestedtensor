@@ -361,17 +361,23 @@ int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
   return size;
 }
 
+// This is the number of elements that are involved in the reduction to
+// get the denominator of the derivative right. It's the number of elements
+// of the input divided by the number of elements of the result.
 int64_t _safe_size(const Tensor& self, IntArrayRef dim) {
   if (is_nested_tensor_impl(self)) {
     auto new_nested_size = var_dim_nested_size(self, dim, true);
-    auto splitdims = make_split_dims(self, dim);
-    auto tensordims = std::get<0>(splitdims);
-    auto fn = [&tensordims](c10::List<int64_t> sizes_, int64_t acc) {
+    auto fn = [](c10::List<int64_t> sizes_, int64_t acc) {
       auto sizes = sizes_.vec();
-      return acc + _safe_size(IntArrayRef(sizes), tensordims);
+      int64_t size = 1;
+      for (auto s : sizes) {
+        size *= s;
+      }
+      return acc + size;
     };
-    return reduce<decltype(fn), int64_t, c10::List<int64_t>>(
-        new_nested_size, fn, 0);
+    return self.numel() /
+        reduce<decltype(fn), int64_t, c10::List<int64_t>>(
+               new_nested_size, fn, 0);
   }
   auto sizes = self.sizes();
   int64_t size = 1;

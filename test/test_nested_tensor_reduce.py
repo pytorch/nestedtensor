@@ -154,36 +154,35 @@ class TestReduce(TestCase):
         t2 = torch.randn(3, 3)
         t3 = torch.randn(2, 3)
 
-        ts = [t0, t1]
-        nt = ntnt(ts)
-        res = torch.var(nt, 1)
-        self.assertEqual(
-            ntnt([torch.var(t0, 0), torch.var(t1, 0)]), res)
-        res.sum().backward()
-        # self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        # ts = [t0, t1]
+        # nt = ntnt(ts)
+        # res = torch.var(nt, 1)
+        # self.assertEqual(
+        #     ntnt([torch.var(t0, 0), torch.var(t1, 0)]), res)
+        # res.sum().backward()
 
-        res = torch.var(nt, 2)
-        self.assertEqual(
-            ntnt([torch.var(t0, 1), torch.var(t1, 1)]), res)
-        print("HEEE")
-        res.sum().backward()
-        import sys; sys.exit(1)
+        # res = torch.var(nt, 2)
+        # self.assertEqual(
+        #     ntnt([torch.var(t0, 1), torch.var(t1, 1)]), res)
+        # res.sum().backward()
 
         ts = [t0, t2]
         nt = ntnt(ts)
         res = torch.var(nt, 0)
         self.assertEqual(torch.stack(ts).var(0), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        print(res)
+        res.sum().backward()
+        import sys; sys.exit(1)
 
         res = torch.var(nt, 1)
         self.assertEqual(
             ntnt([torch.var(t0, 0), torch.var(t2, 0)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
 
         res = torch.var(nt, 2)
         self.assertEqual(
             ntnt([torch.var(t0, 1), torch.var(t2, 1)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
 
         self.assertEqual(torch.stack(ts).var(
             (0, 1), unbiased=False), torch.var(nt, (0, 1), unbiased=False))

@@ -174,7 +174,13 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
             degree = n.degree();
           }
           if (degree > 0 && n.degree() > 0) {
-            TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
+            TORCH_CHECK(
+                degree == n.degree(),
+                "internal error: NestedNodes don't broadcast. Got degree: ",
+                degree,
+                " and n.degree(): ",
+                n.degree(),
+                ".");
           }
           return nullptr;
         });
