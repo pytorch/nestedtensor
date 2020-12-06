@@ -365,7 +365,7 @@ int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
 // of the input minus the number of elements of the result after the reduction.
 // NOTE: The number of elements involved in the reduction can vary for
 // NestedTensors per constituent because their size is not necessarily uniform.
-// Hence the generalization needs to return a SizeNode.
+// Hence the generalization needs to return a NestedTensor.
 Tensor _safe_size(const Tensor& self, IntArrayRef dim) {
   if (is_nested_tensor_impl(self)) {
     std::vector<int64_t> tensordims;
