@@ -159,12 +159,15 @@ class TestReduce(TestCase):
         res = torch.var(nt, 1)
         self.assertEqual(
             ntnt([torch.var(t0, 0), torch.var(t1, 0)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        res.sum().backward()
+        # self.assertRaises(RuntimeError, lambda: res.sum().backward())
 
         res = torch.var(nt, 2)
         self.assertEqual(
             ntnt([torch.var(t0, 1), torch.var(t1, 1)]), res)
-        self.assertRaises(RuntimeError, lambda: res.sum().backward())
+        print("HEEE")
+        res.sum().backward()
+        import sys; sys.exit(1)
 
         ts = [t0, t2]
         nt = ntnt(ts)

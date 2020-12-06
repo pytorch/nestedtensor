@@ -258,10 +258,9 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   return (m2_tensor / numel).reshape({});
 }
 
-Tensor NestedTensor_var_dim(
+SizeNode var_dim_nested_size(
     const Tensor& self,
     IntArrayRef dims,
-    bool unbiased,
     bool keepdims) {
   std::vector<int64_t> tensordims;
   std::vector<int64_t> nesteddims;
@@ -296,6 +295,18 @@ Tensor NestedTensor_var_dim(
     }
     new_nested_size = squeeze(new_nested_size, 0, keepdims);
   }
+  return new_nested_size;
+}
+
+Tensor NestedTensor_var_dim(
+    const Tensor& self,
+    IntArrayRef dims,
+    bool unbiased,
+    bool keepdims) {
+  auto new_nested_size = var_dim_nested_size(self, dims, keepdims);
+  auto splitdims = make_split_dims(self, dims);
+  auto tensordims = std::get<0>(splitdims);
+  auto nesteddims = std::get<1>(splitdims);
   if (tensordims.size() == 0) {
     return wrap_buffer(
         at::var(
@@ -338,14 +349,57 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
+int64_t _safe_size(IntArrayRef sizes, IntArrayRef dim) {
+  int64_t size = 1;
+  if (sizes.size() == 0) {
+    return 1;
+  }
+  for (auto d : dim) {
+    d = at::maybe_wrap_dim(d, sizes.size());
+    size *= sizes[d];
+  }
+  return size;
+}
+
+int64_t _safe_size(const Tensor& self, IntArrayRef dim) {
+  if (is_nested_tensor_impl(self)) {
+    auto new_nested_size = var_dim_nested_size(self, dim, true);
+    auto splitdims = make_split_dims(self, dim);
+    auto tensordims = std::get<0>(splitdims);
+    auto fn = [&tensordims](c10::List<int64_t> sizes_, int64_t acc) {
+      auto sizes = sizes_.vec();
+      return acc + _safe_size(IntArrayRef(sizes), tensordims);
+    };
+    return reduce<decltype(fn), int64_t, c10::List<int64_t>>(
+        new_nested_size, fn, 0);
+  }
+  auto sizes = self.sizes();
+  int64_t size = 1;
+  if (sizes.size() == 0) {
+    return 1;
+  }
+  for (auto d : dim) {
+    d = at::maybe_wrap_dim(d, sizes.size());
+    size *= sizes[d];
+  }
+  return size;
+}
+
 Tensor NestedTensor_var_backward_dim(
     const Tensor& grad_,
     const Tensor& self,
     IntArrayRef dim,
     bool unbiased,
     bool keepdim) {
-  TORCH_CHECK(false, "var.dim gradient not implemented yet.");
-  return grad_;
+  at::Tensor grad = grad_;
+  if (self.dim() == 0) {
+    return at::var_backward(grad, self, unbiased);
+  }
+  if (!keepdim && self.dim() > 1) {
+    grad = at::unsqueeze_multiple(grad, dim, self.dim());
+  }
+  return (2.0 / (_safe_size(self, dim) - unbiased)) * grad *
+      (self - self.mean(dim, true));
 }
 
 Tensor NestedTensor_sum_backward(
