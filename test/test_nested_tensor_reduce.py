@@ -258,7 +258,9 @@ class TestReduce(TestCase):
         print('b')
         print(b)
         print('nestedtensor.nested.nested.sum_to_size(a, b)')
-        print(nestedtensor.nested.nested.sum_to_size(a, b))
+        res = nestedtensor.nested.nested.sum_to_size(a, b)
+        self.assertEqual(res[0], a[0][0])
+        self.assertEqual(res[1], a[1][0])
         # self.assertRaises(
         #     RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(a, b))
         # self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(
