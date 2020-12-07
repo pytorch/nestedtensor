@@ -32,26 +32,6 @@ Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
   return self;
 }
 
-Tensor& NestedTensor_sub_out(
-    Tensor& result,
-    const Tensor& self,
-    const Tensor& other,
-    Scalar alpha) {
-  TORCH_CHECK(
-      is_nested_tensor_impl(result),
-      "NT binary out variant requires NT as result argument.");
-  check_binary_shape(self, other);
-  is_nested_tensor_impl(result, self, other);
-  apply_nested_tensor(
-      [&alpha](Tensor& result, Tensor& tensor, Tensor& other) {
-        return at::sub_out(result, tensor, other, alpha);
-      },
-      result,
-      self,
-      other);
-  return result;
-}
-
 Tensor& NestedTensor_pow_out_1(
     Tensor& result,
     const Tensor& base,
@@ -225,14 +205,6 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   return self;
 }
 
-void my_sub_out(
-    Tensor& result,
-    const Tensor& self,
-    const Tensor& other,
-    Scalar alpha) {
-  at::sub_out(result, self, other, alpha);
-};
-
 #define BINARY_OP(NAME)                                                    \
   nt_impl(m, #NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
   nt_impl(m, #NAME ".Scalar", NestedTensor_binary_scalar<at::NAME>);       \
@@ -240,6 +212,7 @@ void my_sub_out(
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+  nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
   nt_impl(m, "sub_.Tensor", NestedTensor_sub_);
   nt_impl(m, "sub.out", (NestedTensor_binary_out_scalar<at::sub_out>));
 
@@ -283,7 +256,6 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "logical_or_", NestedTensor_binary_<at::native::logical_or_>);
   nt_impl(m, "logical_or.out", NestedTensor_binary_out<at::logical_or_out>);
 
-  nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
   nt_impl(m, "pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
 }
 } // namespace at
