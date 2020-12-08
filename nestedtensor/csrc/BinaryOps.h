@@ -40,9 +40,12 @@ inline std::tuple<at::Tensor, at::Tensor> _expand_other_as(const Tensor& self, c
     auto result = _expand_other_as(other, self);
     return std::make_tuple(std::get<1>(result), std::get<0>(result));
   }
+  // self is a NestedTensor, other is a Tensor
   TORCH_CHECK(
       is_nested_tensor_impl(self),
       "_expand_other_as can only be used in NT context.");
+  if (other.dim() >= self.dim()) {
+  }
   int64_t self_nested_dim = get_nested_tensor_impl(self)->nested_dim();
   if (other.dim() + self_nested_dim >= self.dim()) {
     at::Tensor other_ = other;
