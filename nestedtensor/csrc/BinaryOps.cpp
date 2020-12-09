@@ -158,9 +158,12 @@ Tensor& NestedTensor_binary_out(
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&, Scalar)>
 Tensor& NestedTensor_binary_out_scalar(
     Tensor& result,
-    const Tensor& self,
-    const Tensor& other,
+    const Tensor& self_,
+    const Tensor& other_,
     Scalar alpha) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
   TORCH_CHECK(
       is_nested_tensor_impl(result),
       "NT binary out variant requires NT as result argument.");

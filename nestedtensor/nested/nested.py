@@ -56,7 +56,8 @@ def _nn_functional_batch_norm(input, running_mean, running_var, weight=None, bia
 
 def _nn_functional_adaptive_avg_pool2d(input, output_size):
     serialized_nested_size = nestedtensor._C.serialize_nested_size(input)
-    _output_size = torch.nn.modules.utils._list_with_default(output_size, serialized_nested_size)
+    _output_size = torch.nn.modules.utils._list_with_default(
+        output_size, serialized_nested_size)
     return torch._C._nn.adaptive_avg_pool2d(input, _output_size)
 
 
@@ -168,6 +169,12 @@ def sizes_equal(tensor, shape):
 def native_is_expandable_to(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
     return _wrap_result(nestedtensor._C.native_is_expandable_to(*impl_args))
+
+
+def to_nested_tensor(tensor, dim=0):
+    impl_args, _ = _filter_impl([tensor], {})
+    return _wrap_result(
+        torch.ops.nestedtensor.to_nested_tensor(*impl_args, dim))
 
 
 class NestedTensorMeta(type):

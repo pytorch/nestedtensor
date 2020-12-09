@@ -252,8 +252,12 @@ Tensor NestedTensor_to_nested_tensor(
     c10::optional<int64_t> dim_) {
   int64_t dim = 0;
   if (dim_) {
-    dim = at::maybe_wrap_dim(*dim_, input.dim());
+    dim = *dim_;
+    dim = maybe_wrap_dim(*dim_, input.dim() + 1);
   }
+  TORCH_CHECK(
+      dim <= input.dim(),
+      "target nested dimension needs to be equal or less than to input dimension");
   // if dim < nested_dim() the NestedTensor is already nested
   // up to the given dimension.
   if (is_nested_tensor_impl(input) && dim >= get_nested_dim(input)) {
@@ -275,23 +279,6 @@ Tensor NestedTensor_to_nested_tensor(
     return wrap_tensor_node(std::move(unbound));
   }
   return input;
-}
-
-Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim_) {
-  int64_t dim = 0;
-  if (dim_) {
-    dim = at::maybe_wrap_dim(*dim_, this->dim());
-  }
-  // if dim < nested_dim() the NestedTensor is already nested
-  // up to the given dimension.
-  if (dim >= nested_dim()) {
-    TensorNode unbound = _unbind_tensors(_structure);
-    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
-      unbound = _unbind_tensors(unbound);
-    }
-    return wrap_tensor_node(std::move(unbound));
-  }
-  return wrap_tensor_node(std::move(_structure));
 }
 
 // TODO: There are unanswered questions

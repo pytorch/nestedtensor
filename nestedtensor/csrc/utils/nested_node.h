@@ -170,11 +170,11 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
     c10::guts::tuple_map(
         std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
           all_leaf = all_leaf && (n.is_leaf());
-          if (degree == 0 && n.degree() > 0) {
-            degree = n.degree();
-          }
-          if (degree > 0 && n.degree() > 0) {
+          if (degree > 1 && n.degree() > 1) {
             TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
+          }
+          if (n.degree() > degree) {
+            degree = n.degree();
           }
           return nullptr;
         });

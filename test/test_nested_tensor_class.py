@@ -11,7 +11,8 @@ import random
 import utils
 
 
-ntnt = nestedtensor.nested_tensor
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -538,7 +539,7 @@ class TestNestedTensor(TestCase):
                 []), ignore_contiguity=True)
             self.assertEqual(a.to_nested_tensor(
                 0), constructor([]), ignore_contiguity=True)
-            self.assertRaises(IndexError, lambda: a.to_nested_tensor(1))
+            self.assertEqual(a, a.to_nested_tensor(1))
             self.assertRaises(IndexError, lambda: a.to_nested_tensor(2))
 
             a = constructor([torch.tensor(1)])
@@ -590,6 +591,12 @@ class TestNestedTensor(TestCase):
                                   [list(map(lambda x: x.unbind(), t_c.unbind()))]])
             self.assertEqual(a.to_nested_tensor(3), result)
             self.assertRaises(IndexError, lambda: a.to_nested_tensor(4))
+            
+            t = torch.randn(2, 3)
+            self.assertEqual(t, nestedtensor.to_nested_tensor(t, 0))
+            self.assertEqual(ntnt_nograd(t.unbind()), nestedtensor.to_nested_tensor(t, 1))
+            self.assertEqual(ntnt_nograd([ti.unbind() for ti in t.unbind()]), nestedtensor.to_nested_tensor(t, 2))
+            self.assertRaises(IndexError, lambda: nestedtensor.to_nested_tensor(t, 3))
 
     def test_to(self):
         tensors = [torch.randn(1, 8),
