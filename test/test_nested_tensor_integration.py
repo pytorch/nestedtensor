@@ -163,19 +163,17 @@ class TestIntegration(TestCase):
         #     pretrained=True, norm_layer=NTFrozenBatchNorm2d), {'layer4': "0"}), False)
 
     def test_transformer(self):
-        EMBED_DIM = 8
+        EMBED_DIM = 16
         NHEAD = 8
 
-        src0 = torch.randn(3, EMBED_DIM)
-        src1 = torch.randn(5, EMBED_DIM)
+        src0 = torch.randn(2, EMBED_DIM)
+        src1 = torch.randn(4, EMBED_DIM)
         nt_src = ntnt([src0, src1])
         tgt0 = torch.randn(3, EMBED_DIM)
         tgt1 = torch.randn(5, EMBED_DIM)
         nt_tgt = ntnt([tgt0, tgt1])
 
-        t = torch.nn.Transformer(
-            EMBED_DIM, NHEAD, dropout=0.0)
-        # t = torch.nn.TransformerEncoder(tlayer, 6)
+        t = torch.nn.Transformer(EMBED_DIM, NHEAD, dropout=0.0)
 
         res_nt = t(nt_src, nt_tgt)
         res_0 = t(src0.unsqueeze(1), tgt0.unsqueeze(1)).squeeze(1)
