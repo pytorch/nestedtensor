@@ -169,14 +169,17 @@ class TestIntegration(TestCase):
         src0 = torch.randn(3, EMBED_DIM)
         src1 = torch.randn(5, EMBED_DIM)
         nt_src = ntnt([src0, src1])
+        tgt0 = torch.randn(3, EMBED_DIM)
+        tgt1 = torch.randn(5, EMBED_DIM)
+        nt_tgt = ntnt([tgt0, tgt1])
 
-        tlayer = torch.nn.TransformerEncoderLayer(
+        t = torch.nn.Transformer(
             EMBED_DIM, NHEAD, dropout=0.0)
-        t = torch.nn.TransformerEncoder(tlayer, 6)
+        # t = torch.nn.TransformerEncoder(tlayer, 6)
 
-        res_nt = t(nt_src)
-        res_0 = t(src0.unsqueeze(1)).squeeze(1)
-        res_1 = t(src1.unsqueeze(1)).squeeze(1)
+        res_nt = t(nt_src, nt_tgt)
+        res_0 = t(src0.unsqueeze(1), tgt0.unsqueeze(1)).squeeze(1)
+        res_1 = t(src1.unsqueeze(1), tgt1.unsqueeze(1)).squeeze(1)
         for t0, t1 in zip(res_nt.unbind(), [res_0, res_1]):
             self.assertEqual(t0, t1)
 
