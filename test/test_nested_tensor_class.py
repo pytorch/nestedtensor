@@ -657,30 +657,30 @@ class TestNestedTensor(TestCase):
 
     def test_getitem(self):
         a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
-        nt = nestedtensor.nested_tensor([[a, b], [c]])
+        nt = ntnt_nograd([[a, b], [c]])
         tmp = nt[0, :, 0]
         self.assertEqual(tmp[0], a[:, 0])
         self.assertEqual(tmp[1], b[:, 0])
-        self.assertEqual(nt[0, :, 0].contiguous(), ntnt([a[:, 0], b[:, 0]]))
-        self.assertEqual(nt[None], ntnt([[[a, b], [c]]]))
-        self.assertEqual(nt[0], ntnt([a, b]))
+        self.assertEqual(nt[0, :, 0].contiguous(), ntnt_nograd([a[:, 0], b[:, 0]]))
+        self.assertEqual(nt[None], ntnt_nograd([[[a, b], [c]]]))
+        self.assertEqual(nt[0], ntnt_nograd([a, b])) # Supports grad
         self.assertEqual(nt[:], nt)
-        self.assertEqual(nt[:, 0], ntnt([a, c]))
-        self.assertEqual(nt[-1:], ntnt([[c]]))
-        self.assertEqual(nt[-1:, 0], ntnt([c]))
-        self.assertEqual(nt[:, -1], ntnt([b, c]))
-        self.assertEqual(nt[-1:, -1], ntnt([c]))
-        self.assertEqual(nt[:, -1:], ntnt([[b], [c]]))
-        self.assertEqual(nt[-1:, -1:], ntnt([[c]]))
-        self.assertEqual(nt[:, -1:, None], ntnt([[b[None]], [c[None]]]))
-        self.assertEqual(nt[-1:, :, None], ntnt([[c[None]]]))
-        self.assertEqual(nt[:, 1:, None], ntnt([[b[None]], []]))
+        self.assertEqual(nt[:, 0], ntnt_nograd([a, c]))
+        self.assertEqual(nt[-1:], ntnt_nograd([[c]]))
+        self.assertEqual(nt[-1:, 0], ntnt_nograd([c]))
+        self.assertEqual(nt[:, -1], ntnt_nograd([b, c]))
+        self.assertEqual(nt[-1:, -1], ntnt_nograd([c]))
+        self.assertEqual(nt[:, -1:], ntnt_nograd([[b], [c]]))
+        self.assertEqual(nt[-1:, -1:], ntnt_nograd([[c]]))
+        self.assertEqual(nt[:, -1:, None], ntnt_nograd([[b[None]], [c[None]]]))
+        self.assertEqual(nt[-1:, :, None], ntnt_nograd([[c[None]]]))
+        self.assertEqual(nt[:, 1:, None], ntnt_nograd([[b[None]], []]))
         nt = nestedtensor.nested_tensor([[a, b]])
-        self.assertEqual(nt[0, 0], ntnt([a[0], b[0]]))
-        self.assertEqual(nt[0, 1:], ntnt([a[1:], b[1:]]))
-        self.assertEqual(nt[:1, :, 1:], ntnt([[a[1:], b[1:]]]))
+        self.assertEqual(nt[0, 0], ntnt_nograd([a[0], b[0]]))
+        self.assertEqual(nt[0, 1:], ntnt_nograd([a[1:], b[1:]]))
+        self.assertEqual(nt[:1, :, 1:], ntnt_nograd([[a[1:], b[1:]]]))
         self.assertEqual(nt[:, :], nt)
-        self.assertEqual(nt[:, None], ntnt([[[a, b]]]))
+        self.assertEqual(nt[:, None], ntnt_nograd([[[a, b]]]))
         self.assertRaisesRegex(IndexError,
                                "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
                                lambda: nt[2])
@@ -690,12 +690,12 @@ class TestNestedTensor(TestCase):
         b = a + 12
         c = b + 12
 
-        nt0 = nestedtensor.nested_tensor([a, b])
-        nt1 = nestedtensor.nested_tensor([c])
-        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=0), ntnt([a, b, c]))
+        nt0 = ntnt([a, b])
+        nt1 = ntnt([c])
+        self.assertEqual(torch.cat([nt0, nt1], dim=0), ntnt_nograd([a, b, c]))
         self.assertEqual(nestedtensor.cat(
-            [nt0, nt1], dim=1), ntnt([torch.cat([a, c]), b]))
-        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=2), ntnt(
+            [nt0, nt1], dim=1), ntnt_nograd([torch.cat([a, c]), b]))
+        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=2), ntnt_nograd(
             [torch.cat([a, c], dim=1), b]))
 
     def test_stack(self):
@@ -707,11 +707,11 @@ class TestNestedTensor(TestCase):
         nt0 = nestedtensor.nested_tensor([a, b])
         nt1 = nestedtensor.nested_tensor([c])
         self.assertEqual(nestedtensor.stack(
-            [nt0, nt1], dim=0), ntnt([[a, b], [c]]))
+            [nt0, nt1], dim=0), ntnt_nograd([[a, b], [c]]))
         self.assertEqual(nestedtensor.stack(
-            [nt0, nt1], dim=1), ntnt([torch.stack([a, c]), b.reshape(1, 3, 4)]))
+            [nt0, nt1], dim=1), ntnt_nograd([torch.stack([a, c]), b.reshape(1, 3, 4)]))
         self.assertEqual(nestedtensor.stack(
-            [nt0, nt1], dim=2), ntnt([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
+            [nt0, nt1], dim=2), ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
 
 class TestContiguous(TestCase):

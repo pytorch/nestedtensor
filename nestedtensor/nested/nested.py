@@ -149,7 +149,20 @@ def _wrap_result(result):
 def _filter_impl(args, kwargs):
     if kwargs is None:
         kwargs = {}
-    impl_args = [a._impl if isinstance(a, NestedTensor) else a for a in args]
+    impl_args = []
+    for a in args:
+        if isinstance(a, NestedTensor):
+            impl_args.append(a._impl)
+        elif torch.is_tensor(a):
+            impl_args.append(a)
+        elif isinstance(a, list):
+            a_impl, _ = _filter_impl(a, {})
+            impl_args.append(a_impl)
+        elif isinstance(a, tuple):
+            a_impl, _ = _filter_impl(a, {})
+            impl_args.append(tuple(a_impl))
+        else:
+            impl_args.append(a)
     impl_kwargs = {
         k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()
     }
@@ -172,9 +185,8 @@ def native_is_expandable_to(tensor, shape):
 
 
 def to_nested_tensor(tensor, dim=0):
-    impl_args, _ = _filter_impl([tensor], {})
     return _wrap_result(
-        torch.ops.nestedtensor.to_nested_tensor(*impl_args, dim))
+        torch.ops.nestedtensor.to_nested_tensor(tensor._impl if isinstance(tensor, NestedTensor) else tensor, dim))
 
 
 class NestedTensorMeta(type):
