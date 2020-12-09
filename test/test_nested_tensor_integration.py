@@ -71,7 +71,8 @@ class TestIntegration(TestCase):
             self.assertEqual(t0, t1)
 
         # non-regular shape smoke test
-        EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 100 * i, 100) for i in range(1, 4)]
+        EXAMPLE_IMAGE_TENSORS = [torch.randn(
+            3, 100 * i, 100) for i in range(1, 4)]
         model(nestedtensor.nested_tensor(EXAMPLE_IMAGE_TENSORS))
 
     def test_segmentation_pretrained_test_only(self):
@@ -160,6 +161,24 @@ class TestIntegration(TestCase):
         # _test(1010, lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
         #     replace_stride_with_dilation=[False, False, False],
         #     pretrained=True, norm_layer=NTFrozenBatchNorm2d), {'layer4': "0"}), False)
+
+    def test_transformer(self):
+        EMBED_DIM = 8
+        NHEAD = 8
+
+        src0 = torch.randn(3, EMBED_DIM)
+        src1 = torch.randn(5, EMBED_DIM)
+        nt_src = ntnt([src0, src1])
+
+        t = torch.nn.TransformerEncoderLayer(EMBED_DIM, NHEAD, dropout=0.0)
+
+        res_nt = t(nt_src)
+        res_0 = t(src0.unsqueeze(1))
+        res_1 = t(src1.unsqueeze(1))
+        print(res_nt)
+        print(res_0)
+        print(res_1)
+        pass
 
 
 if __name__ == "__main__":
