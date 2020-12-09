@@ -162,7 +162,7 @@ class TestIntegration(TestCase):
         #     replace_stride_with_dilation=[False, False, False],
         #     pretrained=True, norm_layer=NTFrozenBatchNorm2d), {'layer4': "0"}), False)
 
-    def test_transformer(self):
+    def test_transformer_forward(self):
         EMBED_DIM = 16
         NHEAD = 8
 
