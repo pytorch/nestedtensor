@@ -146,7 +146,8 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
 }
 
 int64_t NestedTensor_size_int(const Tensor& self, int64_t dim) {
-  std::vector<c10::optional<int64_t>> size = get_nested_tensor_impl(self)->opt_sizes();
+  std::vector<c10::optional<int64_t>> size =
+      get_nested_tensor_impl(self)->opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
@@ -246,16 +247,45 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return wrap_tensor_node(std::move(tmp));
 }
 
-Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
-  int64_t dim_ = 0;
-  if (dim__) {
-    dim_ = *dim__;
+Tensor NestedTensor_to_nested_tensor(
+    at::Tensor input,
+    c10::optional<int64_t> dim_) {
+  int64_t dim = 0;
+  if (dim_) {
+    dim = at::maybe_wrap_dim(*dim_, input.dim());
   }
-  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
   // if dim < nested_dim() the NestedTensor is already nested
   // up to the given dimension.
-  if (dim >= this->nested_dim()) {
-    TensorNode unbound = _unbind_tensors(this->get_structure());
+  if (is_nested_tensor_impl(input) && dim >= get_nested_dim(input)) {
+    TensorNode unbound = _unbind_tensors(get_nested_tensor_structure(input));
+    for (int64_t i = 0; i < (dim - get_nested_dim(input)); i++) {
+      unbound = _unbind_tensors(unbound);
+    }
+    return wrap_tensor_node(std::move(unbound));
+  }
+  if (!is_nested_tensor_impl(input) && dim > 0) {
+    std::vector<TensorNode> unbound_nodes;
+    for (at::Tensor t : input.unbind()) {
+      unbound_nodes.push_back(TensorNode(std::move(t)));
+    }
+    TensorNode unbound(std::move(unbound_nodes));
+    for (int64_t i = 1; i < dim; i++) {
+      unbound = _unbind_tensors(unbound);
+    }
+    return wrap_tensor_node(std::move(unbound));
+  }
+  return input;
+}
+
+Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim_) {
+  int64_t dim = 0;
+  if (dim_) {
+    dim = at::maybe_wrap_dim(*dim_, this->dim());
+  }
+  // if dim < nested_dim() the NestedTensor is already nested
+  // up to the given dimension.
+  if (dim >= nested_dim()) {
+    TensorNode unbound = _unbind_tensors(_structure);
     for (int64_t i = 0; i < (dim - nested_dim()); i++) {
       unbound = _unbind_tensors(unbound);
     }

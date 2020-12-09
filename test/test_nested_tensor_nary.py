@@ -118,11 +118,11 @@ def _gen_test_unary(func__, nested_dim, device):
 
 def _gen_test_binary(func, no_grad):
     def _test_binary(self):
-        a = utils.gen_float_tensor(1, (2, 3)) * 0 + 1
-        b = utils.gen_float_tensor(2, (2, 3)) * 0 + 2
-        c = utils.gen_float_tensor(3, (2, 3)) * 0 + 3
-        d = utils.gen_float_tensor(4, (3, 2)) * 0 + 4
-        s = utils.gen_float_tensor(5, (1,)) * 0 + 5
+        a = utils.gen_float_tensor(1, (2, 3))#  * 0 + 1
+        b = utils.gen_float_tensor(2, (2, 3))#  * 0 + 2
+        c = utils.gen_float_tensor(3, (2, 3))#  * 0 + 3
+        d = utils.gen_float_tensor(4, (3, 2))#  * 0 + 4
+        s = utils.gen_float_tensor(5, (1,))# * 0 + 5
         torch_func = getattr(torch, func)
 
         a1 = ntnt([a, b])
@@ -160,14 +160,19 @@ def _gen_test_binary(func, no_grad):
         # Test NT x T with broadcasting
         a1 = ntnt([a, b])
         a2 = torch.tensor([1, 2]).reshape(-1, 1, 1)
+        print('a1')
         print(a1)
         print(a1.nested_size())
+        print('a2')
         print(a2)
         print(a2.size())
-        a3 = ntnt([torch_func(a, a2),
-                   torch_func(b, a2)])
+        a3 = ntnt([torch_func(a, 1),
+                   torch_func(b, 2)])
         print(torch_func(a1, a2))
         print(torch_func(a1, a2).nested_size())
+        print('a3')
+        print(a3)
+        print(a3.nested_size())
 
         self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
