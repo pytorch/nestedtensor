@@ -170,15 +170,15 @@ class TestIntegration(TestCase):
         src1 = torch.randn(5, EMBED_DIM)
         nt_src = ntnt([src0, src1])
 
-        t = torch.nn.TransformerEncoderLayer(EMBED_DIM, NHEAD, dropout=0.0)
+        tlayer = torch.nn.TransformerEncoderLayer(
+            EMBED_DIM, NHEAD, dropout=0.0)
+        t = torch.nn.TransformerEncoder(tlayer, 6)
 
         res_nt = t(nt_src)
-        res_0 = t(src0.unsqueeze(1))
-        res_1 = t(src1.unsqueeze(1))
-        print(res_nt)
-        print(res_0)
-        print(res_1)
-        pass
+        res_0 = t(src0.unsqueeze(1)).squeeze(1)
+        res_1 = t(src1.unsqueeze(1)).squeeze(1)
+        for t0, t1 in zip(res_nt.unbind(), [res_0, res_1]):
+            self.assertEqual(t0, t1)
 
 
 if __name__ == "__main__":
