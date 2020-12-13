@@ -118,11 +118,11 @@ def _gen_test_unary(func__, nested_dim, device):
 
 def _gen_test_binary(func, no_grad):
     def _test_binary(self):
-        a = utils.gen_float_tensor(1, (2, 3)) * 0 + 1
-        b = utils.gen_float_tensor(2, (2, 3)) * 0 + 2
-        c = utils.gen_float_tensor(3, (2, 3)) * 0 + 3
-        d = utils.gen_float_tensor(4, (3, 2)) * 0 + 4
-        s = utils.gen_float_tensor(5, (1,)) * 0 + 5
+        a = utils.gen_float_tensor(1, (2, 3))#  * 0 + 1
+        b = utils.gen_float_tensor(2, (2, 3))#  * 0 + 2
+        c = utils.gen_float_tensor(3, (2, 3))#  * 0 + 3
+        d = utils.gen_float_tensor(4, (3, 2))#  * 0 + 4
+        s = utils.gen_float_tensor(5, (1,))# * 0 + 5
         torch_func = getattr(torch, func)
 
         # Scalar smoke tests
@@ -166,7 +166,7 @@ def _gen_test_binary(func, no_grad):
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
 
-        # The constructor is supposed to copy!
+        # Test NT x T
         a1 = ntnt([a, b])
         a2 = c
         a3 = ntnt([torch_func(a, a2),
@@ -174,6 +174,15 @@ def _gen_test_binary(func, no_grad):
 
         self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
+
+        # Test NT x T with broadcasting
+        if func not in ["pow", "atan2"]:
+            a1 = ntnt([a, b])
+            a2 = torch.tensor([1, 2]).reshape(-1, 1, 1)
+            a3 = ntnt([torch_func(a, 1),
+                       torch_func(b, 2)])
+            self.assertEqual(a3, torch_func(a1, a2))
+            self.assertEqual(a3, getattr(a1, func)(a2))
 
         a1 = ntnt([a, d])
         self.assertEqual(ntnt([torch_func(a, s), torch_func(d, s)]),

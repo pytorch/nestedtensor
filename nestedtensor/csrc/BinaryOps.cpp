@@ -4,54 +4,6 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
-  check_binary_shape(self, other);
-  if (is_nested_tensor_impl(self, other)) {
-    torch_check_tensor_shape_matches(self, other);
-    apply_nested_tensor(
-        [&alpha](Tensor& tensor, Tensor& other) {
-          at::native::sub_(tensor, other, alpha);
-        },
-        self,
-        other);
-    return self;
-  }
-  if (is_nested_tensor_impl(self)) {
-    torch_check_tensor_shape_matches(self);
-    apply_nested_tensor(
-        [&other, &alpha](Tensor& self) {
-          at::native::sub_(self, other, alpha);
-        },
-        self);
-    return self;
-  }
-  torch_check_tensor_shape_matches(other);
-  apply_nested_tensor(
-      [&self, &alpha](Tensor& other) { at::native::sub_(self, other, alpha); },
-      other);
-  return self;
-}
-
-Tensor& NestedTensor_sub_out(
-    Tensor& result,
-    const Tensor& self,
-    const Tensor& other,
-    Scalar alpha) {
-  TORCH_CHECK(
-      is_nested_tensor_impl(result),
-      "NT binary out variant requires NT as result argument.");
-  check_binary_shape(self, other);
-  is_nested_tensor_impl(result, self, other);
-  apply_nested_tensor(
-      [&alpha](Tensor& result, Tensor& tensor, Tensor& other) {
-        return at::sub_out(result, tensor, other, alpha);
-      },
-      result,
-      self,
-      other);
-  return result;
-}
-
 Tensor& NestedTensor_pow_out_1(
     Tensor& result,
     const Tensor& base,
@@ -170,14 +122,23 @@ Tensor NestedTensor_binary(
       other);
 }
 
+template <typename S, Tensor& (*func)(Tensor&, const Tensor&, S)>
+Tensor& NestedTensor__binary(Tensor& self_, const Tensor& other_, S alpha) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
+  apply_nested_tensor(
+      [&alpha](Tensor& self, Tensor& other) { func(self, other, alpha); },
+      self,
+      other);
+  return self;
+}
+
 template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_out(
     Tensor& result,
     const Tensor& self,
     const Tensor& other) {
-  // at::Tensor self;
-  // at::Tensor other;
-  // std::tie(self, other) = _expand_other_as(self_, other_);
   TORCH_CHECK(
       is_nested_tensor_impl(result),
       "NT binary out variant requires NT as result argument.");
@@ -194,38 +155,29 @@ Tensor& NestedTensor_binary_out(
   return result;
 }
 
-Tensor NestedTensor_add(
+template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&, Scalar)>
+Tensor& NestedTensor_binary_out_scalar(
+    Tensor& result,
     const Tensor& self_,
     const Tensor& other_,
     Scalar alpha) {
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  if (is_packed(self, other) &&
-      nested_size_matches(get_nested_size(self), get_nested_size(other))) {
-#ifdef TRACEPACKED
-    std::cout << "calling packed add" << std::endl;
-#endif
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        at::add(get_buffer(self), get_buffer(other)),
-        get_nested_tensor_impl(self)->nested_size()));
-  }
-  return map_nested_tensor(
-      [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
-      self,
-      other);
-}
-
-Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-  // at::Tensor self;
-  // at::Tensor other;
-  // std::tie(self, other) = _expand_other_as(self_, other_);
-  check_binary_shape(self, other);
+  TORCH_CHECK(
+      is_nested_tensor_impl(result),
+      "NT binary out variant requires NT as result argument.");
+  TORCH_CHECK(
+      is_nested_tensor_impl(result, self, other),
+      "binary_out doesn't support non-NT arguments.")
   apply_nested_tensor(
-      [&](at::Tensor& s, at::Tensor o) { at::native::add_(s, o, alpha); },
+      [&alpha](Tensor& result, Tensor& tensor, Tensor& other) {
+        return func(result, tensor, other, alpha);
+      },
+      result,
       self,
       other);
-  return self;
+  return result;
 }
 
 #define BINARY_OP(NAME)                                                    \
@@ -235,8 +187,9 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  nt_impl(m, "sub_.Tensor", NestedTensor_sub_);
-  nt_impl(m, "sub.out", NestedTensor_sub_out);
+  nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
+  nt_impl(m, "sub_.Tensor", (NestedTensor__binary<Scalar, at::native::sub_>));
+  nt_impl(m, "sub.out", (NestedTensor_binary_out_scalar<at::sub_out>));
 
   nt_impl(m, "pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
   nt_impl(m, "pow_.Tensor", NestedTensor_pow__1);
@@ -245,8 +198,8 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "pow.Scalar_out", NestedTensor_pow_out_3);
   nt_impl(m, "pow.Scalar", NestedTensor_pow_3);
 
-  nt_impl(m, "add.Tensor", NestedTensor_add);
-  nt_impl(m, "add_.Tensor", NestedTensor_add_);
+  nt_impl(m, "add.Tensor", (NestedTensor_binary<Scalar, at::add>));
+  nt_impl(m, "add_.Tensor", (NestedTensor__binary<Scalar, at::native::add_>));
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)
@@ -278,7 +231,6 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "logical_or_", NestedTensor_binary_<at::native::logical_or_>);
   nt_impl(m, "logical_or.out", NestedTensor_binary_out<at::logical_or_out>);
 
-  nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
   nt_impl(m, "pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
 }
 } // namespace at

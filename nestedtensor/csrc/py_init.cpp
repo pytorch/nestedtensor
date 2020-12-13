@@ -149,7 +149,7 @@ static auto registry =
             })
         .op("nestedtensor::to_nested_tensor",
             [](Tensor tensor, c10::optional<int64_t> dim) {
-              return get_nested_tensor_impl(tensor)->to_nested_tensor(dim);
+              return NestedTensor_to_nested_tensor(tensor, dim);
             })
         .op("nestedtensor::sizes",
             [](Tensor tensor) {
