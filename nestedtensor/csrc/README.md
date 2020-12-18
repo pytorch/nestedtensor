@@ -132,6 +132,7 @@ Below are tables built on top of the stable 1.7 ops [documention](https://pytorc
 ### Non-linear Activations
 
 <details>
+  
 | Name | Native | Derivative |
 | ---- | ------ | ---------- |
 | nn.Softmin |||
@@ -139,4 +140,5 @@ Below are tables built on top of the stable 1.7 ops [documention](https://pytorc
 | nn.Softmax2d |||
 | nn.LogSoftmax |||
 | nn.AdaptiveLogSoftmaxWithLoss |||
+  
 </details>
