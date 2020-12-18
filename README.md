@@ -4,8 +4,7 @@ If you are here because you ran into a runtime error due to a missing feature or
 
 ## Tutorials
 
-If you are new to this project, we recommend you take a look at the [tutorials](https://github.com/pytorch/nestedtensor/tree/master/tutorials) to get started.
-In particular our [basic tutorial](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/tutorials/notebooks/basic.ipynb) is a whirlwind introduction to the project and the recommended place to get started.
+If you are new to this project, we recommend you take a look at our [whirlwind introduction](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/tutorials/notebooks/basic.ipynb) to get started.
 
 ## Operator support
 
