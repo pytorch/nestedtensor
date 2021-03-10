@@ -7,13 +7,11 @@ from .nested.masking import nested_tensor_from_tensor_mask
 from .nested.masking import nested_tensor_from_padded_tensor
 
 from .nested.nested import NestedTensor
-from .nested.nested import to_nested_tensor
 
 from . import nested
 
-from . version import USE_C_EXTENSION
-if USE_C_EXTENSION:
-    from . import _C
+USE_C_EXTENSION=False
+_C = False
 
 from . import nn
 

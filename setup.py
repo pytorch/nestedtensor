@@ -63,9 +63,9 @@ def write_version_file():
             f.write("from nestedtensor import _C\n")
             f.write("if hasattr(_C, 'CUDA_VERSION'):\n")
             f.write("    cuda = _C.CUDA_VERSION\n")
-            f.write("USE_C_EXTENSION=True")
+            f.write("USE_C_EXTENSION=True\n")
         else:
-            f.write("USE_C_EXTENSION=False")
+            f.write("USE_C_EXTENSION=False\n")
 
 
 write_version_file()

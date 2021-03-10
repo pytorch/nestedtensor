@@ -1,12 +1,6 @@
 import torch
 import numbers
 import warnings
-import nested
-
-from nestedtensor import USE_C_EXTENSION
-if USE_C_EXTENSION:
-    from nestedtensor import _C
-
 
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     """

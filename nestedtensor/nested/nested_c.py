@@ -5,7 +5,7 @@ from . import masking
 from . import creation
 
 import nestedtensor
-from torch._C import _disabled_torch_function_impl
+# from torch._C import _disabled_torch_function_impl
 
 
 def _not_impl_raise(cond, msg):
