@@ -4,18 +4,18 @@ from . import masking
 
 from . import creation
 
-import NestedTensorCImpl
+import nestedtensor
 from torch._C import _disabled_torch_function_impl
 
 
 def _not_impl_raise(cond, msg):
     if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
         raise NotImplementedError(
-            msg + " is not supported yet. Please file an issue on https://github.com/pytorch/NestedTensorCImpl")
+            msg + " is not supported yet. Please file an issue on https://github.com/pytorch/nestedtensor")
 
 
 def _new_torch_stack(tensors, dim=0, out=None):
-    result = torch.ops.NestedTensorCImpl.stack(list(
+    result = torch.ops.nestedtensor.stack(list(
         t._impl if isinstance(t, NestedTensorCImpl) else t for t in tensors), dim)
     result = _wrap_result(result)
     if out is None:
@@ -24,7 +24,7 @@ def _new_torch_stack(tensors, dim=0, out=None):
 
 
 def _new_torch_cat(tensors, dim=0, out=None):
-    result = torch.ops.NestedTensorCImpl.cat(list(
+    result = torch.ops.nestedtensor.cat(list(
         t._impl if isinstance(t, NestedTensorCImpl) else t for t in tensors), dim)
     result = _wrap_result(result)
     if out is None:
@@ -141,7 +141,7 @@ def _wrap_result(result):
         return tuple(_wrap_result(r) for r in result)
     return (
         NestedTensorCImpl(result)
-        if torch.is_tensor(result) and torch.ops.NestedTensorCImpl.is_nested_tensor_impl(result)
+        if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
         else result
     )
 
@@ -186,7 +186,7 @@ def native_is_expandable_to(tensor, shape):
 
 def to_nested_tensor(tensor, dim=0):
     return _wrap_result(
-        torch.ops.NestedTensorCImpl.to_nested_tensor(tensor._impl if isinstance(tensor, NestedTensorCImpl) else tensor, dim))
+        torch.ops.nestedtensor.to_nested_tensor(tensor._impl if isinstance(tensor, NestedTensorCImpl) else tensor, dim))
 
 
 class NestedTensorCImplMeta(type):
@@ -223,7 +223,7 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
     # Levels of contiguity
 
     def __init__(self, impl):
-        if not torch.ops.NestedTensorCImpl.is_nested_tensor_impl(impl):
+        if not torch.ops.nestedtensor.is_nested_tensor_impl(impl):
             raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
@@ -367,7 +367,7 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
         The nested dimension is defined as the level of indexing required
         to reach a Tensor constiuent.
         """
-        return torch.ops.NestedTensorCImpl.nested_dim(self._impl)
+        return torch.ops.nestedtensor.nested_dim(self._impl)
 
     def tensor_dim(self):
         """
@@ -380,12 +380,12 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
         """
         The number of entries in the list ```self``` represents.
         """
-        return torch.ops.NestedTensorCImpl.len(self._impl)
+        return torch.ops.nestedtensor.len(self._impl)
 
     def size(self, dim=None):
         if dim is not None:
             return self.size()[dim]
-        return tuple(torch.ops.NestedTensorCImpl.sizes(self._impl))
+        return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
         raise NotImplementedError(
@@ -420,7 +420,7 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
         """
         Not necessarily a view.
         """
-        return _wrap_result(torch.ops.NestedTensorCImpl.to_tensor(self._impl, dim))
+        return _wrap_result(torch.ops.nestedtensor.to_tensor(self._impl, dim))
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
@@ -470,7 +470,7 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
-        return _wrap_result(torch.ops.NestedTensorCImpl.to_nested_tensor(self._impl, dim))
+        return _wrap_result(torch.ops.nestedtensor.to_nested_tensor(self._impl, dim))
 
     def to_list(self):
         return self._impl.to_list()
