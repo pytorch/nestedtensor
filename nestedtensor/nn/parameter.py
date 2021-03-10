@@ -1,5 +1,5 @@
 import torch
-from torch._C import _disabled_torch_function_impl
+# from torch._C import _disabled_torch_function_impl
 from collections import OrderedDict
 import nestedtensor
 
@@ -44,4 +44,4 @@ class Parameter(torch.Tensor):
             (self.data, self.requires_grad, OrderedDict())
         )
 
-    __torch_function__ = _disabled_torch_function_impl
+    # __torch_function__ = _disabled_torch_function_impl

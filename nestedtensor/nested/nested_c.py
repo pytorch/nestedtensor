@@ -204,7 +204,7 @@ class NestedTensorCImplMeta(type):
 
 
 class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
-    __torch_function__ = _disabled_torch_function_impl
+    # __torch_function__ = _disabled_torch_function_impl
     # The attributes must match across all constiuents
     #
     # The NestedTensorCImpl's attributes then become that of its
