@@ -11,7 +11,9 @@ from .nested.nested import to_nested_tensor
 
 from . import nested
 
-from . import _C
+from . version import USE_C_EXTENSION
+if USE_C_EXTENSION:
+    from . import _C
 
 from . import nn
 

@@ -25,6 +25,7 @@ def read(*names, **kwargs):
         return fp.read()
 
 
+
 version = "0.0.1"
 sha = "Unknown"
 package_name = "nestedtensor"
@@ -45,6 +46,11 @@ if os.getenv("BUILD_VERSION"):
 elif sha != "Unknown":
     version = version + "+" + sha[:7]
 
+USE_C_EXTENSION = False
+if os.getenv("NT_USE_C_EXTENSION", "0") == "1":
+    print("Using C extension!")
+    USE_C_EXTENSION = True
+
 print("Building wheel {}-{}".format(package_name, version))
 
 
@@ -53,9 +59,13 @@ def write_version_file():
     with open(version_path, "w") as f:
         f.write("__version__ = '{}'\n".format(version))
         f.write("git_version = {}\n".format(repr(sha)))
-        f.write("from nestedtensor import _C\n")
-        f.write("if hasattr(_C, 'CUDA_VERSION'):\n")
-        f.write("    cuda = _C.CUDA_VERSION\n")
+        if USE_C_EXTENSION:
+            f.write("from nestedtensor import _C\n")
+            f.write("if hasattr(_C, 'CUDA_VERSION'):\n")
+            f.write("    cuda = _C.CUDA_VERSION\n")
+            f.write("USE_C_EXTENSION=True")
+        else:
+            f.write("USE_C_EXTENSION=False")
 
 
 write_version_file()
@@ -147,27 +157,52 @@ class clean(distutils.command.clean.clean):
         distutils.command.clean.clean.run(self)
 
 
-setuptools.setup(
-    name=package_name,
-    version=version,
-    author="Christian Puhrsch",
-    author_email="cpuhrsch@fb.com",
-    description="NestedTensors for PyTorch",
-    long_description=readme,
-    long_description_content_type="text/markdown",
-    url="https://github.com/pytorch/nestedtensor",
-    packages=setuptools.find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "Operating System :: OS Independent",
-    ],
-    zip_safe=True,
-    cmdclass={
-        "clean": clean,
-        "build_ext": BuildExtension.with_options(
-            use_ninja=os.environ.get("USE_NINJA", False)
-        ),
-    },
-    install_requires=requirements,
-    ext_modules=get_extensions(),
-)
+AUTHOR = "Christian Puhrsch"
+AUTHOR_EMAIL = "cpuhrsch@fb.com"
+DESCRIPTION = "NestedTensors for PyTorch"
+URL = "https://github.com/pytorch/nestedtensor",
+CLASSIFIERS = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+if USE_C_EXTENSION:
+    setuptools.setup(
+        name=package_name,
+        version=version,
+        author=AUTHOR,
+        author_email=AUTHOR_EMAIL,
+        description=DESCRIPTION,
+        long_description=readme,
+        long_description_content_type="text/markdown",
+        url=URL,
+        packages=setuptools.find_packages(),
+        classifiers=CLASSIFIERS,
+        zip_safe=True,
+        cmdclass={
+            "clean": clean,
+            "build_ext": BuildExtension.with_options(
+                use_ninja=os.environ.get("USE_NINJA", False)
+            ),
+        },
+        install_requires=requirements,
+        ext_modules=get_extensions(),
+    )
+else:
+    setuptools.setup(
+        name=package_name,
+        version=version,
+        author=AUTHOR,
+        author_email=AUTHOR_EMAIL,
+        description=DESCRIPTION,
+        long_description=readme,
+        long_description_content_type="text/markdown",
+        url=URL,
+        packages=setuptools.find_packages(),
+        classifiers=CLASSIFIERS,
+        zip_safe=True,
+        cmdclass={
+            "clean": clean,
+        },
+        install_requires=requirements,
+    )
