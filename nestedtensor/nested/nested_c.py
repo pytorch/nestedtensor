@@ -4,19 +4,19 @@ from . import masking
 
 from . import creation
 
-import nestedtensor
+import NestedTensorCImpl
 from torch._C import _disabled_torch_function_impl
 
 
 def _not_impl_raise(cond, msg):
     if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
         raise NotImplementedError(
-            msg + " is not supported yet. Please file an issue on https://github.com/pytorch/nestedtensor")
+            msg + " is not supported yet. Please file an issue on https://github.com/pytorch/NestedTensorCImpl")
 
 
 def _new_torch_stack(tensors, dim=0, out=None):
-    result = torch.ops.nestedtensor.stack(list(
-        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
+    result = torch.ops.NestedTensorCImpl.stack(list(
+        t._impl if isinstance(t, NestedTensorCImpl) else t for t in tensors), dim)
     result = _wrap_result(result)
     if out is None:
         return result
@@ -24,8 +24,8 @@ def _new_torch_stack(tensors, dim=0, out=None):
 
 
 def _new_torch_cat(tensors, dim=0, out=None):
-    result = torch.ops.nestedtensor.cat(list(
-        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
+    result = torch.ops.NestedTensorCImpl.cat(list(
+        t._impl if isinstance(t, NestedTensorCImpl) else t for t in tensors), dim)
     result = _wrap_result(result)
     if out is None:
         return result
@@ -55,7 +55,7 @@ def _nn_functional_batch_norm(input, running_mean, running_var, weight=None, bia
 
 
 def _nn_functional_adaptive_avg_pool2d(input, output_size):
-    serialized_nested_size = nestedtensor._C.serialize_nested_size(input)
+    serialized_nested_size = NestedTensorCImpl._C.serialize_nested_size(input)
     _output_size = torch.nn.modules.utils._list_with_default(
         output_size, serialized_nested_size)
     return torch._C._nn.adaptive_avg_pool2d(input, _output_size)
@@ -91,14 +91,14 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
                              ", as input is treated is a mini-batch of"
                              " fixed length sequences. However, found "
                              "offsets of type {}".format(type_str))
-        offsets_ = NestedTensor(input).nested_size()
+        offsets_ = NestedTensorCImpl(input).nested_size()
         offsets = torch.zeros(len(offsets_), dtype=torch.int64)
         for i in range(1, len(offsets)):
             offsets[i] = offsets[i - 1] + offsets_[i - 1][0]
         offsets = offsets.to(input.device)
     elif input.dim() == 1:
-        raise ValueError("input has to be 2D NestedTensor,"
-                         " but got NestedTensor of dimension {}".format(input.dim()))
+        raise ValueError("input has to be 2D NestedTensorCImpl,"
+                         " but got NestedTensorCImpl of dimension {}".format(input.dim()))
     if mode == 'sum':
         mode_enum = 0
     elif mode == 'mean':
@@ -140,8 +140,8 @@ def _wrap_result(result):
     if isinstance(result, tuple):
         return tuple(_wrap_result(r) for r in result)
     return (
-        NestedTensor(result)
-        if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
+        NestedTensorCImpl(result)
+        if torch.is_tensor(result) and torch.ops.NestedTensorCImpl.is_nested_tensor_impl(result)
         else result
     )
 
@@ -151,7 +151,7 @@ def _filter_impl(args, kwargs):
         kwargs = {}
     impl_args = []
     for a in args:
-        if isinstance(a, NestedTensor):
+        if isinstance(a, NestedTensorCImpl):
             impl_args.append(a._impl)
         elif torch.is_tensor(a):
             impl_args.append(a)
@@ -164,32 +164,32 @@ def _filter_impl(args, kwargs):
         else:
             impl_args.append(a)
     impl_kwargs = {
-        k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()
+        k: v._impl if isinstance(v, NestedTensorCImpl) else v for (k, v) in kwargs.items()
     }
     return impl_args, impl_kwargs
 
 
 def sum_to_size(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
-    return _wrap_result(nestedtensor._C.sum_to_size(*impl_args))
+    return _wrap_result(NestedTensorCImpl._C.sum_to_size(*impl_args))
 
 
 def sizes_equal(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
-    return _wrap_result(nestedtensor._C.sizes_equal(*impl_args))
+    return _wrap_result(NestedTensorCImpl._C.sizes_equal(*impl_args))
 
 
 def native_is_expandable_to(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
-    return _wrap_result(nestedtensor._C.native_is_expandable_to(*impl_args))
+    return _wrap_result(NestedTensorCImpl._C.native_is_expandable_to(*impl_args))
 
 
 def to_nested_tensor(tensor, dim=0):
     return _wrap_result(
-        torch.ops.nestedtensor.to_nested_tensor(tensor._impl if isinstance(tensor, NestedTensor) else tensor, dim))
+        torch.ops.NestedTensorCImpl.to_nested_tensor(tensor._impl if isinstance(tensor, NestedTensorCImpl) else tensor, dim))
 
 
-class NestedTensorMeta(type):
+class NestedTensorCImplMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
             def _wrapped_fn(*args, **kwargs):
@@ -200,17 +200,17 @@ class NestedTensorMeta(type):
             return _wrapped_fn
         return self.__dict__[name]
 
-# -------------------------NestedTensor core---------------------------
+# -------------------------NestedTensorCImpl core---------------------------
 
 
-class NestedTensorCImpl(metaclass=NestedTensorMeta):
+class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
     __torch_function__ = _disabled_torch_function_impl
     # The attributes must match across all constiuents
     #
-    # The NestedTensor's attributes then become that of its
+    # The NestedTensorCImpl's attributes then become that of its
     # constiuents.
     #
-    # data must be a list of Tensors or NestedTensors
+    # data must be a list of Tensors or NestedTensorCImpls
     #
     # Attributes:
     #     dim()
@@ -223,7 +223,7 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
     # Levels of contiguity
 
     def __init__(self, impl):
-        if not torch.ops.nestedtensor.is_nested_tensor_impl(impl):
+        if not torch.ops.NestedTensorCImpl.is_nested_tensor_impl(impl):
             raise TypeError("Got unexpected type " + str(type(impl)))
         self._impl = impl
 
@@ -242,49 +242,49 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
         return hash(self._impl)
 
     def __eq__(self, other):
-        if isinstance(other, NestedTensor):
+        if isinstance(other, NestedTensorCImpl):
             return _wrap_result(self._impl.__eq__(other._impl))
         return _wrap_result(self._impl.__eq__(other))
 
     def __ne__(self, other):
-        if isinstance(other, NestedTensor):
+        if isinstance(other, NestedTensorCImpl):
             return _wrap_result(self._impl.__ne__(other._impl))
         return _wrap_result(self._impl.__ne__(other))
 
     def __add__(self, other):
-        if isinstance(other, NestedTensor):
+        if isinstance(other, NestedTensorCImpl):
             return _wrap_result(self._impl + other._impl)
         return _wrap_result(self._impl + other)
 
     def __radd__(self, other):
-        assert not isinstance(other, NestedTensor)
+        assert not isinstance(other, NestedTensorCImpl)
         return _wrap_result(self._impl + other)
 
     def __mul__(self, other):
-        if isinstance(other, NestedTensor):
+        if isinstance(other, NestedTensorCImpl):
             return _wrap_result(self._impl * other._impl)
         return _wrap_result(self._impl * other)
 
     def __rmul__(self, other):
-        assert not isinstance(other, NestedTensor)
+        assert not isinstance(other, NestedTensorCImpl)
         return _wrap_result(self._impl * other)
 
     def __sub__(self, other):
-        if isinstance(other, NestedTensor):
+        if isinstance(other, NestedTensorCImpl):
             return _wrap_result(self._impl - other._impl)
         return _wrap_result(self._impl - other)
 
     def __rsub__(self, other):
-        assert not isinstance(other, NestedTensor)
+        assert not isinstance(other, NestedTensorCImpl)
         return _wrap_result(other - self._impl)
 
     def __truediv__(self, other):
-        if isinstance(other, NestedTensor):
+        if isinstance(other, NestedTensorCImpl):
             return _wrap_result(self._impl / other._impl)
         return _wrap_result(self._impl / other)
 
     def __floordiv__(self, other):
-        if isinstance(other, NestedTensor):
+        if isinstance(other, NestedTensorCImpl):
             return _wrap_result(self._impl // other._impl)
         return _wrap_result(self._impl // other)
 
@@ -293,7 +293,7 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
         return _wrap_result(self._impl.__pow__(*impl_args, **impl_kwargs))
 
     def __rpow__(self, exponent):
-        assert not isinstance(exponent, NestedTensor)
+        assert not isinstance(exponent, NestedTensorCImpl)
         return _wrap_result(torch.pow(exponent, self._impl))
 
     @property
@@ -303,21 +303,21 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
     @property
     def dtype(self):
         """
-        The data type of ```self``` NestedTensor.
+        The data type of ```self``` NestedTensorCImpl.
         """
         return self._impl.dtype
 
     @property
     def layout(self):
         """
-        The layout of ```self``` NestedTensor.
+        The layout of ```self``` NestedTensorCImpl.
         """
         return self._impl.layout
 
     @property
     def device(self):
         """
-        The device of ```self``` NestedTensor.
+        The device of ```self``` NestedTensorCImpl.
         """
         return self._impl.device
 
@@ -331,7 +331,7 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
     @property
     def grad(self):
         """
-        This attribute is None by default and becomes a NestedTensor the
+        This attribute is None by default and becomes a NestedTensorCImpl the
         first time a call to backward() computes gradients for self.
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
@@ -363,15 +363,15 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
 
     def nested_dim(self):
         """
-        The nested dimension of ```self``` NestedTensor.
+        The nested dimension of ```self``` NestedTensorCImpl.
         The nested dimension is defined as the level of indexing required
         to reach a Tensor constiuent.
         """
-        return torch.ops.nestedtensor.nested_dim(self._impl)
+        return torch.ops.NestedTensorCImpl.nested_dim(self._impl)
 
     def tensor_dim(self):
         """
-        The tensor dimension of ```self``` NestedTensor.
+        The tensor dimension of ```self``` NestedTensorCImpl.
         The tensor dimension is defined as the dimension of the Tensor constiuents.
         """
         return self.dim() - self.nested_dim()
@@ -380,17 +380,17 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
         """
         The number of entries in the list ```self``` represents.
         """
-        return torch.ops.nestedtensor.len(self._impl)
+        return torch.ops.NestedTensorCImpl.len(self._impl)
 
     def size(self, dim=None):
         if dim is not None:
             return self.size()[dim]
-        return tuple(torch.ops.nestedtensor.sizes(self._impl))
+        return tuple(torch.ops.NestedTensorCImpl.sizes(self._impl))
 
     def to(self, *args, **kwargs):
         raise NotImplementedError(
-            "NestedTensor.to is currently not implemented.")
-        return nestedtensor.as_nested_tensor(new_tensors)
+            "NestedTensorCImpl.to is currently not implemented.")
+        return NestedTensorCImpl.as_nested_tensor(new_tensors)
 
     def __str__(self):
         def _str(x, indent=0, tab="  "):
@@ -420,7 +420,7 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
         """
         Not necessarily a view.
         """
-        return _wrap_result(torch.ops.nestedtensor.to_tensor(self._impl, dim))
+        return _wrap_result(torch.ops.NestedTensorCImpl.to_tensor(self._impl, dim))
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
@@ -428,10 +428,10 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
         return self.__str__()
 
     def nested_size(self, dim=None):
-        return nestedtensor._C.nested_size(self._impl, dim)
+        return NestedTensorCImpl._C.nested_size(self._impl, dim)
 
     def nested_stride(self, dim=None):
-        return nestedtensor._C.nested_stride(self._impl, dim)
+        return NestedTensorCImpl._C.nested_stride(self._impl, dim)
 
     # --- dependent on impl ends ---
 
@@ -448,29 +448,29 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
         if func is torch.nn.functional.adaptive_avg_pool2d:
             return _wrap_result(_nn_functional_adaptive_avg_pool2d(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.multi_head_attention_forward:
-            return _wrap_result(nestedtensor.nn.mha.multi_head_attention_forward(*args, **kwargs))
+            return _wrap_result(NestedTensorCImpl.nn.mha.multi_head_attention_forward(*args, **kwargs))
         if func is torch.nn.functional.interpolate:
-            return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
+            return _wrap_result(NestedTensorCImpl._C.interpolate(*impl_args, **impl_kwargs))
         # Need a specialized implementation to dodge call to view in nll_loss
         if func is torch.nn.functional.cross_entropy:
             return _wrap_result(
-                nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs)
+                NestedTensorCImpl._C.cross_entropy(*impl_args, **impl_kwargs)
             )
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero
     def __bool__(self):
         raise NotImplementedError(
-            "NestedTensor doesn't support function __bool__")
+            "NestedTensorCImpl doesn't support function __bool__")
 
     def __getitem__(self, key):
-        return _wrap_result(nestedtensor._C.get_item(self._impl, key))
+        return _wrap_result(NestedTensorCImpl._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())
 
     def to_nested_tensor(self, dim=0):
-        return _wrap_result(torch.ops.nestedtensor.to_nested_tensor(self._impl, dim))
+        return _wrap_result(torch.ops.NestedTensorCImpl.to_nested_tensor(self._impl, dim))
 
     def to_list(self):
         return self._impl.to_list()
@@ -480,14 +480,14 @@ class NestedTensorCImpl(metaclass=NestedTensorMeta):
 
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)
-        of dim equal to self.dim(). Tensor will contain all data of NestedTensor,
+        of dim equal to self.dim(). Tensor will contain all data of NestedTensorCImpl,
         expect that each tensor constiuent has been padded with 0s to equal the
         largest Tensor.
 
         The mask is a bool tensor with a 1-to-1 correspondence to each
         element of tensor. If an entry is True, the corresponding element
         stores data that is represented by self, if it is False it is a padding
-        element. These two tensors can be used to contruct a NestedTensor, however,
+        element. These two tensors can be used to contruct a NestedTensorCImpl, however,
         nested_dim will be lost in this process."""
 
         return masking.to_tensor_mask(self, mask_dim)
