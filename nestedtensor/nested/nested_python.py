@@ -60,6 +60,21 @@ def _create_nested_dim(data):
     return 1 + _create_nested_dim(data[0])
 
 
+def _create_size(nested_size):
+    if isinstance(nested_size, torch.Size):
+        return tuple(nested_size)
+    assert isinstance(nested_size, tuple)
+    if len(nested_size) == 0:
+        return tuple()
+    sizes = tuple(_create_size(s) for s in nested_size)
+    result = [len(sizes)] + list(sizes[0])
+    for size in sizes[1:]:
+        for i in range(len(size)):
+            if (result[i + 1] != result[i + 1]):
+                result[i + 1] = None
+    return tuple(result)
+
+
 # pin_memory could be added as a layout
 def nested_tensor_python(data, dtype=None, device=None, requires_grad=False, layout=Layout.Masked):
     """
@@ -193,15 +208,22 @@ class NestedTensorPythonImpl(object):
             return self.size()[dim]
         if len(self.nested_size()) == 0:
             return tuple()
-        import pdb
-        pdb.set_trace()
-        assert False
+        return _create_size(self.nested_size())
 
     def unbind(self, dim=0):
         if len(self.nested_size()) == 0:
             return tuple()
         assert False
         # import pdb; pdb.set_trace()
+
+    def __getitem__(self, key):
+        data_subset = self.data[0]
+        mask_subset = self.data[1]
+        while mask_subset.dim() < data_subset.dim():
+            mask_subset = mask_subset.unsqueeze(-1)
+        data_subset = data_subset.__getitem__(key)
+        mask_subset = mask_subset.__getitem__(key)
+        raise NotImplementedError("getitem is not yet supported.")
 
     # There are 5 layouts, therefore there are 20 possible
     # conversions excluding identities
