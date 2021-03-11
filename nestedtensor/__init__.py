@@ -9,9 +9,8 @@ from .nested.masking import nested_tensor_from_padded_tensor
 from .nested.nested import NestedTensor
 
 from . import nested
-
-USE_C_EXTENSION=False
-_C = False
+from . import version
+from . import _C
 
 from . import nn
 

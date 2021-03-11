@@ -1,3 +1,3 @@
-__version__ = '0.0.1+425c509'
-git_version = '425c5097ee96d07b484535ba08d524435aa09a31'
+__version__ = '0.0.1+7f9fccf'
+git_version = '7f9fccffd3fd0e3c583faa9ef994f317da5ed503'
 USE_C_EXTENSION=False
