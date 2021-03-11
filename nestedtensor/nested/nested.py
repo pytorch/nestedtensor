@@ -1,4 +1,6 @@
 import torch
+from .nested_python import NestedTensorPythonImpl
+from .nested_c import NestedTensorCImpl
 
 
 def _wrap_result(result):
@@ -6,11 +8,11 @@ def _wrap_result(result):
         return list(_wrap_result(r) for r in result)
     if isinstance(result, tuple):
         return tuple(_wrap_result(r) for r in result)
-    return (
-        NestedTensor(result)
-        if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
-        else result
-    )
+    if isinstance(result, NestedTensorPythonImpl):
+        return NestedTensor(result)
+    if isinstance(result, NestedTensorCImpl):
+        return NestedTensor(result)
+    return result
 
 
 def _filter_impl(args, kwargs):
@@ -229,18 +231,13 @@ class NestedTensor(object):
         """
         Not necessarily a view.
         """
-        return _wrap_result(torch.ops.nestedtensor.to_tensor(self._impl, dim))
-
-    def __repr__(self):
-        # TODO: This relies on the fact that repr is not implemented compliant with
-        # the purpose of repr for torch.Tensor. Therefore returning str is ok.
-        return self.__str__()
+        return _wrap_result(self._impl.to_tensor(dim))
 
     def nested_size(self, dim=None):
-        return nestedtensor._C.nested_size(self._impl, dim)
+        return self._impl.nested_size(dim)
 
     def nested_stride(self, dim=None):
-        return nestedtensor._C.nested_stride(self._impl, dim)
+        return self._impl.nested_stride(dim)
 
     # --- dependent on impl ends ---
 
@@ -250,7 +247,7 @@ class NestedTensor(object):
             "NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
-        return _wrap_result(nestedtensor._C.get_item(self._impl, key))
+        return _wrap_result(self._impl.__getitem__(key))
 
     def __iter__(self):
         return iter(self.unbind())
