@@ -2,6 +2,11 @@ import torch
 import numbers
 import warnings
 
+from nestedtensor import _C
+from nestedtensor.version import USE_C_EXTENSION
+from . import nested_c
+from . import nested_python
+
 
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     """
@@ -11,13 +16,10 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         dtype = torch.get_default_dtype()
     if device is None:
         device = torch.device('cpu')
-    if nestedtensor.version.USE_C_EXTENSION:
-        from nestedtensor import _C
-        from . import nested_c
+    if USE_C_EXTENSION:
         return nested.NestedTensor(
             nested_c.NestedTensorCImpl(_C.nested_tensor_impl(
                 data, dtype, device, requires_grad, pin_memory)))
-    from . import nested_python
     assert not pin_memory
     impl = nested_python.nested_tensor_python(data,
                                               dtype=dtype, device=device,
