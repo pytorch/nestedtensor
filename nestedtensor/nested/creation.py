@@ -2,6 +2,7 @@ import torch
 import numbers
 import warnings
 
+
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
     """
     Arguments match torch.tensor
@@ -17,8 +18,11 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
             nested_c.NestedTensorCImpl(_C.nested_tensor_impl(
                 data, dtype, device, requires_grad, pin_memory)))
     from . import nested_python
+    assert not pin_memory
     return nestedtensor.NestedTensor(
-        nested_python.nested_tensor(data, dtype, device, requires_grad, pin_memory))
+        nested_python.nested_tensor(data,
+                                    dtype=dtype, device=device,
+                                    requires_grad=requires_grad))
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):

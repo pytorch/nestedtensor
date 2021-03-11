@@ -1,6 +1,7 @@
 import torch
 from .layout import Layout
 
+
 def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
                                  scale_grad_by_freq=False, mode='mean', sparse=False,
                                  per_sample_weights=None, include_last_offset=False):
@@ -10,7 +11,8 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
     # make Tensor contiguous or convert from fp16 to fp32 or sparse to dense if needed.
     # We could decide to throw a warning here.
     input = input.to(Layout.Packed)
-    offsets = torch.tensor([0] + [x[0] for x in input.nested_size()[:-1]]).cumsum(0)
+    offsets = torch.tensor([0] + [x[0]
+                                  for x in input.nested_size()[:-1]]).cumsum(0)
     # We could consider caching this metadata in NestedTensorPythonImpl
     offsets = offsets.to(data.device)
     assert input.layout is Layout.Packed
@@ -26,7 +28,9 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
         per_sample_weights,
         include_last_offset)
 
-def nested_tensor(tensors, dtype=None, device=None, requires_grad=False, layout=Layout.List): # pin_memory could be added as a layout
+
+# pin_memory could be added as a layout
+def nested_tensor(data, dtype=None, device=None, requires_grad=False, layout=Layout.Masked):
     """
     Given a list of Tensors, each of the same dimension but variable shape, construct a NestedTensorPythonImpl that represents
     this list of Tensors.
@@ -34,30 +38,35 @@ def nested_tensor(tensors, dtype=None, device=None, requires_grad=False, layout=
     If a given entry of tensors does not match the dtype or device of the others, the result dtype or device needs to
     be specified explicitly
     """
-    assert layout is Layout.List # No other layout support for now
-    assert isinstance(tensors, list)
-    assert len(tensors) > 0
-    dtype = tensors[0].dtype if dtype is None else dtype
-    device = tensors[0].device if device is None else device
+    from . import masking
+    tensor, mask = masking.to_tensor_mask(data, None)
+    assert layout is Layout.Masked  # No other layout support for now
+    dtype = data[0].dtype if dtype is None else dtype
+    device = data[0].device if device is None else device
     # Change dtype and device if necessary
-    tensors = [t.to(device, dtype) for t in tensors]
-    nested_size = tuple(x.size() for x in tensors)
-    return NestedTensorPythonImpl(tensors, nested_size, Layout.List, dtype, device, requires_grad).to(layout)
+    tensor = tensor.to(device, dtype)
+    nested_size = tuple(x.size() for x in data)
+    return NestedTensorPythonImpl((tensor, mask), nested_size, Layout.Masked, dtype, device, requires_grad).to(layout)
+
 
 def _from_packed_sequence_to_list(packed_sequence):
-    padded, lengths = torch.nn.utils.rnn.pad_packed_sequence(packed_sequence, batch_first=True)
+    padded, lengths = torch.nn.utils.rnn.pad_packed_sequence(
+        packed_sequence, batch_first=True)
     tensors = []
     for i, length in enumerate(lengths):
         tensors.append(padded[i, :length])
     return tensors
 
-def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, layout=Layout.List): # pin_memory could be added as a layout
+
+# pin_memory could be added as a layout
+def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, layout=Layout.List):
     """
     Similar to torch.as_tensor, this converts the given data into a NestedTensorPythonImpl.
     """
     if isinstance(data, torch.nn.utils.rnn.PackedSequence):
         return nested_tensor(_from_packed_sequence_to_list(data))
-    raise NotImplementedError("as_nested_tensor cannot convert data of type {} into a NestedTensorPythonImpl.".format(type(data)))
+    raise NotImplementedError(
+        "as_nested_tensor cannot convert data of type {} into a NestedTensorPythonImpl.".format(type(data)))
 
 
 def _from_list_to_layout(list_nt, target_layout):
@@ -71,7 +80,8 @@ def _from_list_to_layout(list_nt, target_layout):
         # This approach doesn't support autograd and can also be used during construction or without autograd
         # An approach that does work with autograd uses pad and cat, but is a bit more involved
         # See https://github.com/pytorch/NestedTensorPythonImpl/blob/master/NestedTensorPythonImpl/nested/masking.py#L142 for a complete implementation
-        data = torch.zeros(*max_size, dtype=list_nt.dtype, device=list_nt.device)
+        data = torch.zeros(*max_size, dtype=list_nt.dtype,
+                           device=list_nt.device)
         mask = torch.zeros(*max_size, dtype=torch.bool, device=list_nt.device)
         for d_t, d_m, t in zip(data, mask, list_nt.data):
             for d in range(t.dim()):
@@ -82,17 +92,20 @@ def _from_list_to_layout(list_nt, target_layout):
         return NestedTensorPythonImpl(data, list_nt.nested_size(), Layout.Masked, list_nt.dtype, list_nt.device, list_nt.requires_grad, metadata=mask)
     if target_layout is Layout.Packed:
         offsets_ = list_nt.nested_size()
-        data = torch.cat([x.reshape(-1) for x in list_nt.data]) # shape information is stored in nested_size
+        # shape information is stored in nested_size
+        data = torch.cat([x.reshape(-1) for x in list_nt.data])
         return NestedTensorPythonImpl(data, list_nt.nested_size(), Layout.Packed, list_nt.dtype, list_nt.device, list_nt.requires_grad)
     if target_layout is Layout.PackedSequence:
-        return NestedTensorPythonImpl(torch.nn.utils.rnn.pack_sequence(list_nt.data, enforce_sorted=False), # enforce_sorted set to False doesn't support ONNX for now,
-                            list_nt.nested_size(),
-                            Layout.PackedSequence,
-                            list_nt.dtype,
-                            list_nt.device,
-                            list_nt.requires_grad)
-    raise NotImplemented("Converstion from list to target layout {} not supported.".format(target_layout.name))
-            
+        return NestedTensorPythonImpl(torch.nn.utils.rnn.pack_sequence(list_nt.data, enforce_sorted=False),  # enforce_sorted set to False doesn't support ONNX for now,
+                                      list_nt.nested_size(),
+                                      Layout.PackedSequence,
+                                      list_nt.dtype,
+                                      list_nt.device,
+                                      list_nt.requires_grad)
+    raise NotImplemented(
+        "Converstion from list to target layout {} not supported.".format(target_layout.name))
+
+
 class NestedTensorPythonImpl(object):
     def __init__(self, data, nested_size, layout, dtype, device, requires_grad, metadata=None):
         # Can be list of tensors, single packed or masked Tensor or PackedSequence
@@ -107,13 +120,14 @@ class NestedTensorPythonImpl(object):
         self._dtype = dtype
         self._device = device
         # Gradient is supported by differentiable layout conversion functions a tracked by data field
-        self._requires_grad = requires_grad 
+        self._requires_grad = requires_grad
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
         if func is torch.nn.functional.embedding_bag:
             # Design decision pending: We could make conversion to Layout.Padding automatic
             return _nn_functional_embedding_bag(*args, **kwargs)
-        raise NotImplementedError("Given func {} does not support NestedTensorPythonImpl.".format(func))
+        raise NotImplementedError(
+            "Given func {} does not support NestedTensorPythonImpl.".format(func))
 
     def nested_size(self):
         return self._nested_size
@@ -146,7 +160,6 @@ class NestedTensorPythonImpl(object):
             "Cannot convert {} to desired layout {}".format(
                 self.layout.name, target_layout.name))
 
-    
     def to_tensor_list(self):
         # Returns a list of Tensors
         return self.to(Layout.List).data
@@ -163,4 +176,3 @@ class NestedTensorPythonImpl(object):
 
     def to_packed_sequence(self):
         return self.to(Layout.PackedSequence).data
-              
