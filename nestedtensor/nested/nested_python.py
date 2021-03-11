@@ -29,8 +29,39 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
         include_last_offset)
 
 
+def _create_nested_size(data):
+    if torch.is_tensor(data):
+        return data.size()
+    from .nested import NestedTensor
+    if isinstance(data, NestedTensorPythonImpl):
+        return data.nested_size()
+    if isinstance(data, NestedTensor):
+        return data.nested_size()
+    if not (isinstance(data, list) or isinstance(data, tuple)):
+        import pdb
+        pdb.set_trace()
+    assert isinstance(data, list) or isinstance(data, tuple)
+    return tuple(_create_nested_size(t) for t in data)
+
+
+def _create_nested_dim(data):
+    if torch.is_tensor(data):
+        return 0
+    from .nested import NestedTensor
+    if isinstance(data, NestedTensorPythonImpl):
+        return data.nested_dim()
+    if isinstance(data, NestedTensor):
+        return data.nested_dim()
+    if not (isinstance(data, list) or isinstance(data, tuple)):
+        import pdb
+        pdb.set_trace()
+    if len(data) == 0:
+        return 1
+    return 1 + _create_nested_dim(data[0])
+
+
 # pin_memory could be added as a layout
-def nested_tensor(data, dtype=None, device=None, requires_grad=False, layout=Layout.Masked):
+def nested_tensor_python(data, dtype=None, device=None, requires_grad=False, layout=Layout.Masked):
     """
     Given a list of Tensors, each of the same dimension but variable shape, construct a NestedTensorPythonImpl that represents
     this list of Tensors.
@@ -45,8 +76,10 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, layout=Lay
     device = data[0].device if device is None else device
     # Change dtype and device if necessary
     tensor = tensor.to(device, dtype)
-    nested_size = tuple(x.size() for x in data)
-    return NestedTensorPythonImpl((tensor, mask), nested_size, Layout.Masked, dtype, device, requires_grad).to(layout)
+    assert isinstance(data, list)
+    nested_size = _create_nested_size(data)
+    nested_dim = _create_nested_dim(data)
+    return NestedTensorPythonImpl((tensor, mask), nested_size, nested_dim, Layout.Masked, dtype, device, requires_grad).to(layout)
 
 
 def _from_packed_sequence_to_list(packed_sequence):
@@ -107,7 +140,7 @@ def _from_list_to_layout(list_nt, target_layout):
 
 
 class NestedTensorPythonImpl(object):
-    def __init__(self, data, nested_size, layout, dtype, device, requires_grad, metadata=None):
+    def __init__(self, data, nested_size, nested_dim, layout, dtype, device, requires_grad, metadata=None):
         # Can be list of tensors, single packed or masked Tensor or PackedSequence
         self.data = data
         # Metadata is overloaded with type and meaning
@@ -116,6 +149,7 @@ class NestedTensorPythonImpl(object):
         # PackedSequence: Stores the lengths of the PackedSequence
         self.metadata = metadata
         self._nested_size = nested_size
+        self._nested_dim = nested_dim
         self._layout = layout
         self._dtype = dtype
         self._device = device
@@ -132,6 +166,9 @@ class NestedTensorPythonImpl(object):
     def nested_size(self):
         return self._nested_size
 
+    def nested_dim(self):
+        return self._nested_dim
+
     @property
     def dtype(self):
         return self._dtype
@@ -147,6 +184,24 @@ class NestedTensorPythonImpl(object):
     @property
     def requires_grad(self):
         return self._requires_grad
+
+    def __len__(self):
+        return len(self.nested_size())
+
+    def size(self, dim=None):
+        if dim is not None:
+            return self.size()[dim]
+        if len(self.nested_size()) == 0:
+            return tuple()
+        import pdb
+        pdb.set_trace()
+        assert False
+
+    def unbind(self, dim=0):
+        if len(self.nested_size()) == 0:
+            return tuple()
+        assert False
+        # import pdb; pdb.set_trace()
 
     # There are 5 layouts, therefore there are 20 possible
     # conversions excluding identities

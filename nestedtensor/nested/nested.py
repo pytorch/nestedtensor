@@ -1,6 +1,7 @@
 import torch
 from .nested_python import NestedTensorPythonImpl
 from .nested_c import NestedTensorCImpl
+from . import masking
 
 
 def _wrap_result(result):
@@ -213,12 +214,29 @@ class NestedTensor(object):
     def size(self, dim=None):
         return self._impl.size(dim)
 
+    def unbind(self, dim=0):
+        return _wrap_result(self._impl.unbind(dim))
+
     def to(self, *args, **kwargs):
         raise NotImplementedError(
             "NestedTensor.to is currently not implemented.")
 
     def __str__(self):
-        return str(self._impl)
+        def _str(x, indent=0, tab="  "):
+            if x.nested_dim() == 0:
+                return ""
+            s = indent*tab + "[\n"
+            if x.nested_dim() == 1:
+                strs = list(map(str, x.unbind()))
+                strs = list(map(lambda xi: "\n".join(
+                    map(lambda xij: (indent + 1)*tab + xij, xi.split("\n"))), strs))
+                s += ",\n".join(strs)
+            else:
+                s += ",\n".join(list(map(
+                    lambda xi: _str(xi, indent + 1), x.unbind())))
+            s += "\n" + indent * tab + "]"
+            return s
+        return "nested_tensor(" + _str(self) + ")"
 
     def __repr__(self):
         return str(self)
@@ -234,12 +252,18 @@ class NestedTensor(object):
         return _wrap_result(self._impl.to_tensor(dim))
 
     def nested_size(self, dim=None):
+        if dim is None:
+            return self._impl.nested_size()
         return self._impl.nested_size(dim)
 
     def nested_stride(self, dim=None):
         return self._impl.nested_stride(dim)
 
     # --- dependent on impl ends ---
+
+    def __torch_function__(self, func, types, args=(), kwargs=None):
+        impl_args, impl_kwargs = _filter_impl(args, kwargs)
+        return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero
     def __bool__(self):

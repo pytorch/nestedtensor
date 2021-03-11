@@ -11,18 +11,18 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         dtype = torch.get_default_dtype()
     if device is None:
         device = torch.device('cpu')
-    import nestedtensor
-    if nestedtensor.USE_C_EXTENSION:
-        from . import nested_c
-        return nestedtensor.NestedTensor(
-            nested_c.NestedTensorCImpl(_C.nested_tensor_impl(
-                data, dtype, device, requires_grad, pin_memory)))
+    # if nestedtensor.USE_C_EXTENSION:
+    #     from . import nested_c
+    #     return nested.NestedTensor(
+    #         nested_c.NestedTensorCImpl(_C.nested_tensor_impl(
+    #             data, dtype, device, requires_grad, pin_memory)))
     from . import nested_python
     assert not pin_memory
-    return nestedtensor.NestedTensor(
-        nested_python.nested_tensor(data,
-                                    dtype=dtype, device=device,
-                                    requires_grad=requires_grad))
+    impl = nested_python.nested_tensor_python(data,
+                                              dtype=dtype, device=device,
+                                              requires_grad=requires_grad)
+    from .nested import NestedTensor
+    return NestedTensor(impl)
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):

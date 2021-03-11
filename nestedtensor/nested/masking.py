@@ -128,6 +128,11 @@ def get_tensor_mask(nt, shape):
                 res_tensor.append(tensor)
                 res_mask.append(mask)
 
+        # print('res_tensor')
+        # print(res_tensor)
+        # print('res_mask')
+        # print(res_mask)
+        # import pdb; pdb.set_trace()
         return torch.stack(res_tensor), torch.stack(res_mask)
 
     t, m = pad_nt(nt, shape)
