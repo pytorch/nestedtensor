@@ -2,6 +2,7 @@ import torch
 import numbers
 import warnings
 
+from . import nested
 from nestedtensor import _C
 from nestedtensor.version import USE_C_EXTENSION
 from . import nested_c
@@ -24,8 +25,7 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
     impl = nested_python.nested_tensor_python(data,
                                               dtype=dtype, device=device,
                                               requires_grad=requires_grad)
-    from .nested import NestedTensor
-    return NestedTensor(impl)
+    return nested.NestedTensor(impl)
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):

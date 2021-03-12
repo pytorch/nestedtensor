@@ -55,7 +55,7 @@ def _nn_functional_batch_norm(input, running_mean, running_var, weight=None, bia
 
 
 def _nn_functional_adaptive_avg_pool2d(input, output_size):
-    serialized_nested_size = NestedTensorCImpl._C.serialize_nested_size(input)
+    serialized_nested_size = nestedtensor._C.serialize_nested_size(input)
     _output_size = torch.nn.modules.utils._list_with_default(
         output_size, serialized_nested_size)
     return torch._C._nn.adaptive_avg_pool2d(input, _output_size)
@@ -171,17 +171,17 @@ def _filter_impl(args, kwargs):
 
 def sum_to_size(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
-    return _wrap_result(NestedTensorCImpl._C.sum_to_size(*impl_args))
+    return _wrap_result(nestedtensor._C.sum_to_size(*impl_args))
 
 
 def sizes_equal(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
-    return _wrap_result(NestedTensorCImpl._C.sizes_equal(*impl_args))
+    return _wrap_result(nestedtensor._C.sizes_equal(*impl_args))
 
 
 def native_is_expandable_to(tensor, shape):
     impl_args, _ = _filter_impl([tensor, shape], {})
-    return _wrap_result(NestedTensorCImpl._C.native_is_expandable_to(*impl_args))
+    return _wrap_result(nestedtensor._C.native_is_expandable_to(*impl_args))
 
 
 def to_nested_tensor(tensor, dim=0):
@@ -428,10 +428,10 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
         return self.__str__()
 
     def nested_size(self, dim=None):
-        return NestedTensorCImpl._C.nested_size(self._impl, dim)
+        return nestedtensor._C.nested_size(self._impl, dim)
 
     def nested_stride(self, dim=None):
-        return NestedTensorCImpl._C.nested_stride(self._impl, dim)
+        return nestedtensor._C.nested_stride(self._impl, dim)
 
     # --- dependent on impl ends ---
 
@@ -450,11 +450,11 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
         if func is torch.nn.functional.multi_head_attention_forward:
             return _wrap_result(NestedTensorCImpl.nn.mha.multi_head_attention_forward(*args, **kwargs))
         if func is torch.nn.functional.interpolate:
-            return _wrap_result(NestedTensorCImpl._C.interpolate(*impl_args, **impl_kwargs))
+            return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         # Need a specialized implementation to dodge call to view in nll_loss
         if func is torch.nn.functional.cross_entropy:
             return _wrap_result(
-                NestedTensorCImpl._C.cross_entropy(*impl_args, **impl_kwargs)
+                nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs)
             )
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
@@ -464,7 +464,7 @@ class NestedTensorCImpl(metaclass=NestedTensorCImplMeta):
             "NestedTensorCImpl doesn't support function __bool__")
 
     def __getitem__(self, key):
-        return _wrap_result(NestedTensorCImpl._C.get_item(self._impl, key))
+        return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())
