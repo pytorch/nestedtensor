@@ -40,7 +40,19 @@ def _filter_impl(args, kwargs):
     return impl_args, impl_kwargs
 
 
-class NestedTensor(object):
+class NestedTensorMeta(type):
+    def __getattr__(cls, name):
+        if getattr(torch.Tensor, name):
+            def _wrapped_fn(*args, **kwargs):
+                impl_args, impl_kwargs = _filter_impl(args, kwargs)
+                result = getattr(impl_args[0], name)(
+                    *(impl_args[1:]), **impl_kwargs)
+                return _wrap_result(result)
+            return _wrapped_fn
+        return self.__dict__[name]
+
+
+class NestedTensor(metaclass=NestedTensorMeta):
     __torch_function__ = _disabled_torch_function_impl
     # The attributes must match across all constiuents
     #
@@ -65,7 +77,9 @@ class NestedTensor(object):
     def __getattr__(self, name):
         if hasattr(self._impl, name):
             def _wrapped_fn(*args, **kwargs):
-                return getattr(self._impl, name)(*args, **kwargs)
+                impl_args, impl_kwargs = _filter_impl(args, kwargs)
+                result = getattr(self._impl, name)(*impl_args, **impl_kwargs)
+                return _wrap_result(result)
             return _wrapped_fn
         return self.__dict__[name]
 

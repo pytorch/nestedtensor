@@ -151,7 +151,7 @@ class MultiheadAttention(Module):
     def forward(self, query, key, value, key_padding_mask=None,
                 need_weights=True, attn_mask=None):
         if not self._qkv_same_embed_dim:
-            return multi_head_attention_forward(
+            return F.multi_head_attention_forward(
                 query, key, value, self.embed_dim, self.num_heads,
                 self.in_proj_weight, self.in_proj_bias,
                 self.bias_k, self.bias_v, self.add_zero_attn,
@@ -162,7 +162,7 @@ class MultiheadAttention(Module):
                 q_proj_weight=self.q_proj_weight, k_proj_weight=self.k_proj_weight,
                 v_proj_weight=self.v_proj_weight)
         else:
-            return multi_head_attention_forward(
+            return F.multi_head_attention_forward(
                 query, key, value, self.embed_dim, self.num_heads,
                 self.in_proj_weight, self.in_proj_bias,
                 self.bias_k, self.bias_v, self.add_zero_attn,

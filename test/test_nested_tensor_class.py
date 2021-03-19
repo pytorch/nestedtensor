@@ -706,11 +706,11 @@ class TestNestedTensor(TestCase):
         nt = nestedtensor.nested_tensor([[a, b], [c]])
         nt0 = nestedtensor.nested_tensor([a, b])
         nt1 = nestedtensor.nested_tensor([c])
-        self.assertEqual(nestedtensor.stack(
+        self.assertEqual(torch.stack(
             [nt0, nt1], dim=0), ntnt_nograd([[a, b], [c]]))
-        self.assertEqual(nestedtensor.stack(
+        self.assertEqual(torch.stack(
             [nt0, nt1], dim=1), ntnt_nograd([torch.stack([a, c]), b.reshape(1, 3, 4)]))
-        self.assertEqual(nestedtensor.stack(
+        self.assertEqual(torch.stack(
             [nt0, nt1], dim=2), ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
 
