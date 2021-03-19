@@ -1,6 +1,7 @@
 import torch
 from .nested_python import NestedTensorPythonImpl
 from .nested_c import NestedTensorCImpl
+from .nested_c import to_nested_tensor as nested_c_to_nested_tensor
 from . import masking
 from torch._C import _disabled_torch_function_impl
 
@@ -38,6 +39,13 @@ def _filter_impl(args, kwargs):
         k: v._impl if isinstance(v, NestedTensor) else v for (k, v) in kwargs.items()
     }
     return impl_args, impl_kwargs
+
+
+def to_nested_tensor(tensor, dim=0):
+    if isinstance(tensor, NestedTensor):
+        return _wrap_result(tensor._impl.to_nested_tensor(dim))
+    assert torch.is_tensor(tensor)
+    return _wrap_result(nested_c_to_nested_tensor(tensor, dim))
 
 
 class NestedTensorMeta(type):

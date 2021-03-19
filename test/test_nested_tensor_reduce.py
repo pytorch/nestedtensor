@@ -10,7 +10,7 @@ import random
 
 import utils
 
-from nestedtensor.nested.nested import native_is_expandable_to
+from nestedtensor.nested.nested_c import native_is_expandable_to
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
@@ -209,44 +209,41 @@ class TestReduce(TestCase):
 
     def test_sum_to_size(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
-                  torch.arange(2).reshape(2, 1) + 2])
+                  torch.arange(2).reshape(2, 1) + 2])._impl
         # b = ntnt([torch.randn(1), torch.randn(1)])
         # print(a)
         # print(nestedtensor.nested.nested.sum_to(a._impl, a.nested_size()))
         # print(nestedtensor.nested.nested.sum_to(a._impl, b.nested_size()))
         # print(nestedtensor.nested.nested.sum_to(a._impl, [1, 2]))
-        print(a)
         # print(nestedtensor.nested.nested.sum_to(a, (2,)))
         # print(nestedtensor.nested.nested.sum_to(a, (2, 2)))
         a = ntnt([torch.arange(2).reshape(1, 2),
-                  torch.arange(2).reshape(1, 2) + 2])
+                  torch.arange(2).reshape(1, 2) + 2])._impl
         b = ntnt([torch.arange(2).reshape(2),
-                  torch.arange(2).reshape(2) + 2])
-        print(nestedtensor.nested.nested.sum_to_size(a, a))
-        print('a')
-        print(a)
-        print(nestedtensor.nested.nested.sum_to_size(a, b))
+                  torch.arange(2).reshape(2) + 2])._impl
+        print(nestedtensor.nested.nested_c.sum_to_size(a, a))
+        print(nestedtensor.nested.nested_c.sum_to_size(a, b))
         # self.assertRaises(
         #     RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(a, b))
-        self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested.sum_to_size(
+        self.assertRaises(RuntimeError, lambda: nestedtensor.nested.nested_c.sum_to_size(
             torch.randn(1, 2), a))
-        print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)))
-        print(nestedtensor.nested.nested.sum_to_size(a, torch.randn(1, 2)).shape)
+        print(nestedtensor.nested.nested_c.sum_to_size(a, torch.randn(1, 2)))
+        print(nestedtensor.nested.nested_c.sum_to_size(a, torch.randn(1, 2)).shape)
         # b = ntnt([torch.randn(1), torch.randn(1)])
         pass
 
     def test_native_is_expandable_to(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
-                  torch.arange(2).reshape(1, 2) + 2])
+                  torch.arange(2).reshape(1, 2) + 2])._impl
         self.assertEqual(True, native_is_expandable_to(a, a))
         self.assertEqual(False, native_is_expandable_to(a, torch.randn(1, 2)))
         self.assertEqual(True, native_is_expandable_to(torch.randn(1, 2), a))
         self.assertEqual(True, native_is_expandable_to(torch.randn(2), a))
         self.assertEqual(False, native_is_expandable_to(torch.randn(2, 1), a))
         b = ntnt([torch.arange(2).reshape(2),
-                  torch.arange(2).reshape(2) + 2])
+                  torch.arange(2).reshape(2) + 2])._impl
         c = ntnt([[torch.arange(2).reshape(1, 2)],
-                  [torch.arange(2).reshape(1, 2) + 2]])
+                  [torch.arange(2).reshape(1, 2) + 2]])._impl
         # Both NT
         self.assertEqual(True, native_is_expandable_to(b, a))
         self.assertEqual(False, native_is_expandable_to(a, b))
@@ -257,19 +254,19 @@ class TestReduce(TestCase):
 
     def test_sizes_equal(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
-                  torch.arange(2).reshape(1, 2) + 2])
+                  torch.arange(2).reshape(1, 2) + 2])._impl
         b = ntnt([torch.arange(2).reshape(2),
-                  torch.arange(2).reshape(2) + 2])
-        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(a, a))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(a, b))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(b, a))
+                  torch.arange(2).reshape(2) + 2])._impl
+        self.assertEqual(True, nestedtensor.nested.nested_c.sizes_equal(a, a))
+        self.assertEqual(False, nestedtensor.nested.nested_c.sizes_equal(a, b))
+        self.assertEqual(False, nestedtensor.nested.nested_c.sizes_equal(b, a))
         self.assertEqual(
-            False, nestedtensor.nested.nested.sizes_equal(torch.randn(1, 2), a))
+            False, nestedtensor.nested.nested_c.sizes_equal(torch.randn(1, 2), a))
         self.assertEqual(
-            False, nestedtensor.nested.nested.sizes_equal(a, torch.randn(1, 2)))
-        self.assertEqual(True, nestedtensor.nested.nested.sizes_equal(
+            False, nestedtensor.nested.nested_c.sizes_equal(a, torch.randn(1, 2)))
+        self.assertEqual(True, nestedtensor.nested.nested_c.sizes_equal(
             torch.randn(1, 2), torch.randn(1, 2)))
-        self.assertEqual(False, nestedtensor.nested.nested.sizes_equal(
+        self.assertEqual(False, nestedtensor.nested.nested_c.sizes_equal(
             torch.randn(2, 1), torch.randn(1, 2)))
         pass
 

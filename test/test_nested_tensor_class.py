@@ -249,7 +249,7 @@ class TestNestedTensor(TestCase):
     def test_serialize_nested_size(self):
         a = ntnt([[torch.randn(1, 2)],
                   [torch.randn(2, 1), torch.randn(1, 1)]])
-        result = nestedtensor._C.serialize_nested_size(a._impl)
+        result = nestedtensor._C.serialize_nested_size(a._impl._impl)
         result_a = nestedtensor._C.deserialize_nested_size(result)
         self.assertEqual(a.nested_size()[0][0], result_a[0][0])
         self.assertEqual(a.nested_size()[1][0], result_a[1][0])
@@ -693,9 +693,9 @@ class TestNestedTensor(TestCase):
         nt0 = ntnt([a, b])
         nt1 = ntnt([c])
         self.assertEqual(torch.cat([nt0, nt1], dim=0), ntnt_nograd([a, b, c]))
-        self.assertEqual(nestedtensor.cat(
+        self.assertEqual(torch.cat(
             [nt0, nt1], dim=1), ntnt_nograd([torch.cat([a, c]), b]))
-        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=2), ntnt_nograd(
+        self.assertEqual(torch.cat([nt0, nt1], dim=2), ntnt_nograd(
             [torch.cat([a, c], dim=1), b]))
 
     def test_stack(self):

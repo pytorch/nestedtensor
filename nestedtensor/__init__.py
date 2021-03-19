@@ -7,6 +7,7 @@ from .nested.masking import nested_tensor_from_tensor_mask
 from .nested.masking import nested_tensor_from_padded_tensor
 
 from .nested.nested import NestedTensor
+from .nested.nested import to_nested_tensor
 
 from . import nested
 from . import version
