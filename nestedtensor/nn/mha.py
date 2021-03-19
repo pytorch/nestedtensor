@@ -35,9 +35,9 @@ def multi_head_attention_forward(query,
                                  static_k=None,
                                  static_v=None
                                  ):
-    assert isinstance(query, nestedtensor.NestedTensor)
-    assert isinstance(key, nestedtensor.NestedTensor)
-    assert isinstance(value, nestedtensor.NestedTensor)
+    assert isinstance(query, nestedtensor.nested.nested_c.NestedTensorCImpl)
+    assert isinstance(key,   nestedtensor.nested.nested_c.NestedTensorCImpl)
+    assert isinstance(value, nestedtensor.nested.nested_c.NestedTensorCImpl)
     assert torch.is_tensor(out_proj_weight)
     assert torch.is_tensor(out_proj_bias)
 

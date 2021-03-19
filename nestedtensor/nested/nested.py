@@ -2,6 +2,7 @@ import torch
 from .nested_python import NestedTensorPythonImpl
 from .nested_c import NestedTensorCImpl
 from . import masking
+from torch._C import _disabled_torch_function_impl
 
 
 def _wrap_result(result):
@@ -40,6 +41,7 @@ def _filter_impl(args, kwargs):
 
 
 class NestedTensor(object):
+    __torch_function__ = _disabled_torch_function_impl
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its

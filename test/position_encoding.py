@@ -45,8 +45,8 @@ class PositionEmbeddingSine(nn.Module):
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
         pos_x = x_embed[:, :, :, None] / dim_t
         pos_y = y_embed[:, :, :, None] / dim_t
-        pos = nestedtensor.cat((pos_y, pos_x), dim=3)
+        pos = torch.cat((pos_y, pos_x), dim=3)
         pos_sin = pos[:, :, :, 0::2].sin()
         pos_cos = pos[:, :, :, 1::2].cos()
-        res = nestedtensor.stack((pos_sin, pos_cos), dim=4)
+        res = torch.stack((pos_sin, pos_cos), dim=4)
         return res.flatten(3)
