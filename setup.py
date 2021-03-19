@@ -46,10 +46,10 @@ if os.getenv("BUILD_VERSION"):
 elif sha != "Unknown":
     version = version + "+" + sha[:7]
 
-USE_C_EXTENSION = False
-if os.getenv("NT_USE_C_EXTENSION", "0") == "1":
+USE_C_EXTENSION = True
+if os.getenv("NT_USE_C_EXTENSION", "1") == "0":
     print("Using C extension!")
-    USE_C_EXTENSION = True
+    USE_C_EXTENSION = False
 
 print("Building wheel {}-{}".format(package_name, version))
 
