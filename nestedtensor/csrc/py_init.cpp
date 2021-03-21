@@ -242,6 +242,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
+#ifdef USE_SUBMODULE
   m.def("sum_to_size", [](Tensor self, Tensor desired) {
     std::vector<int64_t> desired_vec;
     if (is_nested_tensor_impl(desired)) {
@@ -254,7 +255,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     }
     return self.sum_to_size(IntArrayRef(desired_vec));
   });
+#endif
 
+#ifdef USE_SUBMODULE
   m.def("sizes_equal", [](Tensor self, Tensor other) {
     if (is_nested_tensor_impl(other)) {
       return at::sizes_equal(
@@ -262,7 +265,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     }
     return at::sizes_equal(self, other.sizes());
   });
+#endif
 
+#ifdef USE_SUBMODULE
   m.def("native_is_expandable_to", [](Tensor shape, Tensor desired) {
     std::vector<int64_t> shape_vec;
     if (is_nested_tensor_impl(shape)) {
@@ -275,6 +280,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     }
     return at::native_is_expandable_to(IntArrayRef(shape_vec), desired);
   });
+#endif
   // m.def("_test", []() {
   //     std::vector<at:Tensor> ts;
   //     ts.push_back(torch::rand({1}));

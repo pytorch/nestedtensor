@@ -199,7 +199,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "pow.Scalar", NestedTensor_pow_3);
 
   nt_impl(m, "add.Tensor", (NestedTensor_binary<Scalar, at::add>));
-  nt_impl(m, "add_.Tensor", (NestedTensor__binary<Scalar, at::native::add_>));
+  // nt_impl(m, "add_.Tensor", (NestedTensor__binary<Scalar, at::native::add_>));
   BINARY_OP(div)
   BINARY_OP(mul)
   BINARY_OP(remainder)
