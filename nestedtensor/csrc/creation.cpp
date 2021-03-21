@@ -193,6 +193,13 @@ TensorNode py_to_nested_tensor(const py::object& py_obj) {
     auto var = py::cast<autograd::Variable>(py_obj);
     guardAgainstNamedTensor<autograd::Variable>(var);
     return TensorNode(std::move(var));
+    // PyObject* obj = py_obj.ptr();
+    // if(!THPVariable_Check(obj)) {
+    //   throw std::runtime_error(
+    //       "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
+    // }
+    // at::Tensor& unpacked = THPVariable_Unpack(obj);
+    // return TensorNode(std::move(unpacked));
   }
 }
 
