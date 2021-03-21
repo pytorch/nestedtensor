@@ -458,10 +458,12 @@ void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   op.callBoxed(stack);
 }
 
+#ifdef USE_SUBMODULE
 TORCH_LIBRARY_IMPL(_, AutogradNestedTensor, m) {
-  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
-  // m.fallback(torch::CppFunction::makeFallthrough());
+  // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
+  m.fallback(torch::CppFunction::makeFallthrough());
 }
+#endif
 
 TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "copy_", NestedTensor_copy_);

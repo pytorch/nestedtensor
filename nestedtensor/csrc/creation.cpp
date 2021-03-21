@@ -171,25 +171,28 @@ bool _verify_variables(
       throw_error);
 }
 
-NestedNode<c10::IValue> py_to_nested_tensor(const py::object& py_obj) {
+TensorNode py_to_nested_tensor(const py::object& py_obj) {
   if (THPVariable_Check(py_obj.ptr())) {
     at::Tensor tensor = THPVariable_Unpack(py_obj.ptr());
     if (is_nested_tensor_impl(tensor)) {
-      auto tensor_data_structure =
-          get_nested_tensor_impl(tensor)->get_structure();
-      return map(
-          [](at::Tensor a) { return c10::IValue(a); }, tensor_data_structure);
+      return get_nested_tensor_impl(tensor)->get_structure();
     }
   }
   if (py::isinstance<py::sequence>(py_obj)) {
-    std::vector<NestedNode<c10::IValue>> result;
+    std::vector<TensorNode> result;
     auto py_seq = py::sequence(py_obj);
     for (size_t i = 0; i < py_seq.size(); i++) {
       result.emplace_back(py_to_nested_tensor(py_seq[i]));
     }
-    return NestedNode<c10::IValue>(std::move(result));
+    return TensorNode(std::move(result));
   } else {
-    return NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj));
+    if (!py::isinstance<autograd::Variable>(py_obj)) {
+      throw std::runtime_error(
+          "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
+    }
+    auto var = py::cast<autograd::Variable>(py_obj);
+    guardAgainstNamedTensor<autograd::Variable>(var);
+    return TensorNode(std::move(var));
   }
 }
 
@@ -199,26 +202,26 @@ at::Tensor nested_tensor_impl(
     py::object device_,
     bool requires_grad,
     bool pin_memory) {
+#ifndef USE_SUBMODULE
+  if (requires_grad) {
+    throw std::runtime_error(
+        "This version of nestedtensor currently does not support autograd. Please open an issue on https://github.com/pytorch/nestedtensor if you need this.");
+  }
+#endif
   auto dtype = toTypeInferredIValue(dtype_).toScalarType();
   auto device = toTypeInferredIValue(device_).toDevice();
-  NestedNode<c10::IValue> ivalue_structure = py_to_nested_tensor(list);
-  auto fn = [](c10::IValue a, bool result) { return result && a.isTensor(); };
-  bool all_same =
-      reduce<decltype(fn), bool, c10::IValue>(ivalue_structure, fn, true);
-  TORCH_CHECK(
-      all_same,
-      "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
-  TensorNode structure = map(
-      [&device, &dtype](c10::IValue a) {
-        return a.toTensor().clone().detach().to(device, dtype);
-      },
-      ivalue_structure);
+  TensorNode ivalue_structure = py_to_nested_tensor(list);
+  TensorNode structure =
+      map([&device, &dtype](
+              at::Tensor a) { return a.clone().detach().to(device, dtype); },
+          ivalue_structure);
   if (auto first = get_first_leaf(structure)) {
     if (!_verify_variables(*first, structure)) {
       _verify_variables(*first, structure, true);
     }
   }
-  auto result = at::detail::make_tensor<NestedTensorImpl>(std::move(structure)).contiguous();
+  auto result = at::detail::make_tensor<NestedTensorImpl>(std::move(structure))
+                    .contiguous();
   if (requires_grad) {
     result.requires_grad_();
   }
