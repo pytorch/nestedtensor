@@ -9,8 +9,6 @@ namespace nested_tensor {
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
 
-c10::optional<c10::IValue> py_obj_to_ivalue(py::object py_obj);
-
 template <typename A, typename B = py::object>
 B wrap_nested_node(NestedNode<A> nested_node) {
   if (nested_node.is_leaf()) {
