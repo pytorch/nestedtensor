@@ -705,8 +705,10 @@ static inline Tensor maybe_multiply(const Tensor& t, const Scalar& s) {
 }
 
 #ifdef TRACEPACKED
+// #define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, trace(TORCH_FN(FUNC)))
 #define nt_impl(M, NAME, FUNC) M.impl(NAME, torch::CppFunction::makeFromUnboxedFunction(trace(TORCH_FN(FUNC))))
 #else
+// #define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, FUNC)
 #define nt_impl(M, NAME, FUNC) M.impl(NAME, torch::CppFunction::makeFromUnboxedFunction(FUNC))
 #endif
 

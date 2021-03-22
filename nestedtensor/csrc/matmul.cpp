@@ -136,9 +136,9 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
 }
 
 Tensor& NestedTensor_matmul_out(
-    Tensor& result,
     const Tensor& self,
-    const Tensor& other) {
+    const Tensor& other,
+    Tensor& result) {
   apply_nested_tensor(
       [](Tensor& result, Tensor& tensor, Tensor& other) {
         at::matmul_out(result, tensor, other);
@@ -241,8 +241,8 @@ Tensor NestedTensor_addmm(
     const Tensor& input,
     const Tensor& self,
     const Tensor& other,
-    c10::Scalar alpha,
-    c10::Scalar beta) {
+    const c10::Scalar& alpha,
+    const c10::Scalar& beta) {
 #ifdef USEPACKED
   return NestedTensorFunction_addmm::apply(input, self, other, alpha, beta);
 #else

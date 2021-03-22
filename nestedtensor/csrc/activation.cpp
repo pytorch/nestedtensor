@@ -38,7 +38,7 @@ Tensor& NestedTensor_relu_(Tensor& self) {
 Tensor NestedTensor_threshold_backward(
     const Tensor& grad,
     const Tensor& self,
-    Scalar threshold) {
+    const c10::Scalar& threshold) {
   return map_nested_tensor(
       [&](at::Tensor g, at::Tensor s) {
         return threshold_backward(g, s, threshold);

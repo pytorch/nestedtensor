@@ -287,9 +287,21 @@ Tensor NestedTensor_to_nested_tensor(
 Tensor NestedTensor_slice(
     const Tensor& self,
     int64_t dim,
-    int64_t start,
-    int64_t end,
+    c10::optional<int64_t> start_,
+    c10::optional<int64_t> end_,
     int64_t step) {
+  int64_t start;
+  if (start_) {
+    start = *start_;
+  } else {
+    start = 0;
+  }
+  int64_t end;
+  if (end_) {
+    end = *end_;
+  } else {
+    end = 9223372036854775807;
+  }
   int64_t ndim = self.dim();
   if (ndim == 0) {
     TORCH_CHECK_INDEX(false, "slice() cannot be applied to a 0-dim tensor.");

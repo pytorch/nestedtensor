@@ -147,9 +147,9 @@ std::vector<Tensor> get_stack_inputs(TensorList tensors, int64_t dim) {
 }
 
 Tensor& NestedTensor_stack_out(
-    Tensor& result,
     TensorList tensors,
-    int64_t dim) {
+    int64_t dim,
+    Tensor& result) {
   TORCH_CHECK(tensors.size() > 0, "stack expects a non-empty TensorList");
   dim = maybe_wrap_dim(dim, tensors[0].dim() + 1);
   return at::cat_out(result, get_stack_inputs(tensors, dim), dim);
@@ -161,7 +161,7 @@ Tensor NestedTensor_stack(TensorList tensors, int64_t dim) {
   return at::cat(get_stack_inputs(tensors, dim), dim);
 }
 
-Tensor& NestedTensor_cat_out(Tensor& result, TensorList tensors, int64_t dim) {
+Tensor& NestedTensor_cat_out(TensorList tensors, int64_t dim, Tensor& result) {
   auto tmp = at::cat(tensors, dim);
   result.copy_(tmp);
   return result;
