@@ -165,6 +165,7 @@ setuptools.setup(
     cmdclass={
         "clean": clean,
         "build_ext": BuildExtension.with_options(
+            no_python_abi_suffix=True,
             use_ninja=os.environ.get("USE_NINJA", False)
         ),
     },
