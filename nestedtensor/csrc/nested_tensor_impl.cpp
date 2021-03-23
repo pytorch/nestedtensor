@@ -454,31 +454,23 @@ void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   op.callBoxed(stack);
 }
 
-// // #ifdef USE_SUBMODULE
-// TORCH_LIBRARY_IMPL(_, AutogradNestedTensor, m) {
-//   // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
-//   m.fallback(torch::CppFunction::makeFallthrough());
-// }
-// // #endif
-
 TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
-  nt_impl(m, "copy_", NestedTensor_copy_);
-  nt_impl(m, "squeeze_", NestedTensor_squeeze_);
-  nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
-  nt_impl(m, "squeeze", NestedTensor_squeeze);
-  nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
-  nt_impl(m, "contiguous", NestedTensor_contiguous);
-  nt_impl(m, "is_pinned", NestedTensor_is_pinned);
-  // nt_impl(m, "size.int", NestedTensor_size_int);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
-
+  // nt_impl(m, "size.int", NestedTensor_size_int);
   nt_impl(m, "as_strided", NestedTensor_as_strided);
   nt_impl(m, "as_strided_", NestedTensor_as_strided_);
-  nt_impl(m, "unbind.int", NestedTensor_unbind);
+  nt_impl(m, "contiguous", NestedTensor_contiguous);
+  nt_impl(m, "copy_", NestedTensor_copy_);
+  nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   nt_impl(m, "select.int", NestedTensor_select);
-  nt_impl(m, "slice.Tensor", NestedTensor_slice);
-  nt_impl(m, "unsqueeze", NestedTensor_unsqueeze);
   nt_impl(m, "serialize_nested_size", NestedTensor_serialize_nested_size);
   nt_impl(m, "size.int", NestedTensor_size_int);
+  nt_impl(m, "slice.Tensor", NestedTensor_slice);
+  nt_impl(m, "squeeze", NestedTensor_squeeze);
+  nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
+  nt_impl(m, "squeeze_", NestedTensor_squeeze_);
+  nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
+  nt_impl(m, "unbind.int", NestedTensor_unbind);
+  nt_impl(m, "unsqueeze", NestedTensor_unsqueeze);
 }
 } // namespace at

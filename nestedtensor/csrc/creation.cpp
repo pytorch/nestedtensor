@@ -209,12 +209,10 @@ at::Tensor nested_tensor_impl(
     py::object device_,
     bool requires_grad,
     bool pin_memory) {
-#ifndef USE_SUBMODULE
   if (requires_grad) {
     throw std::runtime_error(
         "This version of nestedtensor currently does not support autograd. Please open an issue on https://github.com/pytorch/nestedtensor if you need this.");
   }
-#endif
   auto dtype = toTypeInferredIValue(dtype_).toScalarType();
   auto device = toTypeInferredIValue(device_).toDevice();
   TensorNode ivalue_structure = py_to_nested_tensor(list);
