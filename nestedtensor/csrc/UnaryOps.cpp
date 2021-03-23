@@ -171,44 +171,44 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       (NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>));
 
 TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
-  UNARY_OP(abs);
-  UNARY_OP(acos);
-  UNARY_OP(asin);
-  UNARY_OP(atan);
-  UNARY_OP(ceil);
-  UNARY_OP(cos);
-  UNARY_OP(cosh);
-  UNARY_OP_INPLACE_METHOD(digamma)
-  UNARY_OP(erf);
-  UNARY_OP(erfc);
-  UNARY_OP_INPLACE_METHOD(erfinv)
-  UNARY_OP(exp);
-  UNARY_OP(expm1);
-  UNARY_OP(floor);
-  // UNARY_OP(fill);
-  UNARY_OP(frac);
-  UNARY_OP_INPLACE_METHOD(lgamma)
-  UNARY_OP(log);
-  UNARY_OP(log10);
-  UNARY_OP(log1p);
-  UNARY_OP(log2);
-  // UNARY_OP(mvlgamma);
-  UNARY_OP(neg);
-  UNARY_OP(reciprocal);
-  UNARY_OP(round);
-  UNARY_OP(rsqrt);
-  UNARY_OP(sigmoid);
-  UNARY_OP_INPLACE_METHOD(sign)
-  UNARY_OP(sin);
-  UNARY_OP(sinh);
-  UNARY_OP(sqrt);
-  UNARY_OP(tan);
-  UNARY_OP(tanh);
-  UNARY_OP(trunc);
+  // UNARY_OP(abs);
+  // UNARY_OP(acos);
+  // UNARY_OP(asin);
+  // UNARY_OP(atan);
+  // UNARY_OP(ceil);
+  // UNARY_OP(cos);
+  // UNARY_OP(cosh);
+  // UNARY_OP_INPLACE_METHOD(digamma)
+  // UNARY_OP(erf);
+  // UNARY_OP(erfc);
+  // UNARY_OP_INPLACE_METHOD(erfinv)
+  // UNARY_OP(exp);
+  // UNARY_OP(expm1);
+  // UNARY_OP(floor);
+  // // UNARY_OP(fill);
+  // UNARY_OP(frac);
+  // UNARY_OP_INPLACE_METHOD(lgamma)
+  // UNARY_OP(log);
+  // UNARY_OP(log10);
+  // UNARY_OP(log1p);
+  // UNARY_OP(log2);
+  // // UNARY_OP(mvlgamma);
+  // UNARY_OP(neg);
+  // UNARY_OP(reciprocal);
+  // UNARY_OP(round);
+  // UNARY_OP(rsqrt);
+  // UNARY_OP(sigmoid);
+  // UNARY_OP_INPLACE_METHOD(sign)
+  // UNARY_OP(sin);
+  // UNARY_OP(sinh);
+  // UNARY_OP(sqrt);
+  // UNARY_OP(tan);
+  // UNARY_OP(tanh);
+  // UNARY_OP(trunc);
 
-  // NOTE: mvlgamma doesn't have an out variant? why?
-  nt_impl(m, "mvlgamma", NestedTensor_mvlgamma);
-  nt_impl(m, "mvlgamma_", NestedTensor_mvlgamma_);
+  // // NOTE: mvlgamma doesn't have an out variant? why?
+  // nt_impl(m, "mvlgamma", NestedTensor_mvlgamma);
+  // nt_impl(m, "mvlgamma_", NestedTensor_mvlgamma_);
 
   // nt_impl(m, "clamp", NestedTensor_clamp);
   // nt_impl(m, "clamp_", NestedTensor_clamp_);
