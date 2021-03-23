@@ -338,43 +338,6 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   return at::prod(all_tensor, dtype);
 }
 
-Tensor NestedTensor_var_backward_dim(
-    const Tensor& grad_,
-    const Tensor& self,
-    IntArrayRef dim,
-    bool unbiased,
-    bool keepdim) {
-  TORCH_CHECK(false, "var.dim gradient not implemented yet.");
-  return grad_;
-}
-
-Tensor NestedTensor_sum_backward(
-    const Tensor& grad,
-    IntArrayRef sizes,
-    IntArrayRef dims,
-    bool keepdim) {
-  TORCH_CHECK(false, "sum_backward not implemented yet.");
-  return grad;
-}
-
-Tensor NestedTensor_sum_backward_tensor(
-    const Tensor& grad,
-    const Tensor& self,
-    IntArrayRef dims,
-    bool keepdim) {
-  TORCH_CHECK(false, "sum_backward.tensor not implemented yet.");
-  return grad;
-}
-
-Tensor NestedTensor_mean_backward(
-    const Tensor& grad,
-    const Tensor& self,
-    IntArrayRef dims,
-    bool keepdim) {
-  TORCH_CHECK(false, "mean_backward not implemented yet.");
-  return grad;
-}
-
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
@@ -384,19 +347,8 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "max.dim", NestedTensor_max_dim);
   nt_impl(m, "var", NestedTensor_var);
   nt_impl(m, "var.dim", NestedTensor_var_dim);
-  nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
-  nt_impl(m, "sum_backward", NestedTensor_sum_backward);
-  nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
-  nt_impl(m, "mean_backward", NestedTensor_mean_backward);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
 }
-
-// TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-//   nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
-//   nt_impl(m, "sum_backward", NestedTensor_sum_backward);
-//   nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
-//   nt_impl(m, "mean_backward", NestedTensor_mean_backward);
-// }
 
 } // namespace at
