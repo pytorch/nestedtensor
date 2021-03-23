@@ -212,7 +212,7 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "embedding", NestedTensor_embedding);
   nt_impl(m, "any", NestedTensor_any);
   nt_impl(m, "all", NestedTensor_all);

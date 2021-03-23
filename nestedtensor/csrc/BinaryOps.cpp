@@ -190,7 +190,7 @@ Tensor& NestedTensor_binary_out_scalar(
   nt_impl(m, #NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   nt_impl(m, #NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl(m, "sub.Tensor", (NestedTensor_binary<Scalar, at::sub>));
   // nt_impl(m, "sub_.Tensor", (NestedTensor__binary<Scalar,
   // at::native::sub_>)); nt_impl(m, "sub.out",

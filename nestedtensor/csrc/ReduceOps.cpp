@@ -375,7 +375,7 @@ Tensor NestedTensor_mean_backward(
   return grad;
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean", NestedTensor_mean);

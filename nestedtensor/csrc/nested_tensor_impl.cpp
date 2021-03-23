@@ -139,6 +139,8 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
       _sizes.push_back(0);
     }
   }
+  remove_autograd_key();
+  key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::InplaceOrView});
 }
 
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
@@ -454,7 +456,7 @@ void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   op.callBoxed(stack);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
   // nt_impl(m, "size.int", NestedTensor_size_int);
   nt_impl(m, "as_strided", NestedTensor_as_strided);

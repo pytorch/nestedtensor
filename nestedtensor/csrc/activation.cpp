@@ -47,11 +47,11 @@ Tensor NestedTensor_threshold_backward(
       self);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "gelu", NestedTensor_gelu);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "relu", NestedTensor_relu);
   nt_impl(m, "relu_", NestedTensor_relu_);
   nt_impl(m, "threshold_backward", NestedTensor_threshold_backward);

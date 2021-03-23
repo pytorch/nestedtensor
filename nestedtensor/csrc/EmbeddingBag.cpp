@@ -103,10 +103,10 @@ Tensor NestedTensor__embedding_bag_sparse_backward(
       per_sample_weights);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "_embedding_bag", NestedTensor__embedding_bag);
 }
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, 
       "_embedding_bag_dense_backward",
       NestedTensor__embedding_bag_dense_backward);

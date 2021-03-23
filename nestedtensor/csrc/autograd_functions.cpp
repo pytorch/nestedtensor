@@ -156,7 +156,7 @@ Tensor NestedTensor_batch_norm(
   return output;
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);
