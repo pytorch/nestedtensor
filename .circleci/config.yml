@@ -181,6 +181,12 @@ jobs:
             touch ${BASH_ENV}
             # For some reason circleci isn't automatically sourcing this within the builds
             source ${BASH_ENV} && .circleci/unittest/linux/scripts/install.sh
+      - persist_to_workspace:
+          root: wheels
+          paths:
+            - "*"
+      - store_artifacts:
+          path: wheels
       - run:
           name: Run tests
           command: .circleci/unittest/linux/scripts/run_test.sh
