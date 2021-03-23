@@ -15,10 +15,6 @@ from torch.utils.cpp_extension import (
     BuildExtension,
 )
 
-USE_SUBMODULE = False
-if int(os.environ.get("USE_SUBMODULE", 0)):
-    USE_SUBMODULE = True
-
 
 def read(*names, **kwargs):
     with io.open(
@@ -59,7 +55,6 @@ def write_version_file():
         f.write("from nestedtensor import _C\n")
         f.write("if hasattr(_C, 'CUDA_VERSION'):\n")
         f.write("    cuda = _C.CUDA_VERSION\n")
-        f.write("USE_SUBMODULE={}\n".format(str(USE_SUBMODULE)))
 
 
 write_version_file()
@@ -88,9 +83,6 @@ def get_extensions():
         extra_compile_args = {
             "cxx": ["-O0", "-fno-inline", "-g", "-std=c++14"]}
         extra_link_args = ["-O0", "-g"]
-    if USE_SUBMODULE:
-        extra_compile_args["cxx"] = extra_compile_args["cxx"] + \
-            ["-DUSE_SUBMODULE=1"]
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv(
         "FORCE_CUDA", "0"
     ) == "1":
