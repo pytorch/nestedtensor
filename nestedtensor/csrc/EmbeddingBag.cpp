@@ -45,74 +45,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
       std::get<3>(emb_outputs));
 }
 
-Tensor NestedTensor__embedding_bag_dense_backward(
-    const Tensor& grad_,
-    const Tensor& indices_,
-    const Tensor& offsets,
-    const Tensor& offset2bag,
-    const Tensor& bag_size_,
-    const Tensor& max_indices_,
-    int64_t num_weights,
-    bool scale_grad_by_freq,
-    int64_t mode,
-    const c10::optional<Tensor>& per_sample_weights) {
-  TORCH_CHECK(is_nested_tensor_impl(grad_), "grad expected to be NestedTensor");
-  TORCH_CHECK(
-      is_nested_tensor_impl(indices_), "indices expected to be NestedTensor");
-  at::Tensor grad = NestedTensor_to_tensor(grad_, c10::nullopt);
-  at::Tensor indices = get_buffer(indices_).contiguous();
-  c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::NestedTensor);
-  return at::_embedding_bag_dense_backward(
-      grad,
-      indices,
-      offsets,
-      offset2bag,
-      bag_size_,
-      max_indices_,
-      num_weights,
-      scale_grad_by_freq,
-      mode,
-      per_sample_weights);
-}
-
-Tensor NestedTensor__embedding_bag_sparse_backward(
-    const Tensor& grad_,
-    const Tensor& indices_,
-    const Tensor& offsets,
-    const Tensor& offset2bag,
-    const Tensor& bag_size_,
-    int64_t num_weights,
-    bool scale_grad_by_freq,
-    int64_t mode,
-    const c10::optional<Tensor>& per_sample_weights) {
-  TORCH_CHECK(is_nested_tensor_impl(grad_), "grad expected to be NestedTensor");
-  TORCH_CHECK(
-      is_nested_tensor_impl(indices_), "indices expected to be NestedTensor");
-  at::Tensor grad = NestedTensor_to_tensor(grad_, c10::nullopt);
-  at::Tensor indices = get_buffer(indices_).contiguous();
-  c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::NestedTensor);
-  return at::_embedding_bag_sparse_backward(
-      grad,
-      indices,
-      offsets,
-      offset2bag,
-      bag_size_,
-      num_weights,
-      scale_grad_by_freq,
-      mode,
-      per_sample_weights);
-}
-
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "_embedding_bag", NestedTensor__embedding_bag);
-}
-TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  nt_impl(m, 
-      "_embedding_bag_dense_backward",
-      NestedTensor__embedding_bag_dense_backward);
-  nt_impl(m, 
-      "_embedding_bag_sparse_backward",
-      NestedTensor__embedding_bag_sparse_backward);
 }
 
 } // namespace at

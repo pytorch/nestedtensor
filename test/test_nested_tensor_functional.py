@@ -57,6 +57,7 @@ class TestFunctional(TestCase):
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 
+    @unittest.skip("Requires autograd support")
     def test_nn_embedding_bag(self):
 
         def run_test(EmbeddingBag, inputs):
