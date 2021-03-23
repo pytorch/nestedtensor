@@ -26,7 +26,7 @@ Tensor NestedTensor_view(const Tensor& self, IntArrayRef size) {
     target_shape.push_back(size[i]);
   }
   // TODO: Potential use for packed view, but requires custom backward.
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::native::view(t, IntArrayRef(target_shape));
       },
@@ -51,7 +51,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
     target_shape.push_back(size[i]);
   }
   // TODO: Potential use for packed reshape, but requires custom backward.
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [target_shape](const at::Tensor t) {
         return at::reshape(t, IntArrayRef(target_shape));
       },
@@ -71,7 +71,7 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
   // TODO: Potential use for packed transpose, but requires custom backward.
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
       },

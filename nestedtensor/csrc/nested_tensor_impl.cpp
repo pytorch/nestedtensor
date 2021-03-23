@@ -392,7 +392,7 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
       ((self_impl->opt_sizes()[dim]) &&
        ((*(self_impl->opt_sizes()[dim])) == 1)),
       "Given dimension is either undefined or not a singleton.");
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [dim, nested_dim](at::Tensor tensor) {
         return tensor.squeeze(dim - nested_dim);
       },

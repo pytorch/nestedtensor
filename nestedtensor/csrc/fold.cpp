@@ -14,7 +14,7 @@ Tensor NestedTensor_im2col(
     IntArrayRef dilation,
     IntArrayRef padding,
     IntArrayRef stride) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](at::Tensor t) {
         return at::im2col(
                    t.unsqueeze(0), kernel_size, dilation, padding, stride)
@@ -30,7 +30,7 @@ Tensor NestedTensor_col2im(
     IntArrayRef dilation,
     IntArrayRef padding,
     IntArrayRef stride) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](at::Tensor t) {
         return at::col2im(
                    t.unsqueeze(0),

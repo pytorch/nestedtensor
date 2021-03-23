@@ -9,7 +9,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_gelu(const Tensor& self) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](at::Tensor tensor) { return at::gelu(tensor); }, self);
 }
 
