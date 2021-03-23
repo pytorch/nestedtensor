@@ -228,9 +228,6 @@ at::Tensor nested_tensor_impl(
     }
   }
   auto result = at::detail::make_tensor<NestedTensorImpl>(std::move(structure));
-  std::cout << "0: " << result.unsafeGetTensorImpl()->key_set() << std::endl;
-  result.unsafeGetTensorImpl()->key_set().remove(c10::DispatchKey::AutogradNestedTensor);
-  std::cout << "1: " << result.unsafeGetTensorImpl()->key_set() << std::endl;
   result = result.contiguous();
   if (requires_grad) {
     result.requires_grad_();

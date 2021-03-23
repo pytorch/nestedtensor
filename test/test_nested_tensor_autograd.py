@@ -15,6 +15,8 @@ def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 
 class TestNestedTensorAutograd(TestCase):
+
+    @unittest.skip("Requires autograd support")
     def test_autograd_size_equal_nt(self):
         # TODO: Right now this only exercises the mechanisms
         a = ntnt([torch.randn(1, 2)])
@@ -39,6 +41,7 @@ class TestNestedTensorAutograd(TestCase):
         a1 = a0 + e
         a2 = a1.sum()
 
+    @unittest.skip("Requires autograd support")
     def test_basic_grad(self):
         def some_func(x):
             return torch.sum(x ** 2 + x ** 3)
@@ -73,6 +76,7 @@ class TestNestedTensorAutograd(TestCase):
         # self.assertIsNone(tensor2.grad)
         # self.assertIsNotNone(nt2[0].grad)
 
+    @unittest.skip("Requires autograd support")
     def test_grad_to_tensor_mask(self):
         def some_func(x):
             return torch.sum(x ** 2 + x ** 3)
@@ -106,6 +110,7 @@ class TestNestedTensorAutograd(TestCase):
         # self.assertEqual(nt2[1].grad, torch.tensor([ 5., 16., 33.]))
         # self.assertEqual(nt2[2].grad, torch.tensor([ 5., 16.]))
 
+    @unittest.skip("Requires autograd support")
     def test_grad_nt_from_tensor_mask(self):
         def some_func(x):
             return torch.sum(x ** 2 + x ** 3)

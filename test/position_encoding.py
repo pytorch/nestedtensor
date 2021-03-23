@@ -8,8 +8,6 @@ import unittest
 from utils import TestCase
 import random
 import utils
-import torchvision
-from torchvision.models._utils import IntermediateLayerGetter
 from torch import nn
 import math
 

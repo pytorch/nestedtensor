@@ -8,8 +8,6 @@ import unittest
 from utils import TestCase
 import random
 import utils
-import torchvision
-from torchvision.models._utils import IntermediateLayerGetter
 from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 
 
@@ -61,7 +59,10 @@ class ConfusionMatrix(object):
 
 
 class TestIntegration(TestCase):
+    @unittest.skip("Requires autograd support")
     def test_resnet18(self):
+        import torchvision
+        from torchvision.models._utils import IntermediateLayerGetter
         EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 10, 10) for _ in range(3)]
         model = torchvision.models.resnet.resnet18(pretrained=True).eval()
         result_model_nt = model(nestedtensor.nested_tensor(
@@ -75,6 +76,7 @@ class TestIntegration(TestCase):
             3, 100 * i, 100) for i in range(1, 4)]
         model(nestedtensor.nested_tensor(EXAMPLE_IMAGE_TENSORS))
 
+    @unittest.skip("Requires autograd support")
     def test_segmentation_pretrained_test_only(self):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):
@@ -162,6 +164,7 @@ class TestIntegration(TestCase):
         #     replace_stride_with_dilation=[False, False, False],
         #     pretrained=True, norm_layer=NTFrozenBatchNorm2d), {'layer4': "0"}), False)
 
+    @unittest.skip("Requires autograd support")
     def test_transformer_forward(self):
         EMBED_DIM = 32
         NHEAD = 8
