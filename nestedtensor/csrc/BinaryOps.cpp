@@ -106,11 +106,11 @@ Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_) {
       [](Tensor s, Tensor o) { return func(s, o); }, self, other);
 }
 
-template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
-Tensor NestedTensor_binary(
+template <Tensor (*func)(const Tensor&, const Tensor&, const Scalar&)>
+Tensor NestedTensor_binary_tensor_tensor_scalar(
     const Tensor& self_,
     const Tensor& other_,
-    S scalar) {
+    const Scalar& scalar) {
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
@@ -198,7 +198,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl(m, "pow.Scalar_out", NestedTensor_pow_out_3);
   // nt_impl(m, "pow.Scalar", NestedTensor_pow_3);
 
-  // nt_impl(m, "add.Tensor", (NestedTensor_binary<Scalar, at::add>));
+  nt_impl(m, "add.Tensor", (NestedTensor_binary_tensor_tensor_scalar<at::add>));
   // // nt_impl(m, "add_.Tensor", (NestedTensor__binary<Scalar, at::native::add_>));
   // BINARY_OP(div)
   // BINARY_OP(mul)

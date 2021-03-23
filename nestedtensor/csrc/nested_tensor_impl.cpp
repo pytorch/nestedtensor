@@ -113,7 +113,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
 
 NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     : TensorImpl(
-          c10::DispatchKeySet({NestedTensorKey_PreAutograd, NestedTensorKey}),
+          c10::DispatchKeySet({NestedTensorKey}),
           get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
                                     : at::ones({}).dtype(),
           get_first_leaf(structure) ? get_first_leaf(structure)->device()
@@ -180,22 +180,6 @@ at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
       std::move(buffer), nested_size));
 }
 
-struct NestedTensorFunction_contiguous
-    : public torch::autograd::Function<NestedTensorFunction_contiguous> {
-  static Tensor forward(
-      torch::autograd::AutogradContext* ctx,
-      const Tensor& input) {
-    return wrap_tensor_node(pack(get_nested_tensor_structure(input)));
-  }
-  static torch::autograd::variable_list backward(
-      torch::autograd::AutogradContext* ctx,
-      torch::autograd::variable_list grad_output_) {
-    TORCH_CHECK(grad_output_.size() == 1, "grad_output must be of size 1.");
-    at::Tensor grad_output = grad_output_[0];
-    return {grad_output};
-  }
-};
-
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   if (self.is_contiguous(memory_format)) {
     return self;
@@ -203,7 +187,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return NestedTensorFunction_contiguous::apply(self);
+  return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
@@ -470,14 +454,14 @@ void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   op.callBoxed(stack);
 }
 
-#ifdef USE_SUBMODULE
+// #ifdef USE_SUBMODULE
 TORCH_LIBRARY_IMPL(_, AutogradNestedTensor, m) {
   // m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
   m.fallback(torch::CppFunction::makeFallthrough());
 }
-#endif
+// #endif
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "squeeze_", NestedTensor_squeeze_);
   nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
@@ -485,10 +469,9 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
-  nt_impl(m, "size.int", NestedTensor_size_int);
+  // nt_impl(m, "size.int", NestedTensor_size_int);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
-}
-TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+
   nt_impl(m, "as_strided", NestedTensor_as_strided);
   nt_impl(m, "as_strided_", NestedTensor_as_strided_);
   nt_impl(m, "unbind.int", NestedTensor_unbind);

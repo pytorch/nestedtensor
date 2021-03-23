@@ -26,16 +26,13 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-constexpr auto NestedTensorKey_PreAutograd = DispatchKey::AutogradNestedTensor;
 constexpr auto NestedTensorKey = DispatchKey::NestedTensor;
 
 struct NestedTensorImpl;
 
 template <class A>
 bool is_nested_tensor_impl(A tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey) ||
-      tensor.unsafeGetTensorImpl()->key_set().has(
-          at::NestedTensorKey_PreAutograd);
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
 }
 
 template <class A, class B>

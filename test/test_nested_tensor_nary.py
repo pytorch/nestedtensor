@@ -10,7 +10,7 @@ import utils
 
 def ntnt(x, device=None):
     return nestedtensor.nested_tensor(
-        x, requires_grad=True, device=device)
+        x, requires_grad=False, device=device)
 
 
 def ntnt_nograd(x, device=None):
@@ -296,9 +296,7 @@ for func__ in get_unary_functions():
 
 TestBinary = type('TestBinary', (DynamicClassBase,), {})
 for func in get_binary_functions():
-    no_grad = False
-    if func == "remainder" or func == "pow":
-        no_grad = True
+    no_grad = True
     setattr(TestBinary, "test_{0}".format(func),
             _gen_test_binary(func, no_grad))
 
