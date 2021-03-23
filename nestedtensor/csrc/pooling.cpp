@@ -64,7 +64,7 @@ TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "max_pool2d", NestedTensor_max_pool2d);
 }
 
-TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "adaptive_avg_pool2d", NestedTensor_adaptive_avg_pool2d);
   nt_impl(
       m,

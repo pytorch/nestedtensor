@@ -170,7 +170,7 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       #NAME "_",                                                          \
       (NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>));
 
-TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   UNARY_OP(abs);
   UNARY_OP(acos);
   UNARY_OP(asin);

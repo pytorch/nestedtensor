@@ -375,7 +375,7 @@ Tensor NestedTensor_mean_backward(
   return grad;
 }
 
-TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "sum", NestedTensor_sum);
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean", NestedTensor_mean);
@@ -392,11 +392,11 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "cumsum", NestedTensor_cumsum);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
-  nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
-  nt_impl(m, "sum_backward", NestedTensor_sum_backward);
-  nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
-  nt_impl(m, "mean_backward", NestedTensor_mean_backward);
-}
+// TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+//   nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
+//   nt_impl(m, "sum_backward", NestedTensor_sum_backward);
+//   nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
+//   nt_impl(m, "mean_backward", NestedTensor_mean_backward);
+// }
 
 } // namespace at

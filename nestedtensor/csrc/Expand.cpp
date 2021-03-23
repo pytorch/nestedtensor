@@ -317,7 +317,7 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
   return leading_dims > 0 ? tensor.view(shape) : tensor;
 }
 
-TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
   nt_impl(m, "expand_as", NestedTensor_expand_as);
 }
 TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
