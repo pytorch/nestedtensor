@@ -450,10 +450,11 @@ Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
 }
 
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
-  std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
-  c10::impl::ExcludeDispatchKeyGuard guard(
-      c10::DispatchKey::AutogradNestedTensor);
-  op.callBoxed(stack);
+  AT_ERROR("Currently no NestedTensor kernel registered for  ", op.schema());
+}
+
+TORCH_LIBRARY_IMPL(_, NestedTensor, m) {
+  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
