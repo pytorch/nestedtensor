@@ -27,7 +27,7 @@ WHEELS_FOLDER=${HOME}/project/wheels
 mkdir -p $WHEELS_FOLDER
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    conda install pytorch torchvision cpuonly -c pytorch-nightly
+    conda install -y pytorch torchvision cpuonly -c pytorch-nightly
 else
-    conda install pytorch torchvision cudatoolkit=10.2 -c pytorch-nightly
+    conda install -y pytorch torchvision cudatoolkit=10.2 -c pytorch-nightly
 fi
