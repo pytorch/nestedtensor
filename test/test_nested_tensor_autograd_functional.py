@@ -9,7 +9,6 @@ from utils import TestCase
 import random
 import utils
 from torch.nn import functional as F
-from torchvision.models._utils import IntermediateLayerGetter
 from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 from position_encoding import PositionEmbeddingSine
 from joiner import Joiner
@@ -22,6 +21,7 @@ def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 
 class TestAutogradFunctional(TestCase):
+    @unittest.skip("Requires autograd support")
     def test_nn_conv2d(self):
         def _test(Conv2d):
             inputs = [
@@ -58,6 +58,7 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torch.nn.Conv2d(
             3, 33, kernel_size=(1, 1), stride=(1, 1), bias=False))
 
+    @unittest.skip("Requires autograd support")
     def test_nn_linear(self):
         def _test(linear):
             inputs = [
@@ -88,6 +89,7 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
+    @unittest.skip("Requires autograd support")
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d, has_grad=True):
             inputs = torch.randn(5, 3, 18, 18, requires_grad=True)
@@ -133,6 +135,7 @@ class TestAutogradFunctional(TestCase):
                                            affine=False, track_running_stats=True).eval())
         _test(lambda: torch.nn.BatchNorm2d(3), False)
 
+    @unittest.skip("Requires autograd support")
     def test_nn_relu(self):
         inputs = [
             torch.randn(3, 500, 600, requires_grad=True),
@@ -160,6 +163,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(inputs[0].grad, nt.grad[0])
         self.assertEqual(inputs[1].grad, nt.grad[1])
 
+    @unittest.skip("Requires autograd support")
     def test_add(self):
         inputs0_ = [
             torch.randn(5, 6, requires_grad=True),
@@ -177,6 +181,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(inputs0.grad.sum(),
                          inputs1.grad.sum() + inputs1.grad.sum())
 
+    @unittest.skip("Requires autograd support")
     def test_resnet_bottleneck(self):
         import torchvision
 
@@ -224,6 +229,7 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64), False)
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64).eval())
 
+    @unittest.skip("Requires autograd support")
     def test_resnet_classification(self):
         import torchvision
 
@@ -265,8 +271,10 @@ class TestAutogradFunctional(TestCase):
         # _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64))
         _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64).eval())
 
+    @unittest.skip("Requires autograd support")
     def test_backbone(self):
         import torchvision
+        from torchvision.models._utils import IntermediateLayerGetter
 
         def _test(FCNHead):
             inputs_ = [
@@ -315,6 +323,7 @@ class TestAutogradFunctional(TestCase):
             pretrained=True, norm_layer=NTFrozenBatchNorm2d), return_layers),
             PositionEmbeddingSine(128, normalize=True)))
 
+    @unittest.skip("Requires autograd support")
     def test_mha(self):
         embed_dim = 2
         num_heads = 2
@@ -343,6 +352,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
         # XXX: This needs a test that actually checks the parameter gradients
 
+    @unittest.skip("Requires autograd support")
     def test_mha_detr(self):
         NDIM = 128
         BSZ = 8
@@ -373,6 +383,7 @@ class TestAutogradFunctional(TestCase):
         # TODO: The numerical instabilities of summation seem to add up here.
         self.assertEqual(src.grad.sum(), grad_sum, prec=6e-5)
 
+    @unittest.skip("Requires autograd support")
     def test_squeeze(self):
         t = torch.randn(2, 3)
         result = ntnt_nograd([t])
@@ -438,6 +449,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(nt.squeeze(
             4), ntnt([[t.reshape(1, 2, 3)]]))
 
+    @unittest.skip("Requires autograd support")
     def test_nn_max_pool2d(self):
         data = [
             [
@@ -463,6 +475,7 @@ class TestAutogradFunctional(TestCase):
             nt_res = maxPool2d(nt)
             self.assertEqual(ntnt(tensor_res), nt_res)
 
+    @unittest.skip("Requires autograd support")
     def test_fzbn2d(self):
         class FrozenBatchNorm2d(torch.nn.Module):
             """
@@ -527,6 +540,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)
 
+    @unittest.skip("Requires autograd support")
     def test_layer_norm(self):
         layer_norm = torch.nn.LayerNorm((0,))
         t0 = torch.randn(3)
@@ -587,6 +601,7 @@ class TestAutogradFunctional(TestCase):
                                "Currently only singleton tuples of integers supported for layer_norm.",
                                lambda: layer_norm(nt))
 
+    @unittest.skip("Requires autograd support")
     def test_decoder(self):
         class TransformerDecoderLayer(nn.Module):
 
@@ -692,11 +707,13 @@ class TestAutogradFunctional(TestCase):
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_1(self):
         ts = [[], []]
         nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_2(self):
         t0 = torch.randn(3, requires_grad=True)
         t1 = torch.randn(2, requires_grad=True)
@@ -705,6 +722,7 @@ class TestAutogradFunctional(TestCase):
         nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_3(self):
         t0 = torch.randn(3, 2, 1, requires_grad=True)
         t1 = torch.randn(2, 3, 1, requires_grad=True)
@@ -713,6 +731,7 @@ class TestAutogradFunctional(TestCase):
         nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_4(self):
         ts = torch.randn(6, 4, 3, 2, 5, requires_grad=True)
         ts = list(map(lambda x: x.unbind(), ts.unbind()))

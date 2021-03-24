@@ -48,6 +48,7 @@ class TestFunctional(TestCase):
         # nt_cont = relu(nt)
         # self.assertEqual(True, nt_cont.is_contiguous())
 
+    @unittest.skip("Requires autograd support")
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
         x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
@@ -56,6 +57,7 @@ class TestFunctional(TestCase):
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 
+    @unittest.skip("Requires autograd support")
     def test_nn_embedding_bag(self):
 
         def run_test(EmbeddingBag, inputs):
@@ -86,6 +88,7 @@ class TestFunctional(TestCase):
         run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
 
 
+    @unittest.skip("Requires autograd support")
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
         tensor2 = torch.rand(3, 300, 400)
@@ -138,6 +141,7 @@ class TestFunctional(TestCase):
                 nt, running_mean, running_var)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
+    @unittest.skip("Requires autograd support")
     def test_nn_functional_max_pool2d(self):
         inputs = [
             torch.randn(3, 500, 600),
@@ -192,6 +196,7 @@ class TestFunctional(TestCase):
             nt_res = torch.nn.functional.relu(nt)
             self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
+    @unittest.skip("Requires autograd support")
     def test_nn_functional_cross_entropy(self):
         inputs = [
             torch.randn(3, 300, 300),
@@ -214,6 +219,7 @@ class TestFunctional(TestCase):
         nt_res = torch.nn.functional.cross_entropy(input_nt, target_nt)
         self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
 
+    @unittest.skip("Requires autograd support")
     def test_nn_dropout(self):
         inputs = [
             torch.randn(3, 128, 128),
@@ -231,6 +237,7 @@ class TestFunctional(TestCase):
             self.assertEqual(nestedtensor.nested_tensor(
                 tensor_res).size(), nt_res.size())
 
+    @unittest.skip("Requires autograd support")
     def test_nn_functional_dropout(self):
         inputs = [
             torch.randn(3, 128, 128),
@@ -247,6 +254,7 @@ class TestFunctional(TestCase):
         nt_res = torch.nn.functional.dropout(nt)
         self.assertEqual(ntnt(tensor_res).size(), nt_res.size())
 
+    @unittest.skip("Requires autograd support")
     def test_nn_functional_interpolate(self):
         inputs = [
             torch.randn(3, 200, 300),
@@ -370,6 +378,7 @@ class TestFunctional(TestCase):
                 3), constructor([t.reshape(2, 3, 1)]))
             self.assertRaises(IndexError, lambda: nt.unsqueeze(4))
 
+    @unittest.skip("Requires autograd support")
     def test_matmul(self):
         for constructor in _iter_constructors():
             t1 = torch.randn(2, 3)
@@ -388,6 +397,7 @@ class TestFunctional(TestCase):
             self.assertEqual(result2[1][0], torch.matmul(t22, t1))
             self.assertEqual(result2[1][1], torch.matmul(t21, t1))
 
+    @unittest.skip("Requires autograd support")
     def test_transpose(self):
         t0 = torch.randn(3, 3, 4)
         t1 = torch.randn(2, 4, 3)
@@ -409,6 +419,7 @@ class TestFunctional(TestCase):
             list(map(lambda x: x.unbind(), t_t.unbind())))
         self.assertEqual(t_t, nt_t.to_tensor())
 
+    @unittest.skip("Requires autograd support")
     def test_flatten(self):
         t0 = torch.randn(3, 3, 4)
         t1 = torch.randn(2, 4, 3)
@@ -440,6 +451,7 @@ class TestFunctional(TestCase):
         map(self.assertEqual, zip(ts[0].unbind(), ts_r[0].unbind()))
         map(self.assertEqual, zip(ts[1].unbind(), ts_r[1].unbind()))
 
+    @unittest.skip("Requires autograd support")
     def test_reshape(self):
 
         t0 = torch.randn(3, 3)
@@ -495,11 +507,13 @@ class TestFunctional(TestCase):
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_1(self):
         ts = [[], []]
         nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_2(self):
         t0 = torch.randn(3)
         t1 = torch.randn(2)
@@ -508,6 +522,7 @@ class TestFunctional(TestCase):
         nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_3(self):
         t0 = torch.randn(3, 2, 1)
         t1 = torch.randn(2, 3, 1)
@@ -516,6 +531,7 @@ class TestFunctional(TestCase):
         nt = ntnt(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Requires autograd support")
     def test_softmax_4(self):
         ts = torch.randn(6, 4, 3, 2, 5)
         ts = list(map(lambda x: x.unbind(), ts.unbind()))

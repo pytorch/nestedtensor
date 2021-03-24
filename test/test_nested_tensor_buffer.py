@@ -13,6 +13,7 @@ import random
 
 
 class TestNestedTensorBuffer(TestCase):
+    @unittest.skip("Requires autograd support")
     def test_grad(self):
         nt = nestedtensor.nested_tensor([torch.rand(1, 2)])
         nt.requires_grad_(True)
@@ -44,6 +45,7 @@ class TestNestedTensorBuffer(TestCase):
         # self.assertIsNotNone(nt_grad.unbind()[0])
 
     # TODO
+    @unittest.skip("Requires autograd support")
     def test_detach(self):
         pass
 

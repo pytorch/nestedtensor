@@ -9,7 +9,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_gelu(const Tensor& self) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](at::Tensor tensor) { return at::gelu(tensor); }, self);
 }
 
@@ -38,7 +38,7 @@ Tensor& NestedTensor_relu_(Tensor& self) {
 Tensor NestedTensor_threshold_backward(
     const Tensor& grad,
     const Tensor& self,
-    Scalar threshold) {
+    const c10::Scalar& threshold) {
   return map_nested_tensor(
       [&](at::Tensor g, at::Tensor s) {
         return threshold_backward(g, s, threshold);
@@ -47,7 +47,7 @@ Tensor NestedTensor_threshold_backward(
       self);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "gelu", NestedTensor_gelu);
 }
 

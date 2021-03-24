@@ -46,7 +46,7 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](at::Tensor t) {
         return at::max_pool2d(
                    t.unsqueeze(0),
@@ -60,7 +60,7 @@ Tensor NestedTensor_max_pool2d(
       self);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "max_pool2d", NestedTensor_max_pool2d);
 }
 

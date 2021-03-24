@@ -3,7 +3,7 @@ import numbers
 import warnings
 
 from . import nested
-from nestedtensor import _C
+import nestedtensor
 
 
 def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
@@ -14,7 +14,7 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         dtype = torch.get_default_dtype()
     if device is None:
         device = torch.device('cpu')
-    return nested.NestedTensor(_C.nested_tensor_impl(data, dtype, device, requires_grad, pin_memory))
+    return nested.NestedTensor(nestedtensor._C.nested_tensor_impl(data, dtype, device, requires_grad, pin_memory))
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):

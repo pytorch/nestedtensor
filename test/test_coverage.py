@@ -20,6 +20,7 @@ def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 class TestCoverage(TestCase):
 
+    @unittest.skip("Requires autograd support")
     def test_issues_313(self):
         # Based on https://github.com/pytorch/nestedtensor/issues/313
 
