@@ -127,41 +127,44 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
   return fn(fn, size_node, *index);
 }
 
-namespace torch {
-namespace nested_tensor {
-namespace {
+TORCH_LIBRARY(nestedtensor, m) {
+  m.def("is_nested_tensor_impl(Tensor tensor) -> bool");
+  m.impl("is_nested_tensor_impl", NestedTensorKey, [](Tensor tensor) {
+    return is_nested_tensor_impl(tensor);
+  });
+  m.impl("is_nested_tensor_impl", c10::DispatchKey::CPU, [](Tensor tensor) {
+    return is_nested_tensor_impl(tensor);
+  });
 
-static auto registry =
-    torch::RegisterOperators()
-        .op("nestedtensor::is_nested_tensor_impl",
-            [](Tensor tensor) { return is_nested_tensor_impl(tensor); })
-        .op("nestedtensor::nested_dim",
-            [](Tensor tensor) {
-              return get_nested_tensor_impl(tensor)->nested_dim();
-            })
-        .op("nestedtensor::stack",
-            [](std::vector<Tensor> tensors, int64_t dim) {
-              return at::stack(TensorList(tensors), dim);
-            })
-        .op("nestedtensor::cat",
-            [](std::vector<Tensor> tensors, int64_t dim) {
-              return at::cat(TensorList(tensors), dim);
-            })
-        .op("nestedtensor::to_nested_tensor",
-            [](Tensor tensor, c10::optional<int64_t> dim) {
-              return NestedTensor_to_nested_tensor(tensor, dim);
-            })
-        .op("nestedtensor::sizes",
-            [](Tensor tensor) {
-              return get_nested_tensor_impl(tensor)->opt_sizes();
-            })
-        .op("nestedtensor::len", [](Tensor self) {
-          return (int64_t)(get_nested_tensor_structure(self).degree());
-        });
+  m.def("nested_dim(Tensor tensor) -> int");
+  m.impl("nested_dim", NestedTensorKey, [](Tensor tensor) {
+    return get_nested_tensor_impl(tensor)->nested_dim();
+  });
 
-} // namespace
-} // namespace nested_tensor
-} // namespace torch
+  m.def("to_nested_tensor(Tensor tensor, int? dim) -> Tensor");
+  m.impl(
+      "to_nested_tensor",
+      NestedTensorKey,
+      [](Tensor tensor, c10::optional<int64_t> dim) {
+        return NestedTensor_to_nested_tensor(tensor, dim);
+      });
+  m.impl(
+      "to_nested_tensor",
+      c10::DispatchKey::CPU,
+      [](Tensor tensor, c10::optional<int64_t> dim) {
+        return NestedTensor_to_nested_tensor(tensor, dim);
+      });
+
+  m.def("sizes(Tensor tensor) -> int?[]");
+  m.impl("sizes", NestedTensorKey, [](Tensor tensor) {
+    return get_nested_tensor_impl(tensor)->opt_sizes();
+  });
+
+  m.def("len(Tensor self) -> int");
+  m.impl("len", NestedTensorKey, [](Tensor self) {
+    return (int64_t)(get_nested_tensor_structure(self).degree());
+  });
+}
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   register_python_nested_node(m);

@@ -449,14 +449,6 @@ Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
   return torch::tensor(torch::nested_tensor::serialize(nt_impl->nested_size()));
 }
 
-void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
-  AT_ERROR("Currently no NestedTensor kernel registered for  ", op.schema());
-}
-
-TORCH_LIBRARY_IMPL(_, NestedTensor, m) {
-  m.fallback(torch::CppFunction::makeFromBoxedFunction<&traceFallbackPre>());
-}
-
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
   // nt_impl(m, "size.int", NestedTensor_size_int);
