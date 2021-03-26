@@ -91,8 +91,8 @@ Tensor& NestedTensor_binary_(Tensor& self_, const Tensor& other_) {
   return self_;
 }
 
-template <Tensor (*func)(const Tensor&, Scalar)>
-Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
+template <Tensor (*func)(const Tensor&, const Scalar&)>
+Tensor NestedTensor_binary_scalar(const Tensor& self, const Scalar& other) {
   return map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);
 }
@@ -225,12 +225,12 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl(m, "floor_divide.out",
   // NestedTensor_binary_out<at::floor_divide_out>);
 
-  // nt_impl(m, "eq.Tensor", NestedTensor_binary<at::eq>);
-  // nt_impl(m, "eq.Scalar", NestedTensor_binary_scalar<at::eq>);
-  // nt_impl(m, "ne.Tensor", NestedTensor_binary<at::ne>);
-  // nt_impl(m, "ne.Scalar", NestedTensor_binary_scalar<at::ne>);
-  // nt_impl(m, "ge.Tensor", NestedTensor_binary<at::ge>);
-  // nt_impl(m, "ge.Scalar", NestedTensor_binary_scalar<at::ge>);
+  nt_impl(m, "eq.Tensor", NestedTensor_binary<at::eq>);
+  nt_impl(m, "eq.Scalar", NestedTensor_binary_scalar<at::eq>);
+  nt_impl(m, "ne.Tensor", NestedTensor_binary<at::ne>);
+  nt_impl(m, "ne.Scalar", NestedTensor_binary_scalar<at::ne>);
+  nt_impl(m, "ge.Tensor", NestedTensor_binary<at::ge>);
+  nt_impl(m, "ge.Scalar", NestedTensor_binary_scalar<at::ge>);
 
   // nt_impl(m, "atan2", NestedTensor_binary<at::atan2>);
   // nt_impl(m, "atan2_", NestedTensor_binary_<at::native::atan2_>);

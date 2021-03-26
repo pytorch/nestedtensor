@@ -220,6 +220,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
+  int64_t size(int64_t) const override {
   IntArrayRef sizes() const override {
     TORCH_CHECK(
         false,
@@ -368,7 +369,7 @@ constexpr auto trace(FuncPtr /*func_ptr*/) {
 #else
 // #define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, FUNC)
 #define nt_impl(M, NAME, FUNC) \
-  M.impl(NAME, torch::CppFunction::makeFromUnboxedFunction(FUNC))
+  M.impl(NAME, TORCH_FN(FUNC))
 #endif
 
 } // namespace at

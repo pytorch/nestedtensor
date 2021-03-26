@@ -108,14 +108,14 @@ def _gen_test_unary(func__, nested_dim, device):
         self.assertEqual(a2.nested_dim(), a3.nested_dim())
 
         if func__ not in ['mvlgamma']:
-            print(func)
-            print(a1)
+            print(func__)
+            print("a1: ", a1)
             func(a1, out=a3)
+            print("func(a1): ", func(a1))
+            print("a3: ", a3)
             # TODO: Abstract this
-            print(a1)
-            print(func(a1))
-            print(a3)
             _close(func(a1), a3)
+            print(a1)
         _close(method_inplace(a1), a2)
         _close(a1, a2)
     return _test_unary
@@ -289,15 +289,15 @@ def _gen_test_binary_method(func):
     return _test_binary_method
 
 
-# TestUnary = type('TestUnary', (DynamicClassBase,), {})
-# for func__ in get_unary_functions():
-#     for nested_dim in range(1, 5):
-#         avail_devices = [torch.device('cpu')]
-#         if torch.cuda.is_available():
-#             avail_devices += [torch.device('cuda')]
-#         for device in avail_devices:
-#             setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
-#                 func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
+TestUnary = type('TestUnary', (DynamicClassBase,), {})
+for func__ in get_unary_functions():
+    for nested_dim in range(1, 5):
+        avail_devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            avail_devices += [torch.device('cuda')]
+        for device in avail_devices:
+            setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
+                func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
 
 # TestBinary = type('TestBinary', (DynamicClassBase,), {})
 # for func in get_binary_functions():

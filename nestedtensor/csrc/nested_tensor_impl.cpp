@@ -161,6 +161,15 @@ IntArrayRef NestedTensorImpl::strides() const {
   return _sizes;
 }
 
+int64_t NestedTensorImpl::size(int64_t dim) const {
+  std::vector<c10::optional<int64_t>> size = opt_sizes();
+  if (size[dim]) {
+    return *(size[dim]);
+  }
+  throw std::runtime_error(
+      "NestedTensor size at dim is not Tensor shape compliant.");
+}
+
 at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
