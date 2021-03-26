@@ -158,11 +158,15 @@ int64_t NestedTensor_size_int(const Tensor& self, int64_t dim) {
 }
 
 IntArrayRef NestedTensorImpl::strides() const {
+  TORCH_CHECK(
+      false,
+      "Internal error: NestedTensorImpl doesn't support strides. Please file an issue on https://github.com/pytorch/nestedtensor");
   return _sizes;
 }
 
-int64_t NestedTensorImpl::size(int64_t dim) const {
-  std::vector<c10::optional<int64_t>> size = opt_sizes();
+int64_t nt_size(Tensor tensor, int64_t dim) {
+  auto impl = get_nested_tensor_impl(tensor);
+  std::vector<c10::optional<int64_t>> size = impl->opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
@@ -307,7 +311,7 @@ Tensor NestedTensor_slice(
   }
   // TODO: support negative strides
   TORCH_CHECK(step >= 1, "slice step must be positive for now.");
-  int64_t sizes_0 = self.size(0);
+  int64_t sizes_0 = nt_size(self, 0);
   if (start < 0) {
     start += sizes_0;
   }

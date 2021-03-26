@@ -37,7 +37,7 @@ at::Tensor get_item(Tensor tensor, int64_t key_) {
 #if (PYBIND11_VERSION_MAJOR >= 2 && PYBIND11_VERSION_MINOR >= 3)
 at::Tensor get_item(Tensor tensor, py::slice slice) {
   size_t start, stop, step, slicelength;
-  if (!slice.compute(tensor.size(0), &start, &stop, &step, &slicelength))
+  if (!slice.compute(nt_size(tensor, 0), &start, &stop, &step, &slicelength))
     throw py::error_already_set();
   return at::slice(tensor, 0, start, stop, step);
 }
