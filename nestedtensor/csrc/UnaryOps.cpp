@@ -10,7 +10,6 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  std::cout << "C" << std::endl;
   if (self.is_contiguous()) {
     at::Tensor buffer = get_buffer(self);
     func(buffer);
@@ -34,29 +33,19 @@ Tensor& NestedTensor_unary_method_(Tensor& self) {
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  std::cout << "A" << std::endl;
-  // if (self.is_contiguous()) {
-  //   std::cout << "A1" << std::endl;
-  //   return wrap_buffer(func(get_buffer(self)), get_nested_size(self));
-  // }
-  std::cout << "A2" << std::endl;
+  if (self.is_contiguous()) {
+    return wrap_buffer(func(get_buffer(self)), get_nested_size(self));
+  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return func(tensor); }, self);
 }
 
 template <class F, F func>
 Tensor& NestedTensor_unary_out(const Tensor& self, Tensor& result) {
-  std::cout << "B" << std::endl;
   apply_nested_tensor(
-      [](at::Tensor tensor, at::Tensor& result) { 
-      std::cout << "tensor0: " << tensor << std::endl;
-      std::cout << "result0: " << result << std::endl;
-      func(tensor, result);
-      std::cout << "tensor1: " << tensor << std::endl;
-      std::cout << "result1: " << result << std::endl;
-      },
-      self,
-      result);
+      [](at::Tensor& result, at::Tensor& tensor) { func(tensor, result); },
+      result,
+      self);
   return result;
 }
 
@@ -182,8 +171,8 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       (NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>));
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  UNARY_OP(abs);
-  UNARY_OP(acos);
+  // UNARY_OP(abs);
+  // UNARY_OP(acos);
   // UNARY_OP(asin);
   // UNARY_OP(atan);
   // UNARY_OP(ceil);
