@@ -246,16 +246,6 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.nested_size(1), (1, 2))
             self.assertRaises(IndexError, lambda: a.nested_size(2))
 
-    @unittest.skip("Requires autograd support")
-    def test_serialize_nested_size(self):
-        a = ntnt([[torch.randn(1, 2)],
-                  [torch.randn(2, 1), torch.randn(1, 1)]])
-        result = nestedtensor._C.serialize_nested_size(a._impl)
-        result_a = nestedtensor._C.deserialize_nested_size(result)
-        self.assertEqual(a.nested_size()[0][0], result_a[0][0])
-        self.assertEqual(a.nested_size()[1][0], result_a[1][0])
-        self.assertEqual(a.nested_size()[1][1], result_a[1][1])
-
     def test_nested_stride(self):
         for constructor in _iter_constructors():
             tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
@@ -280,7 +270,6 @@ class TestNestedTensor(TestCase):
             a = constructor([torch.tensor([1, 2])])
             self.assertEqual(len(a), 1)
 
-    @unittest.skip("Requires autograd support")
     def test_equal(self):
         for constructor in _iter_constructors():
             a1 = constructor([torch.tensor([1, 2]),
@@ -472,7 +461,6 @@ class TestNestedTensor(TestCase):
                              torch.rand(5, 4)])
             self.assertEqual(a.size(), (2, None, 4))
 
-    @unittest.skip("Requires autograd support")
     def test_to_tensor(self):
         for constructor in _iter_constructors():
             a = constructor([])
@@ -663,7 +651,6 @@ class TestNestedTensor(TestCase):
         self.assertFalse(a5.is_pinned())
         self.assertFalse(a6.is_pinned())
 
-    @unittest.skip("Requires autograd support")
     def test_getitem(self):
         a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
         nt = ntnt_nograd([[a, b], [c]])
@@ -695,35 +682,34 @@ class TestNestedTensor(TestCase):
                                "Dimension out of range \(expected to be in range of \[-1, 0\], but got 2\)",
                                lambda: nt[2])
 
-    @unittest.skip("Requires autograd support")
     def test_cat(self):
         a = torch.arange(12).reshape(3, 4)
         b = a + 12
         c = b + 12
 
-        nt0 = ntnt([a, b])
-        nt1 = ntnt([c])
+        nt0 = ntnt_nograd([a, b])
+        nt1 = ntnt_nograd([c])
         self.assertEqual(torch.cat([nt0, nt1], dim=0), ntnt_nograd([a, b, c]))
-        self.assertEqual(nestedtensor.cat(
+        self.assertEqual(torch.cat(
             [nt0, nt1], dim=1), ntnt_nograd([torch.cat([a, c]), b]))
-        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=2), ntnt_nograd(
+        self.assertEqual(torch.cat([nt0, nt1], dim=2), ntnt_nograd(
             [torch.cat([a, c], dim=1), b]))
 
-    @unittest.skip("Requires autograd support")
     def test_stack(self):
         a = torch.arange(12).reshape(3, 4)
         b = a + 12
         c = b + 12
 
-        nt = nestedtensor.nested_tensor([[a, b], [c]])
-        nt0 = nestedtensor.nested_tensor([a, b])
-        nt1 = nestedtensor.nested_tensor([c])
-        self.assertEqual(nestedtensor.stack(
+        nt0 = ntnt_nograd([a, b])
+        nt1 = ntnt_nograd([c])
+        self.assertEqual(torch.stack(
             [nt0, nt1], dim=0), ntnt_nograd([[a, b], [c]]))
-        self.assertEqual(nestedtensor.stack(
-            [nt0, nt1], dim=1), ntnt_nograd([torch.stack([a, c]), b.reshape(1, 3, 4)]))
-        self.assertEqual(nestedtensor.stack(
-            [nt0, nt1], dim=2), ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
+        self.assertEqual(torch.stack(
+            [nt0, nt1], dim=1),
+            ntnt_nograd([torch.stack([a, c]), b.reshape(1, 3, 4)]))
+        self.assertEqual(torch.stack(
+            [nt0, nt1], dim=2),
+            ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
 
 class TestContiguous(TestCase):

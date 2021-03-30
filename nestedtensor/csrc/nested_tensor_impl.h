@@ -235,6 +235,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
   std::vector<int64_t> _sizes;
 };
 
+int64_t nt_size(Tensor tensor, int64_t dim);
+
 Tensor NestedTensor_to_nested_tensor(
     at::Tensor input,
     c10::optional<int64_t> dim__);
@@ -367,8 +369,7 @@ constexpr auto trace(FuncPtr /*func_ptr*/) {
       torch::CppFunction::makeFromUnboxedFunction(trace(TORCH_FN(FUNC))))
 #else
 // #define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, FUNC)
-#define nt_impl(M, NAME, FUNC) \
-  M.impl(NAME, torch::CppFunction::makeFromUnboxedFunction(FUNC))
+#define nt_impl(M, NAME, FUNC) M.impl(NAME, TORCH_FN(FUNC))
 #endif
 
 } // namespace at
