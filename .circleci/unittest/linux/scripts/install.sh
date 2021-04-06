@@ -26,12 +26,13 @@ conda activate ./env
 WHEELS_FOLDER=${HOME}/project/wheels
 mkdir -p $WHEELS_FOLDER
 
+PYVSHORT=${PYTHON_VERSION:0:1}${PYTHON_VERSION:2:1}
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210331%2Bcpu-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-linux_x86_64.whl
-    pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210331%2Bcpu-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210331%2Bcpu-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210331%2Bcpu-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
-    pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210331%2Bcpu-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-linux_x86_64.whl
-    pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210331%2Bcpu-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210331%2Bcpu-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210331%2Bcpu-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
