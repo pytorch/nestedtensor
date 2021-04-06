@@ -33,9 +33,6 @@ Tensor& NestedTensor_unary_method_(Tensor& self) {
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  if (self.is_contiguous()) {
-    return wrap_buffer(func(get_buffer(self)), get_nested_size(self));
-  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return func(tensor); }, self);
 }
@@ -43,9 +40,7 @@ Tensor NestedTensor_unary(const Tensor& self) {
 template <class F, F func>
 Tensor& NestedTensor_unary_out(const Tensor& self, Tensor& result) {
   apply_nested_tensor(
-      [](at::Tensor& result, at::Tensor& tensor) { func(tensor, result); },
-      result,
-      self);
+      [](Tensor& result, Tensor& self) { func(result, self); }, result, self);
   return result;
 }
 

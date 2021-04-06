@@ -108,13 +108,8 @@ def _gen_test_unary(func__, nested_dim, device):
         self.assertEqual(a2.nested_dim(), a3.nested_dim())
 
         if func__ not in ['mvlgamma']:
-            print(func)
-            print(a1)
             func(a1, out=a3)
             # TODO: Abstract this
-            print(a1)
-            print(func(a1))
-            print(a3)
             _close(func(a1), a3)
         _close(method_inplace(a1), a2)
         _close(a1, a2)
