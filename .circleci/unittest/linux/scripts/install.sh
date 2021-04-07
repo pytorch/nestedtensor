@@ -27,7 +27,7 @@ WHEELS_FOLDER=${HOME}/project/wheels
 mkdir -p $WHEELS_FOLDER
 
 PYVSHORT=${PYTHON_VERSION:0:1}${PYTHON_VERSION:2:1}
-if ["${PYVSHORT}" == "38"]; then
+if [ "${PYVSHORT}" == "38" ] ; then
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}
 else
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}m
