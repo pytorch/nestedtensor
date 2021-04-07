@@ -34,7 +34,7 @@ if [ "${CU_VERSION:-}" == cpu ] ; then
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
     python --version
-    pip install https://download.pytorch.org/whl/nightly/cu102/torch-1.9.0.dev20210331%2Bcpu-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
-    pip install https://download.pytorch.org/whl/nightly/cu102/torchvision-0.10.0.dev20210331%2Bcpu-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cu102/torch-1.9.0.dev20210331%2Bcu102-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cu102/torchvision-0.10.0.dev20210331%2Bcu102-cp${PYVSHORT}-cp${PYVSHORT}-linux_x86_64.whl
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
