@@ -224,6 +224,28 @@ Tensor& NestedTensor_atan2_out(
   return out;
 }
 
+Tensor& NestedTensor_atan2_(Tensor& self_, const Tensor& other_) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
+  apply_nested_tensor(
+      [](Tensor& tensor, const Tensor other) {
+        tensor.atan2_(other);
+        return tensor;
+      },
+      self,
+      other);
+  return self_;
+}
+
+Tensor NestedTensor_atan2(const Tensor& self_, const Tensor& other_) {
+  Tensor self;
+  Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
+  return map_nested_tensor(
+      [](Tensor s, Tensor o) { return at::atan2(s, o); }, self, other);
+}
+
 Tensor NestedTensor_remainder_Tensor(
     const Tensor& self_,
     const Tensor& other_) {
@@ -263,6 +285,8 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "sub_.Tensor", NestedTensor_sub__Tensor);
   nt_impl(m, "remainder_.Tensor", NestedTensor_remainder__Tensor);
   nt_impl(m, "atan2.out", NestedTensor_atan2_out);
+  nt_impl(m, "atan2_", NestedTensor_atan2_);
+  nt_impl(m, "atan2", NestedTensor_atan2);
   nt_impl(m, "remainder.Tensor", NestedTensor_remainder_Tensor);
   nt_impl(m, "pow_.Tensor", NestedTensor_pow__Tensor);
 }
