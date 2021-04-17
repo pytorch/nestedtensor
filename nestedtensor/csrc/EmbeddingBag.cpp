@@ -16,7 +16,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
     const int64_t mode,
     bool sparse,
     const c10::optional<Tensor>& per_sample_weights,
-    bool include_last_offset) {
+    bool include_last_offset,
+    int64_t embedding_dix) {
   at::Tensor indices = get_buffer(indices_).contiguous();
   int64_t emb_dim = weight.size(1);
   SizeNode output_size = map(
@@ -35,7 +36,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
       mode,
       sparse,
       per_sample_weights,
-      include_last_offset);
+      include_last_offset,
+      embedding_dix);
   at::Tensor emb_output_0 = std::get<0>(emb_outputs).reshape({-1});
   auto output = wrap_buffer(std::move(emb_output_0), output_size);
   return std::make_tuple(

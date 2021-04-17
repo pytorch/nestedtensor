@@ -142,9 +142,9 @@ def _gen_test_binary(func, no_grad):
             self.assertIsNotNone(a2.grad)
         self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
-        a1.detach_()
-        a2.detach_()
-        a3.detach_()
+        # a1.detach_()
+        # a2.detach_()
+        # a3.detach_()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
 
@@ -179,14 +179,14 @@ def _gen_test_binary(func, no_grad):
         result = ntnt([torch_func(c, a),
                        torch_func(c, b)
                        ])
-        if no_grad:
-            a1.detach_()
-            result.detach_()
+        # if no_grad:
+        #     a1.detach_()
+        #     result.detach_()
         self.assertEqual(result,
                          torch_func(c.reshape(1, 2, 3), a1))
 
-        a1 = a1.detach()
-        a3 = a3.detach()
+        # a1 = a1.detach()
+        # a3 = a3.detach()
         self.assertEqual(a3, getattr(a1, func + "_")(a2))
         self.assertEqual(a3, a1)
 
@@ -195,9 +195,9 @@ def _gen_test_binary(func, no_grad):
         a2 = ntnt([a, b])
         a3 = ntnt([torch_func(c, a),
                    torch_func(c, b)])
-        if no_grad:
-            a2.detach_()
-            a3.detach_()
+        # if no_grad:
+        #     a2.detach_()
+        #     a3.detach_()
         self.assertEqual(a3, torch_func(a1, a2))
         self.assertEqual(a3, getattr(a1, func)(a2))
         # Cannot apply in-place methods to regular Tensors given a NestedTensor as an other
@@ -205,53 +205,6 @@ def _gen_test_binary(func, no_grad):
         if func == "add":
             self.assertEqual(c + a + b, getattr(a1, func + "_")(a2))
 
-        # test autograd
-        a = utils.gen_float_tensor(1, (2, 3)).requires_grad_()
-        b = utils.gen_float_tensor(2, (2, 3)).requires_grad_()
-        c = utils.gen_float_tensor(3, (2, 3)).requires_grad_()
-
-        a1 = ntnt([a, b])
-        if no_grad:
-            a2 = ntnt_nograd([b, c])
-        else:
-            a2 = ntnt([b, c])
-        if no_grad:
-            a3 = ntnt([torch_func(a, b.detach()),
-                       torch_func(b, c.detach())])
-        else:
-            a3 = ntnt([torch_func(a, b),
-                       torch_func(b, c)])
-        # print(a3.requires_grad)
-        result = torch_func(a1, a2)
-        # print(result.requires_grad)
-        if not no_grad:
-            result.sum().backward()
-        if no_grad:
-            c.detach_()
-
-        if not no_grad:
-            # This is used to exercise the tree reduction in the
-            # gradient calculation.
-            a1 = ntnt([a, b, c])
-            result = torch_func(a1, c)
-            result.sum().backward()
-            a_0 = a.clone().detach().requires_grad_()
-            b_0 = b.clone().detach().requires_grad_()
-            c_0 = c.clone().detach().requires_grad_()
-            c_1 = c.clone().detach().requires_grad_()
-            result_a = torch_func(a_0, c_1)
-            result_b = torch_func(b_0, c_1)
-            result_c = torch_func(c_0, c_1)
-            result_a.sum().backward()
-            result_b.sum().backward()
-            result_c.sum().backward()
-            self.assertEqual(c.grad, c_1.grad)
-
-        # print(result.requires_grad)
-        if no_grad:
-            a1.detach_()
-        result = torch_func(c, a1)
-        # print(result.requires_grad)
 
     return _test_binary
 
@@ -294,11 +247,11 @@ for func__ in get_unary_functions():
             setattr(TestUnary, "test_{0}_nested_dim_{1}_{2}".format(
                 func__, nested_dim, device), _gen_test_unary(func__, nested_dim, device))
 
-# TestBinary = type('TestBinary', (DynamicClassBase,), {})
-# for func in get_binary_functions():
-#     no_grad = True
-#     setattr(TestBinary, "test_{0}".format(func),
-#             _gen_test_binary(func, no_grad))
+TestBinary = type('TestBinary', (DynamicClassBase,), {})
+for func in get_binary_functions():
+    no_grad = True
+    setattr(TestBinary, "test_{0}".format(func),
+            _gen_test_binary(func, no_grad))
 
 # TestBinaryMethod = type('TestBinaryMethod', (DynamicClassBase,), {})
 # for func in get_python_binary_arithmetic_operations():
