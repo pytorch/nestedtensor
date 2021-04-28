@@ -13,7 +13,7 @@ import utils
 from nestedtensor.nested.nested import native_is_expandable_to
 
 
-def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=False)
 
 
 def _flatten_list(ts):
@@ -67,7 +67,6 @@ class TestReduce(TestCase):
                                    [fn(t2, 1, True)]]), fn(nt, 3, True))
         self.assertRaises(IndexError, lambda: fn(nt, 4))
 
-    @unittest.skip("Requires autograd support")
     def test_cumsum(self):
         self._test_reduce_dim(torch.cumsum, False, False)
 
@@ -120,41 +119,36 @@ class TestReduce(TestCase):
         t0, t1, t2, t3, t4 = gen_ts()
         test([[t0, t1], [t2, t3], [t4]])
 
-    @unittest.skip("Requires autograd support")
     def test_sum_all(self):
-        self._test_allreduce(lambda x: x.sum(), True)
+        # self._test_allreduce(lambda x: x.sum(), True)
+        self._test_allreduce(lambda x: x.sum(), False)
 
-    @unittest.skip("Requires autograd support")
     def test_sum_dim(self):
-        self._test_reduce_dim(torch.sum, True)
+        # self._test_reduce_dim(torch.sum, True)
+        self._test_reduce_dim(torch.sum, False)
 
-    @unittest.skip("Requires autograd support")
     def test_max_all(self):
         self._test_allreduce(lambda x: x.max())
 
-    @unittest.skip("Requires autograd support")
     def test_max_dim(self):
         self._test_reduce_dim(lambda x, dim, keepdim=False: x.max(
             dim, keepdim)[0], True, test_multi_dim=False)
 
-    @unittest.skip("Requires autograd support")
     def test_mean_all(self):
         self._test_allreduce(lambda x: x.mean())
 
-    @unittest.skip("Requires autograd support")
     def test_mean_dim(self):
-        self._test_reduce_dim(torch.mean, True)
+        # self._test_reduce_dim(torch.mean, True)
+        self._test_reduce_dim(torch.mean, False)
 
-    @unittest.skip("Requires autograd support")
     def test_prod(self):
         self._test_allreduce(lambda x: x.prod())
 
-    @unittest.skip("Requires autograd support")
     def test_var(self):
-        self._test_allreduce(lambda x: x.var(unbiased=False), True)
+        # self._test_allreduce(lambda x: x.var(unbiased=False), True)
+        self._test_allreduce(lambda x: x.var(unbiased=False), False)
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
-    @unittest.skip("Requires autograd support")
     def test_var_dim(self):
         t0 = torch.arange(9).float().reshape(3, 3)
         t1 = torch.arange(6).float().reshape(2, 3)
@@ -217,7 +211,7 @@ class TestReduce(TestCase):
         self.assertEqual(
             ntnt([[t0_var1, t1_var1], [t2_var1, t3_var1]]), torch.var(nt, 3))
 
-    @unittest.skip("Requires autograd support")
+    @unittest.skip("Not implemented - needed for autograd.")
     def test_sum_to_size(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(2, 1) + 2])
@@ -246,7 +240,7 @@ class TestReduce(TestCase):
         # b = ntnt([torch.randn(1), torch.randn(1)])
         pass
 
-    @unittest.skip("Requires autograd support")
+    @unittest.skip("Not implemented - needed for autograd.")
     def test_native_is_expandable_to(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
@@ -267,7 +261,7 @@ class TestReduce(TestCase):
         # Shape NT, desired T
         pass
 
-    @unittest.skip("Requires autograd support")
+    @unittest.skip("Not implemented - needed for autograd.")
     def test_sizes_equal(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
