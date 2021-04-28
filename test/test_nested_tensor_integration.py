@@ -12,6 +12,7 @@ from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
 
 
 class ConfusionMatrix(object):
@@ -59,13 +60,12 @@ class ConfusionMatrix(object):
 
 
 class TestIntegration(TestCase):
-    @unittest.skip("Requires autograd support")
     def test_resnet18(self):
         import torchvision
         from torchvision.models._utils import IntermediateLayerGetter
         EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 10, 10) for _ in range(3)]
         model = torchvision.models.resnet.resnet18(pretrained=True).eval()
-        result_model_nt = model(nestedtensor.nested_tensor(
+        result_model_nt = model(ntnt_nograd(
             EXAMPLE_IMAGE_TENSORS)).unbind()
         result_model = model(torch.stack(EXAMPLE_IMAGE_TENSORS)).unbind()
         for t0, t1 in zip(result_model_nt, result_model):
@@ -74,9 +74,8 @@ class TestIntegration(TestCase):
         # non-regular shape smoke test
         EXAMPLE_IMAGE_TENSORS = [torch.randn(
             3, 100 * i, 100) for i in range(1, 4)]
-        model(nestedtensor.nested_tensor(EXAMPLE_IMAGE_TENSORS))
+        model(ntnt_nograd(EXAMPLE_IMAGE_TENSORS))
 
-    @unittest.skip("Requires autograd support")
     def test_segmentation_pretrained_test_only(self):
 
         def _test(seed, model_factory, use_confmat, num_classes=21):
@@ -119,10 +118,10 @@ class TestIntegration(TestCase):
             nt_tr1 = tr1.clone().detach()
             nt_tr2 = tr2.clone().detach()
 
-            nt_input = nestedtensor.nested_tensor(
-                [nt_t1, nt_t2], requires_grad=True)
-            nt_target = nestedtensor.nested_tensor(
-                [nt_tr1, nt_tr2], requires_grad=True)
+            nt_input = ntnt_nograd(
+                [nt_t1, nt_t2])
+            nt_target = ntnt_nograd(
+                [nt_tr1, nt_tr2])
             if use_confmat:
                 confmat2 = ConfusionMatrix(num_classes)
 
@@ -141,21 +140,22 @@ class TestIntegration(TestCase):
                 self.assertEqual(confmat.mat, confmat2.mat)
 
             # grad test
-            self.assertEqual(ntnt(output1.unbind()), output2)
+            self.assertEqual(ntnt_nograd(output1.unbind()), output2)
 
-            output1.sum().backward()
-            output2.sum().backward()
+            # output1.sum().backward()
+            # output2.sum().backward()
 
-            for (n1, p1), (n2, p2) in zip(model1.named_parameters(), model2.named_parameters()):
-                if p1.grad is not None:
-                    self.assertEqual(p1.grad, p2.grad)
-                else:
-                    self.assertIsNone(p2.grad)
+            # for (n1, p1), (n2, p2) in zip(model1.named_parameters(), model2.named_parameters()):
+            #     if p1.grad is not None:
+            #         self.assertEqual(p1.grad, p2.grad)
+            #     else:
+            #         self.assertIsNone(p2.grad)
 
-            # TODO: Re-enable under autograd support
-            self.assertEqual(t1.grad, nt_input.grad[0])
-            self.assertEqual(t2.grad, nt_input.grad[1])
+            # # TODO: Re-enable under autograd support
+            # self.assertEqual(t1.grad, nt_input.grad[0])
+            # self.assertEqual(t2.grad, nt_input.grad[1])
 
+        import torchvision
         _test(10, lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
             num_classes=21, aux_loss="store_true", pretrained=True
         ).eval(), True)
@@ -164,7 +164,6 @@ class TestIntegration(TestCase):
         #     replace_stride_with_dilation=[False, False, False],
         #     pretrained=True, norm_layer=NTFrozenBatchNorm2d), {'layer4': "0"}), False)
 
-    @unittest.skip("Requires autograd support")
     def test_transformer_forward(self):
         EMBED_DIM = 32
         NHEAD = 8
@@ -172,11 +171,11 @@ class TestIntegration(TestCase):
 
         src0 = torch.randn(2, EMBED_DIM)
         src1 = torch.randn(4, EMBED_DIM)
-        nt_src = ntnt([src0, src1])
+        nt_src = ntnt_nograd([src0, src1])
 
         tgt0 = torch.randn(3, EMBED_DIM)
         tgt1 = torch.randn(5, EMBED_DIM)
-        nt_tgt = ntnt([tgt0, tgt1])
+        nt_tgt = ntnt_nograd([tgt0, tgt1])
 
         res_0 = t(src0.unsqueeze(1), tgt0.unsqueeze(1)).squeeze(1)
         res_1 = t(src1.unsqueeze(1), tgt1.unsqueeze(1)).squeeze(1)
