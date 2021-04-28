@@ -9,6 +9,7 @@ from utils import TestCase
 import random
 import utils
 from torch.nn import functional as F
+from detr_nestedtensor import DETRNestedTensor
 
 
 def _iter_constructors():
@@ -160,14 +161,14 @@ class TestFunctional(TestCase):
     def test_functional_relu_(self):
         orig_t1 = torch.tensor([-2, -1, 0, 1, 2])
         expected_t = torch.tensor([0, 0, 0, 1, 2])
-        expected_nt = nestedtensor.nested_tensor([expected_t])
+        expected_nt = ntnt_nograd([expected_t])
 
         t_clone = orig_t1.clone()
         torch.nn.functional.relu_(t_clone)
         self.assertEqual(t_clone, expected_t)
 
         t_clone = orig_t1.clone()
-        nt1 = nestedtensor.nested_tensor([t_clone])
+        nt1 = ntnt_nograd([t_clone])
         torch.nn.functional.relu_(nt1)
         self.assertEqual(nt1, expected_nt)
         self.assertEqual(t_clone, orig_t1)
@@ -523,6 +524,224 @@ class TestFunctional(TestCase):
         ts = list(map(lambda x: x.unbind(), ts.unbind()))
         nt = ntnt_nograd(ts)
         self._test_softmax(ts, nt)
+
+    def test_mha(self):
+        embed_dim = 2
+        num_heads = 2
+        torch.manual_seed(1010)
+        mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
+        query = torch.randn(3, 1, embed_dim, requires_grad=True)
+        key = torch.randn(2, 1, embed_dim, requires_grad=True)
+        value = torch.randn(2, 1, embed_dim, requires_grad=True)
+        attn_output, _ = mha(query, key, value)
+        nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
+        nt_mha.in_proj_weight = mha.in_proj_weight
+        nt_mha.in_proj_bias = mha.in_proj_bias
+        nt_mha.out_proj.weight = mha.out_proj.weight
+        nt_mha.out_proj.bias = mha.out_proj.bias
+        query_nt = ntnt_nograd([query.squeeze(1)])
+        key_nt = ntnt_nograd([key.squeeze(1)])
+        value_nt = ntnt_nograd([value.squeeze(1)])
+        nt_attn_output, _ = nt_mha(
+            query_nt, key_nt, value_nt, need_weights=False)
+        self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
+
+    def test_mha_detr(self):
+        NDIM = 128
+        BSZ = 8
+        NHEAD = 8
+        RAND_INTS = [(1, 5), (7, 9)]
+        MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).eval()
+
+        src_list = ntnt_nograd(
+            [torch.randn(NDIM, i, j) for (i, j) in RAND_INTS])
+        detr_nt_src = DETRNestedTensor.from_tensor_list(src_list)
+        src0, mask = detr_nt_src.decompose()
+        src0.requires_grad_()
+        src = src0.flatten(2).permute(2, 0, 1)
+        mask = mask.flatten(1)
+        result, _ = MODEL(src, src, src, key_padding_mask=mask,
+                          need_weights=False)  # [0].sum().backward()
+        mask = (~mask.t().unsqueeze(2)).float()
+        result = result * mask
+        result_sum = result.sum()
+
+        src = ntnt_nograd([t.flatten(1).permute(
+            1, 0) for t in src_list])
+        result, _ = MODEL(src, src, src, need_weights=False)
+        self.assertEqual(result_sum, result.sum())
+
+    def test_squeeze(self):
+        t = torch.randn(2, 3)
+        result = ntnt_nograd([t])
+
+        nt = ntnt_nograd([[t.reshape(1, 2, 1, 3)]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(2, 3)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([[t.reshape(2, 3)]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(1, 2, 3)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(1, 2, 1, 3, 1)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([[[t.reshape(1, 2, 3)]]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        # result = ntnt([t])
+        # nt = ntnt([t.reshape(1, 2, 3)])
+        # self.assertEqual(nt.squeeze(1), result)
+        # self.assertRaisesRegex(
+        #     RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
+        # self.assertRaisesRegex(
+        #     RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
+        # self.assertRaisesRegex(
+        #     RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
+        # self.assertRaises(IndexError, lambda: nt.squeeze(4))
+        # a = nt.squeeze(1)
+        # a.sum().backward()
+        # self.assertEqual(nt.grad, ntnt_nograd(
+        #     [t.reshape(1, 2, 3).mul(0).add(1)]))
+
+        # nt = ntnt([[t.reshape(1, 2, 1, 3)]])
+        # self.assertRaisesRegex(
+        #     RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
+        # # self.assertEqual(nt.squeeze(1), ntnt(
+        # #     [t.reshape(1, 2, 1, 3)]))
+        # self.assertEqual(nt.squeeze(
+        #     2), ntnt([[t.reshape(2, 1, 3)]]))
+        # self.assertEqual(nt.squeeze(
+        #     4), ntnt([[t.reshape(1, 2, 3)]]))
+
+    def test_nn_max_pool2d(self):
+        data = [
+            [
+                torch.randn(3, 500, 600),
+                torch.randn(3, 128, 128)
+            ],
+            [
+                torch.randn(3, 500, 600),
+                torch.randn(3, 500, 600)
+            ],
+        ]
+
+        # with optional params
+        maxPool2d = torch.nn.MaxPool2d(kernel_size=(
+            3, 3), stride=2, padding=(1, 1), dilation=1, ceil_mode=False)
+        for inputs in data:
+            tensor_res = []
+            for i in range(2):
+                t_res = maxPool2d(inputs[i].unsqueeze(0).contiguous())
+                tensor_res.append(t_res.squeeze(0))
+
+            nt = ntnt_nograd(inputs)
+            nt_res = maxPool2d(nt)
+            self.assertEqual(ntnt_nograd(tensor_res), nt_res)
+
+    @unittest.skip("Currently broken")
+    def test_fzbn2d(self):
+        class FrozenBatchNorm2d(torch.nn.Module):
+            """
+            BatchNorm2d where the batch statistics and the affine parameters are fixed.
+            Copy-paste from torchvision.misc.ops with added eps before rqsrt,
+            without which any other models than torchvision.models.resnet[18,34,50,101]
+            produce nans.
+            """
+
+            def __init__(self, n):
+                super(FrozenBatchNorm2d, self).__init__()
+                self.register_buffer("weight", torch.ones(n))
+                self.register_buffer("bias", torch.zeros(n))
+                self.register_buffer("running_mean", torch.zeros(n))
+                self.register_buffer("running_var", torch.ones(n))
+
+            def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
+                                      missing_keys, unexpected_keys, error_msgs):
+                num_batches_tracked_key = prefix + 'num_batches_tracked'
+                if num_batches_tracked_key in state_dict:
+                    del state_dict[num_batches_tracked_key]
+
+                super(FrozenBatchNorm2d, self)._load_from_state_dict(
+                    state_dict, prefix, local_metadata, strict,
+                    missing_keys, unexpected_keys, error_msgs)
+
+            def forward(self, x):
+                # move reshapes to the beginning
+                # to make it fuser-friendly
+                print("1")
+                w = self.weight.reshape(-1, 1, 1)
+                print("2")
+                b = self.bias.reshape(-1, 1, 1)
+                print("3")
+                rv = self.running_var.reshape(-1, 1, 1)
+                print("4")
+                rm = self.running_mean.reshape(-1, 1, 1)
+                print("5")
+                eps = 1e-5
+                print("6")
+                scale = w * (rv + eps).rsqrt()
+                print("7")
+                bias = b - rm * scale
+                print("8")
+                # return (x * scale + bias)
+                # return x
+                # return (x * scale + bias)
+                res = x + bias
+                print("9")
+                return res
+
+        b0 = FrozenBatchNorm2d(64)  # .cuda()
+        random.seed(1010)
+        torch.manual_seed(1310)
+        RAND_INTS = [random.randint(100, 300) for _ in range(1)]
+        tensors = [torch.rand(64, i, 256, requires_grad=False)
+                   for i in RAND_INTS]
+        # RAND_INTS = [random.randint(1, 1) for _ in range(1)]
+        # tensors = [torch.rand(1, i, 2, requires_grad=True)
+        #            for i in RAND_INTS]
+        nested_tensor = ntnt_nograd(tensors)
+        # print(nested_tensor.nested_size())
+        s00 = b0(nested_tensor)
+        print("s00")
+        print(s00.requires_grad)
+        s0 = s00.sum()
+        # s0.backward()
+
+        b1 = FrozenBatchNorm2d(64)
+        s1 = 0
+        for t in tensors:
+            s1 += b1(t).sum()
+        # s1.backward()
+        self.assertEqual(s0, s1)
+        # for i in range(len(tensors)):
+        #     self.assertEqual(nested_tensor.grad[i], tensors[i].grad)
+
+        self.assertEqual(len((list(b0.named_parameters()))), 0)
+        self.assertEqual(len((list(b1.named_parameters()))), 0)
+
 
 
 if __name__ == "__main__":

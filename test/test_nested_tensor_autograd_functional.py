@@ -12,7 +12,6 @@ from torch.nn import functional as F
 from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 from position_encoding import PositionEmbeddingSine
 from joiner import Joiner
-from detr_nestedtensor import DETRNestedTensor
 from torch import nn
 
 
@@ -323,131 +322,7 @@ class TestAutogradFunctional(TestCase):
             pretrained=True, norm_layer=NTFrozenBatchNorm2d), return_layers),
             PositionEmbeddingSine(128, normalize=True)))
 
-    @unittest.skip("Requires autograd support")
-    def test_mha(self):
-        embed_dim = 2
-        num_heads = 2
-        torch.manual_seed(1010)
-        mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
-        query = torch.randn(3, 1, embed_dim, requires_grad=True)
-        key = torch.randn(2, 1, embed_dim, requires_grad=True)
-        value = torch.randn(2, 1, embed_dim, requires_grad=True)
-        attn_output, _ = mha(query, key, value)
-        nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
-        nt_mha.in_proj_weight = mha.in_proj_weight
-        nt_mha.in_proj_bias = mha.in_proj_bias
-        nt_mha.out_proj.weight = mha.out_proj.weight
-        nt_mha.out_proj.bias = mha.out_proj.bias
-        query_nt = ntnt([query.squeeze(1)])
-        key_nt = ntnt([key.squeeze(1)])
-        value_nt = ntnt([value.squeeze(1)])
-        nt_attn_output, _ = nt_mha(
-            query_nt, key_nt, value_nt, need_weights=False)
-        # nt_attn_output.sum().backward()
-        # For regular tensors the batch dimension is along dimension 1
-        scalar1 = attn_output.sum()
-        scalar2 = nt_attn_output.sum()
-        scalar1.backward()
-        scalar2.backward()
-        self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
-        # XXX: This needs a test that actually checks the parameter gradients
 
-    @unittest.skip("Requires autograd support")
-    def test_mha_detr(self):
-        NDIM = 128
-        BSZ = 8
-        NHEAD = 8
-        RAND_INTS = [(1, 5), (7, 9)]
-        MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).eval()
-
-        src_list = nestedtensor.nested_tensor(
-            [torch.randn(NDIM, i, j) for (i, j) in RAND_INTS])
-        detr_nt_src = DETRNestedTensor.from_tensor_list(src_list)
-        src0, mask = detr_nt_src.decompose()
-        src0.requires_grad_()
-        src = src0.flatten(2).permute(2, 0, 1)
-        mask = mask.flatten(1)
-        result, _ = MODEL(src, src, src, key_padding_mask=mask,
-                          need_weights=False)  # [0].sum().backward()
-        mask = (~mask.t().unsqueeze(2)).float()
-        result = result * mask
-        result_sum = result.sum()
-        result_sum.backward()
-        grad_sum = src0.grad.sum()
-
-        src = ntnt([t.flatten(1).permute(
-            1, 0) for t in src_list])
-        result, _ = MODEL(src, src, src, need_weights=False)
-        self.assertEqual(result_sum, result.sum())
-        result.sum().backward()
-        # TODO: The numerical instabilities of summation seem to add up here.
-        self.assertEqual(src.grad.sum(), grad_sum, prec=6e-5)
-
-    @unittest.skip("Requires autograd support")
-    def test_squeeze(self):
-        t = torch.randn(2, 3)
-        result = ntnt_nograd([t])
-
-        nt = ntnt_nograd([[t.reshape(1, 2, 1, 3)]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([t.reshape(2, 3)])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([[t.reshape(2, 3)]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([t.reshape(1, 2, 3)])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([t.reshape(1, 2, 1, 3, 1)])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([[[t.reshape(1, 2, 3)]]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        result = ntnt([t])
-        nt = ntnt([t.reshape(1, 2, 3)])
-        self.assertEqual(nt.squeeze(1), result)
-        self.assertRaisesRegex(
-            RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
-        self.assertRaisesRegex(
-            RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
-        self.assertRaisesRegex(
-            RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
-        self.assertRaises(IndexError, lambda: nt.squeeze(4))
-        a = nt.squeeze(1)
-        a.sum().backward()
-        self.assertEqual(nt.grad, ntnt_nograd(
-            [t.reshape(1, 2, 3).mul(0).add(1)]))
-
-        nt = ntnt([[t.reshape(1, 2, 1, 3)]])
-        self.assertRaisesRegex(
-            RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
-        # self.assertEqual(nt.squeeze(1), ntnt(
-        #     [t.reshape(1, 2, 1, 3)]))
-        self.assertEqual(nt.squeeze(
-            2), ntnt([[t.reshape(2, 1, 3)]]))
-        self.assertEqual(nt.squeeze(
-            4), ntnt([[t.reshape(1, 2, 3)]]))
 
     @unittest.skip("Requires autograd support")
     def test_nn_max_pool2d(self):
@@ -679,64 +554,6 @@ class TestAutogradFunctional(TestCase):
         # for (n, p) in d.named_parameters():
         #     print(n)
         #     print(p is None)
-
-    def _test_softmax(self, ts, nt):
-        fn = F.softmax
-        self.assertRaises(RuntimeError, lambda: fn(nt, 0))
-        self.assertRaises(RuntimeError, lambda: fn(nt, 1))
-
-        def _map_fn(dim, result):
-            result = fn(nt, 2)
-
-            map(self.assertEqual, tuple(
-                map(lambda x: fn(x, dim), ts[0])), result[0])
-            map(self.assertEqual, tuple(
-                map(lambda x: fn(x, dim), ts[1])), result[1])
-            s = result.sum()
-            # s.backward()
-            # ts[0][0].requires_grad_()
-            # ts[0][1].requires_grad_()
-            # ts[1][0].requires_grad_()
-            # map(lambda x: fn(x, dim).sum().backward(), ts[0])
-            # map(lambda x: fn(x, dim).sum().backward(), ts[1])
-            # map(self.assertEqual, tuple(
-            #     map(lambda x: x.grad, ts[0])), nt.grad[0])
-            # map(self.assertEqual, tuple(
-            #     map(lambda x: x.grad, ts[1])), nt.grad[1])
-
-        for i in range(nt.dim() - nt.nested_dim()):
-            _map_fn(i, fn(nt, i + nt.nested_dim()))
-
-    @unittest.skip("Requires autograd support")
-    def test_softmax_1(self):
-        ts = [[], []]
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
-
-    @unittest.skip("Requires autograd support")
-    def test_softmax_2(self):
-        t0 = torch.randn(3, requires_grad=True)
-        t1 = torch.randn(2, requires_grad=True)
-        t2 = torch.randn(3, requires_grad=True)
-        ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
-
-    @unittest.skip("Requires autograd support")
-    def test_softmax_3(self):
-        t0 = torch.randn(3, 2, 1, requires_grad=True)
-        t1 = torch.randn(2, 3, 1, requires_grad=True)
-        t2 = torch.randn(3, 1, 2, requires_grad=True)
-        ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
-
-    @unittest.skip("Requires autograd support")
-    def test_softmax_4(self):
-        ts = torch.randn(6, 4, 3, 2, 5, requires_grad=True)
-        ts = list(map(lambda x: x.unbind(), ts.unbind()))
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
 
 
 if __name__ == "__main__":
