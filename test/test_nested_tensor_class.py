@@ -12,7 +12,7 @@ import utils
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -610,16 +610,15 @@ class TestNestedTensor(TestCase):
     def test_layout(self):
         _test_property(self, lambda x: x.layout)
 
-    @unittest.skip("Requires autograd support")
     def test_requires_grad(self):
         _test_property(self, lambda x: x.requires_grad)
         tensors = [torch.randn(1, 8),
                    torch.randn(3, 8),
                    torch.randn(7, 8)]
-        a1 = nestedtensor.nested_tensor(tensors, requires_grad=True)
+        a1 = ntnt_nograd(tensors)
         self.assertIsNone(a1.grad)
 
-    @unittest.skip("Requires autograd support")
+    @unittest.skip("Not implemented")
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_pin_memory(self):
         # Check if it can be applied widely
@@ -713,12 +712,11 @@ class TestNestedTensor(TestCase):
 
 
 class TestContiguous(TestCase):
-    @unittest.skip("Requires autograd support")
     def test_contiguous(self):
         for _ in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
-            nt = nestedtensor.nested_tensor(data)
+            nt = ntnt_nograd(data)
             self.assertTrue(nt.is_contiguous())
             # buf = nt.flatten()
             self.assertEqual(nt, nt)
