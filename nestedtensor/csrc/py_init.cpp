@@ -8,6 +8,8 @@
 #include <torch/extension.h>
 #include <chrono>
 
+static c10::InferenceMode guard;
+
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because
 // tensor([]) is of dimension 1, but it is also
