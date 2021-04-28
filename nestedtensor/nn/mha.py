@@ -50,7 +50,7 @@ def multi_head_attention_forward(query,
     assert static_k is None
     assert static_v is None
     assert not add_zero_attn
-    assert not need_weights
+    # assert not need_weights
 
     bsz, tgt_len, embed_dim = query.size()
     assert embed_dim == embed_dim_to_check

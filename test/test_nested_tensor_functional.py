@@ -10,6 +10,7 @@ import random
 import utils
 from torch.nn import functional as F
 from detr_nestedtensor import DETRNestedTensor
+from torch import nn
 
 
 def _iter_constructors():
@@ -83,11 +84,14 @@ class TestFunctional(TestCase):
             self.assertEqual(s, s_t)
             self.assertEqual(emb.weight.grad, emb_t.weight.grad)
 
-        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (5,)), torch.randint(100, (5,))])
-        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
-        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (5,)), torch.randint(100, (5,))])
-        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
-
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [
+                 torch.randint(100, (5,)), torch.randint(100, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8), [
+                 torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [
+                 torch.randint(100, (5,)), torch.randint(100, (5,))])
+        run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [
+                 torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
 
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
@@ -742,6 +746,143 @@ class TestFunctional(TestCase):
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)
 
+    def test_layer_norm(self):
+        layer_norm = torch.nn.LayerNorm((0,))
+        t0 = torch.randn(3)
+        t1 = torch.randn(2)
+        t2 = torch.randn(3)
+        ts = [[t0, t1], [t2]]
+        nt = ntnt_nograd(ts)
+        self.assertRaisesRegex(RuntimeError,
+                               "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
+
+        d = torch.nn.Dropout(0.1)
+        t0 = torch.randn(864, 256)
+        t1 = torch.randn(360, 256)
+        ts = [t0, t1, t0, t1]
+        nt = ntnt_nograd(ts)
+        nt2 = ntnt_nograd(ts)
+        layer_norm = torch.nn.LayerNorm(256)
+        # print(list(layer_norm.named_parameters()))
+        # print(nt)
+        tt = torch.randn(30, 43, 256, requires_grad=True)
+        # print(nt.requires_grad)
+        # res = layer_norm(nt)
+        res = layer_norm(tt)
+        nt = nt + 3
+        # print(res.requires_grad)
+        res = res * 5
+        # print(res)
+        # print(res.requires_grad)
+        # res.sum().backward()
+        res = layer_norm(tt + 2)
+        # res.sum().backward()
+        # print(list(layer_norm.named_parameters()))
+        # XXX: Need to check weight and bias gradients
+        # import sys
+        # sys.exit(1)
+        t0 = torch.randn(3, 256)
+        t1 = torch.randn(2, 256)
+        t2 = torch.randn(3, 256)
+        ts = [[t0, t1], [t2]]
+        result = ntnt_nograd(ts)
+        map(self.assertEqual, tuple(
+            map(lambda x: layer_norm(x), ts[0])), result[0])
+        map(self.assertEqual, tuple(
+            map(lambda x: layer_norm(x), ts[1])), result[1])
+
+        layer_norm = torch.nn.LayerNorm(3)
+        t0 = torch.randn(3, 3, 4)
+        t1 = torch.randn(2, 3, 4)
+        t2 = torch.randn(3, 3, 4)
+        ts = [[t0, t1], [t2]]
+        nt = ntnt_nograd(ts)
+        self.assertRaisesRegex(RuntimeError,
+                               "Given normalized_shape=\[3\], expected input with shape \[\*, 3\], but got input of size\[3, 3, 4\]",
+                               lambda: layer_norm(nt))
+
+        layer_norm = torch.nn.LayerNorm((3, 2, 4))
+        self.assertRaisesRegex(RuntimeError,
+                               "Currently only singleton tuples of integers supported for layer_norm.",
+                               lambda: layer_norm(nt))
+
+    def test_decoder(self):
+        class TransformerDecoderLayer(nn.Module):
+
+            def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
+                         activation="relu", normalize_before=False):
+                super().__init__()
+                self.self_attn = nestedtensor.nn.MultiheadAttention(
+                    d_model, nhead, dropout=dropout)
+                self.multihead_attn = nestedtensor.nn.MultiheadAttention(
+                    d_model, nhead, dropout=dropout)
+                # Implementation of Feedforward model
+                self.linear1 = nn.Linear(d_model, dim_feedforward)
+                self.dropout = nn.Dropout(dropout)
+                self.linear2 = nn.Linear(dim_feedforward, d_model)
+
+                self.norm1 = nn.LayerNorm(d_model)
+                self.norm2 = nn.LayerNorm(d_model)
+                self.norm3 = nn.LayerNorm(d_model)
+                self.dropout1 = nn.Dropout(dropout)
+                self.dropout2 = nn.Dropout(dropout)
+                self.dropout3 = nn.Dropout(dropout)
+
+                self.activation = torch.nn.functional.relu
+                self.normalize_before = normalize_before
+
+            def with_pos_embed(self, tensor, pos):
+                return tensor if pos is None else tensor + pos
+
+            def forward(self, tgt, memory,
+                        # tgt_mask: Optional[Tensor] = None,
+                        # memory_mask: Optional[Tensor] = None,
+                        # tgt_key_padding_mask: Optional[Tensor] = None,
+                        # memory_key_padding_mask: Optional[Tensor] = None,
+                        pos=None, query_pos=None):
+                q = k = self.with_pos_embed(tgt, query_pos)
+                tgt2 = self.self_attn(q, k, value=tgt,
+                                      need_weights=False)[0]
+                # tgt = tgt + self.dropout1(tgt2)
+                tgt = tgt + tgt2
+                tgt = self.norm1(tgt)
+                tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
+                                           key=self.with_pos_embed(
+                                               memory, pos),
+                                           value=memory,
+                                           need_weights=False)[0]
+                # tgt = tgt + self.dropout2(tgt2)
+                tgt = tgt + tgt2
+                tgt = self.norm2(tgt)
+                tgt2 = self.linear2(self.dropout(
+                    self.activation(self.linear1(tgt))))
+                # tgt = tgt + self.dropout3(tgt2)
+                tgt = tgt + tgt2
+                tgt = self.norm3(tgt)
+                # print('tgt.requires_grad')
+                # print(tgt.requires_grad)
+                return tgt
+
+        d = TransformerDecoderLayer(256, 8)
+        d.zero_grad()
+        a = d(
+            ntnt_nograd([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+            ntnt_nograd([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+            pos=ntnt_nograd([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+            query_pos=ntnt_nograd([
+                torch.randn(864, 256),
+                torch.randn(360, 256)]),
+        )
+        # a.sum().backward()
+        # for (n, p) in d.named_parameters():
+        #     print(n)
+        #     print(p is None)
 
 
 if __name__ == "__main__":
