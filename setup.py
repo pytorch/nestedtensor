@@ -24,7 +24,7 @@ def read(*names, **kwargs):
         return fp.read()
 
 
-version = "0.0.1"
+version = "0.1.4"
 sha = "Unknown"
 package_name = "nestedtensor"
 
@@ -39,8 +39,8 @@ try:
 except Exception:
     pass
 
-if os.getenv("BUILD_VERSION"):
-    version = os.getenv("BUILD_VERSION")
+if os.getenv("BUILD_VERSION") is not None:
+    version = version + os.getenv("BUILD_VERSION")
 elif sha != "Unknown":
     version = version + "+" + sha[:7]
 
