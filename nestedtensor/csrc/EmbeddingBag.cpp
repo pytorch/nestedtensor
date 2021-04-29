@@ -8,7 +8,7 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
+std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor_embedding_bag(
     const Tensor& weight,
     const Tensor& indices_,
     const Tensor& offsets,
@@ -16,8 +16,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
     const int64_t mode,
     bool sparse,
     const c10::optional<Tensor>& per_sample_weights,
-    bool include_last_offset,
-    int64_t embedding_dix) {
+    bool include_last_offset) {
   at::Tensor indices = get_buffer(indices_).contiguous();
   int64_t emb_dim = weight.size(1);
   SizeNode output_size = map(
@@ -28,7 +27,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
       },
       get_nested_tensor_structure(indices_));
   c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::NestedTensor);
-  std::tuple<Tensor, Tensor, Tensor, Tensor> emb_outputs = at::_embedding_bag(
+  std::tuple<Tensor, Tensor, Tensor, Tensor> emb_outputs = at::embedding_bag(
       weight,
       indices,
       offsets,
@@ -36,8 +35,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
       mode,
       sparse,
       per_sample_weights,
-      include_last_offset,
-      embedding_dix);
+      include_last_offset);
   at::Tensor emb_output_0 = std::get<0>(emb_outputs).reshape({-1});
   auto output = wrap_buffer(std::move(emb_output_0), output_size);
   return std::make_tuple(
@@ -48,7 +46,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor__embedding_bag(
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  nt_impl(m, "_embedding_bag", NestedTensor__embedding_bag);
+  nt_impl(m, "embedding_bag", NestedTensor_embedding_bag);
 }
 
 } // namespace at

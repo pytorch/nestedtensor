@@ -59,7 +59,6 @@ class TestFunctional(TestCase):
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 
-    @unittest.skip("Requires autograd support")
     def test_nn_embedding_bag(self):
 
         def run_test(EmbeddingBag, inputs):
@@ -68,7 +67,7 @@ class TestFunctional(TestCase):
             emb = EmbeddingBag()
             y = emb(x)
             s = y.sum()
-            s.backward()
+            # s.backward()
             input_tensor = torch.cat(inputs).contiguous()
             input_offset = [0]
             for inp in inputs[:-1]:
@@ -78,11 +77,11 @@ class TestFunctional(TestCase):
             emb_t = EmbeddingBag()
             y_t = emb_t(input_tensor, input_offset)
             s_t = y_t.sum()
-            s_t.backward()
+            # s_t.backward()
             for yi, y_ti in zip(y.unbind(), y_t.unbind()):
                 self.assertEqual(yi, y_ti)
             self.assertEqual(s, s_t)
-            self.assertEqual(emb.weight.grad, emb_t.weight.grad)
+            # self.assertEqual(emb.weight.grad, emb_t.weight.grad)
 
         run_test(lambda: torch.nn.EmbeddingBag(100, 8), [
                  torch.randint(100, (5,)), torch.randint(100, (5,))])
