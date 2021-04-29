@@ -40,7 +40,7 @@ except Exception:
     pass
 
 if os.getenv("BUILD_VERSION") is not None:
-    version = version + os.getenv("BUILD_VERSION")
+    version = os.getenv("BUILD_VERSION")
 elif sha != "Unknown":
     version = version + "+" + sha[:7]
 
