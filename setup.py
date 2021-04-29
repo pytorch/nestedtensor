@@ -24,7 +24,7 @@ def read(*names, **kwargs):
         return fp.read()
 
 
-version = "0.1.2"
+version = "0.1.3"
 sha = "Unknown"
 package_name = "nestedtensor"
 
