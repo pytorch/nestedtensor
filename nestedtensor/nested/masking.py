@@ -116,14 +116,3 @@ def merge_tensor_mask(tensor_mask, mask_dim):
     tensor, mask = torch.ops.nestedtensor.merge_tensor_mask(
         tensor, mask, mask_dim)
     return TensorMask(tensor=tensor, mask=mask)
-
-
-def pad_tensor_to_shape(t, goal_shape):
-    padd = ()
-    tup = tuple(t.size())
-    assert(t.dim() == len(goal_shape))
-    for i in range(len(tup)):
-        padd = (0, goal_shape[i] - tup[i]) + padd
-    new_tensor = F.pad(t, padd)
-    new_tensor = new_tensor.reshape(goal_shape)
-    return new_tensor
