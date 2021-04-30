@@ -497,4 +497,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
         tensor, mask = masking.to_tensor_mask(self, mask_dim)
+        while mask.dim() < tensor.dim():
+            mask = mask.unsqueeze(-1)
         return tensor.masked_fill(~mask, padding)
