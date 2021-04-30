@@ -123,7 +123,8 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
                                   "(got mode='{}'). Please open a feature request on GitHub."
                                   .format(mode))
     if padding_idx is not None:
-        raise NotImplementedError("padding_idx is not supported for NestedTensor embedding_bag")
+        raise NotImplementedError(
+            "padding_idx is not supported for NestedTensor embedding_bag")
 
     ret, _, _, _ = torch.embedding_bag(
         weight,
@@ -475,11 +476,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def to_nested_tensor(self, dim=0):
         return _wrap_result(torch.ops.nestedtensor.to_nested_tensor(self._impl, dim))
 
-    def to_list(self):
-        return self._impl.to_list()
-
-    def to_tuple(self):
-        return self._impl.to_tuple()
+    def to_tensor_list(self):
+        return torch.ops.nestedtensor.to_tensor_list(self._impl)
 
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)
@@ -497,4 +495,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
         tensor, mask = masking.to_tensor_mask(self, mask_dim)
+        while mask.dim() < tensor.dim():
+            mask = mask.unsqueeze(-1)
         return tensor.masked_fill(~mask, padding)
