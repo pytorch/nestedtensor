@@ -137,6 +137,9 @@ TORCH_LIBRARY(nestedtensor, m) {
   m.impl("is_nested_tensor_impl", c10::DispatchKey::CPU, [](Tensor tensor) {
     return is_nested_tensor_impl(tensor);
   });
+  m.impl("is_nested_tensor_impl", c10::DispatchKey::CUDA, [](Tensor tensor) {
+    return is_nested_tensor_impl(tensor);
+  });
 
   m.def("nested_dim(Tensor tensor) -> int");
   m.impl("nested_dim", NestedTensorKey, [](Tensor tensor) {
@@ -153,6 +156,12 @@ TORCH_LIBRARY(nestedtensor, m) {
   m.impl(
       "to_nested_tensor",
       c10::DispatchKey::CPU,
+      [](Tensor tensor, c10::optional<int64_t> dim) {
+        return NestedTensor_to_nested_tensor(tensor, dim);
+      });
+  m.impl(
+      "to_nested_tensor",
+      c10::DispatchKey::CUDA,
       [](Tensor tensor, c10::optional<int64_t> dim) {
         return NestedTensor_to_nested_tensor(tensor, dim);
       });
