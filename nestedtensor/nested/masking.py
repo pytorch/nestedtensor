@@ -44,46 +44,10 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
 
 
 def nt_from_tensor_mask(tensor, mask, nested_dim):
-    result = torch.ops.nestedtensor.nt_from_tensor_mask(tensor, mask, nested_dim)
+    result = torch.ops.nestedtensor.nt_from_tensor_mask(
+        tensor, mask, nested_dim)
     assert result is not None
     return nestedtensor.NestedTensor(result.contiguous())
-    if nested_dim == 0:
-        if (mask.numel() == 0) or (mask.numel() == 1 and mask.item() == True):
-            return tensor
-
-        if mask.dim() == 1:
-            tensors = [tensor[i] if mask[i]
-                       else None for i in range(len(mask))]
-            tensors = list(filter(lambda x: x is not None, tensors))
-            if len(tensors) == 0:
-                return torch.tensor([]).to(tensor)
-            return torch.stack(tensors)
-
-        if mask.dim() > 1:
-            tensors = [nt_from_tensor_mask(t, m, nested_dim)
-                       for (t, m) in zip(tensor, mask)]
-            if not all(t.numel() == 0 for t in tensors):
-                tensors = list(filter(lambda x: x.numel() > 0, tensors))
-            if len(tensors) == 0:
-                return torch.tensor([]).to(tensor)
-            return torch.stack(tensors)
-
-        return None
-
-    inner_tensors = []
-    if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
-        for i in range(len(tensor)):
-            inner_tensors.append(nt_from_tensor_mask(
-                tensor[i], mask, nested_dim - 1))
-    elif (mask.numel() == 1 and mask == False):
-        inner_tensors.append(None)
-    else:
-        inner_tensors = [nt_from_tensor_mask(
-            t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
-
-    # Filtering out None values which were ignored by mask
-    inner_tensors = list(filter(lambda x: x is not None, inner_tensors))
-    return creation.nested_tensor(inner_tensors, requires_grad=tensor.requires_grad)
 
 # Get max size per each dimension from all the passed tensors.
 
