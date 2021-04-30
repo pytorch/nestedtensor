@@ -11,21 +11,11 @@ namespace at {
 Tensor NestedTensor_adaptive_avg_pool2d(
     at::Tensor const& input,
     IntArrayRef output_size) {
-  if (is_serialized_size_node(output_size)) {
-    SizeNode deserialized_size_node = deserialize_size_node(output_size);
-    return wrap_tensor_node(map(
-        [](const at::Tensor input, c10::List<int64_t> output_size) {
-          return at::native::adaptive_avg_pool2d(
-              input, IntArrayRef(output_size.vec()));
-        },
-        get_nested_tensor_structure(input),
-        deserialized_size_node));
-  }
-  return wrap_tensor_node(map(
+  return map_nested_tensor(
       [&output_size](at::Tensor input) {
         return at::native::adaptive_avg_pool2d(input, output_size);
       },
-      get_nested_tensor_structure(input)));
+      input);
 }
 
 Tensor NestedTensor_adaptive_avg_pool2d_backward(

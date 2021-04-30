@@ -316,6 +316,18 @@ static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
       map(std::move(fn), get_nested_tensor_structure(a)...));
 }
 
+template <class F, class I, class... A>
+static inline typename c10::guts::infer_function_traits<F>::type::return_type
+reduce_nested_tensor(F&& fn, I init, A... a) {
+  // torch_check_tensor_shape_matches(a...);
+  // torch_check_is_nested_tensor(a...);
+  return reduce<F, I, A...>(get_nested_tensor_structure(a)..., fn, init);
+}
+
+static inline std::vector<at::Tensor> flatten_nested_tensor(at::Tensor tensor) {
+  return flatten(get_nested_tensor_structure(tensor));
+}
+
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor_impl(tensor);
   for (const auto& size : nt->opt_sizes()) {

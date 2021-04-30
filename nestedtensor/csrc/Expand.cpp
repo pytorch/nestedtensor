@@ -162,11 +162,12 @@ bool NestedTensor_native_is_expandable_to(
     return _sizes_nested_size_expands(nested_size, grad_shape);
   }
   if (is_nested_tensor_impl(grad)) {
-    auto fn = [&metadata_shape](at::Tensor leaf, bool input) {
-      return input && at::is_expandable_to(metadata_shape, leaf.sizes());
-    };
-    return reduce<decltype(fn), bool, at::Tensor>(
-        get_nested_tensor_structure(grad), fn, true);
+    return reduce_nested_tensor(
+        [&metadata_shape](at::Tensor leaf, bool input) {
+          return input && at::is_expandable_to(metadata_shape, leaf.sizes());
+        },
+        true,
+        grad);
   }
   return at::is_expandable_to(metadata_shape, grad.sizes());
 }

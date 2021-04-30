@@ -20,12 +20,12 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor_embedding_bag(
   at::Tensor indices = get_buffer(indices_).contiguous();
   int64_t emb_dim = weight.size(1);
   SizeNode output_size = map(
-      [&emb_dim](at::Tensor inp) {
+      [&emb_dim](c10::List<int64_t> inp) {
         c10::List<int64_t> new_size;
         new_size.push_back(emb_dim);
         return new_size;
       },
-      get_nested_tensor_structure(indices_));
+      get_nested_size(indices_));
   c10::impl::ExcludeDispatchKeyGuard guard(c10::DispatchKey::NestedTensor);
   std::tuple<Tensor, Tensor, Tensor, Tensor> emb_outputs = at::embedding_bag(
       weight,
