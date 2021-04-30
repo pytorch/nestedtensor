@@ -85,9 +85,8 @@ at::Tensor interpolate(
   }
 
   // Get input leaves count
-  auto fn = [](at::Tensor leaf, int64_t input) { return input + 1; };
-  auto leaves_count = size_t(reduce<decltype(fn), int64_t, at::Tensor>(
-      get_nested_tensor_structure(input), fn, 0));
+  auto leaves_count = reduce_nested_tensor(
+      [](at::Tensor leaf, int64_t input) { return input + 1; }, 0, input);
 
   if (size.has_value()) {
     // There can be either 1 size for all tensor or an individual size value per

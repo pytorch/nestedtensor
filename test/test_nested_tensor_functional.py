@@ -566,13 +566,13 @@ class TestFunctional(TestCase):
         result, _ = MODEL(src, src, src, key_padding_mask=mask,
                           need_weights=False)  # [0].sum().backward()
         mask = (~mask.t().unsqueeze(2)).float()
-        result = result * mask
-        result_sum = result.sum()
+        result0 = result * mask
+        # result_sum = result.sum()
 
         src = ntnt_nograd([t.flatten(1).permute(
             1, 0) for t in src_list])
-        result, _ = MODEL(src, src, src, need_weights=False)
-        self.assertEqual(result_sum, result.sum())
+        result1, _ = MODEL(src, src, src, need_weights=False)
+        self.assertEqual(result0.sum(0).sum(0), result1.sum(1).sum(0))
 
     def test_squeeze(self):
         t = torch.randn(2, 3)

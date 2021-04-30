@@ -136,9 +136,8 @@ std::tuple<Tensor, Tensor> NestedTensor_max_dim(
 }
 
 Tensor NestedTensor_max(const Tensor& self) {
-  auto tensors = flatten(
-      map([](at::Tensor tensor) { return at::max(tensor); },
-          get_nested_tensor_structure(self)));
+  auto tensors = flatten_nested_tensor(map_nested_tensor(
+      [](at::Tensor tensor) { return at::max(tensor); }, self));
   if (tensors.size() == 0) {
     return at::ones({0});
   }
@@ -162,9 +161,8 @@ Tensor NestedTensor_mean_dim(
 }
 
 Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-          get_nested_tensor_structure(self)));
+  auto tensors = flatten_nested_tensor(map_nested_tensor(
+      [&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); }, self));
   if (tensors.size() == 0) {
     if (dtype) {
       return at::ones({0}, *dtype);
@@ -325,9 +323,8 @@ Tensor NestedTensor_var_dim(
 }
 
 Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::prod(tensor, dtype); },
-          get_nested_tensor_structure(self)));
+  auto tensors = flatten_nested_tensor(map_nested_tensor(
+      [&dtype](at::Tensor tensor) { return at::prod(tensor, dtype); }, self));
   if (tensors.size() == 0) {
     if (dtype) {
       return at::ones({1}, *dtype);
