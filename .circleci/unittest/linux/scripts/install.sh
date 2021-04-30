@@ -26,7 +26,7 @@ conda activate ./env
 WHEELS_FOLDER=${HOME}/project/wheels
 mkdir -p $WHEELS_FOLDER
 
-PYVSHORT=${PYTHON_VERSION:0:1}${PYTHON_VERSION:2:1}
+PYVSHORT=$(./env/bin/python -c "import sys; s=sys.version_info;sys.stdout.write(str(s.major));print(s.minor)")
 
 if [[ "$PYVSHORT" == "38" ]] ; then
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}
