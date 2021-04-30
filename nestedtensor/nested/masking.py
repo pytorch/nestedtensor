@@ -8,6 +8,7 @@ import nestedtensor
 
 TensorMask = collections.namedtuple('TensorMask', 'tensor mask')
 
+
 def nested_tensor_from_padded_tensor(tensor, nested_dim=1, padding=-1):
     mask = (tensor != padding)
     return nested_tensor_from_tensor_mask(tensor, mask, nested_dim)
@@ -29,54 +30,64 @@ def nested_tensor_from_tensor_mask(tensor, mask, nested_dim=1):
         raise RuntimeError("Nested dimension can't be 0.")
 
     if nested_dim is not None and nested_dim > tensor.dim():
-        raise RuntimeError("Nested dimension ({0}) can't be bigger than data tensor dimension ({1}).".format(nested_dim, tensor.dim()))
+        raise RuntimeError("Nested dimension ({0}) can't be bigger than data tensor dimension ({1}).".format(
+            nested_dim, tensor.dim()))
 
     if tensor.numel() == 0 and mask.numel() != 0:
         raise RuntimeError("Data tensor can't be emtpy if a mask has values.")
 
     if tensor.numel() != 0 and mask.numel() == 0:
-        raise RuntimeError("Mask tensor can't be emtpy if a data tensor has values.")
+        raise RuntimeError(
+            "Mask tensor can't be emtpy if a data tensor has values.")
 
     return nt_from_tensor_mask(tensor, mask, nested_dim)
 
 
 def nt_from_tensor_mask(tensor, mask, nested_dim):
-    def _merge(tensors, nested_dim):
-        if len(tensors) == 0:
-            return torch.tensor([]).to(tensor)
-        return torch.stack(tensors)
-
+    result = torch.ops.nestedtensor.nt_from_tensor_mask(tensor, mask, nested_dim)
+    assert result is not None
+    return nestedtensor.NestedTensor(result.contiguous())
     if nested_dim == 0:
         if (mask.numel() == 0) or (mask.numel() == 1 and mask.item() == True):
             return tensor
 
         if mask.dim() == 1:
-            tensors = [tensor[i] if mask[i] else None for i in range(len(mask))]
+            tensors = [tensor[i] if mask[i]
+                       else None for i in range(len(mask))]
             tensors = list(filter(lambda x: x is not None, tensors))
-            return _merge(tensors, nested_dim)
+            if len(tensors) == 0:
+                return torch.tensor([]).to(tensor)
+            return torch.stack(tensors)
 
         if mask.dim() > 1:
-            tensors = [nt_from_tensor_mask(t, m, nested_dim) for (t, m) in zip(tensor, mask)]
+            tensors = [nt_from_tensor_mask(t, m, nested_dim)
+                       for (t, m) in zip(tensor, mask)]
             if not all(t.numel() == 0 for t in tensors):
                 tensors = list(filter(lambda x: x.numel() > 0, tensors))
-            return _merge(tensors, nested_dim)
+            if len(tensors) == 0:
+                return torch.tensor([]).to(tensor)
+            return torch.stack(tensors)
 
         return None
 
     inner_tensors = []
     if (mask.numel() == 0) or (mask.numel() == 1 and mask == True):
         for i in range(len(tensor)):
-            inner_tensors.append(nt_from_tensor_mask(tensor[i], mask, nested_dim - 1))
+            inner_tensors.append(nt_from_tensor_mask(
+                tensor[i], mask, nested_dim - 1))
     elif (mask.numel() == 1 and mask == False):
         inner_tensors.append(None)
     else:
-        inner_tensors = [nt_from_tensor_mask(t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
+        inner_tensors = [nt_from_tensor_mask(
+            t, m, nested_dim - 1) for (t, m) in zip(tensor, mask)]
 
     # Filtering out None values which were ignored by mask
     inner_tensors = list(filter(lambda x: x is not None, inner_tensors))
     return creation.nested_tensor(inner_tensors, requires_grad=tensor.requires_grad)
 
 # Get max size per each dimension from all the passed tensors.
+
+
 def get_max_size(obj, res=None):
     if res is None:
         res = [1]
@@ -87,7 +98,7 @@ def get_max_size(obj, res=None):
     if isinstance(obj, nestedtensor.nested.nested.NestedTensor):
         tres = get_max_size(obj.unbind())
         while len(tres) > len(res):
-                res.append(0)
+            res.append(0)
 
         res = [max(i, j) for (i, j) in zip(res, tres)]
 
@@ -103,6 +114,7 @@ def get_max_size(obj, res=None):
 
     return res
 
+
 def get_tensor_mask(nt, shape):
     return torch.ops.nestedtensor.pad_nt(nt, shape)
 
@@ -114,17 +126,21 @@ def get_tensor_mask(nt, shape):
 # the data tensor, an error is thrown.
 def to_tensor_mask(nt, mask_dim):
     if mask_dim is not None and mask_dim > nt.dim():
-        raise RuntimeError("Mask dimension is bigger than nested dimension of a nested tensor.")
+        raise RuntimeError(
+            "Mask dimension is bigger than nested dimension of a nested tensor.")
 
     # Check if scalar was passed
     if not isinstance(nt, list) and nt.size() == (1,):
-        res_scalar = torch.tensor([nt[0].item()], dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
-        mask = torch.tensor(True) if mask_dim == 0 or mask_dim == None else torch.tensor([True])
+        res_scalar = torch.tensor(
+            [nt[0].item()], dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
+        mask = torch.tensor(
+            True) if mask_dim == 0 or mask_dim == None else torch.tensor([True])
         return res_scalar, mask
 
     max_size = get_max_size(nt)
     res_tensor, res_mask = get_tensor_mask(nt, max_size)
-    tensor_mask_tuple = merge_tensor_mask(TensorMask(res_tensor, res_mask), mask_dim)
+    tensor_mask_tuple = merge_tensor_mask(
+        TensorMask(res_tensor, res_mask), mask_dim)
 
     return tensor_mask_tuple.tensor, tensor_mask_tuple.mask
 
@@ -133,7 +149,8 @@ def to_tensor_mask(nt, mask_dim):
 def merge_tensor_mask(tensor_mask, mask_dim):
     tensor = tensor_mask.tensor
     mask = tensor_mask.mask
-    tensor, mask = torch.ops.nestedtensor.merge_tensor_mask(tensor, mask, mask_dim)
+    tensor, mask = torch.ops.nestedtensor.merge_tensor_mask(
+        tensor, mask, mask_dim)
     return TensorMask(tensor=tensor, mask=mask)
 
 

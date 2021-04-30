@@ -71,8 +71,14 @@ std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
 
     Tensor tensor = pad_tensor_to_shape(nt, shape);
     Tensor mask = pad_tensor_to_shape(
-        nt.new_full(nt.sizes(), true, torch::kByte, c10::nullopt,
-          c10::nullopt, c10::nullopt), shape);
+        nt.new_full(
+            nt.sizes(),
+            true,
+            torch::kByte,
+            c10::nullopt,
+            c10::nullopt,
+            c10::nullopt),
+        shape);
     return std::make_tuple(tensor, mask);
   }
 
@@ -86,7 +92,8 @@ std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
     for (auto child : structure.unbind()) {
       Tensor tensor;
       Tensor mask;
-      std::tie(tensor, mask) = pad_nt(wrap_tensor_node(std::move(child)), shape);
+      std::tie(tensor, mask) =
+          pad_nt(wrap_tensor_node(std::move(child)), shape);
       res_tensor.push_back(tensor);
       res_mask.push_back(mask);
     }
@@ -95,12 +102,84 @@ std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
   return std::make_tuple(at::stack(res_tensor), at::stack(res_mask));
 }
 
+c10::optional<Tensor> nt_from_tensor_mask(
+    Tensor tensor,
+    Tensor mask,
+    int64_t nested_dim) {
+  if (nested_dim == 0) {
+    if ((mask.numel() == 0) || (mask.numel() == 1 && mask.item<bool>())) {
+      return tensor;
+    }
+
+    if (mask.dim() == 1) {
+      std::vector<Tensor> tensors;
+      for (int64_t i = 0; i < mask.size(0); i++) {
+        if (mask[i].item<bool>()) {
+          tensors.push_back(tensor[i]);
+        }
+      }
+      if (tensors.size() == 0) {
+        return torch::tensor({}).to(tensor);
+      }
+      return at::stack(tensors);
+    }
+
+    if (mask.dim() > 1) {
+      std::vector<Tensor> tensors;
+      bool all_zero = true;
+      for (int64_t i = 0; i < mask.size(0); i++) {
+        Tensor tmp = *nt_from_tensor_mask(tensor[i], mask[i], nested_dim);
+        if (tmp.numel() > 0) {
+          all_zero = false;
+          tensors.push_back(tmp);
+        }
+      }
+      if (all_zero) {
+        for (int64_t i = 0; i < mask.size(0); i++) {
+          Tensor tmp = *nt_from_tensor_mask(tensor[i], mask[i], nested_dim);
+          tensors.push_back(tmp);
+        }
+      }
+      if (tensors.size() == 0) {
+        return torch::tensor({}).to(tensor);
+      }
+      return at::stack(tensors);
+    }
+    return c10::nullopt;
+  }
+  std::vector<c10::optional<Tensor>> inner_tensors;
+  if ((mask.numel() == 0) || (mask.numel() == 1 && mask.item<bool>())) {
+    for (int64_t i = 0; i < tensor.size(0); i++) {
+      inner_tensors.push_back(
+          nt_from_tensor_mask(tensor[i], mask, nested_dim - 1));
+    }
+  } else if (mask.numel() == 1 && !mask.item<bool>()) {
+    inner_tensors.push_back(c10::nullopt);
+  } else {
+    for (int64_t i = 0; i < tensor.size(0); i++) {
+      inner_tensors.push_back(
+          nt_from_tensor_mask(tensor[i], mask[i], nested_dim - 1));
+    }
+  }
+  std::vector<TensorNode> inner_tensor_nodes;
+  for (int64_t i = 0; i < inner_tensors.size(); i++) {
+    if (inner_tensors[i]) {
+      TensorNode node = get_nested_tensor_structure(*inner_tensors[i]);
+      inner_tensor_nodes.push_back(node);
+    }
+  }
+  return wrap_tensor_node(TensorNode(std::move(inner_tensor_nodes)));
+}
+
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
       "merge_tensor_mask(Tensor tensor, Tensor mask, int? mask_dim=None) -> (Tensor, Tensor)");
   m.impl("merge_tensor_mask", TORCH_FN(merge_tensor_mask));
 
-  m.def(
-      "pad_nt(Tensor nt, int[] shape) -> (Tensor, Tensor)");
+  m.def("pad_nt(Tensor nt, int[] shape) -> (Tensor, Tensor)");
   m.impl("pad_nt", NestedTensorKey, TORCH_FN(pad_nt));
+
+  m.def(
+      "nt_from_tensor_mask(Tensor tensor, Tensor mask, int nested_dim) -> Tensor?");
+  m.impl("nt_from_tensor_mask", TORCH_FN(nt_from_tensor_mask));
 }
