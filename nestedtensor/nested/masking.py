@@ -104,34 +104,7 @@ def get_max_size(obj, res=None):
     return res
 
 def get_tensor_mask(nt, shape):
-    def pad_nt(nt, shape):
-
-        if isinstance(nt, torch.Tensor):
-            if nt.numel() == 0:
-                raise RuntimeError("Empty tensors are not yet supported.")
-
-            # Dont pad in case of a scalar
-            if nt.dim() == 0:
-                return nt, torch.tensor(True)
-
-            tensor = pad_tensor_to_shape(nt, shape)
-            mask = pad_tensor_to_shape(nt.new_full(nt.size(), True, dtype=torch.bool), shape)
-            return tensor, mask
-
-        res_tensor = []
-        res_mask = []
-        if len(nt) == 0:
-            return torch.tensor([0]), torch.tensor([False], dtype=torch.bool)
-        else:
-            for entry in nt:
-                tensor, mask = pad_nt(entry, shape)
-                res_tensor.append(tensor)
-                res_mask.append(mask)
-
-        return torch.stack(res_tensor), torch.stack(res_mask)
-
-    t, m = pad_nt(nt, shape)
-    return t, m
+    return torch.ops.nestedtensor.pad_nt(nt, shape)
 
 
 # Return a tuple of a tensor and a mask that represent the given tensor list
@@ -160,25 +133,7 @@ def to_tensor_mask(nt, mask_dim):
 def merge_tensor_mask(tensor_mask, mask_dim):
     tensor = tensor_mask.tensor
     mask = tensor_mask.mask
-    if mask_dim is not None and mask.dim() == mask_dim:
-        return tensor_mask
-
-    if mask.dim() == 0:
-        return tensor_mask
-
-    last_size = mask.size(-1)
-    collapsed_mask = mask.sum(-1)
-    is_last_size = (collapsed_mask == last_size)
-    is_zero = (collapsed_mask == 0)
-    if (is_last_size.sum() + is_zero.sum()) == collapsed_mask.numel():
-        collapsed_mask = collapsed_mask.to(torch.bool)
-        return merge_tensor_mask(TensorMask(tensor=tensor, mask=collapsed_mask), mask_dim)
-
-    if mask_dim is not None and mask_dim != mask.dim():
-        raise RuntimeError("Mask dimension is too small to represent data tensor.")
-    # This is expected to be a no-op, except in rare cases.
-    tensor = tensor.contiguous()
-    mask = mask.contiguous()
+    tensor, mask = torch.ops.nestedtensor.merge_tensor_mask(tensor, mask, mask_dim)
     return TensorMask(tensor=tensor, mask=mask)
 
 
