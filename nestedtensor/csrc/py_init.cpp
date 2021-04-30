@@ -166,6 +166,11 @@ TORCH_LIBRARY(nestedtensor, m) {
   m.impl("len", NestedTensorKey, [](Tensor self) {
     return (int64_t)(get_nested_tensor_structure(self).degree());
   });
+
+  m.def("to_tensor_list(Tensor tensor) -> Tensor[]");
+  m.impl("to_tensor_list", NestedTensorKey, [](Tensor tensor) {
+    return flatten_nested_tensor(tensor);
+  });
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
