@@ -268,13 +268,13 @@ workflows:
           matrix:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
-              cu_version: ["cu101"]
+              cu_version: ["cu102"]
       - binary_wheel_upload:
           context: org-member
           matrix:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
-              subfolder: ["cpu", "cu101"]
+              subfolder: ["cpu", "cu102"]
           filters:
             branches:
               only: nightly
