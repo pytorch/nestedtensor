@@ -7,6 +7,7 @@
 #include <torch/csrc/autograd/python_variable_indexing.h>
 #include <torch/extension.h>
 #include <chrono>
+#include <nestedtensor/csrc/cuda/attention.h>
 namespace py = pybind11;
 
 using namespace torch::nested_tensor;
