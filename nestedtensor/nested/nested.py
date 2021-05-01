@@ -479,6 +479,12 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def to_tensor_list(self):
         return torch.ops.nestedtensor.to_tensor_list(self._impl)
 
+    def to_packed_sequence(self):
+        if not self.dim() == 3 and self.nested_dim() == 1:
+            raise RuntimeError(
+                "NestedTensor should consistent of 2d Tensors of size L x *")
+        return torch.nn.utils.rnn.pack_sequence(self.to_tensor_list(), enforce_sorted=False)
+
     def to_tensor_mask(self, mask_dim=None):
         """Returns a named tuple TensorMask with two tensors (tensor, mask)
         of dim equal to self.dim(). Tensor will contain all data of NestedTensor,
