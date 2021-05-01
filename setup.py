@@ -101,6 +101,7 @@ def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
     extensions_dir = os.path.join(this_dir, "nestedtensor", "csrc")
     utils_dir = os.path.join(extensions_dir, "utils")
+    cuda_dir = os.path.join(this_dir, "nestedtensor", "csrc", "cuda")
 
     extension_sources = set(
         os.path.join(extensions_dir, p)
@@ -110,7 +111,15 @@ def get_extensions():
         os.path.join(utils_dir, p) for p in glob.glob(os.path.join(utils_dir, "*.cpp"))
     )
 
-    sources = list(set(extension_sources) | set(utils_sources))
+    if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv(
+        "FORCE_CUDA", "0"
+    ) == "1":
+        cuda_sources = set(
+            os.path.join(cuda_dir, p) for p in glob.glob(os.path.join(cuda_dir, "*.cu"))
+        )
+        sources = list(set(extension_sources) | set(utils_sources) | set(cuda_sources))
+    else:
+        sources = list(set(extension_sources) | set(utils_sources))
 
     include_dirs = [extensions_dir, utils_dir]
 
