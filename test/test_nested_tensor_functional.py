@@ -884,73 +884,54 @@ class TestFunctional(TestCase):
         #     print(p is None)
 
     def test_effective_transformer_mha(self):
-        num_heads = 1
-        batch_size = 2
-        seq_len = 2
-        head_size = 2
-        embedding_dim = 2
-        input_batch = torch.arange(
-            batch_size * seq_len * embedding_dim).reshape(batch_size, seq_len, embedding_dim).to(torch.float).cuda()
-        mask = torch.tensor([[1, 0], [1, 0]]).to(torch.int32).cuda()
-        batch_idx = torch.tensor([[1, 1], [1, 0]]).to(torch.int32).cuda()
-        word_idx = torch.tensor([[1, 1], [1, 0]]).to(torch.int32).cuda()
-        prefix_sum = torch.ops.nestedtensor.exclusive_scan(mask)
-        result = torch.empty(batch_size, seq_len,
-                             embedding_dim).to(torch.float).cuda()
-        print(mask)
-        print(prefix_sum)
-        # Tensor compress_bert_input(
-        #     Tensor input, // float - (batch_size, seq_len, hidden_dim)
-        #     Tensor mask, // int32 - (batch_size, seq_len)
-        #     Tensor prefix_sum, // int32
-        #     Tensor result, // float - (batch_size * num_head * seq_len * size_per_head)
-        #     Tensor batch_idx, // int32
-        #     Tensor word_idx, // int32
-        #     int64_t batch_size,
-        #     int64_t seq_len,
-        #     int64_t hidden_dim);
-        result, valid_word_num, last_mask = torch.ops.nestedtensor.compress_bert_input(
-            input_batch,
-            mask,
-            prefix_sum,
-            result,
-            batch_idx,
-            word_idx,
-            batch_size,
-            seq_len,
-            embedding_dim)
-        print("result")
-        print(result)
-        print("input_batch")
-        print(input_batch)
-        print("batch_idx")
-        print(batch_idx)
-        print("word_idx")
-        print(word_idx)
-        print("valid_word_num")
-        print(valid_word_num)
-        print("last_mask")
-        print(last_mask)
-        # Tensor restore_bert_output(
-        #     Tensor result, // float - (batch_size * num_head * seq_len * size_per_head)
-        #     Tensor input, // float - (batch_size, seq_len, hidden_dim)
-        #     Tensor batch_idx, // int32 - (batch_size, seq_len)
-        #     Tensor word_idx, // int32 - (batch_size, seq_len)
-        #     int64_t valid_word_num,
-        #     int64_t seq_len,
-        #     int64_t hidden_dim)
-        torch.ops.nestedtensor.restore_bert_output(
-                result,
+        def test(num_heads, batch_size, seq_len, head_size, embedding_dim):
+            assert num_heads * head_size == embedding_dim
+
+            input_batch = torch.randn(
+                batch_size, seq_len, embedding_dim)
+            input_batch = input_batch.reshape(
+                batch_size, seq_len, embedding_dim)
+            mask = torch.rand(batch_size, seq_len).mul(
+                2).to(torch.int32).float()
+            input_batch = input_batch * mask.unsqueeze(-1)
+            mask = mask.squeeze(-1)
+            input_batch = input_batch.to(torch.float).cuda()
+            mask = mask.to(torch.int32).cuda()
+            prefix_sum = torch.ops.nestedtensor.exclusive_scan(mask)
+
+            tmp = torch.empty(batch_size, seq_len,
+                              embedding_dim).to(torch.float).cuda()
+            batch_idx = torch.empty(
+                (batch_size * seq_len)).to(torch.int32).cuda()
+            word_idx = torch.empty((batch_size * seq_len)
+                                   ).to(torch.int32).cuda()
+
+            tmp, valid_word_num, last_mask = torch.ops.nestedtensor.compress_bert_input(
                 input_batch,
+                mask,
+                prefix_sum,
+                tmp,
+                batch_idx,
+                word_idx,
+                batch_size,
+                seq_len,
+                embedding_dim)
+
+            result = torch.ones(batch_size, seq_len,
+                                embedding_dim).to(torch.float).cuda()
+            torch.ops.nestedtensor.restore_bert_output(
+                result,
+                tmp,
                 batch_idx,
                 word_idx,
                 valid_word_num,
                 seq_len,
                 embedding_dim
-                )
-        print("result")
-        print(result)
-
+            )
+            self.assertEqual(result, input_batch)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
+        test(8, 8, 50, 16, 128)
 
 
 if __name__ == "__main__":

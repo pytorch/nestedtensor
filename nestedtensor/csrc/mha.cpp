@@ -127,6 +127,7 @@ Tensor restore_bert_output(
     int64_t hidden_dim) {
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
+  result.zero_();
   effectivetransformer::restoreBertOutput_kernelLauncher(
       result.data_ptr<float>(),
       input.data_ptr<float>(),
