@@ -84,7 +84,7 @@ Tensor exclusive_scan(Tensor mask) {
   return prefix_sum_buf;
 }
 
-Tensor compress_bert_input(
+std::tuple<Tensor, int64_t, int64_t> compress_bert_input(
     Tensor input, // float - (batch_size, seq_len, hidden_dim)
     Tensor mask, // int32 - (batch_size, seq_len)
     Tensor prefix_sum, // int32
@@ -107,6 +107,35 @@ Tensor compress_bert_input(
       (int32_t)(seq_len),
       (int32_t)(hidden_dim),
       defaultStream);
+  int word_num = batch_size * seq_len;
+  int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
+  int last_mask = mask.reshape({-1})[word_num - 1].item<int>();
+  if (last_mask == 1) {
+    valid_word_num++;
+  }
+  return std::make_tuple(
+      result, (int64_t)(valid_word_num), (int64_t)(last_mask));
+}
+
+Tensor restore_bert_output(
+    Tensor result, // float - (batch_size * num_head * seq_len * size_per_head)
+    Tensor input, // float - (batch_size, seq_len, hidden_dim)
+    Tensor batch_idx, // int32 - (batch_size, seq_len)
+    Tensor word_idx, // int32 - (batch_size, seq_len)
+    int64_t valid_word_num,
+    int64_t seq_len,
+    int64_t hidden_dim) {
+  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+  at::cuda::setCurrentCUDAStream(defaultStream);
+  effectivetransformer::restoreBertOutput_kernelLauncher(
+      result.data_ptr<float>(),
+      input.data_ptr<float>(),
+      batch_idx.data_ptr<int>(),
+      word_idx.data_ptr<int>(),
+      (int32_t)(valid_word_num),
+      (int32_t)(seq_len),
+      (int32_t)(hidden_dim),
+      defaultStream);
   return result;
 }
 
@@ -119,8 +148,12 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.impl("exclusive_scan", c10::DispatchKey::CUDA, &exclusive_scan);
 
   m.def(
-      "compress_bert_input(Tensor input, Tensor mask, Tensor prefix_sum, Tensor result, Tensor batch_idx, Tensor word_idx, int batch_size, int seq_len, int hidden_dim) -> Tensor ");
+      "compress_bert_input(Tensor input, Tensor mask, Tensor prefix_sum, Tensor result, Tensor batch_idx, Tensor word_idx, int batch_size, int seq_len, int hidden_dim) -> (Tensor, int, int)");
   m.impl("compress_bert_input", c10::DispatchKey::CUDA, &compress_bert_input);
+
+  m.def(
+      "restore_bert_output(Tensor result, Tensor input, Tensor batch_idx, Tensor word_idx, int valid_word_num, int seq_len, int hidden_size) -> Tensor");
+  m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
 }
 
 } // namespace nested_tensor

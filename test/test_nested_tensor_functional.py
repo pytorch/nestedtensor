@@ -909,7 +909,7 @@ class TestFunctional(TestCase):
         #     int64_t batch_size,
         #     int64_t seq_len,
         #     int64_t hidden_dim);
-        result = torch.ops.nestedtensor.compress_bert_input(
+        result, valid_word_num, last_mask = torch.ops.nestedtensor.compress_bert_input(
             input_batch,
             mask,
             prefix_sum,
@@ -919,10 +919,38 @@ class TestFunctional(TestCase):
             batch_size,
             seq_len,
             embedding_dim)
+        print("result")
         print(result)
+        print("input_batch")
         print(input_batch)
+        print("batch_idx")
         print(batch_idx)
+        print("word_idx")
         print(word_idx)
+        print("valid_word_num")
+        print(valid_word_num)
+        print("last_mask")
+        print(last_mask)
+        # Tensor restore_bert_output(
+        #     Tensor result, // float - (batch_size * num_head * seq_len * size_per_head)
+        #     Tensor input, // float - (batch_size, seq_len, hidden_dim)
+        #     Tensor batch_idx, // int32 - (batch_size, seq_len)
+        #     Tensor word_idx, // int32 - (batch_size, seq_len)
+        #     int64_t valid_word_num,
+        #     int64_t seq_len,
+        #     int64_t hidden_dim)
+        torch.ops.nestedtensor.restore_bert_output(
+                result,
+                input_batch,
+                batch_idx,
+                word_idx,
+                valid_word_num,
+                seq_len,
+                embedding_dim
+                )
+        print("result")
+        print(result)
+
 
 
 if __name__ == "__main__":
