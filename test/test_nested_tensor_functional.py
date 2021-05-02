@@ -883,6 +883,47 @@ class TestFunctional(TestCase):
         #     print(n)
         #     print(p is None)
 
+    def test_effective_transformer_mha(self):
+        num_heads = 1
+        batch_size = 2
+        seq_len = 2
+        head_size = 2
+        embedding_dim = 2
+        input_batch = torch.arange(
+            batch_size * seq_len * embedding_dim).reshape(batch_size, seq_len, embedding_dim).to(torch.float).cuda()
+        mask = torch.tensor([[1, 0], [1, 0]]).to(torch.int32).cuda()
+        batch_idx = torch.tensor([[1, 1], [1, 0]]).to(torch.int32).cuda()
+        word_idx = torch.tensor([[1, 1], [1, 0]]).to(torch.int32).cuda()
+        prefix_sum = torch.ops.nestedtensor.exclusive_scan(mask)
+        result = torch.empty(batch_size, seq_len,
+                             embedding_dim).to(torch.float).cuda()
+        print(mask)
+        print(prefix_sum)
+        # Tensor compress_bert_input(
+        #     Tensor input, // float - (batch_size, seq_len, hidden_dim)
+        #     Tensor mask, // int32 - (batch_size, seq_len)
+        #     Tensor prefix_sum, // int32
+        #     Tensor result, // float - (batch_size * num_head * seq_len * size_per_head)
+        #     Tensor batch_idx, // int32
+        #     Tensor word_idx, // int32
+        #     int64_t batch_size,
+        #     int64_t seq_len,
+        #     int64_t hidden_dim);
+        result = torch.ops.nestedtensor.compress_bert_input(
+            input_batch,
+            mask,
+            prefix_sum,
+            result,
+            batch_idx,
+            word_idx,
+            batch_size,
+            seq_len,
+            embedding_dim)
+        print(result)
+        print(input_batch)
+        print(batch_idx)
+        print(word_idx)
+
 
 if __name__ == "__main__":
     unittest.main()

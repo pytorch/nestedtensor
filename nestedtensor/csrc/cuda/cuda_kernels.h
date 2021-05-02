@@ -15,29 +15,57 @@
  */
 
 #pragma once
-#include <cuda_runtime.h>
 #include <cuda_fp16.h>
-namespace effectivetransformer{
+#include <cuda_runtime.h>
+namespace effectivetransformer {
 
 template <typename T>
-void add_bias_act_kernelLauncher(T* out, const T* bias, int m, int n, cudaStream_t stream);
+void add_bias_act_kernelLauncher(
+    T* out,
+    const T* bias,
+    int m,
+    int n,
+    cudaStream_t stream);
 
 template <typename T>
-void add_bias_input_layernorm_kernelLauncher(T* out, const T* input_tensor, const T* bias, 
-  const T* gamma, const T* beta, int m, int n, cudaStream_t stream);
+void add_bias_input_layernorm_kernelLauncher(
+    T* out,
+    const T* input_tensor,
+    const T* bias,
+    const T* gamma,
+    const T* beta,
+    int m,
+    int n,
+    cudaStream_t stream);
 
-void exclusiveScan_kernelLauncher(int* d_out, const int* d_in, const int length, const cudaStream_t stream);
+void exclusiveScan_kernelLauncher(
+    int* d_out,
+    const int* d_in,
+    const int length,
+    const cudaStream_t stream);
 
-template<typename T>
+template <typename T>
 void compressBertInput_kernelLauncher(
-    const T* from_tensor, const int* mask, const int* prefix_sum, 
-    T* to_tensor, int* batch_idx, int* word_idx,
-    int batch_size , int seq_len, int hidden_dim, cudaStream_t stream);
+    const T* from_tensor,
+    const int* mask,
+    const int* prefix_sum,
+    T* to_tensor,
+    int* batch_idx,
+    int* word_idx,
+    int batch_size,
+    int seq_len,
+    int hidden_dim,
+    cudaStream_t stream);
 
-template<typename T>
+template <typename T>
 void restoreBertOutput_kernelLauncher(
-  T* to_tensor,
-  const T* from_tensor, const int*  batch_idx, const int* word_idx, 
-  int valid_word_num, int seq_len, int hidden_size, cudaStream_t stream);
+    T* to_tensor,
+    const T* from_tensor,
+    const int* batch_idx,
+    const int* word_idx,
+    int valid_word_num,
+    int seq_len,
+    int hidden_size,
+    cudaStream_t stream);
 
-}//namespace effectivetransformer
+} // namespace effectivetransformer
