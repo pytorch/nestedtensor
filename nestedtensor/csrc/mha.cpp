@@ -1,6 +1,7 @@
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/cuda/attention.h>
+#include <nestedtensor/csrc/cuda/bert_transformer_op.h>
 #include <nestedtensor/csrc/cuda/cuda_kernels.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/python_functions.h>
@@ -23,9 +24,9 @@ at::Tensor min_mha(
     int64_t head_dim,
     double dropout_p,
     bool training,
-    at::Tensor query,
-    at::Tensor key,
-    at::Tensor value,
+    at::Tensor query, // These are expected to be all the same
+    at::Tensor key, // These are expected to be all the same
+    at::Tensor value, // These are expected to be all the same
     at::Tensor in_proj_weight,
     c10::optional<at::Tensor> in_proj_bias,
     double scaling,
@@ -140,6 +141,48 @@ Tensor restore_bert_output(
   return result;
 }
 
+Tensor bt_mha_func(
+    Tensor input, // either of query, key or value in compressed format for
+                  // self-attention
+    Tensor batch_idx, // corresponding batch_idx to input
+    Tensor word_idx, // corresponding word_idx to input
+    at::Tensor in_proj_weight,
+    c10::optional<at::Tensor> in_proj_bias,
+    int64_t embedding_dim) {
+  Tensor attr_kernel_Q = at::slice(in_proj_weight, 0, 0, embedding_dim);
+  Tensor attr_kernel_K = at::slice(in_proj_weight, 0, embedding_dim, 2 * embedding_dim);
+  Tensor attr_kernel_V = at::slice(in_proj_weight, 0, 2 * embedding_dim);
+
+  Tensor attr_bias_Q = at::slice(*in_proj_bias, 0, 0, embedding_dim);
+  Tensor attr_bias_K = at::slice(*in_proj_bias, 0, embedding_dim, 2 * embedding_dim);
+  Tensor attr_bias_V = at::slice(*in_proj_bias, 0, 2 * embedding_dim);
+  int64_t batch_size = 1;
+  int64_t head_num = 2;
+  int64_t seq_len = 2;
+  int64_t size_per_head = 2;
+  int64_t valid_word_num = 3;
+  Tensor result;
+  Tensor mask_ones;
+  effectivetransformer::bt_mha(
+      input.data_ptr<float>(),
+      attr_kernel_Q.data_ptr<float>(),
+      attr_kernel_K.data_ptr<float>(),
+      attr_kernel_V.data_ptr<float>(),
+      result.data_ptr<float>(),
+      attr_bias_Q.data_ptr<float>(),
+      attr_bias_K.data_ptr<float>(),
+      attr_bias_V.data_ptr<float>(),
+      batch_idx.data_ptr<int>(),
+      word_idx.data_ptr<int>(),
+      mask_ones.data_ptr<float>(),
+      batch_size,
+      head_num,
+      seq_len,
+      size_per_head,
+      valid_word_num);
+  return input;
+}
+
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
       "min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor in_proje_weight, Tensor? in_proj_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias) -> Tensor");
@@ -155,6 +198,9 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
       "restore_bert_output(Tensor result, Tensor input, Tensor batch_idx, Tensor word_idx, int valid_word_num, int seq_len, int hidden_size) -> Tensor");
   m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
+
+  m.def("bt_mha_func(Tensor input, Tensor mask) -> Tensor");
+  m.impl("bt_mha_func", c10::DispatchKey::CUDA, &bt_mha_func);
 }
 
 } // namespace nested_tensor
