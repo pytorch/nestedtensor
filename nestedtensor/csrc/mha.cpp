@@ -170,6 +170,8 @@ Tensor bt_mha_func(
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
   int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
   at::Tensor buf_tensor = torch::empty({buf_size}, input.options());
+  std::cout << "attr_kernel_Q.sizes(): " << attr_kernel_Q.sizes() << std::endl;
+  std::cout << "input.sizes(): " << input.sizes() << std::endl;
   effectivetransformer::bt_mha(
       input.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),

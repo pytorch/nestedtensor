@@ -51,15 +51,20 @@ void bt_mha(
   std::cout << "003" << std::endl;
   cublasHandle_t cublas_handle = at::cuda::getCurrentCUDABlasHandle();
   std::cout << "004" << std::endl;
+  stream.synchronize();
+
 
   check_cuda_error(cublasSetStream(cublas_handle, stream));
   std::cout << "005" << std::endl;
+  stream.synchronize();
 
   /// 1. Set compute type
   cudaDataType_t computeType, AType, BType, CType;
   std::cout << "006" << std::endl;
+  stream.synchronize();
   int cublasAlgo[3];
   std::cout << "007" << std::endl;
+  stream.synchronize();
   if constexpr (std::is_same<DataType_, float>::value) {
     computeType = CUDA_R_32F;
     AType = CUDA_R_32F;
@@ -79,6 +84,7 @@ void bt_mha(
   }
   DataType_ alpha = (DataType_)1.0f, beta = (DataType_)0.0f;
   std::cout << "008" << std::endl;
+  stream.synchronize();
 
   /// 2. allocate buffer for transformer
   int batch_size = batch_size_;
@@ -88,6 +94,7 @@ void bt_mha(
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
   std::cout << "009" << std::endl;
+  stream.synchronize();
 
   /// 3. assign intermediate pointer
   /// DataType_* buf = buf_tensor.data_ptr<DataType_>();
@@ -107,6 +114,7 @@ void bt_mha(
   DataType_* attr_matmul_buf_ = buf + 1 * input_tensor_size;
   DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
   std::cout << "010" << std::endl;
+  stream.synchronize();
 
   /// 4. get valid word num
   int valid_word_num = valid_word_num_;
@@ -117,6 +125,10 @@ void bt_mha(
     int k = head_num * size_per_head;
     int n = k;
   std::cout << "011" << std::endl;
+  stream.synchronize();
+  std::cout << "n: " << n << std::endl;
+  std::cout << "m: " << m << std::endl;
+  std::cout << "k: " << k << std::endl;
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
@@ -139,6 +151,7 @@ void bt_mha(
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
   std::cout << "012" << std::endl;
+  stream.synchronize();
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
@@ -161,6 +174,7 @@ void bt_mha(
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
   std::cout << "013" << std::endl;
+  stream.synchronize();
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
@@ -183,6 +197,7 @@ void bt_mha(
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
   std::cout << "014" << std::endl;
+  stream.synchronize();
 
     // check_cuda_error(cudaMemsetAsync(query_, 0, input_tensor_size *
     // sizeof(DataType_), stream)); check_cuda_error(cudaMemsetAsync(key_, 0,
@@ -192,6 +207,7 @@ void bt_mha(
     check_cuda_error(cudaMemsetAsync(
         query_, 0, 3 * input_tensor_size * sizeof(DataType_), stream));
   std::cout << "015" << std::endl;
+  stream.synchronize();
 
     /// add bias & add padding & transpose for self-attention
     cuda::add_QKV_bias_padding_kernelLauncher<DataType_>(
@@ -213,6 +229,7 @@ void bt_mha(
         word_idx,
         stream);
   std::cout << "016" << std::endl;
+  stream.synchronize();
   }
 
   /// 6. self-attention
@@ -242,12 +259,15 @@ void bt_mha(
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[1])));
   std::cout << "017" << std::endl;
+  stream.synchronize();
 
     DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
   std::cout << "018" << std::endl;
+  stream.synchronize();
     cuda::softmax_kernel_kernelLauncher<DataType_>(
         qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
   std::cout << "019" << std::endl;
+  stream.synchronize();
 
     check_cuda_error(cublasGemmStridedBatchedEx(
         cublas_handle,
@@ -274,6 +294,7 @@ void bt_mha(
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[2])));
   std::cout << "020" << std::endl;
+  stream.synchronize();
 
     cuda::transpose_rm_padding_kernelLauncher<DataType_>(
         transpose_dst_,
@@ -287,6 +308,7 @@ void bt_mha(
         word_idx,
         stream);
   std::cout << "021" << std::endl;
+  stream.synchronize();
   }
 
   //  /// 7. matmat & layer norm

@@ -943,6 +943,7 @@ class TestFunctional(TestCase):
                 batch_size, seq_len, embedding_dim)
             mask = torch.rand(batch_size, seq_len).mul(
                 2).to(torch.int32).float()
+            mask.zero_().fill_(1)
             input_batch = input_batch * mask.unsqueeze(-1)
             mask = mask.squeeze(-1)
             input_batch = input_batch.to(torch.float).cuda()
@@ -966,10 +967,12 @@ class TestFunctional(TestCase):
                 batch_size,
                 seq_len,
                 embedding_dim)
-            mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
+            mha = torch.nn.MultiheadAttention(embedding_dim, num_heads).cuda()
             in_proj_weight = mha.in_proj_weight
             in_proj_bias = mha.in_proj_bias
             print("A")
+            print("tmp")
+            print(tmp)
             tmp2 = torch.ops.nestedtensor.bt_mha_func(tmp,
                                                       batch_idx,
                                                       word_idx,
@@ -995,7 +998,8 @@ class TestFunctional(TestCase):
             )
             print(result)
             # self.assertEqual(result, input_batch)
-        test(2, 3, 5, 2, 4)
+        test(1, 1, 2, 2, 2)
+        # test(2, 3, 5, 2, 4)
         # test(1, 3, 5, 4, 4)
         # test(8, 8, 50, 16, 128)
 
