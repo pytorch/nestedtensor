@@ -969,6 +969,7 @@ class TestFunctional(TestCase):
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             in_proj_weight = mha.in_proj_weight
             in_proj_bias = mha.in_proj_bias
+            print("A")
             tmp2 = torch.ops.nestedtensor.bt_mha_func(tmp,
                                                       batch_idx,
                                                       word_idx,
@@ -977,6 +978,9 @@ class TestFunctional(TestCase):
                                                       num_heads,
                                                       head_size,
                                                       valid_word_num)
+            print("B")
+            print("tmp2")
+            print(tmp2)
 
             result = torch.ones(batch_size, seq_len,
                                 embedding_dim).to(torch.float).cuda()

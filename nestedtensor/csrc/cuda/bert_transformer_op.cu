@@ -21,6 +21,8 @@
 #include <nestedtensor/csrc/cuda/cuda_kernels.h>
 #include <string>
 #include <type_traits>
+#include <ATen/ATen.h>
+#include <ATen/cuda/CUDAContext.h>
 namespace effectivetransformer {
 
 template <typename DataType_>
@@ -40,16 +42,24 @@ void bt_mha(
     int64_t head_num_,
     int64_t seq_len_,
     int64_t size_per_head_,
-    int64_t valid_word_num_) {
+    int64_t valid_word_num_,
+    DataType_* buf) {
+  std::cout << "001" << std::endl;
   at::cuda::CUDAStream stream = at::cuda::getDefaultCUDAStream();
+  std::cout << "002" << std::endl;
   at::cuda::setCurrentCUDAStream(stream);
+  std::cout << "003" << std::endl;
   cublasHandle_t cublas_handle = at::cuda::getCurrentCUDABlasHandle();
+  std::cout << "004" << std::endl;
 
   check_cuda_error(cublasSetStream(cublas_handle, stream));
+  std::cout << "005" << std::endl;
 
   /// 1. Set compute type
   cudaDataType_t computeType, AType, BType, CType;
+  std::cout << "006" << std::endl;
   int cublasAlgo[3];
+  std::cout << "007" << std::endl;
   if constexpr (std::is_same<DataType_, float>::value) {
     computeType = CUDA_R_32F;
     AType = CUDA_R_32F;
@@ -68,20 +78,19 @@ void bt_mha(
     cublasAlgo[2] = 99;
   }
   DataType_ alpha = (DataType_)1.0f, beta = (DataType_)0.0f;
+  std::cout << "008" << std::endl;
 
   /// 2. allocate buffer for transformer
-  Tensor buf_tensor;
   int batch_size = batch_size_;
   int head_num = head_num_;
   int from_seq_len = seq_len_;
   int size_per_head = size_per_head_;
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
-  long long int buf_size = input_tensor_size * 13 + attn_tensor_size;
-  Tensor buf_tensor = torch::empty({buf_size});
+  std::cout << "009" << std::endl;
 
   /// 3. assign intermediate pointer
-  DataType_* buf = buf_tensor.data_ptr<DataType_>();
+  /// DataType_* buf = buf_tensor.data_ptr<DataType_>();
   /// buffer for qkv
   DataType_* query_buf_ = buf + 0 * input_tensor_size;
   DataType_* key_buf_ = buf + 1 * input_tensor_size;
@@ -97,6 +106,7 @@ void bt_mha(
   DataType_* attr_out_buf_ = buf + 0 * input_tensor_size;
   DataType_* attr_matmul_buf_ = buf + 1 * input_tensor_size;
   DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
+  std::cout << "010" << std::endl;
 
   /// 4. get valid word num
   int valid_word_num = valid_word_num_;
@@ -106,6 +116,7 @@ void bt_mha(
     int m = valid_word_num;
     int k = head_num * size_per_head;
     int n = k;
+  std::cout << "011" << std::endl;
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
@@ -127,6 +138,7 @@ void bt_mha(
         n,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
+  std::cout << "012" << std::endl;
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
@@ -148,6 +160,7 @@ void bt_mha(
         n,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
+  std::cout << "013" << std::endl;
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
@@ -169,6 +182,7 @@ void bt_mha(
         n,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
+  std::cout << "014" << std::endl;
 
     // check_cuda_error(cudaMemsetAsync(query_, 0, input_tensor_size *
     // sizeof(DataType_), stream)); check_cuda_error(cudaMemsetAsync(key_, 0,
@@ -177,6 +191,7 @@ void bt_mha(
     // sizeof(DataType_), stream));
     check_cuda_error(cudaMemsetAsync(
         query_, 0, 3 * input_tensor_size * sizeof(DataType_), stream));
+  std::cout << "015" << std::endl;
 
     /// add bias & add padding & transpose for self-attention
     cuda::add_QKV_bias_padding_kernelLauncher<DataType_>(
@@ -197,6 +212,7 @@ void bt_mha(
         batch_idx,
         word_idx,
         stream);
+  std::cout << "016" << std::endl;
   }
 
   /// 6. self-attention
@@ -225,10 +241,13 @@ void bt_mha(
         batch_size * head_num,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[1])));
+  std::cout << "017" << std::endl;
 
     DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
+  std::cout << "018" << std::endl;
     cuda::softmax_kernel_kernelLauncher<DataType_>(
         qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
+  std::cout << "019" << std::endl;
 
     check_cuda_error(cublasGemmStridedBatchedEx(
         cublas_handle,
@@ -254,6 +273,7 @@ void bt_mha(
         batch_size * head_num,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[2])));
+  std::cout << "020" << std::endl;
 
     cuda::transpose_rm_padding_kernelLauncher<DataType_>(
         transpose_dst_,
@@ -266,6 +286,7 @@ void bt_mha(
         batch_idx,
         word_idx,
         stream);
+  std::cout << "021" << std::endl;
   }
 
   //  /// 7. matmat & layer norm
@@ -366,20 +387,21 @@ void bt_mha(
 };
 
 template void bt_mha<float>(
-    DataType_* from_tensor,
-    DataType_* attr_kernel_Q,
-    DataType_* attr_kernel_K,
-    DataType_* attr_kernel_V,
-    DataType_* to_tensor,
-    DataType_* attr_bias_Q,
-    DataType_* attr_bias_K,
-    DataType_* attr_bias_V,
+    float* from_tensor,
+    float* attr_kernel_Q,
+    float* attr_kernel_K,
+    float* attr_kernel_V,
+    float* to_tensor,
+    float* attr_bias_Q,
+    float* attr_bias_K,
+    float* attr_bias_V,
     int* batch_idx,
     int* word_idx,
-    DataType_* attr_mask,
+    float* attr_mask,
     int64_t batch_size_,
     int64_t head_num_,
     int64_t seq_len_,
     int64_t size_per_head_,
-    int64_t valid_word_num_);
+    int64_t valid_word_num_,
+    float* buf);
 } // namespace effectivetransformer

@@ -166,6 +166,10 @@ Tensor bt_mha_func(
   Tensor result = torch::empty_like(input);
   Tensor mask_ones =
       torch::ones({batch_size, seq_len, seq_len}, input.options());
+  int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
+  int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
+  int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
+  at::Tensor buf_tensor = torch::empty({buf_size}, input.options());
   effectivetransformer::bt_mha(
       input.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
@@ -182,7 +186,8 @@ Tensor bt_mha_func(
       head_num,
       seq_len,
       size_per_head,
-      valid_word_num);
+      valid_word_num,
+      buf_tensor.data<float>());
   return result;
 }
 
@@ -203,7 +208,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
 
   m.def(
-      "bt_mha_func(Tensor input, Tensor batch_idx, Tensor word_idx, Tensor in_proj_weight, Tensor? in_proj_bias, int head_num, int seq_len, int size_per_head, int valid_word_num) -> Tensor");
+      "bt_mha_func(Tensor input, Tensor batch_idx, Tensor word_idx, Tensor in_proj_weight, Tensor? in_proj_bias, int head_num, int size_per_head, int valid_word_num) -> Tensor");
   m.impl("bt_mha_func", c10::DispatchKey::CUDA, &bt_mha_func);
 }
 

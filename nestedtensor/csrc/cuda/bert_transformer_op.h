@@ -18,5 +18,6 @@ void bt_mha(
     int64_t head_num_,
     int64_t seq_len_,
     int64_t size_per_head_,
-    int64_t valid_word_num_);
+    int64_t valid_word_num_,
+    DataType_* buf);
 }
