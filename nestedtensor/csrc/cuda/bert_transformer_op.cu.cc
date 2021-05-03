@@ -228,13 +228,7 @@ void bt_mha(
 
     DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
     cuda::softmax_kernel_kernelLauncher<DataType_>(
-        qk_buf_,
-        attr_mask,
-        batch_size,
-        head_num,
-        from_seq_len,
-        scaler,
-        stream);
+        qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
 
     check_cuda_error(cublasGemmStridedBatchedEx(
         cublas_handle,
@@ -370,4 +364,22 @@ void bt_mha(
   //        param.stream);
   //  }
 };
+
+template void bt_mha<float>(
+    DataType_* from_tensor,
+    DataType_* attr_kernel_Q,
+    DataType_* attr_kernel_K,
+    DataType_* attr_kernel_V,
+    DataType_* to_tensor,
+    DataType_* attr_bias_Q,
+    DataType_* attr_bias_K,
+    DataType_* attr_bias_V,
+    int* batch_idx,
+    int* word_idx,
+    DataType_* attr_mask,
+    int64_t batch_size_,
+    int64_t head_num_,
+    int64_t seq_len_,
+    int64_t size_per_head_,
+    int64_t valid_word_num_);
 } // namespace effectivetransformer
