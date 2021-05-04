@@ -44,27 +44,16 @@ void bt_mha(
     int64_t size_per_head_,
     int64_t valid_word_num_,
     DataType_* buf) {
-  std::cout << "001" << std::endl;
   at::cuda::CUDAStream stream = at::cuda::getDefaultCUDAStream();
-  std::cout << "002" << std::endl;
   at::cuda::setCurrentCUDAStream(stream);
-  std::cout << "003" << std::endl;
   cublasHandle_t cublas_handle = at::cuda::getCurrentCUDABlasHandle();
-  std::cout << "004" << std::endl;
-  stream.synchronize();
 
 
   check_cuda_error(cublasSetStream(cublas_handle, stream));
-  std::cout << "005" << std::endl;
-  stream.synchronize();
 
   /// 1. Set compute type
   cudaDataType_t computeType, AType, BType, CType;
-  std::cout << "006" << std::endl;
-  stream.synchronize();
   int cublasAlgo[3];
-  std::cout << "007" << std::endl;
-  stream.synchronize();
   if constexpr (std::is_same<DataType_, float>::value) {
     computeType = CUDA_R_32F;
     AType = CUDA_R_32F;
@@ -83,8 +72,6 @@ void bt_mha(
     cublasAlgo[2] = 99;
   }
   DataType_ alpha = (DataType_)1.0f, beta = (DataType_)0.0f;
-  std::cout << "008" << std::endl;
-  stream.synchronize();
 
   /// 2. allocate buffer for transformer
   int batch_size = batch_size_;
@@ -93,8 +80,6 @@ void bt_mha(
   int size_per_head = size_per_head_;
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
-  std::cout << "009" << std::endl;
-  stream.synchronize();
 
   /// 3. assign intermediate pointer
   /// DataType_* buf = buf_tensor.data_ptr<DataType_>();
@@ -113,8 +98,6 @@ void bt_mha(
   DataType_* attr_out_buf_ = buf + 0 * input_tensor_size;
   DataType_* attr_matmul_buf_ = buf + 1 * input_tensor_size;
   DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
-  std::cout << "010" << std::endl;
-  stream.synchronize();
 
   /// 4. get valid word num
   int valid_word_num = valid_word_num_;
@@ -124,8 +107,6 @@ void bt_mha(
     int m = valid_word_num;
     int k = head_num * size_per_head;
     int n = k;
-  std::cout << "011" << std::endl;
-  stream.synchronize();
   std::cout << "n: " << n << std::endl;
   std::cout << "m: " << m << std::endl;
   std::cout << "k: " << k << std::endl;
@@ -150,7 +131,6 @@ void bt_mha(
         n,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
-  std::cout << "012" << std::endl;
   stream.synchronize();
 
     check_cuda_error(cublasGemmEx(

@@ -24,9 +24,9 @@ at::Tensor min_mha(
     int64_t head_dim,
     double dropout_p,
     bool training,
-    at::Tensor query, // These are expected to be all the same
-    at::Tensor key, // These are expected to be all the same
-    at::Tensor value, // These are expected to be all the same
+    at::Tensor query,
+    at::Tensor key,
+    at::Tensor value,
     at::Tensor in_proj_weight,
     c10::optional<at::Tensor> in_proj_bias,
     double scaling,
@@ -41,23 +41,6 @@ at::Tensor min_mha(
     throw std::runtime_error("query's third dimension must be regular.");
   }
   int64_t edim = *(opt_sizes[2]);
-  std::cout << "scaling: " << scaling << std::endl;
-  scaling = 1;
-
-  std::cout <<
-  "at::slice(*in_proj_bias, 0, 0, edim): " <<
-  at::slice(*in_proj_bias, 0, 0, edim) <<
-  std::endl;
-
-  std::cout <<
-  "at::slice(in_proj_weight, 0, 0, edim).t(): " <<
-  at::slice(in_proj_weight, 0, 0, edim).t() <<
-  std::endl;
-
-  map_nested_tensor([](Tensor t) {
-      std::cout << "queryt: " << t << std::endl;
-      return t;
-      }, query);
 
   at::Tensor q, k, v;
   q = at::addmm(
@@ -75,30 +58,16 @@ at::Tensor min_mha(
       value,
       at::slice(in_proj_weight, 0, 2 * edim).t());
 
-  std::cout << "01010" << std::endl;
-  map_nested_tensor([](Tensor t) {
-      std::cout << "qt: " << t << std::endl;
-      return t;
-      }, q);
-  map_nested_tensor([](Tensor t) {
-      std::cout << "kt: " << t << std::endl;
-      return t;
-      }, k);
-  map_nested_tensor([](Tensor t) {
-      std::cout << "vt: " << t << std::endl;
-      return t;
-      }, v);
-  return q;
-  // q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
-  // k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
-  // v = v.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
-  // auto attn_output_weights = at::matmul(q, k.transpose(2, 3));
-  // attn_output_weights = at::softmax(attn_output_weights, -1);
-  // attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
-  // auto attn_output = at::matmul(attn_output_weights, v);
-  // attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
+  q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
+  k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
+  v = v.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
+  auto attn_output_weights = at::matmul(q, k.transpose(2, 3));
+  attn_output_weights = at::softmax(attn_output_weights, -1);
+  attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
+  auto attn_output = at::matmul(attn_output_weights, v);
+  attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
   // attn_output = at::addmm(out_proj_bias, attn_output, out_proj_weight.t());
-  // return attn_output;
+  return attn_output;
 }
 
 // Mask is of shape (batch_size, seq_len) and type int32
@@ -182,26 +151,6 @@ Tensor bt_mha_func(
     int64_t head_num,
     int64_t size_per_head,
     int64_t valid_word_num) {
-  int64_t edim = input.size(2);
-  int64_t scaling = 1;
-  at::Tensor q, k, v;
-  q = at::addmm(
-      at::slice(*in_proj_bias, 0, 0, edim),
-      input.squeeze(0),
-      at::slice(in_proj_weight, 0, 0, edim).t(),
-      scaling,
-      scaling);
-  k = at::addmm(
-      at::slice(*in_proj_bias, 0, edim, 2 * edim),
-      input.squeeze(0),
-      at::slice(in_proj_weight, 0, edim, 2 * edim).t());
-  v = at::addmm(
-      at::slice(*in_proj_bias, 0, 2 * edim),
-      input.squeeze(0),
-      at::slice(in_proj_weight, 0, 2 * edim).t());
-  std::cout << "bt_mha q: " << q << std::endl;
-  std::cout << "bt_mha k: " << k << std::endl;
-  std::cout << "bt_mha v: " << v << std::endl;
   int64_t batch_size = input.size(0);
   int64_t seq_len = input.size(1);
   int64_t embedding_dim = input.size(2);
@@ -222,10 +171,6 @@ Tensor bt_mha_func(
   int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
   at::Tensor buf_tensor = torch::zeros({buf_size}, input.options());
   buf_tensor.sub_(1);
-  std::cout << "bt_mha attr_kernel_Q: " << attr_kernel_Q << std::endl;
-  std::cout << "bt_mha input: " << input << std::endl;
-  std::cout << "bt_mha attr_kernel_Q.sizes(): " << attr_kernel_Q.sizes() << std::endl;
-  std::cout << "bt_mha input.sizes(): " << input.sizes() << std::endl;
   effectivetransformer::bt_mha(
       input.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
@@ -244,8 +189,9 @@ Tensor bt_mha_func(
       size_per_head,
       valid_word_num,
       buf_tensor.data<float>());
-  std::cout << "bt_mha buf_tensor: " << buf_tensor << std::endl;
-  return buf_tensor;
+  std::cout << "bt_mha buf_tensor.narrow(0, 0, " << input_tensor_size * 3 << "): " << 
+    buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
+  return result;
   // return result;
 }
 
