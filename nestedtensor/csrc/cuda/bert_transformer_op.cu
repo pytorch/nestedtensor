@@ -35,6 +35,7 @@ void bt_mha(
     DataType_* attr_bias_Q,
     DataType_* attr_bias_K,
     DataType_* attr_bias_V,
+    DataType_* attr_output_kernel,
     int* batch_idx,
     int* word_idx,
     DataType_* attr_mask,
@@ -292,32 +293,36 @@ void bt_mha(
   stream.synchronize();
   }
 
-  //  /// 7. matmat & layer norm
-  //  {
-  //    int m = valid_word_num;
-  //    int k = head_num * size_per_head;
-  //    int n = k;
-  //
-  //    check_cuda_error(cublasGemmEx(
-  //        param.cublas_handle,
-  //        CUBLAS_OP_N,
-  //        CUBLAS_OP_N,
-  //        n,
-  //        m,
-  //        k,
-  //        &alpha,
-  //        param.attr_output_kernel,
-  //        AType,
-  //        n,
-  //        attr_out_buf_,
-  //        BType,
-  //        k,
-  //        &beta,
-  //        attr_matmul_buf_,
-  //        CType,
-  //        n,
-  //        computeType,
-  //        static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
+   /// 7. matmat & layer norm
+   {
+     int m = valid_word_num;
+     int k = head_num * size_per_head;
+     int n = k;
+     // TODO: Currently does not support bias!
+  
+     check_cuda_error(cublasGemmEx(
+         cublas_handle,
+         CUBLAS_OP_N,
+         CUBLAS_OP_N,
+         n,
+         m,
+         k,
+         &alpha,
+         attr_output_kernel,
+         AType,
+         n,
+         attr_out_buf_,
+         BType,
+         k,
+         &beta,
+         attr_matmul_buf_,
+         CType,
+         n,
+         computeType,
+         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
+  stream.synchronize();
+   }
+   return;
   //
   //    add_bias_input_layernorm_kernelLauncher<DataType_>(
   //        attr_matmul_buf_,
@@ -398,6 +403,7 @@ template void bt_mha<float>(
     float* attr_bias_Q,
     float* attr_bias_K,
     float* attr_bias_V,
+    float* attr_output_kernel,
     int* batch_idx,
     int* word_idx,
     float* attr_mask,

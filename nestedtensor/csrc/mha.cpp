@@ -67,7 +67,7 @@ at::Tensor min_mha(
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
   auto attn_output = at::matmul(attn_output_weights, v);
   attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
-  return attn_output;
+  // std::cout << "out_proj_bias: " << out_proj_bias << std::endl;
   attn_output = at::addmm(out_proj_bias, attn_output, out_proj_weight.t());
   return attn_output;
 }
@@ -150,6 +150,7 @@ Tensor bt_mha_func(
     Tensor word_idx, // corresponding word_idx to input
     at::Tensor in_proj_weight,
     c10::optional<at::Tensor> in_proj_bias,
+    at::Tensor out_proj_weight_,
     int64_t head_num,
     int64_t size_per_head,
     int64_t valid_word_num) {
@@ -173,6 +174,8 @@ Tensor bt_mha_func(
   int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
   at::Tensor buf_tensor = torch::zeros({buf_size}, input.options());
   buf_tensor.sub_(1);
+
+  Tensor out_proj_weight = out_proj_weight_.t().contiguous();
   // std::cout << "input.strides(): " << input.strides() << std::endl;
   // std::cout << "attr_kernel_Q.strides(): " << attr_kernel_Q.strides() << std::endl;
   effectivetransformer::bt_mha(
@@ -185,6 +188,7 @@ Tensor bt_mha_func(
       attr_bias_Q.data_ptr<float>(),
       attr_bias_K.data_ptr<float>(),
       attr_bias_V.data_ptr<float>(),
+      out_proj_weight.data_ptr<float>(),
       batch_idx.data_ptr<int>(),
       word_idx.data_ptr<int>(),
       mask_ones.data_ptr<float>(),
@@ -197,7 +201,7 @@ Tensor bt_mha_func(
   // std::cout << "bt_mha buf_tensor.narrow(0, 0, " << input_tensor_size * 3 << "): " << 
   //   buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
   // return result;
-  return buf_tensor.narrow(0, 0, input_tensor_size).reshape_as(input);
+  return buf_tensor.narrow(0, input_tensor_size, input_tensor_size).reshape_as(input);
   // return result;
 }
 
@@ -218,7 +222,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
 
   m.def(
-      "bt_mha_func(Tensor input, Tensor batch_idx, Tensor word_idx, Tensor in_proj_weight, Tensor? in_proj_bias, int head_num, int size_per_head, int valid_word_num) -> Tensor");
+      "bt_mha_func(Tensor input, Tensor batch_idx, Tensor word_idx, Tensor in_proj_weight, Tensor? in_proj_bias, Tensor out_proj_weight, int head_num, int size_per_head, int valid_word_num) -> Tensor");
   m.impl("bt_mha_func", c10::DispatchKey::CUDA, &bt_mha_func);
 }
 

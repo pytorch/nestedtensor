@@ -11,6 +11,7 @@ void bt_mha(
     DataType_* attr_bias_Q,
     DataType_* attr_bias_K,
     DataType_* attr_bias_V,
+    DataType_* attr_output_kernel,
     int* batch_idx,
     int* word_idx,
     DataType_* attr_mask,

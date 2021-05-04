@@ -974,6 +974,7 @@ class TestFunctional(TestCase):
             # in_proj_weight = mha.in_proj_weight.copy_(torch.arange(12).reshape(6, 2) + 12).clone().cuda()
             in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
+            out_proj_weight = mha.out_proj.weight.clone().cuda()
             # print("A")
             # print("tmp")
             # print(tmp)
@@ -982,6 +983,7 @@ class TestFunctional(TestCase):
                                                       word_idx,
                                                       in_proj_weight,
                                                       in_proj_bias,
+                                                      out_proj_weight,
                                                       num_heads,
                                                       head_size,
                                                       valid_word_num)
@@ -1002,7 +1004,7 @@ class TestFunctional(TestCase):
             )
             torch.cuda.synchronize()
             t1 = time.time()
-            print("A: ", t1 - t0)
+            # print("A: ", t1 - t0)
             # print("result")
             # print(result)
             mha = mha.cuda()
@@ -1015,7 +1017,7 @@ class TestFunctional(TestCase):
             attn_output, _ = mha(inp, inp, inp)
             torch.cuda.synchronize()
             t1 = time.time()
-            print("B: ", t1 - t0)
+            # print("B: ", t1 - t0)
             # print("attn_output")
             # print(attn_output)
             self.assertEqual(nestedtensor.nested_tensor(result.unbind(), device=torch.device('cuda')), attn_output) #, prec=2e-4)
