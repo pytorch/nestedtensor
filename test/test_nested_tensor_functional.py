@@ -957,6 +957,9 @@ class TestFunctional(TestCase):
             word_idx = torch.empty((batch_size * seq_len)
                                    ).to(torch.int32).cuda()
 
+            import time
+            torch.cuda.synchronize()
+            t0 = time.time()
             tmp, valid_word_num, last_mask = torch.ops.nestedtensor.compress_bert_input(
                 input_batch,
                 mask,
@@ -997,16 +1000,25 @@ class TestFunctional(TestCase):
                 seq_len,
                 embedding_dim
             )
+            torch.cuda.synchronize()
+            t1 = time.time()
+            print("A: ", t1 - t0)
             # print("result")
             # print(result)
-            inp = nestedtensor.nested_tensor(input_batch.unbind(0))
+            mha = mha.cuda()
+            inp = nestedtensor.nested_tensor(input_batch.unbind(0), device=torch.device('cuda'))
             # print("\n\n\n")
             # print("inp")
             # print(inp)
+            torch.cuda.synchronize()
+            t0 = time.time()
             attn_output, _ = mha(inp, inp, inp)
+            torch.cuda.synchronize()
+            t1 = time.time()
+            print("B: ", t1 - t0)
             # print("attn_output")
             # print(attn_output)
-            self.assertEqual(nestedtensor.nested_tensor(result.unbind()), attn_output) #, prec=2e-4)
+            self.assertEqual(nestedtensor.nested_tensor(result.unbind(), device=torch.device('cuda')), attn_output) #, prec=2e-4)
         test(1, 1, 2, 2, 2)
         test(2, 3, 5, 2, 4)
         test(1, 3, 5, 4, 4)
