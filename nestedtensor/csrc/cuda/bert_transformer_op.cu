@@ -107,9 +107,9 @@ void bt_mha(
     int m = valid_word_num;
     int k = head_num * size_per_head;
     int n = k;
-  std::cout << "n: " << n << std::endl;
-  std::cout << "m: " << m << std::endl;
-  std::cout << "k: " << k << std::endl;
+  // std::cout << "n: " << n << std::endl;
+  // std::cout << "m: " << m << std::endl;
+  // std::cout << "k: " << k << std::endl;
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
@@ -153,7 +153,7 @@ void bt_mha(
         n,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
-  std::cout << "013" << std::endl;
+  // std::cout << "013" << std::endl;
   stream.synchronize();
 
     check_cuda_error(cublasGemmEx(
@@ -176,7 +176,7 @@ void bt_mha(
         n,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
-  std::cout << "014" << std::endl;
+  // std::cout << "014" << std::endl;
   stream.synchronize();
 
     // check_cuda_error(cudaMemsetAsync(query_, 0, input_tensor_size *
@@ -186,7 +186,7 @@ void bt_mha(
     // sizeof(DataType_), stream));
     check_cuda_error(cudaMemsetAsync(
         query_, 0, 3 * input_tensor_size * sizeof(DataType_), stream));
-  std::cout << "015" << std::endl;
+  // std::cout << "015" << std::endl;
   stream.synchronize();
 
     /// add bias & add padding & transpose for self-attention
@@ -208,7 +208,7 @@ void bt_mha(
         batch_idx,
         word_idx,
         stream);
-  std::cout << "016" << std::endl;
+  // std::cout << "016" << std::endl;
   stream.synchronize();
   }
 
@@ -238,15 +238,16 @@ void bt_mha(
         batch_size * head_num,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[1])));
-  std::cout << "017" << std::endl;
+  // std::cout << "017" << std::endl;
   stream.synchronize();
 
-    DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
-  std::cout << "018" << std::endl;
+    // DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
+    DataType_ scaler = 1;
+  // std::cout << "018" << std::endl;
   stream.synchronize();
     cuda::softmax_kernel_kernelLauncher<DataType_>(
         qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
-  std::cout << "019" << std::endl;
+  // std::cout << "019" << std::endl;
   stream.synchronize();
 
     check_cuda_error(cublasGemmStridedBatchedEx(
@@ -273,7 +274,7 @@ void bt_mha(
         batch_size * head_num,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[2])));
-  std::cout << "020" << std::endl;
+  // std::cout << "020" << std::endl;
   stream.synchronize();
 
     cuda::transpose_rm_padding_kernelLauncher<DataType_>(
@@ -287,7 +288,7 @@ void bt_mha(
         batch_idx,
         word_idx,
         stream);
-  std::cout << "021" << std::endl;
+  // std::cout << "021" << std::endl;
   stream.synchronize();
   }
 

@@ -42,6 +42,7 @@ at::Tensor min_mha(
   }
   int64_t edim = *(opt_sizes[2]);
 
+  scaling = 1.0;
   at::Tensor q, k, v;
   q = at::addmm(
       at::slice(*in_proj_bias, 0, 0, edim),
@@ -66,7 +67,8 @@ at::Tensor min_mha(
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
   auto attn_output = at::matmul(attn_output_weights, v);
   attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
-  // attn_output = at::addmm(out_proj_bias, attn_output, out_proj_weight.t());
+  return attn_output;
+  attn_output = at::addmm(out_proj_bias, attn_output, out_proj_weight.t());
   return attn_output;
 }
 
@@ -154,10 +156,10 @@ Tensor bt_mha_func(
   int64_t batch_size = input.size(0);
   int64_t seq_len = input.size(1);
   int64_t embedding_dim = input.size(2);
-  Tensor attr_kernel_Q = at::slice(in_proj_weight, 0, 0, embedding_dim).t();
+  Tensor attr_kernel_Q = at::slice(in_proj_weight, 0, 0, embedding_dim).t().contiguous();
   Tensor attr_kernel_K =
-      at::slice(in_proj_weight, 0, embedding_dim, 2 * embedding_dim).t();
-  Tensor attr_kernel_V = at::slice(in_proj_weight, 0, 2 * embedding_dim).t();
+      at::slice(in_proj_weight, 0, embedding_dim, 2 * embedding_dim).t().contiguous();
+  Tensor attr_kernel_V = at::slice(in_proj_weight, 0, 2 * embedding_dim).t().contiguous();
 
   Tensor attr_bias_Q = at::slice(*in_proj_bias, 0, 0, embedding_dim);
   Tensor attr_bias_K =
@@ -171,12 +173,15 @@ Tensor bt_mha_func(
   int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
   at::Tensor buf_tensor = torch::zeros({buf_size}, input.options());
   buf_tensor.sub_(1);
+  // std::cout << "input.strides(): " << input.strides() << std::endl;
+  // std::cout << "attr_kernel_Q.strides(): " << attr_kernel_Q.strides() << std::endl;
   effectivetransformer::bt_mha(
       input.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
       attr_kernel_K.data_ptr<float>(),
       attr_kernel_V.data_ptr<float>(),
-      result.data_ptr<float>(),
+      input.data_ptr<float>(),
+      // result.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
       attr_bias_K.data_ptr<float>(),
       attr_bias_V.data_ptr<float>(),
@@ -189,9 +194,10 @@ Tensor bt_mha_func(
       size_per_head,
       valid_word_num,
       buf_tensor.data<float>());
-  std::cout << "bt_mha buf_tensor.narrow(0, 0, " << input_tensor_size * 3 << "): " << 
-    buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
-  return result;
+  // std::cout << "bt_mha buf_tensor.narrow(0, 0, " << input_tensor_size * 3 << "): " << 
+  //   buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
+  // return result;
+  return buf_tensor.narrow(0, 0, input_tensor_size).reshape_as(input);
   // return result;
 }
 
