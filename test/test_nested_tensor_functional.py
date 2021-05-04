@@ -937,8 +937,7 @@ class TestFunctional(TestCase):
         def test(num_heads, batch_size, seq_len, head_size, embedding_dim):
             assert num_heads * head_size == embedding_dim
 
-            input_batch = torch.randn(
-                batch_size, seq_len, embedding_dim)
+            input_batch = torch.arange(batch_size * seq_len * embedding_dim)
             input_batch = input_batch.reshape(
                 batch_size, seq_len, embedding_dim)
             mask = torch.rand(batch_size, seq_len).mul(
@@ -967,12 +966,12 @@ class TestFunctional(TestCase):
                 batch_size,
                 seq_len,
                 embedding_dim)
-            mha = torch.nn.MultiheadAttention(embedding_dim, num_heads).cuda()
-            in_proj_weight = mha.in_proj_weight
-            in_proj_bias = mha.in_proj_bias
-            print("A")
-            print("tmp")
-            print(tmp)
+            mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
+            in_proj_weight = mha.in_proj_weight.copy_(torch.arange(12).reshape(6, 2) + 12).clone().cuda()
+            in_proj_bias = mha.in_proj_bias.clone().cuda()
+            # print("A")
+            # print("tmp")
+            # print(tmp)
             tmp2 = torch.ops.nestedtensor.bt_mha_func(tmp,
                                                       batch_idx,
                                                       word_idx,
@@ -981,9 +980,9 @@ class TestFunctional(TestCase):
                                                       num_heads,
                                                       head_size,
                                                       valid_word_num)
-            print("B")
-            print("tmp2")
-            print(tmp2)
+            # print("B")
+            # print("tmp2")
+            # print(tmp2)
 
             result = torch.ones(batch_size, seq_len,
                                 embedding_dim).to(torch.float).cuda()
@@ -996,7 +995,13 @@ class TestFunctional(TestCase):
                 seq_len,
                 embedding_dim
             )
-            print(result)
+            # print("result")
+            # print(result)
+            inp = nestedtensor.nested_tensor(input_batch.unbind(0))
+            print("\n\n\n")
+            attn_output, _ = mha(inp, inp, inp)
+            # print("attn_output")
+            # print(attn_output)
             # self.assertEqual(result, input_batch)
         test(1, 1, 2, 2, 2)
         # test(2, 3, 5, 2, 4)
