@@ -202,6 +202,9 @@ Tensor bt_mha_func(
   //   buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
   // return result;
   return buf_tensor.narrow(0, input_tensor_size, input_tensor_size).reshape_as(input);
+  // return buf_tensor.narrow(0, 0, input_tensor_size).reshape_as(input);
+  // return buf_tensor;
+  // return buf_tensor.narrow(0, std::max(attn_tensor_size, input_tensor_size), input_tensor_size).reshape_as(input);
   // return result;
 }
 

@@ -322,7 +322,6 @@ void bt_mha(
          static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
   stream.synchronize();
    }
-   return;
   //
   //    add_bias_input_layernorm_kernelLauncher<DataType_>(
   //        attr_matmul_buf_,
