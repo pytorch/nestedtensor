@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-echo "PARAMETERS_PYTHON_VERSION"
-echo $PARAMETERS_PYTHON_VERSION
-
 unset PYTORCH_VERSION
 # For unittest, nightly PyTorch is used as the following section,
 # so no need to set PYTORCH_VERSION.
@@ -29,7 +26,7 @@ conda activate ./env
 WHEELS_FOLDER=${HOME}/project/wheels
 mkdir -p $WHEELS_FOLDER
 
-PYVSHORT=$(./env/bin/python -c "import sys; s=sys.version_info;sys.stdout.write(str(s.major));print(s.minor)")
+PYVSHORT=${PARAMETERS_PYTHON_VERSION:0:1}${PARAMETERS_PYTHON_VERSION:2:1}
 
 if [[ "$PYVSHORT" == "38" ]] ; then
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}
