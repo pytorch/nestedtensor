@@ -960,8 +960,8 @@ class TestFunctional(TestCase):
             inputs = []
             k = 0
             seq_len = 0
-            for _ in range(batch_size):
-                i = random.randint(1, seq_len_)
+            for _, i in zip(range(batch_size), [2, 1]):
+                # i = random.randint(1, seq_len_)
                 seq_len = max(i, seq_len)
                 # inputs.append(torch.randn(i, embedding_dim))
                 inputs.append(torch.arange(i * embedding_dim).reshape(i, embedding_dim)
@@ -971,14 +971,14 @@ class TestFunctional(TestCase):
             input_batch, mask = input_nt.to_tensor_mask(mask_dim=2)
             input_batch = input_batch.to(torch.float).contiguous().cuda()
             mask = mask.to(torch.int32).contiguous().cuda()
-            # print("input_nt")
-            # print(input_nt)
-            # print('input_batch')
-            # print(input_batch)
-            # print(input_batch.size())
-            # print("mask")
-            # print(mask)
-            # print(mask.size())
+            print("input_nt")
+            print(input_nt)
+            print('input_batch')
+            print(input_batch)
+            print(input_batch.size())
+            print("mask")
+            print(mask)
+            print(mask.size())
 
             # import sys; sys.exit(1)
             prefix_sum = torch.ops.nestedtensor.exclusive_scan(mask)
@@ -1003,12 +1003,12 @@ class TestFunctional(TestCase):
                 batch_size,
                 seq_len,
                 embedding_dim)
-            ## print("valid_word_num")
-            ## print(valid_word_num)
-            ## print("batch_idx")
-            ## print(batch_idx)
-            ## print("word_idx")
-            ## print(word_idx)
+            print("valid_word_num")
+            print(valid_word_num)
+            print("batch_idx")
+            print(batch_idx)
+            print("word_idx")
+            print(word_idx)
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             # in_proj_weight = mha.in_proj_weight.copy_(torch.arange(mha.in_proj_weight.numel()).reshape_as(mha.in_proj_weight) + 12).clone().cuda()
             in_proj_weight = mha.in_proj_weight.clone().cuda()
@@ -1017,8 +1017,8 @@ class TestFunctional(TestCase):
             # print("A")
             # print("valid_word_num")
             # print(valid_word_num)
-            # print("tmp")
-            # print(tmp)
+            print("tmp")
+            print(tmp)
             tmp2 = torch.ops.nestedtensor.bt_mha_func(tmp,
                                                       batch_idx,
                                                       word_idx,
@@ -1046,8 +1046,8 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             print("A: ", t1 - t0)
-            # print("result")
-            # print(result)
+            print("result")
+            print(result)
             result_nt = nestedtensor.nested_tensor_from_tensor_mask(
                 result, mask)
             ## print("result_nt")
@@ -1069,14 +1069,16 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             print("B: ", t1 - t0)
-            ## print("attn_output")
-            ## print(attn_output)
+            print("attn_output")
+            print(attn_output)
             self.assertEqual(result_nt, attn_output)
         # test(1, 1, 2, 2, 2)
-        test(1, 4, 3, 2, 2)
+        test(1, 2, 2, 1, 1)
+        # test(1, 4, 3, 2, 2)
         # test(2, 3, 5, 2, 4)
         # test(1, 3, 5, 4, 4)
         # test(8, 8, 50, 16, 128)
+        # test(16, 256, 50, 16, 256)
 
 
 if __name__ == "__main__":
