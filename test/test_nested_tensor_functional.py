@@ -934,28 +934,53 @@ class TestFunctional(TestCase):
         test(8, 8, 50, 16, 128)
 
     def test_effective_transformer_mha(self):
-        def test(num_heads, batch_size, seq_len, head_size, embedding_dim):
+        def test(num_heads, batch_size, seq_len_, head_size, embedding_dim):
             assert num_heads * head_size == embedding_dim
 
-            # input_batch = torch.arange(batch_size * seq_len * embedding_dim)
-            input_batch = torch.randn(batch_size * seq_len * embedding_dim)
-            input_batch = input_batch.reshape(
-                batch_size, seq_len, embedding_dim)
-            mask = torch.rand(batch_size, seq_len).mul(
-                2).to(torch.int32).float()
-            # mask = torch.tensor([
-            #     [1, 1, 0],
-            #     [1, 0, 0],
-            #     [1, 1, 1],
-            #     [1, 1, 0]
-            #     ])
-            mask = mask.to(torch.int32).float()
-            input_batch = input_batch * mask.unsqueeze(-1)
-            mask = mask.squeeze(-1)
-            input_batch = input_batch.to(torch.float).cuda()
+            # # input_batch = torch.arange(batch_size * seq_len * embedding_dim)
+            # input_batch = torch.randn(batch_size * seq_len * embedding_dim)
+            # input_batch = input_batch.reshape(
+            #     batch_size, seq_len, embedding_dim)
+            # mask = torch.rand(batch_size, seq_len).mul(
+            #     2).to(torch.int32).float()
+            # # mask = torch.tensor([
+            # #     [1, 1, 0],
+            # #     [1, 0, 0],
+            # #     [1, 1, 1],
+            # #     [1, 1, 0]
+            # #     ])
+            # mask = mask.to(torch.int32).float()
+            # input_batch = input_batch * mask.unsqueeze(-1)
+            # mask = mask.squeeze(-1)
+            # input_batch = input_batch.to(torch.float).cuda()
+            # # print("mask")
+            # # print(mask)
+            # mask = mask.to(torch.int32).cuda()
+            import random
+            inputs = []
+            k = 0
+            seq_len = 0
+            for _ in range(batch_size):
+                i = random.randint(1, seq_len_)
+                seq_len = max(i, seq_len)
+                # inputs.append(torch.randn(i, embedding_dim))
+                inputs.append(torch.arange(i * embedding_dim).reshape(i, embedding_dim)
+                              + k)
+                k += i
+            input_nt = nestedtensor.nested_tensor(inputs)
+            input_batch, mask = input_nt.to_tensor_mask(mask_dim=2)
+            input_batch = input_batch.to(torch.float).contiguous().cuda()
+            mask = mask.to(torch.int32).contiguous().cuda()
+            # print("input_nt")
+            # print(input_nt)
+            # print('input_batch')
+            # print(input_batch)
+            # print(input_batch.size())
             # print("mask")
             # print(mask)
-            mask = mask.to(torch.int32).cuda()
+            # print(mask.size())
+
+            # import sys; sys.exit(1)
             prefix_sum = torch.ops.nestedtensor.exclusive_scan(mask)
 
             tmp = torch.empty(batch_size, seq_len,
@@ -978,9 +1003,15 @@ class TestFunctional(TestCase):
                 batch_size,
                 seq_len,
                 embedding_dim)
+            ## print("valid_word_num")
+            ## print(valid_word_num)
+            ## print("batch_idx")
+            ## print(batch_idx)
+            ## print("word_idx")
+            ## print(word_idx)
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
-            in_proj_weight = mha.in_proj_weight.copy_(torch.arange(mha.in_proj_weight.numel()).reshape_as(mha.in_proj_weight) + 12).clone().cuda()
-            # in_proj_weight = mha.in_proj_weight.clone().cuda()
+            # in_proj_weight = mha.in_proj_weight.copy_(torch.arange(mha.in_proj_weight.numel()).reshape_as(mha.in_proj_weight) + 12).clone().cuda()
+            in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
             # print("A")
@@ -1017,11 +1048,13 @@ class TestFunctional(TestCase):
             # print("A: ", t1 - t0)
             # print("result")
             # print(result)
-            result_nt = nestedtensor.nested_tensor_from_tensor_mask(result, mask)
-            print("result_nt")
-            print(result_nt)
+            result_nt = nestedtensor.nested_tensor_from_tensor_mask(
+                result, mask)
+            ## print("result_nt")
+            ## print(result_nt)
             mha = mha.cuda()
-            inp = nestedtensor.nested_tensor_from_tensor_mask(input_batch, mask)
+            inp = nestedtensor.nested_tensor_from_tensor_mask(
+                input_batch, mask)
             # print("inp1")
             # print(inp1)
             # inp = nestedtensor.nested_tensor(
@@ -1036,14 +1069,14 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             # print("B: ", t1 - t0)
-            print("attn_output")
-            print(attn_output)
-            self.assertEqual(result_nt, attn_output)  # , prec=2e-4)
-        # test(1, 1, 2, 2, 2)
+            ## print("attn_output")
+            ## print(attn_output)
+            self.assertEqual(result_nt, attn_output, prec=2e-4)
+        test(1, 1, 2, 2, 2)
         test(1, 4, 3, 2, 2)
-        # test(2, 3, 5, 2, 4)
-        # test(1, 3, 5, 4, 4)
-        # test(8, 8, 50, 16, 128)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
+        test(8, 8, 50, 16, 128)
 
 
 if __name__ == "__main__":
