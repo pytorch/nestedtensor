@@ -936,26 +936,6 @@ class TestFunctional(TestCase):
     def test_effective_transformer_mha(self):
         def test(num_heads, batch_size, seq_len_, head_size, embedding_dim):
             assert num_heads * head_size == embedding_dim
-
-            # # input_batch = torch.arange(batch_size * seq_len * embedding_dim)
-            # input_batch = torch.randn(batch_size * seq_len * embedding_dim)
-            # input_batch = input_batch.reshape(
-            #     batch_size, seq_len, embedding_dim)
-            # mask = torch.rand(batch_size, seq_len).mul(
-            #     2).to(torch.int32).float()
-            # # mask = torch.tensor([
-            # #     [1, 1, 0],
-            # #     [1, 0, 0],
-            # #     [1, 1, 1],
-            # #     [1, 1, 0]
-            # #     ])
-            # mask = mask.to(torch.int32).float()
-            # input_batch = input_batch * mask.unsqueeze(-1)
-            # mask = mask.squeeze(-1)
-            # input_batch = input_batch.to(torch.float).cuda()
-            # # print("mask")
-            # # print(mask)
-            # mask = mask.to(torch.int32).cuda()
             import random
             inputs = []
             k = 0
@@ -963,71 +943,30 @@ class TestFunctional(TestCase):
             for _ in range(batch_size):
                 i = random.randint(1, seq_len_)
                 seq_len = max(i, seq_len)
-                inputs.append(torch.randn(i, embedding_dim))
-                # inputs.append(torch.arange(i * embedding_dim).reshape(i, embedding_dim)
-                #               + k)
+                # inputs.append(torch.randn(i, embedding_dim))
+                inputs.append(torch.arange(i * embedding_dim).reshape(i, embedding_dim)
+                              + k)
                 k += i
             input_nt = nestedtensor.nested_tensor(inputs)
-            input_batch, mask = input_nt.to_tensor_mask(mask_dim=2)
-            input_batch = input_batch.to(torch.float).contiguous().cuda()
-            mask = mask.to(torch.int32).contiguous().cuda()
-            ## print("input_nt")
-            ## print(input_nt)
-            ## print('input_batch')
-            ## print(input_batch)
-            ## print(input_batch.size())
-            ## print("mask")
-            ## print(mask)
-            ## print(mask.size())
+            print("input_nt")
+            print(input_nt)
 
-            # import sys; sys.exit(1)
-            prefix_sum = torch.ops.nestedtensor.exclusive_scan(mask)
-
-            tmp = torch.empty(batch_size, seq_len,
-                              embedding_dim).to(torch.float).cuda()
-            batch_idx = torch.empty(
-                (batch_size * seq_len)).to(torch.int32).cuda()
-            word_idx = torch.empty((batch_size * seq_len)
-                                   ).to(torch.int32).cuda()
-
-            import time
-            torch.cuda.synchronize()
-            t0 = time.time()
-            tmp, valid_word_num, last_mask = torch.ops.nestedtensor.compress_bert_input(
-                input_batch,
-                mask,
-                prefix_sum,
-                tmp,
-                batch_idx,
-                word_idx,
-                batch_size,
-                seq_len,
-                embedding_dim)
-            ## print("valid_word_num")
-            ## print(valid_word_num)
-            ## print("batch_idx")
-            ## print(batch_idx)
-            ## print("word_idx")
-            ## print(word_idx)
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
-            # in_proj_weight = mha.in_proj_weight.copy_(torch.arange(mha.in_proj_weight.numel()).reshape_as(mha.in_proj_weight) + 12).clone().cuda()
             in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
-            # print("A")
-            # print("valid_word_num")
-            # print(valid_word_num)
-            ## print("tmp")
-            ## print(tmp)
-            tmp2 = torch.ops.nestedtensor.bt_mha_func(tmp,
-                                                      batch_idx,
-                                                      word_idx,
-                                                      in_proj_weight,
-                                                      in_proj_bias,
-                                                      out_proj_weight,
-                                                      num_heads,
-                                                      head_size,
-                                                      valid_word_num)
+            tmp2 = torch.ops.nestedtensor.bt_min_mha(num_heads,
+                                                     head_size,
+                                                     0.5,
+                                                     False,
+                                                     input_nt._impl,
+                                                     input_nt._impl,
+                                                     input_nt._impl,
+                                                     in_proj_weight,
+                                                     in_proj_bias,
+                                                     1.0,
+                                                     out_proj_weight,
+                                                     in_proj_bias)
             # print("B")
             # print("tmp2")
             # print(tmp2)
@@ -1046,12 +985,12 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             print("A: ", t1 - t0)
-            ## print("result")
-            ## print(result)
+            # print("result")
+            # print(result)
             result_nt = nestedtensor.nested_tensor_from_tensor_mask(
                 result, mask)
-            ## print("result_nt")
-            ## print(result_nt)
+            # print("result_nt")
+            # print(result_nt)
             mha = mha.cuda()
             inp = nestedtensor.nested_tensor_from_tensor_mask(
                 input_batch, mask)
@@ -1069,8 +1008,8 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             print("B: ", t1 - t0)
-            ## print("attn_output")
-            ## print(attn_output)
+            # print("attn_output")
+            # print(attn_output)
             self.assertEqual(result_nt, attn_output, prec=1e-4)
 
             torch.cuda.synchronize()
@@ -1079,8 +1018,8 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             print("C: ", t1 - t0)
-        test(1, 1, 2, 2, 2)
-        test(1, 2, 2, 1, 1)
+        # test(1, 1, 2, 2, 2)
+        # test(1, 2, 2, 1, 1)
         test(1, 4, 3, 2, 2)
         # test(2, 3, 5, 2, 4)
         # test(1, 3, 5, 4, 4)

@@ -3,6 +3,7 @@
 #include <nestedtensor/csrc/cuda/attention.h>
 #include <nestedtensor/csrc/cuda/bert_transformer_op.h>
 #include <nestedtensor/csrc/cuda/cuda_kernels.h>
+#include <nestedtensor/csrc/masking.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/python_functions.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
@@ -165,26 +166,59 @@ at::Tensor bt_min_mha(
     throw std::runtime_error("query's third dimension must be regular.");
   }
   // TODO: Add explicit check that verifies query, key and value are the same
-// Tensor bt_mha_func(
-//     Tensor input, // either of query, key or value in compressed format for
-//                   // self-attention
-//     Tensor batch_idx, // corresponding batch_idx to input
-//     Tensor word_idx, // corresponding word_idx to input
-//     at::Tensor in_proj_weight,
-//     c10::optional<at::Tensor> in_proj_bias,
-//     at::Tensor out_proj_weight_,
-//     int64_t head_num,
-//     int64_t size_per_head,
-//     int64_t valid_word_num) 
+  // Tensor bt_mha_func(
+  //     Tensor input, // either of query, key or value in compressed format for
+  //                   // self-attention
+  //     Tensor batch_idx, // corresponding batch_idx to input
+  //     Tensor word_idx, // corresponding word_idx to input
+  //     at::Tensor in_proj_weight,
+  //     c10::optional<at::Tensor> in_proj_bias,
+  //     at::Tensor out_proj_weight_,
+  //     int64_t head_num,
+  //     int64_t size_per_head,
+  //     int64_t valid_word_num)
+  Tensor input;
+  Tensor input_mask;
+  std::tie(input, input_mask) = to_tensor_mask(query, 2);
   int64_t batch_size = input.size(0);
   int64_t seq_len = input.size(1);
   int64_t embedding_dim = *(opt_sizes[2]);
+  int64_t head_num = num_heads;
+  int64_t size_per_head = embedding_dim / head_num;
+  int64_t valid_word_num = 1;
+  std::cout << "input" << input << std::endl;
+  std::cout << "input_mask" << input_mask << std::endl;
+  auto float_options =
+      torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
+  input = input.to(float_options);
+  Tensor tmp = torch::empty({batch_size, seq_len, embedding_dim}, float_options);
+  auto options =
+      torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
+  input_mask = input_mask.to(options);
+  Tensor batch_idx = torch::empty({batch_size, seq_len}, options);
+  Tensor word_idx = torch::empty({batch_size, seq_len}, options);
+  Tensor prefix_sum = exclusive_scan(input_mask);
+  int64_t last_mask;
+  std::tie(tmp, valid_word_num, last_mask) = compress_bert_input(
+      input,
+      input_mask,
+      prefix_sum,
+      tmp,
+      batch_idx,
+      word_idx,
+      batch_size,
+      seq_len,
+      embedding_dim);
   // TODO: BLOCKED ON C++ VERSION OF TO_TENSOR_MASK
 
-  Tensor attr_kernel_Q = at::slice(in_proj_weight, 0, 0, embedding_dim).t().contiguous();
+  Tensor attr_kernel_Q =
+      at::slice(in_proj_weight, 0, 0, embedding_dim).t().contiguous();
   Tensor attr_kernel_K =
-      at::slice(in_proj_weight, 0, embedding_dim, 2 * embedding_dim).t().contiguous();
-  Tensor attr_kernel_V = at::slice(in_proj_weight, 0, 2 * embedding_dim).t().contiguous();
+      at::slice(in_proj_weight, 0, embedding_dim, 2 * embedding_dim)
+          .t()
+          .contiguous();
+  Tensor attr_kernel_V =
+      at::slice(in_proj_weight, 0, 2 * embedding_dim).t().contiguous();
 
   Tensor attr_bias_Q = at::slice(*in_proj_bias, 0, 0, embedding_dim);
   Tensor attr_bias_K =
@@ -199,15 +233,16 @@ at::Tensor bt_min_mha(
   at::Tensor buf_tensor = torch::zeros({buf_size}, input.options());
   buf_tensor.sub_(1);
 
-  Tensor out_proj_weight = out_proj_weight_.t().contiguous();
+  out_proj_weight = out_proj_weight.t().contiguous();
   // std::cout << "input.strides(): " << input.strides() << std::endl;
-  // std::cout << "attr_kernel_Q.strides(): " << attr_kernel_Q.strides() << std::endl;
+  // std::cout << "attr_kernel_Q.strides(): " << attr_kernel_Q.strides() <<
+  // std::endl;
   effectivetransformer::bt_mha(
-      input.data_ptr<float>(),
+      tmp.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
       attr_kernel_K.data_ptr<float>(),
       attr_kernel_V.data_ptr<float>(),
-      input.data_ptr<float>(),
+      tmp.data_ptr<float>(),
       // result.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
       attr_bias_K.data_ptr<float>(),
@@ -222,14 +257,18 @@ at::Tensor bt_min_mha(
       size_per_head,
       valid_word_num,
       buf_tensor.data<float>());
-  // std::cout << "bt_mha buf_tensor.narrow(0, 0, " << input_tensor_size * 3 << "): " << 
-  //   buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
-  // return result;
-  return buf_tensor.narrow(0, input_tensor_size, input_tensor_size).reshape_as(input);
+  // // std::cout << "bt_mha buf_tensor.narrow(0, 0, " << input_tensor_size * 3
+  // <<
+  // // "): " <<
+  // //   buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
+  // // return result;
+  return buf_tensor.narrow(0, input_tensor_size, input_tensor_size)
+      .reshape_as(input);
   // return buf_tensor.narrow(0, 0, input_tensor_size).reshape_as(input);
   // return buf_tensor;
-  // return buf_tensor.narrow(0, std::max(attn_tensor_size, input_tensor_size), input_tensor_size).reshape_as(input);
-  // return result;
+  // return buf_tensor.narrow(0, std::max(attn_tensor_size, input_tensor_size),
+  // input_tensor_size).reshape_as(input); return result;
+  // return query;
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
@@ -249,8 +288,8 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
 
   m.def(
-      "bt_mha_func(Tensor input, Tensor batch_idx, Tensor word_idx, Tensor in_proj_weight, Tensor? in_proj_bias, Tensor out_proj_weight, int head_num, int size_per_head, int valid_word_num) -> Tensor");
-  m.impl("bt_mha_func", c10::DispatchKey::CUDA, &bt_mha_func);
+      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor in_proj_weight, Tensor? in_proj_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias) -> Tensor");
+  m.impl("bt_min_mha", NestedTensorKey, &bt_min_mha);
 }
 
 } // namespace nested_tensor
