@@ -947,15 +947,17 @@ class TestFunctional(TestCase):
                 inputs.append(torch.arange(i * embedding_dim).reshape(i, embedding_dim)
                               + k)
                 k += i
-            input_nt = nestedtensor.nested_tensor(inputs)
-            print("input_nt")
-            print(input_nt)
+            input_nt = nestedtensor.nested_tensor(inputs, device=torch.device('cuda'), dtype=torch.float)
+            # print("input_nt")
+            # print(input_nt)
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
-            tmp2 = torch.ops.nestedtensor.bt_min_mha(num_heads,
+            import time
+            t0 = time.time()
+            result_nt = nestedtensor.NestedTensor(torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                      head_size,
                                                      0.5,
                                                      False,
@@ -966,45 +968,14 @@ class TestFunctional(TestCase):
                                                      in_proj_bias,
                                                      1.0,
                                                      out_proj_weight,
-                                                     in_proj_bias)
-            # print("B")
-            # print("tmp2")
-            # print(tmp2)
-
-            result = torch.ones(batch_size, seq_len,
-                                embedding_dim).to(torch.float).cuda()
-            torch.ops.nestedtensor.restore_bert_output(
-                result,
-                tmp2,
-                batch_idx,
-                word_idx,
-                valid_word_num,
-                seq_len,
-                embedding_dim
-            )
+                                                     in_proj_bias))
             torch.cuda.synchronize()
             t1 = time.time()
             print("A: ", t1 - t0)
-            # print("result")
-            # print(result)
-            result_nt = nestedtensor.nested_tensor_from_tensor_mask(
-                result, mask)
-            # print("result_nt")
-            # print(result_nt)
             mha = mha.cuda()
-            inp = nestedtensor.nested_tensor_from_tensor_mask(
-                input_batch, mask)
-            # print("inp1")
-            # print(inp1)
-            # inp = nestedtensor.nested_tensor(
-            #     [input_batch[0, :1]],
-            #     device=torch.device('cuda'))
-            # print("\n\n\n")
-            # print("inp")
-            # print(inp)
             torch.cuda.synchronize()
             t0 = time.time()
-            attn_output, _ = mha(inp, inp, inp)
+            attn_output, _ = mha(input_nt, input_nt, input_nt)
             torch.cuda.synchronize()
             t1 = time.time()
             print("B: ", t1 - t0)
@@ -1014,7 +985,7 @@ class TestFunctional(TestCase):
 
             torch.cuda.synchronize()
             t0 = time.time()
-            attn_output, _ = mha(input_batch, input_batch, input_batch)
+            attn_output, _ = mha(input_nt, input_nt, input_nt)
             torch.cuda.synchronize()
             t1 = time.time()
             print("C: ", t1 - t0)

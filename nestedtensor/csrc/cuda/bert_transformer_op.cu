@@ -246,8 +246,8 @@ void bt_mha(
     DataType_ scaler = 1;
   // std::cout << "018" << std::endl;
   // stream.synchronize();
-     cuda::softmax_kernel_kernelLauncher<DataType_>(
-         qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
+  //   cuda::softmax_kernel_kernelLauncher<DataType_>(
+  //       qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
   // std::cout << "019" << std::endl;
   // stream.synchronize();
 

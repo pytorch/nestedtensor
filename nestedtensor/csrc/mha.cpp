@@ -64,8 +64,9 @@ at::Tensor min_mha(
   k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   v = v.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   auto attn_output_weights = at::matmul(q, k.transpose(2, 3));
-  attn_output_weights = at::softmax(attn_output_weights, -1);
-  attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
+  // attn_output_weights = at::softmax(attn_output_weights, -1);
+  // attn_output_weights = at::dropout(attn_output_weights, dropout_p,
+  // training);
   auto attn_output = at::matmul(attn_output_weights, v);
   attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
   // std::cout << "out_proj_bias: " << out_proj_bias << std::endl;
@@ -186,12 +187,13 @@ at::Tensor bt_min_mha(
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
   int64_t valid_word_num = 1;
-  std::cout << "input" << input << std::endl;
-  std::cout << "input_mask" << input_mask << std::endl;
+  // std::cout << "input" << input << std::endl;
+  // std::cout << "input_mask" << input_mask << std::endl;
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   input = input.to(float_options);
-  Tensor tmp = torch::empty({batch_size, seq_len, embedding_dim}, float_options);
+  Tensor tmp =
+      torch::empty({batch_size, seq_len, embedding_dim}, float_options);
   auto options =
       torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
   input_mask = input_mask.to(options);
@@ -224,7 +226,6 @@ at::Tensor bt_min_mha(
   Tensor attr_bias_K =
       at::slice(*in_proj_bias, 0, embedding_dim, 2 * embedding_dim);
   Tensor attr_bias_V = at::slice(*in_proj_bias, 0, 2 * embedding_dim);
-  Tensor result = torch::empty_like(input);
   Tensor mask_ones =
       torch::ones({batch_size, seq_len, seq_len}, input.options());
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
@@ -256,19 +257,21 @@ at::Tensor bt_min_mha(
       seq_len,
       size_per_head,
       valid_word_num,
-      buf_tensor.data<float>());
-  // // std::cout << "bt_mha buf_tensor.narrow(0, 0, " << input_tensor_size * 3
-  // <<
-  // // "): " <<
-  // //   buf_tensor.narrow(0, 0, input_tensor_size * 3) << std::endl;
-  // // return result;
-  return buf_tensor.narrow(0, input_tensor_size, input_tensor_size)
-      .reshape_as(input);
-  // return buf_tensor.narrow(0, 0, input_tensor_size).reshape_as(input);
-  // return buf_tensor;
-  // return buf_tensor.narrow(0, std::max(attn_tensor_size, input_tensor_size),
-  // input_tensor_size).reshape_as(input); return result;
-  // return query;
+      buf_tensor.data_ptr<float>());
+  Tensor tmp2 = buf_tensor.narrow(0, input_tensor_size, input_tensor_size)
+                    .reshape_as(input);
+  Tensor result =
+      torch::ones({batch_size, seq_len, embedding_dim}, float_options);
+  restore_bert_output(
+      result,
+      tmp2,
+      batch_idx,
+      word_idx,
+      valid_word_num,
+      seq_len,
+      embedding_dim);
+  Tensor result_nt = *nt_from_tensor_mask(result, input_mask, 1);
+  return result_nt;
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
