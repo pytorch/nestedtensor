@@ -143,20 +143,44 @@ Tensor restore_bert_output(
   return result;
 }
 
-Tensor bt_mha_func(
-    Tensor input, // either of query, key or value in compressed format for
-                  // self-attention
-    Tensor batch_idx, // corresponding batch_idx to input
-    Tensor word_idx, // corresponding word_idx to input
+at::Tensor bt_min_mha(
+    int64_t num_heads,
+    int64_t head_dim,
+    double dropout_p,
+    bool training,
+    at::Tensor query,
+    at::Tensor key,
+    at::Tensor value,
     at::Tensor in_proj_weight,
     c10::optional<at::Tensor> in_proj_bias,
-    at::Tensor out_proj_weight_,
-    int64_t head_num,
-    int64_t size_per_head,
-    int64_t valid_word_num) {
+    double scaling,
+    at::Tensor out_proj_weight,
+    at::Tensor out_proj_bias) {
+  TORCH_CHECK(query.dim() == 3, "query needs to be 3 dim.");
+  TORCH_CHECK(key.dim() == 3, "key needs to be 3 dim.");
+  TORCH_CHECK(value.dim() == 3, "value needs to be 3 dim.");
+  TORCH_CHECK(in_proj_bias, "Input projection bias needs to be defined.");
+  auto opt_sizes = get_opt_sizes(query);
+  if (!opt_sizes[2]) {
+    throw std::runtime_error("query's third dimension must be regular.");
+  }
+  // TODO: Add explicit check that verifies query, key and value are the same
+// Tensor bt_mha_func(
+//     Tensor input, // either of query, key or value in compressed format for
+//                   // self-attention
+//     Tensor batch_idx, // corresponding batch_idx to input
+//     Tensor word_idx, // corresponding word_idx to input
+//     at::Tensor in_proj_weight,
+//     c10::optional<at::Tensor> in_proj_bias,
+//     at::Tensor out_proj_weight_,
+//     int64_t head_num,
+//     int64_t size_per_head,
+//     int64_t valid_word_num) 
   int64_t batch_size = input.size(0);
   int64_t seq_len = input.size(1);
-  int64_t embedding_dim = input.size(2);
+  int64_t embedding_dim = *(opt_sizes[2]);
+  // TODO: BLOCKED ON C++ VERSION OF TO_TENSOR_MASK
+
   Tensor attr_kernel_Q = at::slice(in_proj_weight, 0, 0, embedding_dim).t().contiguous();
   Tensor attr_kernel_K =
       at::slice(in_proj_weight, 0, embedding_dim, 2 * embedding_dim).t().contiguous();
