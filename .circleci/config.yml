@@ -233,12 +233,12 @@ jobs:
               echo "export BUILD_VERSION=0.1.1-<< parameters.cu_version >>" >> ${BASH_ENV}
               echo "export PYTORCH_BUILD_VERSION=1.8.0-nestedtensor-0.1.1-<< parameters.cu_version >>" >> ${BASH_ENV}
               echo "export PYTORCH_BUILD_NUMBER=1" >> ${BASH_ENV}
-              echo "export PARAMETERS_PYTHON_VERSION=<< parameters.python_version >>" >> ${BASH_ENV}
             fi
       - run:
           name: Install nestedtensor
           command: |
-            # touch ${BASH_ENV}
+            touch ${BASH_ENV}
+            echo "export PARAMETERS_PYTHON_VERSION=<< parameters.python_version >>" >> ${BASH_ENV}
             # For some reason circleci isn't automatically sourcing this within the builds
             source ${BASH_ENV} && .circleci/unittest/linux/scripts/install.sh
       - persist_to_workspace:
