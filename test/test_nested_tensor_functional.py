@@ -943,18 +943,14 @@ class TestFunctional(TestCase):
             for _ in range(batch_size):
                 i = random.randint(1, seq_len_)
                 seq_len = max(i, seq_len)
-                # inputs.append(torch.randn(i, embedding_dim))
-                inputs.append(torch.arange(i * embedding_dim).reshape(i, embedding_dim)
-                              + k)
-                k += i
+                inputs.append(torch.randn(i, embedding_dim))
             input_nt = nestedtensor.nested_tensor(inputs, device=torch.device('cuda'), dtype=torch.float)
-            # print("input_nt")
-            # print(input_nt)
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
+            torch.cuda.synchronize()
             import time
             t0 = time.time()
             result_nt = nestedtensor.NestedTensor(torch.ops.nestedtensor.bt_min_mha(num_heads,
@@ -981,7 +977,7 @@ class TestFunctional(TestCase):
             print("B: ", t1 - t0)
             # print("attn_output")
             # print(attn_output)
-            self.assertEqual(result_nt, attn_output, prec=1e-4)
+            self.assertEqual(result_nt, attn_output, prec=3e-5)
 
             torch.cuda.synchronize()
             t0 = time.time()
@@ -989,14 +985,14 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             print("C: ", t1 - t0)
-        # test(1, 1, 2, 2, 2)
-        # test(1, 2, 2, 1, 1)
+        test(1, 1, 2, 2, 2)
+        test(1, 2, 2, 1, 1)
         test(1, 4, 3, 2, 2)
-        # test(2, 3, 5, 2, 4)
-        # test(1, 3, 5, 4, 4)
-        # test(8, 8, 50, 16, 128)
-        # test(16, 256, 50, 16, 256)
-        # test(16, 512, 50, 16, 256)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
+        test(8, 8, 50, 16, 128)
+        test(16, 256, 50, 16, 256)
+        test(16, 512, 50, 16, 256)
 
 
 if __name__ == "__main__":
