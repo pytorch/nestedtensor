@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+echo "PARAMETERS_PYTHON_VERSION"
+echo $PARAMETERS_PYTHON_VERSION
+
 unset PYTORCH_VERSION
 # For unittest, nightly PyTorch is used as the following section,
 # so no need to set PYTORCH_VERSION.
@@ -33,9 +36,6 @@ if [[ "$PYVSHORT" == "38" ]] ; then
 else
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}m
 fi
-
-echo "PARAMETERS_PYTHON_VERSION"
-echo $PARAMETERS_PYTHON_VERSION
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
     pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl

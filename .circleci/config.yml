@@ -238,7 +238,7 @@ jobs:
       - run:
           name: Install nestedtensor
           command: |
-            touch ${BASH_ENV}
+            # touch ${BASH_ENV}
             # For some reason circleci isn't automatically sourcing this within the builds
             source ${BASH_ENV} && .circleci/unittest/linux/scripts/install.sh
       - persist_to_workspace:
