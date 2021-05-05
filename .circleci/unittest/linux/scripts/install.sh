@@ -34,6 +34,9 @@ else
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}m
 fi
 
+echo "PARAMETERS_PYTHON_VERSION"
+echo $PARAMETERS_PYTHON_VERSION
+
 if [ "${CU_VERSION:-}" == cpu ] ; then
     pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
     pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
