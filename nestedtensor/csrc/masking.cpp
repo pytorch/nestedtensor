@@ -1,11 +1,4 @@
-#include <nestedtensor/csrc/creation.h>
-#include <nestedtensor/csrc/nested_tensor_impl.h>
-#include <nestedtensor/csrc/python_functions.h>
-#include <nestedtensor/csrc/utils/nested_node_functions.h>
-#include <nestedtensor/csrc/utils/python_nested_node.h>
-#include <torch/csrc/Size.h>
-#include <torch/csrc/autograd/python_variable_indexing.h>
-#include <torch/extension.h>
+#include <nestedtensor/csrc/masking.h>
 #include <chrono>
 
 using namespace torch::nested_tensor;
@@ -196,6 +189,20 @@ c10::optional<Tensor> nt_from_tensor_mask(
     }
   }
   return wrap_tensor_node(TensorNode(std::move(inner_tensor_nodes)));
+}
+
+std::tuple<Tensor, Tensor> to_tensor_mask(
+    Tensor nt,
+    c10::optional<int64_t> mask_dim) {
+  // TODO: Cover if not isinstance(nt, list) and nt.size() == (1,):
+  // TODO: Move to_tensor_mask entirely into C++
+
+  std::vector<int64_t> max_size = get_max_size(nt);
+  Tensor tensor;
+  Tensor mask;
+  std::tie(tensor, mask) = pad_nt(nt, max_size);
+  std::tie(tensor, mask) = merge_tensor_mask(tensor, mask, mask_dim);
+  return std::make_tuple(tensor, mask);
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
