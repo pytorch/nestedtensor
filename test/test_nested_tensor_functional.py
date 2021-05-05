@@ -1045,7 +1045,7 @@ class TestFunctional(TestCase):
             )
             torch.cuda.synchronize()
             t1 = time.time()
-            # print("A: ", t1 - t0)
+            print("A: ", t1 - t0)
             # print("result")
             # print(result)
             result_nt = nestedtensor.nested_tensor_from_tensor_mask(
@@ -1068,15 +1068,15 @@ class TestFunctional(TestCase):
             attn_output, _ = mha(inp, inp, inp)
             torch.cuda.synchronize()
             t1 = time.time()
-            # print("B: ", t1 - t0)
+            print("B: ", t1 - t0)
             ## print("attn_output")
             ## print(attn_output)
-            self.assertEqual(result_nt, attn_output, prec=2e-4)
-        test(1, 1, 2, 2, 2)
+            self.assertEqual(result_nt, attn_output)
+        # test(1, 1, 2, 2, 2)
         test(1, 4, 3, 2, 2)
-        test(2, 3, 5, 2, 4)
-        test(1, 3, 5, 4, 4)
-        test(8, 8, 50, 16, 128)
+        # test(2, 3, 5, 2, 4)
+        # test(1, 3, 5, 4, 4)
+        # test(8, 8, 50, 16, 128)
 
 
 if __name__ == "__main__":
