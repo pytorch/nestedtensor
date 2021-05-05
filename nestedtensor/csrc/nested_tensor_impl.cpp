@@ -140,7 +140,7 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     }
   }
   remove_autograd_key();
-  key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::InplaceOrView});
+  key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::ADInplaceOrView});
 }
 
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {

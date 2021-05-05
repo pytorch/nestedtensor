@@ -45,9 +45,9 @@ fi
 # fi
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    pip3 install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+    pip3 -q install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
-    pip3 install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cu102/torch_nightly.html
+    pip3 -q install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cu102/torch_nightly.html
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
