@@ -88,11 +88,12 @@ Tensor exclusive_scan(Tensor mask) {
   return prefix_sum_buf;
 }
 
-std::tuple<Tensor, int64_t, int64_t> compress_bert_input(
-    Tensor input, // float - (batch_size, seq_len, hidden_dim)
+std::tuple<int64_t, int64_t> compress_bert_input(
+    //    Tensor input, // float - (batch_size, seq_len, hidden_dim)
     Tensor mask, // int32 - (batch_size, seq_len)
     Tensor prefix_sum, // int32
-    Tensor result, // float - (batch_size * num_head * seq_len * size_per_head)
+    //    Tensor result, // float - (batch_size * num_head * seq_len *
+    //    size_per_head)
     Tensor batch_idx, // int32 - (batch_size, seq_len)
     Tensor word_idx, // int32 - (batch_size, seq_len)
     int64_t batch_size,
@@ -101,10 +102,10 @@ std::tuple<Tensor, int64_t, int64_t> compress_bert_input(
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
   effectivetransformer::compressBertInput_kernelLauncher(
-      input.data_ptr<float>(),
+      // input.data_ptr<float>(),
       mask.data_ptr<int>(),
       prefix_sum.data_ptr<int>(),
-      result.data_ptr<float>(),
+      // result.data_ptr<float>(),
       batch_idx.data_ptr<int>(),
       word_idx.data_ptr<int>(),
       (int32_t)(batch_size),
@@ -117,8 +118,8 @@ std::tuple<Tensor, int64_t, int64_t> compress_bert_input(
   if (last_mask == 1) {
     valid_word_num++;
   }
-  return std::make_tuple(
-      result, (int64_t)(valid_word_num), (int64_t)(last_mask));
+  return std::make_tuple((int64_t)(valid_word_num), (int64_t)(last_mask));
+  // result, (int64_t)(valid_word_num), (int64_t)(last_mask));
 }
 
 Tensor restore_bert_output(
@@ -168,17 +169,6 @@ at::Tensor bt_min_mha(
     throw std::runtime_error("query's third dimension must be regular.");
   }
   // TODO: Add explicit check that verifies query, key and value are the same
-  // Tensor bt_mha_func(
-  //     Tensor input, // either of query, key or value in compressed format for
-  //                   // self-attention
-  //     Tensor batch_idx, // corresponding batch_idx to input
-  //     Tensor word_idx, // corresponding word_idx to input
-  //     at::Tensor in_proj_weight,
-  //     c10::optional<at::Tensor> in_proj_bias,
-  //     at::Tensor out_proj_weight_,
-  //     int64_t head_num,
-  //     int64_t size_per_head,
-  //     int64_t valid_word_num)
   Tensor input;
   Tensor input_mask;
   std::tie(input, input_mask) = to_tensor_mask(query, 2);
@@ -188,13 +178,9 @@ at::Tensor bt_min_mha(
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
   int64_t valid_word_num = 1;
-  // std::cout << "input" << input << std::endl;
-  // std::cout << "input_mask" << input_mask << std::endl;
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   input = input.to(float_options);
-  Tensor tmptmp =
-      torch::empty({batch_size, seq_len, embedding_dim}, float_options);
   auto options =
       torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
   input_mask = input_mask.to(options);
@@ -202,11 +188,11 @@ at::Tensor bt_min_mha(
   Tensor word_idx = torch::empty({batch_size, seq_len}, options);
   Tensor prefix_sum = exclusive_scan(input_mask);
   int64_t last_mask;
-  std::tie(tmptmp, valid_word_num, last_mask) = compress_bert_input(
-      input,
+  std::tie(valid_word_num, last_mask) = compress_bert_input(
+      // input,
       input_mask,
       prefix_sum,
-      tmptmp,
+      // tmptmp,
       batch_idx,
       word_idx,
       batch_size,
@@ -261,20 +247,23 @@ at::Tensor bt_min_mha(
       valid_word_num,
       buf_tensor.data_ptr<float>(),
       (float)(scaling));
-  Tensor tmp2 = buf_tensor.narrow(0, input_tensor_size, input_tensor_size)
-                    .reshape_as(input);
-  Tensor result =
-      torch::ones({batch_size, seq_len, embedding_dim}, float_options);
-  restore_bert_output(
-      result,
-      tmp2,
-      batch_idx,
-      word_idx,
-      valid_word_num,
-      seq_len,
-      embedding_dim);
-  Tensor result_nt = *nt_from_tensor_mask(result, input_mask, 1);
-  return result_nt;
+  Tensor tmp2 =
+      buf_tensor.narrow(0, input_tensor_size, query.numel()).reshape({-1});
+  tmp2 = tmp2.contiguous();
+  // std::cout << "tmp2: " << tmp2 << std::endl;
+  // Tensor result =
+  //     torch::ones({batch_size, seq_len, embedding_dim}, float_options);
+  // restore_bert_output(
+  //     result,
+  //     tmp2,
+  //     batch_idx,
+  //     word_idx,
+  //     valid_word_num,
+  //     seq_len,
+  //     embedding_dim);
+  // Tensor result_nt = *nt_from_tensor_mask(result, input_mask, 1);
+  // return result_nt;
+  return wrap_buffer(std::move(tmp2), get_nested_size(query));
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
@@ -285,9 +274,12 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def("exclusive_scan(Tensor input) -> Tensor");
   m.impl("exclusive_scan", c10::DispatchKey::CUDA, &exclusive_scan);
 
-  m.def(
-      "compress_bert_input(Tensor input, Tensor mask, Tensor prefix_sum, Tensor result, Tensor batch_idx, Tensor word_idx, int batch_size, int seq_len, int hidden_dim) -> (Tensor, int, int)");
-  m.impl("compress_bert_input", c10::DispatchKey::CUDA, &compress_bert_input);
+  // m.def(
+  //     "compress_bert_input(Tensor input, Tensor mask, Tensor prefix_sum,
+  //     Tensor result, Tensor batch_idx, Tensor word_idx, int batch_size, int
+  //     seq_len, int hidden_dim) -> (Tensor, int, int)");
+  // m.impl("compress_bert_input", c10::DispatchKey::CUDA,
+  // &compress_bert_input);
 
   m.def(
       "restore_bert_output(Tensor result, Tensor input, Tensor batch_idx, Tensor word_idx, int valid_word_num, int seq_len, int hidden_size) -> Tensor");

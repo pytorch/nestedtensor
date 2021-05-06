@@ -967,9 +967,6 @@ class TestFunctional(TestCase):
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
 
-            # print("input_nt")
-            # print(input_nt)
-
             torch.cuda.synchronize()
             import time
             t0 = time.time()
@@ -999,10 +996,11 @@ class TestFunctional(TestCase):
             # print("attn_output")
             # print(attn_output)
             self.assertEqual(result_nt, attn_output)
+            input_batch, _ = input_nt.to_tensor_mask()
 
             torch.cuda.synchronize()
             t0 = time.time()
-            attn_output, _ = mha(input_nt, input_nt, input_nt)
+            attn_output, _ = mha(input_batch, input_batch, input_batch)
             torch.cuda.synchronize()
             t1 = time.time()
             print("C: ", t1 - t0)

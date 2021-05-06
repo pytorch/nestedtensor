@@ -44,12 +44,11 @@ void exclusiveScan_kernelLauncher(
     const int length,
     const cudaStream_t stream);
 
-template <typename T>
 void compressBertInput_kernelLauncher(
-    const T* from_tensor,
+    // const T* from_tensor,
     const int* mask,
     const int* prefix_sum,
-    T* to_tensor,
+    // T* to_tensor,
     int* batch_idx,
     int* word_idx,
     int batch_size,

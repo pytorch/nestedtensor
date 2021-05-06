@@ -275,11 +275,12 @@ template void add_bias_input_layernorm_kernelLauncher<__half>(
 
 /// *********************** compresse transformer input ***********************
 
-template <typename T>
 __global__ 
 void compress_bert_input(
-  const T* from_tensor, const int* mask, const int* prefix_sum, 
-  T* to_tensor, int* batch_idx, int* word_idx,
+  // const T* from_tensor,
+  const int* mask, const int* prefix_sum, 
+  // T* to_tensor,
+  int* batch_idx, int* word_idx,
   int batch_size , int seq_len, int hidden_dim) 
 {
   int bid = blockIdx.y;  // batch
@@ -298,51 +299,20 @@ void compress_bert_input(
       word_idx[valid_idx]  = wid;
     }
     
-    /// 3. copy src data
-    float* src_ptr = (float*)from_tensor;
-    float* dst_ptr = (float*)to_tensor;
-    int src_idx = mask_idx  * hidden_dim + tid;
-    int dst_idx = valid_idx * hidden_dim + tid;
-    dst_ptr[dst_idx] = src_ptr[src_idx];
+    // /// 3. copy src data
+    // float* src_ptr = (float*)from_tensor;
+    // float* dst_ptr = (float*)to_tensor;
+    // int src_idx = mask_idx  * hidden_dim + tid;
+    // int dst_idx = valid_idx * hidden_dim + tid;
+    // dst_ptr[dst_idx] = src_ptr[src_idx];
   }
 }
 
-template <>
-__global__  
-void compress_bert_input(
-    const __half* from_tensor, const int* mask, const int* prefix_sum, 
-    __half* to_tensor, int* batch_idx, int* word_idx,
-    int batch_size , int seq_len, int hidden_dim) 
-{
-  int bid = blockIdx.y;  // batch
-  int wid = blockIdx.x;  // word 
-  int tid = threadIdx.x; // 
-  
-  /// 1. count pos for from tensor 
-  int mask_idx  = bid * seq_len + wid;
-
-  if (mask[mask_idx] > 0.5) {
-    int valid_idx = prefix_sum[mask_idx];
-
-    /// 2. wirte batch id and word id for each word
-    if (tid == 0) {
-      batch_idx[valid_idx] = bid;
-      word_idx[valid_idx]  = wid;
-    }
-    
-    /// 3. copy src data
-    half2* src_ptr = (half2*)from_tensor;
-    half2* dst_ptr = (half2*)to_tensor;
-    int src_idx = mask_idx  * hidden_dim + tid;
-    int dst_idx = valid_idx * hidden_dim + tid;
-    dst_ptr[dst_idx] = src_ptr[src_idx];
-  }
-}
-
-template<typename T>
 void compressBertInput_kernelLauncher(
-    const T* from_tensor, const int* mask, const int* prefix_sum, 
-    T* to_tensor, int* batch_idx, int* word_idx,
+    // const T* from_tensor,
+    const int* mask, const int* prefix_sum, 
+    // T* to_tensor,
+    int* batch_idx, int* word_idx,
     int batch_size , int seq_len, int hidden_dim, cudaStream_t stream) 
 {
   /// TODO : fp32
@@ -351,37 +321,13 @@ void compressBertInput_kernelLauncher(
   // dim3 block(1);
   assert(hidden_dim <= 1024);
   compress_bert_input<<<grid, block, 0, stream>>>(
-    from_tensor, mask, prefix_sum, 
-    to_tensor, batch_idx, word_idx,
+    // from_tensor,
+    mask, prefix_sum, 
+    // to_tensor,
+    batch_idx, word_idx,
     batch_size , seq_len, hidden_dim);
   return;
 }
-
-template<>
-void compressBertInput_kernelLauncher(
-    const __half* from_tensor, const int* mask, const int* prefix_sum, 
-    __half* to_tensor, int* batch_idx, int* word_idx,
-    int batch_size , int seq_len, int hidden_dim, cudaStream_t stream) 
-{
-  dim3 grid(seq_len, batch_size);
-  dim3 block(hidden_dim / 2);
-  // dim3 block(1);
-  assert(hidden_dim <= 1024 / 2);
-  compress_bert_input<<<grid, block, 0, stream>>>(
-    from_tensor, mask, prefix_sum, 
-    to_tensor, batch_idx, word_idx,
-    batch_size , seq_len, hidden_dim / 2);
-}
-
-template void compressBertInput_kernelLauncher<float>(
-  const float* from_tensor, const int* mask, const int* prefix_sum, 
-  float* to_tensor, int* batch_idx, int* word_idx,
-  int batch_size , int seq_len, int hidden_dim, cudaStream_t stream);
-
-template void compressBertInput_kernelLauncher<__half>(
-  const __half* from_tensor, const int* mask, const int* prefix_sum, 
-  __half* to_tensor, int* batch_idx, int* word_idx,
-  int batch_size , int seq_len, int hidden_dim, cudaStream_t stream);
 
 /// *********************************** fin ***********************************
 
