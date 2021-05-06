@@ -61,27 +61,40 @@ at::Tensor bt_min_mha(
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
-  Tensor prefix_sum =
-      torch::empty({input_mask.size(0) * input_mask.size(1) * 2}, options);
+  int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
+  int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
+  int64_t buf_size = input_tensor_size * 6 + attn_tensor_size;
+  at::Tensor buf_tensor = torch::empty({buf_size}, float_options);
+  at::Tensor result = torch::empty({query.numel()}, float_options);
+  Tensor tmp_int =  torch::empty({
+          input_mask.size(0) * input_mask.size(1) * 2
+          + batch_size * seq_len
+          + batch_size * seq_len
+          }, options);
+
+  int* prefix_sum_ptr = tmp_int.data_ptr<int>();
+  int* batch_idx_ptr = prefix_sum_ptr + input_mask.size(0) * input_mask.size(1) * 2;
+  int* word_idx_ptr = batch_idx_ptr + batch_size* seq_len;
+
   effectivetransformer::exclusiveScan_kernelLauncher(
-      prefix_sum.data_ptr<int>(),
+      prefix_sum_ptr,
       input_mask.data_ptr<int>(),
       input_mask.size(0) * input_mask.size(1),
       defaultStream);
 
-  Tensor batch_idx = torch::empty({batch_size, seq_len}, options);
-  Tensor word_idx = torch::empty({batch_size, seq_len}, options);
+  // Tensor batch_idx = torch::empty({batch_size, seq_len}, options);
+  // Tensor word_idx = torch::empty({batch_size, seq_len}, options);
   effectivetransformer::compressBertInput_kernelLauncher(
       input_mask.data_ptr<int>(),
-      prefix_sum.data_ptr<int>(),
-      batch_idx.data_ptr<int>(),
-      word_idx.data_ptr<int>(),
+      prefix_sum_ptr,
+      batch_idx_ptr,
+      word_idx_ptr,
       (int32_t)(batch_size),
       (int32_t)(seq_len),
       (int32_t)(embedding_dim),
       defaultStream);
   int word_num = batch_size * seq_len;
-  int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
+  int valid_word_num = tmp_int.reshape({-1})[word_num - 1].item<int>();
   int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
   if (last_mask == 1) {
     valid_word_num++;
@@ -89,12 +102,6 @@ at::Tensor bt_min_mha(
 
   at::Tensor tmp = get_buffer(query);
 
-  int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
-  int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 6 + attn_tensor_size;
-  at::Tensor buf_tensor = torch::empty({buf_size}, float_options);
-
-  out_proj_weight = out_proj_weight; //.t().contiguous();
   effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
@@ -105,8 +112,8 @@ at::Tensor bt_min_mha(
       attr_bias_K.data_ptr<float>(),
       attr_bias_V.data_ptr<float>(),
       out_proj_weight.data_ptr<float>(),
-      batch_idx.data_ptr<int>(),
-      word_idx.data_ptr<int>(),
+      batch_idx_ptr,
+      word_idx_ptr,
       attr_mask.data_ptr<float>(),
       batch_size,
       head_num,
@@ -114,11 +121,12 @@ at::Tensor bt_min_mha(
       size_per_head,
       valid_word_num,
       buf_tensor.data_ptr<float>(),
-      (float)(scaling));
-  Tensor tmp2 =
-      buf_tensor.narrow(0, input_tensor_size, query.numel()).reshape({-1});
-  tmp2 = tmp2.contiguous();
-  return wrap_buffer(std::move(tmp2), get_nested_size(query));
+      (float)(scaling),
+      result.data_ptr<float>());
+  // Tensor tmp2 =
+  //     buf_tensor.narrow(0, 0, query.numel()).reshape({-1});
+  // tmp2 = tmp2.contiguous();
+  return wrap_buffer(std::move(result), get_nested_size(query));
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {

@@ -21,5 +21,6 @@ void bt_mha(
     int64_t size_per_head_,
     int64_t valid_word_num_,
     DataType_* buf,
-    DataType_ scaler);
+    DataType_ scaler,
+    DataType_* result);
 }

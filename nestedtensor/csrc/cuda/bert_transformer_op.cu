@@ -45,7 +45,8 @@ void bt_mha(
     int64_t size_per_head_,
     int64_t valid_word_num_,
     DataType_* buf,
-    DataType_ scaler) {
+    DataType_ scaler,
+    DataType_* result) {
   at::cuda::CUDAStream stream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(stream);
   cublasHandle_t cublas_handle = at::cuda::getCurrentCUDABlasHandle();
@@ -97,9 +98,10 @@ void bt_mha(
   DataType_* transpose_dst_ =
       buf + std::max(attn_tensor_size, input_tensor_size);
   /// buffer for output matmat
-  DataType_* attr_out_buf_ = buf + 0 * input_tensor_size;
-  DataType_* attr_matmul_buf_ = buf + 1 * input_tensor_size;
-  DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
+  DataType_* attr_out_buf_ = buf + 1 * input_tensor_size;
+  // DataType_* attr_matmul_buf_ = buf + 0 * input_tensor_size;
+  DataType_* attr_matmul_buf_ = result;
+  // DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
 
   /// 4. get valid word num
   int valid_word_num = valid_word_num_;
@@ -414,5 +416,6 @@ template void bt_mha<float>(
     int64_t size_per_head_,
     int64_t valid_word_num_,
     float* buf,
-    float scaler);
+    float scaler,
+    float* result);
 } // namespace effectivetransformer
