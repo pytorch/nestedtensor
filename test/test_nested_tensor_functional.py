@@ -924,32 +924,42 @@ class TestFunctional(TestCase):
             in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
+            attr_kernel_Q = in_proj_weight[:embedding_dim, :].t().contiguous()
+            attr_kernel_K = in_proj_weight[embedding_dim:2*embedding_dim, :].t().contiguous()
+            attr_kernel_V = in_proj_weight[2*embedding_dim:, :].t().contiguous()
 
+            torch.cuda.synchronize()
             torch.cuda.synchronize()
             import time
             t0 = time.time()
-            result_nt = nestedtensor.NestedTensor(torch.ops.nestedtensor.bt_min_mha(num_heads,
-                                                                                    head_size,
-                                                                                    0.5,
-                                                                                    False,
-                                                                                    input_mask,
-                                                                                    input_nt._impl,
-                                                                                    input_nt._impl,
-                                                                                    input_nt._impl,
-                                                                                    in_proj_weight,
-                                                                                    in_proj_bias,
-                                                                                    float(
-                                                                                        head_size) ** -0.5,
-                                                                                    out_proj_weight,
-                                                                                    in_proj_bias,
-                                                                                    attr_mask))
+            for _ in range(1):
+                result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
+                                                              head_size,
+                                                              0.5,
+                                                              False,
+                                                              input_mask,
+                                                              input_nt._impl,
+                                                              input_nt._impl,
+                                                              input_nt._impl,
+                                                              attr_kernel_Q,
+                                                              attr_kernel_K,
+                                                              attr_kernel_V,
+                                                              in_proj_bias,
+                                                              float(
+                                                                  head_size) ** -0.5,
+                                                              out_proj_weight,
+                                                              in_proj_bias,
+                                                              attr_mask)
+            result_nt = nestedtensor.NestedTensor(result_nt)
+            torch.cuda.synchronize()
             torch.cuda.synchronize()
             t1 = time.time()
             a = t1 - t0
             mha = mha.cuda()
             torch.cuda.synchronize()
             t0 = time.time()
-            attn_output, _ = mha(input_nt, input_nt, input_nt)
+            for _ in range(1):
+                attn_output, _ = mha(input_nt, input_nt, input_nt)
             torch.cuda.synchronize()
             t1 = time.time()
             b = t1 - t0
@@ -958,8 +968,11 @@ class TestFunctional(TestCase):
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
+            torch.cuda.synchronize()
             t0 = time.time()
-            attn_output, _ = mha(input_batch, input_batch, input_batch)
+            for _ in range(1):
+                attn_output, _ = mha(input_batch, input_batch, input_batch)
+            torch.cuda.synchronize()
             torch.cuda.synchronize()
             t1 = time.time()
             c = t1 - t0
@@ -967,11 +980,11 @@ class TestFunctional(TestCase):
 
         # test(1, 1, 2, 2, 2)
         # test(1, 2, 2, 1, 1)
-        test(1, 4, 3, 2, 2)
-        test(2, 3, 5, 2, 4)
-        test(1, 3, 5, 4, 4)
-        test(8, 8, 50, 16, 128)
-        test(16, 256, 50, 16, 256)
+        # test(1, 4, 3, 2, 2)
+        # test(2, 3, 5, 2, 4)
+        # test(1, 3, 5, 4, 4)
+        # test(8, 8, 50, 16, 128)
+        # test(16, 256, 50, 16, 256)
         test(16, 512, 50, 16, 256)
 
 

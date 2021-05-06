@@ -117,7 +117,10 @@ def get_extensions():
         cuda_sources = set(
             os.path.join(cuda_dir, p) for p in glob.glob(os.path.join(cuda_dir, "*.cu"))
         )
-        sources = list(set(extension_sources) | set(utils_sources) | set(cuda_sources))
+        cuda_cpp_sources = set(
+            os.path.join(cuda_dir, p) for p in glob.glob(os.path.join(cuda_dir, "*.cpp"))
+        )
+        sources = list(set(extension_sources) | set(utils_sources) | set(cuda_sources) | set(cuda_cpp_sources))
     else:
         sources = list(set(extension_sources) | set(utils_sources))
 

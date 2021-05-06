@@ -101,7 +101,9 @@ at::Tensor bt_min_mha(
     at::Tensor query,
     at::Tensor key,
     at::Tensor value,
-    at::Tensor in_proj_weight,
+    at::Tensor attr_kernel_Q,
+    at::Tensor attr_kernel_K,
+    at::Tensor attr_kernel_V,
     c10::optional<at::Tensor> in_proj_bias,
     double scaling,
     at::Tensor out_proj_weight,
@@ -149,17 +151,9 @@ at::Tensor bt_min_mha(
   // std::cout << "get_buffer(query): " << get_buffer(query) << std::endl;
   // std::cout << "tmp: " << tmp.reshape({-1}) << std::endl;
   at::Tensor tmp = get_buffer(query);
-  // TODO: BLOCKED ON C++ VERSION OF TO_TENSOR_MASK
 
-  Tensor attr_kernel_Q =
-      at::slice(in_proj_weight, 0, 0, embedding_dim).t().contiguous();
-  Tensor attr_kernel_K =
-      at::slice(in_proj_weight, 0, embedding_dim, 2 * embedding_dim)
-          .t()
-          .contiguous();
-  Tensor attr_kernel_V =
-      at::slice(in_proj_weight, 0, 2 * embedding_dim).t().contiguous();
-
+  //TODO: This wouldn't work if biases were actually non-zero because
+  ///the results aren't contiguous
   Tensor attr_bias_Q = at::slice(*in_proj_bias, 0, 0, embedding_dim);
   Tensor attr_bias_K =
       at::slice(*in_proj_bias, 0, embedding_dim, 2 * embedding_dim);
@@ -231,7 +225,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
 
   m.def(
-      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor input_mask, Tensor query, Tensor key, Tensor value, Tensor in_proj_weight, Tensor? in_proj_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
+      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor input_mask, Tensor query, Tensor key, Tensor value, Tensor attr_kernel_Q, Tensor attr_kernel_K, Tensor attr_kernel_V, Tensor? in_proj_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
   m.impl("bt_min_mha", NestedTensorKey, &bt_min_mha);
 }
 
