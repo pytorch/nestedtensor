@@ -934,22 +934,39 @@ class TestFunctional(TestCase):
         test(8, 8, 50, 16, 128)
 
     def test_effective_transformer_mha(self):
+        def sequence_mask(lengths, max_len=None, is_2d=True):
+            batch_size = lengths.numel()
+            max_len = max_len or lengths.max()
+            mask = (torch.arange(0, max_len, device=lengths.device)
+                    .type_as(lengths)
+                    .repeat(batch_size, 1)
+                    .lt(lengths.unsqueeze(1)))
+            if is_2d:
+                return mask
+            else:
+                mask = mask.view(-1, 1, 1, max_len)
+                m2 = mask.transpose(2, 3)
+                return mask * m2
         def test(num_heads, batch_size, seq_len_, head_size, embedding_dim):
             assert num_heads * head_size == embedding_dim
             import random
             inputs = []
             k = 0
             seq_len = 0
+            seq_lens = []
             for _ in range(batch_size):
                 i = random.randint(1, seq_len_)
                 seq_len = max(i, seq_len)
+                seq_lens.append(i)
                 inputs.append(torch.randn(i, embedding_dim))
             input_nt = nestedtensor.nested_tensor(inputs, device=torch.device('cuda'), dtype=torch.float)
+            attr_mask = sequence_mask(torch.tensor(seq_lens), None, False).to(torch.float).cuda()
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
+
             torch.cuda.synchronize()
             import time
             t0 = time.time()
@@ -964,7 +981,8 @@ class TestFunctional(TestCase):
                                                      in_proj_bias,
                                                      1.0,
                                                      out_proj_weight,
-                                                     in_proj_bias))
+                                                     in_proj_bias,
+                                                     attr_mask))
             torch.cuda.synchronize()
             t1 = time.time()
             print("A: ", t1 - t0)
@@ -977,7 +995,7 @@ class TestFunctional(TestCase):
             print("B: ", t1 - t0)
             # print("attn_output")
             # print(attn_output)
-            self.assertEqual(result_nt, attn_output, prec=3e-5)
+            self.assertEqual(result_nt, attn_output, prec=5e-4)
 
             torch.cuda.synchronize()
             t0 = time.time()
