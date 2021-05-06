@@ -219,9 +219,10 @@ at::Tensor bt_min_mha(
   Tensor attr_bias_V = at::slice(*in_proj_bias, 0, 2 * embedding_dim);
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
-  at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
-  buf_tensor.sub_(1);
+  // int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
+  int64_t buf_size = input_tensor_size * 6 + attn_tensor_size;
+  at::Tensor buf_tensor = torch::empty({buf_size}, float_options);
+  // buf_tensor.sub_(1);
 
   out_proj_weight = out_proj_weight.t().contiguous();
   // std::cout << "input.strides(): " << input.strides() << std::endl;
