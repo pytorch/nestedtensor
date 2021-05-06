@@ -26,7 +26,7 @@ conda activate ./env
 WHEELS_FOLDER=${HOME}/project/wheels
 mkdir -p $WHEELS_FOLDER
 
-PYVSHORT=$(./env/bin/python -c "import sys; s=sys.version_info;sys.stdout.write(str(s.major));print(s.minor)")
+PYVSHORT=${PARAMETERS_PYTHON_VERSION:0:1}${PARAMETERS_PYTHON_VERSION:2:1}
 
 if [[ "$PYVSHORT" == "38" ]] ; then
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}
@@ -34,12 +34,20 @@ else
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}m
 fi
 
+# if [ "${CU_VERSION:-}" == cpu ] ; then
+#     pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
+#     pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
+#     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
+# else
+#     pip install https://download.pytorch.org/whl/nightly/cu102/torch-1.9.0.dev20210427%2Bcu102-${PYVSHORT}-linux_x86_64.whl
+#     pip install https://download.pytorch.org/whl/nightly/cu102/torchvision-0.10.0.dev20210427-${PYVSHORT}-linux_x86_64.whl
+#     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
+# fi
+
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
-    pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
+    pip3 -q install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
-    pip install https://download.pytorch.org/whl/nightly/cu102/torch-1.9.0.dev20210427%2Bcu102-${PYVSHORT}-linux_x86_64.whl
-    pip install https://download.pytorch.org/whl/nightly/cu102/torchvision-0.10.0.dev20210427-${PYVSHORT}-linux_x86_64.whl
+    pip3 -q install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cu102/torch_nightly.html
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
