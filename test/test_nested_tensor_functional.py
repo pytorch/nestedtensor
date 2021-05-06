@@ -883,56 +883,6 @@ class TestFunctional(TestCase):
         #     print(n)
         #     print(p is None)
 
-    def test_effective_transformer_mha_encoding(self):
-        def test(num_heads, batch_size, seq_len, head_size, embedding_dim):
-            assert num_heads * head_size == embedding_dim
-
-            input_batch = torch.randn(
-                batch_size, seq_len, embedding_dim)
-            input_batch = input_batch.reshape(
-                batch_size, seq_len, embedding_dim)
-            mask = torch.rand(batch_size, seq_len).mul(
-                2).to(torch.int32).float()
-            input_batch = input_batch * mask.unsqueeze(-1)
-            mask = mask.squeeze(-1)
-            input_batch = input_batch.to(torch.float).cuda()
-            mask = mask.to(torch.int32).cuda()
-            prefix_sum = torch.ops.nestedtensor.exclusive_scan(mask)
-
-            tmp = torch.empty(batch_size, seq_len,
-                              embedding_dim).to(torch.float).cuda()
-            batch_idx = torch.empty(
-                (batch_size * seq_len)).to(torch.int32).cuda()
-            word_idx = torch.empty((batch_size * seq_len)
-                                   ).to(torch.int32).cuda()
-
-            tmp, valid_word_num, last_mask = torch.ops.nestedtensor.compress_bert_input(
-                input_batch,
-                mask,
-                prefix_sum,
-                tmp,
-                batch_idx,
-                word_idx,
-                batch_size,
-                seq_len,
-                embedding_dim)
-
-            result = torch.ones(batch_size, seq_len,
-                                embedding_dim).to(torch.float).cuda()
-            torch.ops.nestedtensor.restore_bert_output(
-                result,
-                tmp,
-                batch_idx,
-                word_idx,
-                valid_word_num,
-                seq_len,
-                embedding_dim
-            )
-            self.assertEqual(result, input_batch)
-        test(2, 3, 5, 2, 4)
-        test(1, 3, 5, 4, 4)
-        test(8, 8, 50, 16, 128)
-
     def test_effective_transformer_mha(self):
         def sequence_mask(lengths, max_len=None, is_2d=True):
             batch_size = lengths.numel()
