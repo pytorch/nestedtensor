@@ -1,11 +1,4 @@
-#include <nestedtensor/csrc/creation.h>
-#include <nestedtensor/csrc/nested_tensor_impl.h>
-#include <nestedtensor/csrc/python_functions.h>
-#include <nestedtensor/csrc/utils/nested_node_functions.h>
-#include <nestedtensor/csrc/utils/python_nested_node.h>
-#include <torch/csrc/Size.h>
-#include <torch/csrc/autograd/python_variable_indexing.h>
-#include <torch/extension.h>
+#include <nestedtensor/csrc/masking.h>
 #include <chrono>
 
 using namespace torch::nested_tensor;
@@ -57,6 +50,33 @@ Tensor pad_tensor_to_shape(Tensor t, std::vector<int64_t> goal_shape) {
   Tensor new_tensor = at::constant_pad_nd(t, IntArrayRef(padd), 0);
   new_tensor = new_tensor.reshape(IntArrayRef(goal_shape));
   return new_tensor;
+}
+
+std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
+  std::vector<int64_t> result;
+  if (size_node.is_leaf()) {
+    for (const auto& size : size_node.payload()) {
+      result.push_back(size);
+    }
+    return result;
+  }
+  if (size_node.degree() > 0) {
+    std::vector<int64_t> first_size = _get_max_size(size_node.children(0));
+    for (const auto& size : first_size) {
+      result.push_back(size);
+    }
+    for (size_t i = 1; i < size_node.degree(); i++) {
+      std::vector<int64_t> ith_size = _get_max_size(size_node.children(i));
+      for (size_t j = 0; j < ith_size.size(); j++) {
+        result[j] = result[j] > ith_size[j] ? result[j] : ith_size[j];
+      }
+    }
+  }
+  return result;
+}
+
+std::vector<int64_t> get_max_size(Tensor nt) {
+  return _get_max_size(get_nested_size(nt));
 }
 
 std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
@@ -171,6 +191,20 @@ c10::optional<Tensor> nt_from_tensor_mask(
   return wrap_tensor_node(TensorNode(std::move(inner_tensor_nodes)));
 }
 
+std::tuple<Tensor, Tensor> to_tensor_mask(
+    Tensor nt,
+    c10::optional<int64_t> mask_dim) {
+  // TODO: Cover if not isinstance(nt, list) and nt.size() == (1,):
+  // TODO: Move to_tensor_mask entirely into C++
+
+  std::vector<int64_t> max_size = get_max_size(nt);
+  Tensor tensor;
+  Tensor mask;
+  std::tie(tensor, mask) = pad_nt(nt, max_size);
+  std::tie(tensor, mask) = merge_tensor_mask(tensor, mask, mask_dim);
+  return std::make_tuple(tensor, mask);
+}
+
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
       "merge_tensor_mask(Tensor tensor, Tensor mask, int? mask_dim=None) -> (Tensor, Tensor)");
@@ -182,4 +216,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
       "nt_from_tensor_mask(Tensor tensor, Tensor mask, int nested_dim) -> Tensor?");
   m.impl("nt_from_tensor_mask", TORCH_FN(nt_from_tensor_mask));
+
+  m.def("get_max_size(Tensor nt) -> int[]");
+  m.impl("get_max_size", NestedTensorKey, TORCH_FN(get_max_size));
 }

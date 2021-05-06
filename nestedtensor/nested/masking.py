@@ -49,35 +49,6 @@ def nt_from_tensor_mask(tensor, mask, nested_dim):
     assert result is not None
     return nestedtensor.NestedTensor(result.contiguous())
 
-# Get max size per each dimension from all the passed tensors.
-
-
-def get_max_size(obj, res=None):
-    if res is None:
-        res = [1]
-    if isinstance(obj, list) or isinstance(obj, tuple):
-        for o in obj:
-            res = get_max_size(o, res)
-
-    if isinstance(obj, nestedtensor.nested.nested.NestedTensor):
-        tres = get_max_size(obj.unbind())
-        while len(tres) > len(res):
-            res.append(0)
-
-        res = [max(i, j) for (i, j) in zip(res, tres)]
-
-    if isinstance(obj, torch.Tensor):
-        # scalar
-        if obj.dim() == 0 and obj.numel() == 1:
-            res = [1]
-        else:
-            while len(obj.size()) > len(res):
-                res.append(0)
-
-            res = [max(i, j) for (i, j) in zip(res, obj.size())]
-
-    return res
-
 
 def get_tensor_mask(nt, shape):
     return torch.ops.nestedtensor.pad_nt(nt, shape)
@@ -101,7 +72,7 @@ def to_tensor_mask(nt, mask_dim):
             True) if mask_dim == 0 or mask_dim == None else torch.tensor([True])
         return res_scalar, mask
 
-    max_size = get_max_size(nt)
+    max_size = torch.ops.nestedtensor.get_max_size(nt)
     res_tensor, res_mask = get_tensor_mask(nt, max_size)
     tensor_mask_tuple = merge_tensor_mask(
         TensorMask(res_tensor, res_mask), mask_dim)
