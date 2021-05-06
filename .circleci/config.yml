@@ -62,88 +62,10 @@ binary_common: &binary_common
     CU_VERSION: << parameters.cu_version >>
 
 jobs:
-
-  binary_linux_wheel:
-    <<: *binary_common
-    docker:
-      - image: << parameters.wheel_docker_image >>
-    resource_class: gpu.medium
-    steps:
-      - checkout_merge
-      - run: packaging/build_wheel.sh
-      - store_artifacts:
-          path: dist
-      - persist_to_workspace:
-          root: dist
-          paths:
-            - "*"
-
-  binary_linux_conda:
-    <<: *binary_common
-    docker:
-      - image: "pytorch/conda-cuda"
-    resource_class: gpu.medium
-    steps:
-      - checkout_merge
-      - run: packaging/build_conda.sh
-      - store_artifacts:
-          path: /opt/conda/conda-bld/linux-64
-      - persist_to_workspace:
-          root: /opt/conda/conda-bld/linux-64
-          paths:
-            - "*"
-      - store_test_results:
-          path: build_results/
-
-  # Requires org-member context
-  binary_conda_upload:
-    docker:
-      - image: continuumio/miniconda
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - designate_upload_channel
-      - run:
-          command: |
-            # Prevent credential from leaking
-            conda install -yq anaconda-client
-            set -x
-            anaconda  -t "${CONDA_PYTORCHBOT_TOKEN}" upload ~/workspace/*.tar.bz2 -u "pytorch-${UPLOAD_CHANNEL}" --label main --no-progress --force
-  # Requires org-member context
-  binary_wheel_upload:
-    parameters:
-      subfolder:
-        description: "What whl subfolder to upload to, e.g., blank or cu100/ (trailing slash is important)"
-        type: string
-      python_version:
-        description: "Dummy param to make circleci configuration happy for matrix"
-        type: string
-    docker:
-      - image: circleci/python:3.7
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - designate_upload_channel
-      - checkout
-      - run:
-          command: |
-            pip install --user awscli
-            export PATH="$HOME/.local/bin:$PATH"
-            # Prevent credential from leaking
-            set +x
-            export AWS_ACCESS_KEY_ID="${PYTORCH_BINARY_AWS_ACCESS_KEY_ID}"
-            export AWS_SECRET_ACCESS_KEY="${PYTORCH_BINARY_AWS_SECRET_ACCESS_KEY}"
-            set -x
-            ls ~/workspace
-            for pkg in ~/workspace/*.whl; do
-                aws s3 cp "$pkg" "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/py<< parameters.python_version >>/" --acl public-read
-            done
-
-
   unittest_linux_cpu:
     <<: *binary_common
-    docker:
-      - image: "pytorch/manylinux-cuda102"
+    machine:
+      image: "ubuntu-1604:202007-01"
     resource_class: 2xlarge+
     steps:
       - checkout
@@ -158,7 +80,12 @@ jobs:
 
       - run:
           name: Setup
-          command: .circleci/unittest/linux/scripts/setup_env.sh
+          command: |
+            touch ${BASH_ENV}
+            echo "export PARAMETERS_PYTHON_VERSION=<< parameters.python_version >>" >> ${BASH_ENV}
+            cat ${BASH_ENV}
+            # For some reason circleci isn't automatically sourcing this within the builds
+            source ${BASH_ENV} && .circleci/unittest/linux/scripts/setup_env.sh
       - save_cache:
 
           key: env-v2-linux-{{ arch }}-py<< parameters.python_version >>-{{ checksum ".circleci/unittest/linux/scripts/environment.yml" }}-{{ checksum ".circleci-weekly" }}
@@ -200,9 +127,9 @@ jobs:
 
   unittest_linux_gpu:
     <<: *binary_common
-    docker:
-      - image: "pytorch/manylinux-cuda102"
-    resource_class: gpu.medium
+    machine:
+      image: "ubuntu-1604:202007-01"
+    resource_class: gpu.nvidia.medium
     environment:
       image_name: "pytorch/manylinux-cuda102"
     steps:
@@ -218,7 +145,12 @@ jobs:
 
       - run:
           name: Setup
-          command: .circleci/unittest/linux/scripts/setup_env.sh
+          command: |
+            touch ${BASH_ENV}
+            echo "export PARAMETERS_PYTHON_VERSION=<< parameters.python_version >>" >> ${BASH_ENV}
+            cat ${BASH_ENV}
+            # For some reason circleci isn't automatically sourcing this within the builds
+            source ${BASH_ENV} && .circleci/unittest/linux/scripts/setup_env.sh
       - save_cache:
 
           key: env-v2-linux-{{ arch }}-py<< parameters.python_version >>-{{ checksum ".circleci/unittest/linux/scripts/environment.yml" }}-{{ checksum ".circleci-weekly" }}
@@ -273,14 +205,3 @@ workflows:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
               cu_version: ["cu102"]
-      - binary_wheel_upload:
-          context: org-member
-          matrix:
-            parameters:
-              python_version: ["3.6", "3.7", "3.8"]
-              subfolder: ["cpu", "cu102"]
-          filters:
-            branches:
-              only: nightly
-          requires:
-            - unittest_linux_<< matrix.subfolder >>_py<< matrix.python_version >>
