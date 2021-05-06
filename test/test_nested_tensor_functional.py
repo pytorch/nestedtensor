@@ -923,10 +923,13 @@ class TestFunctional(TestCase):
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             in_proj_weight = mha.in_proj_weight.clone().cuda()
             in_proj_bias = mha.in_proj_bias.clone().cuda()
-            out_proj_weight = mha.out_proj.weight.clone().cuda()
+            out_proj_weight = mha.out_proj.weight.clone().cuda().t().contiguous()
             attr_kernel_Q = in_proj_weight[:embedding_dim, :].t().contiguous()
             attr_kernel_K = in_proj_weight[embedding_dim:2*embedding_dim, :].t().contiguous()
             attr_kernel_V = in_proj_weight[2*embedding_dim:, :].t().contiguous()
+            attr_bias_Q = in_proj_bias[:embedding_dim].contiguous()
+            attr_bias_K = in_proj_bias[embedding_dim:2*embedding_dim].contiguous()
+            attr_bias_V = in_proj_bias[2*embedding_dim:].contiguous()
 
             torch.cuda.synchronize()
             torch.cuda.synchronize()
@@ -944,7 +947,9 @@ class TestFunctional(TestCase):
                                                               attr_kernel_Q,
                                                               attr_kernel_K,
                                                               attr_kernel_V,
-                                                              in_proj_bias,
+                                                              attr_bias_Q,
+                                                              attr_bias_K,
+                                                              attr_bias_V,
                                                               float(
                                                                   head_size) ** -0.5,
                                                               out_proj_weight,
