@@ -67,7 +67,7 @@ jobs:
     <<: *binary_common
     docker:
       - image: << parameters.wheel_docker_image >>
-    resource_class: gpu.medium
+    resource_class: gpu.nvidia.small
     steps:
       - checkout_merge
       - run: packaging/build_wheel.sh
@@ -82,7 +82,7 @@ jobs:
     <<: *binary_common
     docker:
       - image: "pytorch/conda-cuda"
-    resource_class: gpu.medium
+    resource_class: gpu.nvidia.small
     steps:
       - checkout_merge
       - run: packaging/build_conda.sh
@@ -202,7 +202,7 @@ jobs:
     <<: *binary_common
     docker:
       - image: "pytorch/manylinux-cuda102"
-    resource_class: gpu.medium
+    resource_class: gpu.nvidia.small
     environment:
       image_name: "pytorch/manylinux-cuda102"
     steps:
