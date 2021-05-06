@@ -883,6 +883,7 @@ class TestFunctional(TestCase):
         #     print(n)
         #     print(p is None)
 
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_effective_transformer_mha(self):
         def sequence_mask(lengths, max_len=None, is_2d=True):
             batch_size = lengths.numel()
