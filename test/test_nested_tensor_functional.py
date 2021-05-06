@@ -983,14 +983,13 @@ class TestFunctional(TestCase):
             c = t1 - t0
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
-        # test(1, 1, 2, 2, 2)
-        # test(1, 2, 2, 1, 1)
-        # test(1, 4, 3, 2, 2)
-        # test(2, 3, 5, 2, 4)
-        # test(1, 3, 5, 4, 4)
-        # test(8, 8, 50, 16, 128)
-        # test(16, 256, 50, 16, 256)
-        test(16, 512, 50, 16, 256)
+        test(1, 1, 2, 2, 2)
+        test(1, 2, 2, 1, 1)
+        test(1, 4, 3, 2, 2)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
+        test(8, 8, 50, 16, 128)
+        test(16, 256, 50, 16, 256)
 
 
 if __name__ == "__main__":
