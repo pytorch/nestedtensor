@@ -150,6 +150,7 @@ at::Tensor bt_min_mha(
     int64_t head_dim,
     double dropout_p,
     bool training,
+    at::Tensor input_mask,
     at::Tensor query,
     at::Tensor key,
     at::Tensor value,
@@ -169,21 +170,21 @@ at::Tensor bt_min_mha(
     throw std::runtime_error("query's third dimension must be regular.");
   }
   // TODO: Add explicit check that verifies query, key and value are the same
-  Tensor input;
-  Tensor input_mask;
-  std::tie(input, input_mask) = to_tensor_mask(query, 2);
-  int64_t batch_size = input.size(0);
-  int64_t seq_len = input.size(1);
+  // Tensor input;
+  // Tensor input_mask;
+  // std::tie(input, input_mask) = to_tensor_mask(query, 2);
+  int64_t batch_size = input_mask.size(0);
+  int64_t seq_len = input_mask.size(1);
   int64_t embedding_dim = *(opt_sizes[2]);
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
   int64_t valid_word_num = 1;
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
-  input = input.to(float_options);
+  // input = input.to(float_options);
   auto options =
       torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
-  input_mask = input_mask.to(options);
+  // input_mask = input_mask.to(options);
   Tensor batch_idx = torch::empty({batch_size, seq_len}, options);
   Tensor word_idx = torch::empty({batch_size, seq_len}, options);
   Tensor prefix_sum = exclusive_scan(input_mask);
@@ -219,7 +220,7 @@ at::Tensor bt_min_mha(
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
   int64_t buf_size = input_tensor_size * 13 + attn_tensor_size;
-  at::Tensor buf_tensor = torch::zeros({buf_size}, input.options());
+  at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
   buf_tensor.sub_(1);
 
   out_proj_weight = out_proj_weight.t().contiguous();
@@ -286,7 +287,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
 
   m.def(
-      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor in_proj_weight, Tensor? in_proj_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
+      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor input_mask, Tensor query, Tensor key, Tensor value, Tensor in_proj_weight, Tensor? in_proj_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
   m.impl("bt_min_mha", NestedTensorKey, &bt_min_mha);
 }
 
