@@ -20,72 +20,6 @@ using namespace at;
 namespace torch {
 namespace nested_tensor {
 
-// Mask is of shape (batch_size, seq_len) and type int32
-// Returns prefix scan buffer of size (batch-size * seq_len * 2,)
-Tensor exclusive_scan(Tensor mask) {
-  Tensor prefix_sum_buf =
-      torch::empty({mask.size(0) * mask.size(1) * 2}, mask.options());
-  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-  at::cuda::setCurrentCUDAStream(defaultStream);
-  effectivetransformer::exclusiveScan_kernelLauncher(
-      prefix_sum_buf.data_ptr<int>(),
-      mask.data_ptr<int>(),
-      mask.size(0) * mask.size(1),
-      defaultStream);
-  return prefix_sum_buf;
-}
-
-std::tuple<int64_t, int64_t> compress_bert_input(
-    Tensor mask, // int32 - (batch_size, seq_len)
-    Tensor prefix_sum, // int32
-    Tensor batch_idx, // int32 - (batch_size, seq_len)
-    Tensor word_idx, // int32 - (batch_size, seq_len)
-    int64_t batch_size,
-    int64_t seq_len,
-    int64_t hidden_dim) {
-  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-  at::cuda::setCurrentCUDAStream(defaultStream);
-  effectivetransformer::compressBertInput_kernelLauncher(
-      mask.data_ptr<int>(),
-      prefix_sum.data_ptr<int>(),
-      batch_idx.data_ptr<int>(),
-      word_idx.data_ptr<int>(),
-      (int32_t)(batch_size),
-      (int32_t)(seq_len),
-      (int32_t)(hidden_dim),
-      defaultStream);
-  int word_num = batch_size * seq_len;
-  int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
-  int last_mask = mask.reshape({-1})[word_num - 1].item<int>();
-  if (last_mask == 1) {
-    valid_word_num++;
-  }
-  return std::make_tuple((int64_t)(valid_word_num), (int64_t)(last_mask));
-}
-
-Tensor restore_bert_output(
-    Tensor result, // float - (batch_size * num_head * seq_len * size_per_head)
-    Tensor input, // float - (batch_size, seq_len, hidden_dim)
-    Tensor batch_idx, // int32 - (batch_size, seq_len)
-    Tensor word_idx, // int32 - (batch_size, seq_len)
-    int64_t valid_word_num,
-    int64_t seq_len,
-    int64_t hidden_dim) {
-  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-  at::cuda::setCurrentCUDAStream(defaultStream);
-  result.zero_();
-  effectivetransformer::restoreBertOutput_kernelLauncher(
-      result.data_ptr<float>(),
-      input.data_ptr<float>(),
-      batch_idx.data_ptr<int>(),
-      word_idx.data_ptr<int>(),
-      (int32_t)(valid_word_num),
-      (int32_t)(seq_len),
-      (int32_t)(hidden_dim),
-      defaultStream);
-  return result;
-}
-
 at::Tensor bt_min_mha(
     int64_t num_heads,
     int64_t head_dim,
@@ -120,23 +54,39 @@ at::Tensor bt_min_mha(
   int64_t embedding_dim = *(opt_sizes[2]);
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
-  int64_t valid_word_num = 1;
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   auto options =
       torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
+  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+  at::cuda::setCurrentCUDAStream(defaultStream);
+
+  Tensor prefix_sum =
+      torch::empty({input_mask.size(0) * input_mask.size(1) * 2}, options);
+  effectivetransformer::exclusiveScan_kernelLauncher(
+      prefix_sum.data_ptr<int>(),
+      input_mask.data_ptr<int>(),
+      input_mask.size(0) * input_mask.size(1),
+      defaultStream);
+
   Tensor batch_idx = torch::empty({batch_size, seq_len}, options);
   Tensor word_idx = torch::empty({batch_size, seq_len}, options);
-  Tensor prefix_sum = exclusive_scan(input_mask);
-  int64_t last_mask;
-  std::tie(valid_word_num, last_mask) = compress_bert_input(
-      input_mask,
-      prefix_sum,
-      batch_idx,
-      word_idx,
-      batch_size,
-      seq_len,
-      embedding_dim);
+  effectivetransformer::compressBertInput_kernelLauncher(
+      input_mask.data_ptr<int>(),
+      prefix_sum.data_ptr<int>(),
+      batch_idx.data_ptr<int>(),
+      word_idx.data_ptr<int>(),
+      (int32_t)(batch_size),
+      (int32_t)(seq_len),
+      (int32_t)(embedding_dim),
+      defaultStream);
+  int word_num = batch_size * seq_len;
+  int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
+  int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
+  if (last_mask == 1) {
+    valid_word_num++;
+  }
+
   at::Tensor tmp = get_buffer(query);
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
@@ -145,16 +95,12 @@ at::Tensor bt_min_mha(
   at::Tensor buf_tensor = torch::empty({buf_size}, float_options);
 
   out_proj_weight = out_proj_weight; //.t().contiguous();
-  // std::cout << "input.strides(): " << input.strides() << std::endl;
-  // std::cout << "attr_kernel_Q.strides(): " << attr_kernel_Q.strides() <<
-  // std::endl;
   effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
       attr_kernel_K.data_ptr<float>(),
       attr_kernel_V.data_ptr<float>(),
       tmp.data_ptr<float>(),
-      // result.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
       attr_bias_K.data_ptr<float>(),
       attr_bias_V.data_ptr<float>(),
@@ -172,37 +118,10 @@ at::Tensor bt_min_mha(
   Tensor tmp2 =
       buf_tensor.narrow(0, input_tensor_size, query.numel()).reshape({-1});
   tmp2 = tmp2.contiguous();
-  // std::cout << "tmp2: " << tmp2 << std::endl;
-  // Tensor result =
-  //     torch::ones({batch_size, seq_len, embedding_dim}, float_options);
-  // restore_bert_output(
-  //     result,
-  //     tmp2,
-  //     batch_idx,
-  //     word_idx,
-  //     valid_word_num,
-  //     seq_len,
-  //     embedding_dim);
-  // Tensor result_nt = *nt_from_tensor_mask(result, input_mask, 1);
-  // return result_nt;
   return wrap_buffer(std::move(tmp2), get_nested_size(query));
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
-  m.def("exclusive_scan(Tensor input) -> Tensor");
-  m.impl("exclusive_scan", c10::DispatchKey::CUDA, &exclusive_scan);
-
-  // m.def(
-  //     "compress_bert_input(Tensor input, Tensor mask, Tensor prefix_sum,
-  //     Tensor result, Tensor batch_idx, Tensor word_idx, int batch_size, int
-  //     seq_len, int hidden_dim) -> (Tensor, int, int)");
-  // m.impl("compress_bert_input", c10::DispatchKey::CUDA,
-  // &compress_bert_input);
-
-  m.def(
-      "restore_bert_output(Tensor result, Tensor input, Tensor batch_idx, Tensor word_idx, int valid_word_num, int seq_len, int hidden_size) -> Tensor");
-  m.impl("restore_bert_output", c10::DispatchKey::CUDA, &restore_bert_output);
-
   m.def(
       "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor input_mask, Tensor query, Tensor key, Tensor value, Tensor attr_kernel_Q, Tensor attr_kernel_K, Tensor attr_kernel_V, Tensor attr_bias_Q, Tensor attr_bias_K, Tensor attr_bias_V, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
   m.impl("bt_min_mha", NestedTensorKey, &bt_min_mha);
