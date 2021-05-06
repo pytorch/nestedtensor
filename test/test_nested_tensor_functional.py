@@ -967,6 +967,9 @@ class TestFunctional(TestCase):
             in_proj_bias = mha.in_proj_bias.clone().cuda()
             out_proj_weight = mha.out_proj.weight.clone().cuda()
 
+            # print("input_nt")
+            # print(input_nt)
+
             torch.cuda.synchronize()
             import time
             t0 = time.time()
@@ -979,7 +982,7 @@ class TestFunctional(TestCase):
                                                      input_nt._impl,
                                                      in_proj_weight,
                                                      in_proj_bias,
-                                                     1.0,
+                                                     float(head_size) ** -0.5,
                                                      out_proj_weight,
                                                      in_proj_bias,
                                                      attr_mask))
@@ -995,7 +998,7 @@ class TestFunctional(TestCase):
             print("B: ", t1 - t0)
             # print("attn_output")
             # print(attn_output)
-            self.assertEqual(result_nt, attn_output, prec=5e-4)
+            self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
             t0 = time.time()

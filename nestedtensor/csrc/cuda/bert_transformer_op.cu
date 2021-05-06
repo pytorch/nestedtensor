@@ -44,7 +44,8 @@ void bt_mha(
     int64_t seq_len_,
     int64_t size_per_head_,
     int64_t valid_word_num_,
-    DataType_* buf) {
+    DataType_* buf,
+    DataType_ scaler) {
   at::cuda::CUDAStream stream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(stream);
   cublasHandle_t cublas_handle = at::cuda::getCurrentCUDABlasHandle();
@@ -243,7 +244,8 @@ void bt_mha(
   // stream.synchronize();
 
     // DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
-    DataType_ scaler = 1;
+    // DataType_ scaler = 1;
+    // DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
   // std::cout << "018" << std::endl;
   // stream.synchronize();
      cuda::softmax_kernel_kernelLauncher<DataType_>(
@@ -411,5 +413,6 @@ template void bt_mha<float>(
     int64_t seq_len_,
     int64_t size_per_head_,
     int64_t valid_word_num_,
-    float* buf);
+    float* buf,
+    float scaler);
 } // namespace effectivetransformer

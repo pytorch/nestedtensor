@@ -43,7 +43,7 @@ at::Tensor min_mha(
   }
   int64_t edim = *(opt_sizes[2]);
 
-  scaling = 1.0;
+  // scaling = 1.0;
   at::Tensor q, k, v;
   q = at::addmm(
       at::slice(*in_proj_bias, 0, 0, edim),
@@ -193,7 +193,7 @@ at::Tensor bt_min_mha(
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   input = input.to(float_options);
-  Tensor tmp =
+  Tensor tmptmp =
       torch::empty({batch_size, seq_len, embedding_dim}, float_options);
   auto options =
       torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
@@ -202,16 +202,19 @@ at::Tensor bt_min_mha(
   Tensor word_idx = torch::empty({batch_size, seq_len}, options);
   Tensor prefix_sum = exclusive_scan(input_mask);
   int64_t last_mask;
-  std::tie(tmp, valid_word_num, last_mask) = compress_bert_input(
+  std::tie(tmptmp, valid_word_num, last_mask) = compress_bert_input(
       input,
       input_mask,
       prefix_sum,
-      tmp,
+      tmptmp,
       batch_idx,
       word_idx,
       batch_size,
       seq_len,
       embedding_dim);
+  // std::cout << "get_buffer(query): " << get_buffer(query) << std::endl;
+  // std::cout << "tmp: " << tmp.reshape({-1}) << std::endl;
+  at::Tensor tmp = get_buffer(query);
   // TODO: BLOCKED ON C++ VERSION OF TO_TENSOR_MASK
 
   Tensor attr_kernel_Q =
@@ -256,7 +259,8 @@ at::Tensor bt_min_mha(
       seq_len,
       size_per_head,
       valid_word_num,
-      buf_tensor.data_ptr<float>());
+      buf_tensor.data_ptr<float>(),
+      (float)(scaling));
   Tensor tmp2 = buf_tensor.narrow(0, input_tensor_size, input_tensor_size)
                     .reshape_as(input);
   Tensor result =
