@@ -49,6 +49,7 @@ at::Tensor bt_min_mha(
   //   throw std::runtime_error("query's third dimension must be regular.");
   // }
   // TODO: Add explicit check that verifies query, key and value are the same
+  // auto start = std::chrono::system_clock::now();
   int64_t batch_size = input_mask.size(0);
   int64_t seq_len = input_mask.size(1);
   int64_t embedding_dim = head_dim * num_heads; //*(opt_sizes[2]);
@@ -119,6 +120,10 @@ at::Tensor bt_min_mha(
   // Tensor tmp2 =
   //     buf_tensor.narrow(0, 0, query.numel()).reshape({-1});
   // tmp2 = tmp2.contiguous();
+  // return result;
+  // auto end = std::chrono::system_clock::now();
+  // auto elapsed = end - start;
+  // std::cout << "elapsed.count(): " << elapsed.count() << '\n';
   return wrap_buffer(std::move(result), get_nested_size(query));
 }
 

@@ -935,7 +935,7 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             torch.cuda.synchronize()
             t0 = time.time()
-            for _ in range(5):
+            for _ in range(1):
                 result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                               head_size,
                                                               0.5,
@@ -973,10 +973,9 @@ class TestFunctional(TestCase):
             ## self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
-            time.sleep(5)
             torch.cuda.synchronize()
             t0 = time.time()
-            for _ in range(5):
+            for _ in range(1):
                 attn_output, _ = mha(input_batch, input_batch, input_batch)
             torch.cuda.synchronize()
             t1 = time.time()
@@ -986,14 +985,14 @@ class TestFunctional(TestCase):
 
         # test(1, 1, 2, 2, 2)
         # test(1, 2, 2, 1, 1)
-        # test(1, 4, 3, 2, 2)
-        # test(2, 3, 5, 2, 4)
-        # test(1, 3, 5, 4, 4)
-        # test(8, 8, 50, 16, 128)
-        # test(16, 64, 50, 16, 256)
-        # test(16, 128, 50, 16, 256)
+        test(1, 4, 3, 2, 2)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
+        test(8, 8, 50, 16, 128)
+        test(16, 64, 50, 16, 256)
+        test(16, 128, 50, 16, 256)
         test(16, 256, 50, 16, 256)
-        # test(16, 256, 50, 64, 1024)
+        test(16, 256, 50, 64, 1024)
 
 
 if __name__ == "__main__":
