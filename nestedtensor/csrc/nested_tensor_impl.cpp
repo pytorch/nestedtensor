@@ -91,12 +91,6 @@ std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   return std::vector<int64_t>(stride);
 }
 
-SizeNode infer_nested_size(const TensorNode& _structure) {
-  return map(
-      [](at::Tensor tensor) { return tensor.sizes().vec(); },
-      _structure);
-}
-
 TensorNode _unbind_tensors(TensorNode structure) {
   std::vector<TensorNode> result_nodes;
   if (structure.is_leaf()) {
@@ -111,7 +105,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensorImpl::NestedTensorImpl(TensorNode structure)
+NestedTensorImpl::NestedTensorImpl(PackedStorage storage)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey}),
           get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
