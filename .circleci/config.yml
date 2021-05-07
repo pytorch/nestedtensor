@@ -66,18 +66,9 @@ jobs:
     <<: *binary_common
     machine:
       image: "ubuntu-1604:202007-01"
-    resource_class: 2xlarge+
+    resource_class: xlarge
     steps:
       - checkout
-      - run:
-          name: Generate cache key
-          # This will refresh cache on Sundays, nightly build should generate new cache.
-          command: echo "$(date +"%Y-%U")" > .circleci-weekly
-      - restore_cache:
-
-          keys:
-            - env-v2-linux-{{ arch }}-py<< parameters.python_version >>-{{ checksum ".circleci/unittest/linux/scripts/environment.yml" }}-{{ checksum ".circleci-weekly" }}
-
       - run:
           name: Setup
           command: |
@@ -86,13 +77,6 @@ jobs:
             cat ${BASH_ENV}
             # For some reason circleci isn't automatically sourcing this within the builds
             source ${BASH_ENV} && .circleci/unittest/linux/scripts/setup_env.sh
-      - save_cache:
-
-          key: env-v2-linux-{{ arch }}-py<< parameters.python_version >>-{{ checksum ".circleci/unittest/linux/scripts/environment.yml" }}-{{ checksum ".circleci-weekly" }}
-
-          paths:
-            - conda
-            - env
       - run:
           # Done so that they have static versions
           name: Specify nightly versions
@@ -135,15 +119,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Generate cache key
-          # This will refresh cache on Sundays, nightly build should generate new cache.
-          command: echo "$(date +"%Y-%U")" > .circleci-weekly
-      - restore_cache:
-
-          keys:
-            - env-v2-linux-{{ arch }}-py<< parameters.python_version >>-{{ checksum ".circleci/unittest/linux/scripts/environment.yml" }}-{{ checksum ".circleci-weekly" }}
-
-      - run:
           name: Setup
           command: |
             touch ${BASH_ENV}
@@ -151,13 +126,6 @@ jobs:
             cat ${BASH_ENV}
             # For some reason circleci isn't automatically sourcing this within the builds
             source ${BASH_ENV} && .circleci/unittest/linux/scripts/setup_env.sh
-      - save_cache:
-
-          key: env-v2-linux-{{ arch }}-py<< parameters.python_version >>-{{ checksum ".circleci/unittest/linux/scripts/environment.yml" }}-{{ checksum ".circleci-weekly" }}
-
-          paths:
-            - conda
-            - env
       - run:
           # Done so that they have static versions
           name: Specify nightly versions

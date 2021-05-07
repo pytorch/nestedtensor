@@ -116,7 +116,7 @@ py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
     if (s.height() == 1) {
       std::vector<int64_t> result;
       for (const auto& child : s.unbind()) {
-        result.push_back(child.payload().get(dim - 1));
+        result.push_back(child.payload()[dim - 1]);
       }
       return py::tuple(py::cast(result));
     }
@@ -217,10 +217,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     if (!index_) {
       return py::cast(THPPythonNode(
           map(
-              [](c10::List<int64_t> e) {
-                std::vector<int64_t> e_vec = e.vec();
+              [](std::vector<int64_t> e) {
                 return py::reinterpret_steal<py::object>(
-                    THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
+                    THPSize_NewFromSizes(e.size(), e.data()));
               },
               nt->nested_size()),
           "NestedSize"));
@@ -238,10 +237,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     SizeNode nested_size = deserialize_size_node(out);
     return py::cast(THPPythonNode(
         map(
-            [](c10::List<int64_t> e) {
-              std::vector<int64_t> e_vec = e.vec();
+            [](std::vector<int64_t> e) {
               return py::reinterpret_steal<py::object>(
-                  THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
+                  THPSize_NewFromSizes(e.size(), e.data()));
             },
             nested_size),
         "NestedSize"));
@@ -251,8 +249,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     auto nt = get_nested_tensor_impl(self);
     if (!index_) {
       return py::cast(THPPythonNode(
-          map([](c10::List<int64_t> e)
-                  -> py::object { return py::tuple(py::cast(e.vec())); },
+          map([](std::vector<int64_t> e)
+                  -> py::object { return py::tuple(py::cast(e)); },
               nt->nested_stride()),
           "NestedStride"));
     }

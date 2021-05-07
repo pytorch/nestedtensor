@@ -20,8 +20,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> NestedTensor_embedding_bag(
   at::Tensor indices = get_buffer(indices_).contiguous();
   int64_t emb_dim = weight.size(1);
   SizeNode output_size = map(
-      [&emb_dim](c10::List<int64_t> inp) {
-        c10::List<int64_t> new_size;
+      [&emb_dim](std::vector<int64_t> inp) {
+        std::vector<int64_t> new_size;
         new_size.push_back(emb_dim);
         return new_size;
       },

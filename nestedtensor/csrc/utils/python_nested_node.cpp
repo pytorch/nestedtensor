@@ -72,7 +72,7 @@ void register_python_nested_node(py::module m) {
         if (!shape_matches(a, b)) {
           return false;
         }
-        auto fn = [](c10::List<int64_t> a, c10::List<int64_t> b) {
+        auto fn = [](std::vector<int64_t> a, std::vector<int64_t> b) {
           for (size_t i = 0; i < a.size(); i++) {
             if (a[i] != b[i]) {
               return false;

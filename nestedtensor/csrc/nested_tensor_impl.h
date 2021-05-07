@@ -16,7 +16,7 @@ namespace nested_tensor {
 
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
-using SizeNode = NestedNode<c10::List<int64_t>>;
+using SizeNode = NestedNode<std::vector<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 
 } // namespace nested_tensor
@@ -110,7 +110,7 @@ inline bool nested_size_matches(A nested_size_a, B nested_size_b) {
     return false;
   }
   std::vector<bool> bools = flatten(map(
-      [](c10::List<int64_t> a, c10::List<int64_t> b) -> bool {
+      [](std::vector<int64_t> a, std::vector<int64_t> b) -> bool {
         if (a.size() != b.size()) {
           return false;
         }
@@ -210,12 +210,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
   // lists of numbers or a list of empty lists.
   SizeNode nested_size() const {
     return map(
-        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+        [](at::Tensor tensor) { return tensor.sizes().vec(); },
         get_structure());
   }
   SizeNode nested_stride() const {
     return map(
-        [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
+        [](at::Tensor tensor) { return tensor.strides().vec(); },
         get_structure());
   }
 
