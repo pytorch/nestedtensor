@@ -149,10 +149,10 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(TensorNode structure);
+  explicit NestedTensorImpl(PackedStorage storage);
 
   int64_t dim() const override {
-    return _first_variable.dim() + nested_dim();
+    return _storage.dim();
   }
   int64_t numel() const override {
     auto fn = [](at::Tensor leaf, int64_t input) {
@@ -171,22 +171,16 @@ struct NestedTensorImpl : public c10::TensorImpl {
         get_structure().buffer().has_value();
   }
   TensorNode& get_structure() {
-    return _structure;
+    return _storage.get_structure();
   }
   const TensorNode& get_structure() const {
-    return _structure;
+    return _storage.get_structure();
   }
-  c10::intrusive_ptr<c10::TensorImpl> shallow_copy_and_detach(
-      const c10::VariableVersion& version_counter,
-      bool allow_tensor_metadata_change) const override;
-
-  // TODO:
-  void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
   int64_t nested_dim() const {
     return get_structure().height();
   }
   bool is_pinned() const {
-    return _first_variable.is_pinned();
+    return _storage.is_pinned();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //
@@ -225,15 +219,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
     TORCH_CHECK(
         false,
         "Internal error: NestedTensorImpl doesn't support sizes. Please file an issue on https://github.com/pytorch/nestedtensor");
-    return IntArrayRef(_sizes);
+    std::vector<int64_t> sizes;
+    return IntArrayRef(sizes);
   }
   IntArrayRef strides() const override;
 
  private:
-  TensorNode _structure;
-  at::Tensor _first_variable;
-  SizeNode _nested_size;
-  std::vector<int64_t> _sizes;
+  PackedStorage _storage;
 };
 
 int64_t nt_size(Tensor tensor, int64_t dim);
@@ -241,8 +233,6 @@ int64_t nt_size(Tensor tensor, int64_t dim);
 Tensor NestedTensor_to_nested_tensor(
     at::Tensor input,
     c10::optional<int64_t> dim__);
-
-std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
 
 inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   if (!is_nested_tensor_impl(tensor)) {
