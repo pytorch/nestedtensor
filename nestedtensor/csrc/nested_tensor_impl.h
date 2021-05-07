@@ -203,15 +203,11 @@ struct NestedTensorImpl : public c10::TensorImpl {
   //
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
-  SizeNode nested_size() const {
-    return map(
-        [](at::Tensor tensor) { return tensor.sizes().vec(); },
-        get_structure());
+  const SizeNode nested_size() const {
+    return _storage.nested_size();
   }
-  SizeNode nested_stride() const {
-    return map(
-        [](at::Tensor tensor) { return tensor.strides().vec(); },
-        get_structure());
+  const SizeNode nested_stride() const {
+    return _storage.nested_stride();
   }
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;

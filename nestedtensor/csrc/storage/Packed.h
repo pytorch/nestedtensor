@@ -44,6 +44,9 @@ struct PackedStorage {
     _nested_size(map(
         [](at::Tensor tensor) { return tensor.sizes().vec(); },
         _structure)),
+    _nested_stride(map(
+        [](at::Tensor tensor) { return tensor.strides().vec(); },
+        _structure)),
     _opt_sizes(construct_size(_nested_size)),
     _data_type(get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
                               : at::ones({}).dtype()),
@@ -76,9 +79,17 @@ struct PackedStorage {
   bool is_pinned() const {
     return _is_pinned;
   }
+  const SizeNode nested_size() const {
+    return _nested_size;
+  }
+  const SizeNode nested_stride() const {
+    return _nested_stride;
+  }
+
 private:
   TensorNode _structure;
   const SizeNode _nested_size;
+  const SizeNode _nested_stride;
   const std::vector<c10::optional<int64_t>> _opt_sizes;
   const caffe2::TypeMeta _data_type;
   Device _device;
