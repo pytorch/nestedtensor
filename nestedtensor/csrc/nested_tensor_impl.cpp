@@ -12,7 +12,7 @@ namespace at {
 using namespace torch::nested_tensor;
 using namespace c10;
 
-int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
+int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.
@@ -75,11 +75,11 @@ void NestedTensorImpl::shallow_copy_from(
 
 std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
   return construct_size(
-      map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+      map([](at::Tensor tensor) { return tensor.sizes().vec(); },
           get_structure()));
 }
 
-c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
+std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   std::vector<int64_t> stride(size.size());
   int64_t p = 1;
   size_t p_i = size.size();
@@ -88,12 +88,12 @@ c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
     stride[p_i] = p;
     p *= size[p_i];
   }
-  return c10::List<int64_t>(stride);
+  return std::vector<int64_t>(stride);
 }
 
 SizeNode infer_nested_size(const TensorNode& _structure) {
   return map(
-      [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+      [](at::Tensor tensor) { return tensor.sizes().vec(); },
       _structure);
 }
 
@@ -123,7 +123,7 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                      : at::ones({})),
       _nested_size(map(
-          [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+          [](at::Tensor tensor) { return tensor.sizes().vec(); },
           _structure)) {
   TORCH_CHECK(
       !_structure.is_leaf(),

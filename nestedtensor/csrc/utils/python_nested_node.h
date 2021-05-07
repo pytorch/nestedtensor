@@ -91,7 +91,7 @@ struct THPNestedNode<py::object> {
   std::string _name;
 };
 
-using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
+using THPSizeNode = THPNestedNode<std::vector<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
 using THPTensorNode = THPNestedNode<at::Tensor>;
 using THPIValueNode = THPNestedNode<c10::IValue>;
