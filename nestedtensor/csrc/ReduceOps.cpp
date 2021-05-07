@@ -268,8 +268,8 @@ Tensor NestedTensor_var_dim(
   auto nested_size = get_nested_size(self);
   int64_t nested_dim = get_nested_tensor_impl(self)->nested_dim();
   auto new_nested_size = map(
-      [&tensordims](c10::List<int64_t> sizes) {
-        c10::List<int64_t> new_sizes;
+      [&tensordims](std::vector<int64_t> sizes) {
+        std::vector<int64_t> new_sizes;
         for (size_t i = 0; i < sizes.size(); i++) {
           if (std::find(tensordims.begin(), tensordims.end(), i) ==
               tensordims.end()) {

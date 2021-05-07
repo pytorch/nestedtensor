@@ -133,7 +133,7 @@ struct NestedNode<at::Tensor> {
 
 // TODO: Should have specialized construction check that all payloads are of
 // same size for SizeNode
-using SizeNode = NestedNode<c10::List<int64_t>>;
+using SizeNode = NestedNode<std::vector<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
@@ -429,7 +429,7 @@ static inline void apply(F&& fn, NestedNode<A>... nested_node) {
 
 namespace impl {
 
-inline c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
+inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   std::vector<int64_t> stride(size.size());
   int64_t p = 1;
   size_t p_i = size.size();
@@ -438,10 +438,10 @@ inline c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
     stride[p_i] = p;
     p *= size[p_i];
   }
-  return c10::List<int64_t>(stride);
+  return std::vector<int64_t>(stride);
 }
 
-inline int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
+inline int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.
@@ -456,8 +456,8 @@ inline TensorNode build_structure(
     const SizeNode& nested_size,
     const SizeNode& nested_stride) {
   std::vector<int64_t> split_sizes = flatten(
-      map([](c10::List<int64_t> a,
-             c10::List<int64_t> b) { return num_memory(a, b); },
+      map([](std::vector<int64_t> a,
+             std::vector<int64_t> b) { return num_memory(a, b); },
           nested_size,
           nested_stride));
   std::vector<int64_t> nonzero_split_sizes;
@@ -484,12 +484,12 @@ inline TensorNode build_structure(
   TensorNode tmp = unflatten(nested_size, std::move(buffers));
   TensorNode result = map(
       [](at::Tensor buffer,
-         c10::List<int64_t> size,
-         c10::List<int64_t> stride) {
+         std::vector<int64_t> size,
+         std::vector<int64_t> stride) {
         return at::as_strided(
             buffer,
-            c10::IntArrayRef(size.vec()),
-            c10::IntArrayRef(stride.vec()));
+            c10::IntArrayRef(size),
+            c10::IntArrayRef(stride));
       },
       tmp,
       nested_size,
@@ -503,7 +503,7 @@ inline TensorNode build_structure(
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
   SizeNode nested_stride = map(
-      [](c10::List<int64_t> size) { return _cont_stride(size); }, nested_size);
+      [](std::vector<int64_t> size) { return _cont_stride(size); }, nested_size);
   return build_structure(std::move(buffer), nested_size, nested_stride);
 }
 } // namespace impl
@@ -512,7 +512,7 @@ inline TensorNode pack(TensorNode&& structure) {
   TensorNode flat_structure =
       map([](at::Tensor tensor) { return tensor.reshape({-1}); }, structure);
   auto nested_size =
-      map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+      map([](at::Tensor tensor) { return tensor.sizes().vec(); },
           structure);
   auto tensors = flatten(flat_structure);
   if (tensors.size() == 0) {
@@ -585,7 +585,7 @@ inline std::tuple<size_t, SizeNode> _deserialize_size_node(
     size_t index) {
   if (out[index] == 1) {
     index++;
-    c10::List<int64_t> payload;
+    std::vector<int64_t> payload;
     int64_t payload_size = out[index];
     index++;
     for (int64_t i = 0; i < payload_size; i++) {
