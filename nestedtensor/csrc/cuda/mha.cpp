@@ -44,14 +44,14 @@ at::Tensor bt_min_mha(
   TORCH_CHECK(key.dim() == 3, "key needs to be 3 dim.");
   TORCH_CHECK(value.dim() == 3, "value needs to be 3 dim.");
   // TORCH_CHECK(in_proj_bias, "Input projection bias needs to be defined.");
-  auto opt_sizes = get_opt_sizes(query);
-  if (!opt_sizes[2]) {
-    throw std::runtime_error("query's third dimension must be regular.");
-  }
+  // auto opt_sizes = get_opt_sizes(query);
+  // if (!opt_sizes[2]) {
+  //   throw std::runtime_error("query's third dimension must be regular.");
+  // }
   // TODO: Add explicit check that verifies query, key and value are the same
   int64_t batch_size = input_mask.size(0);
   int64_t seq_len = input_mask.size(1);
-  int64_t embedding_dim = *(opt_sizes[2]);
+  int64_t embedding_dim = head_dim * num_heads; //*(opt_sizes[2]);
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
   auto float_options =
@@ -63,9 +63,8 @@ at::Tensor bt_min_mha(
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 6 + attn_tensor_size;
+  int64_t buf_size = input_tensor_size * 3 + attn_tensor_size;
   at::Tensor buf_tensor = torch::empty({buf_size}, float_options);
-  at::Tensor result = torch::empty({query.numel()}, float_options);
   Tensor tmp_int =  torch::empty({
           input_mask.size(0) * input_mask.size(1) * 2
           + batch_size * seq_len
@@ -75,6 +74,9 @@ at::Tensor bt_min_mha(
   int* prefix_sum_ptr = tmp_int.data_ptr<int>();
   int* batch_idx_ptr = prefix_sum_ptr + input_mask.size(0) * input_mask.size(1) * 2;
   int* word_idx_ptr = batch_idx_ptr + batch_size* seq_len;
+  int word_num = batch_size * seq_len;
+
+  at::Tensor tmp = get_buffer(query);
 
   effectivetransformer::exclusiveScan_kernelLauncher(
       prefix_sum_ptr,
@@ -82,8 +84,6 @@ at::Tensor bt_min_mha(
       input_mask.size(0) * input_mask.size(1),
       defaultStream);
 
-  // Tensor batch_idx = torch::empty({batch_size, seq_len}, options);
-  // Tensor word_idx = torch::empty({batch_size, seq_len}, options);
   effectivetransformer::compressBertInput_kernelLauncher(
       input_mask.data_ptr<int>(),
       prefix_sum_ptr,
@@ -93,16 +93,8 @@ at::Tensor bt_min_mha(
       (int32_t)(seq_len),
       (int32_t)(embedding_dim),
       defaultStream);
-  int word_num = batch_size * seq_len;
-  int valid_word_num = tmp_int.reshape({-1})[word_num - 1].item<int>();
-  int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
-  if (last_mask == 1) {
-    valid_word_num++;
-  }
 
-  at::Tensor tmp = get_buffer(query);
-
-  effectivetransformer::bt_mha(
+  Tensor result = effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
       attr_kernel_K.data_ptr<float>(),
@@ -119,10 +111,11 @@ at::Tensor bt_min_mha(
       head_num,
       seq_len,
       size_per_head,
-      valid_word_num,
       buf_tensor.data_ptr<float>(),
       (float)(scaling),
-      result.data_ptr<float>());
+      prefix_sum_ptr,
+      input_mask.data_ptr<int>(),
+      word_num);
   // Tensor tmp2 =
   //     buf_tensor.narrow(0, 0, query.numel()).reshape({-1});
   // tmp2 = tmp2.contiguous();

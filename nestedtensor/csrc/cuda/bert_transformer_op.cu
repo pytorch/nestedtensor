@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-#include <cuda_runtime.h>
-#include <nestedtensor/csrc/cuda/attention.h>
 #include <nestedtensor/csrc/cuda/bert_transformer_op.h>
-#include <nestedtensor/csrc/cuda/common.h>
-#include <nestedtensor/csrc/cuda/cuda_kernels.h>
-#include <string>
-#include <type_traits>
-#include <ATen/ATen.h>
-#include <ATen/cuda/CUDAContext.h>
 namespace effectivetransformer {
 
 template <typename DataType_>
-void bt_mha(
+at::Tensor bt_mha(
     DataType_* from_tensor,
     DataType_* attr_kernel_Q,
     DataType_* attr_kernel_K,
@@ -43,16 +35,30 @@ void bt_mha(
     int64_t head_num_,
     int64_t seq_len_,
     int64_t size_per_head_,
-    int64_t valid_word_num_,
     DataType_* buf,
     DataType_ scaler,
-    DataType_* result) {
+    int* prefix_sum_ptr,
+    int* input_mask_ptr,
+    int word_num) {
   at::cuda::CUDAStream stream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(stream);
   cublasHandle_t cublas_handle = at::cuda::getCurrentCUDABlasHandle();
-
-
   check_cuda_error(cublasSetStream(cublas_handle, stream));
+
+  /// 4. get valid word num
+  // int valid_word_num = valid_word_num_;
+  int valid_word_num;
+  check_cuda_error(cudaMemcpyAsync(
+    &valid_word_num,
+    prefix_sum_ptr + word_num - 1, sizeof(int), cudaMemcpyDeviceToHost, stream));
+  int last_mask;
+  check_cuda_error(cudaMemcpyAsync(
+    &last_mask,
+    input_mask_ptr + word_num - 1, sizeof(int), cudaMemcpyDeviceToHost, stream));
+  if (last_mask == 1) {
+    valid_word_num++;
+  }
+
 
   /// 1. Set compute type
   cudaDataType_t computeType, AType, BType, CType;
@@ -87,12 +93,9 @@ void bt_mha(
   /// 3. assign intermediate pointer
   /// DataType_* buf = buf_tensor.data_ptr<DataType_>();
   /// buffer for qkv
-  DataType_* query_buf_ = buf + 0 * input_tensor_size;
-  DataType_* key_buf_ = buf + 1 * input_tensor_size;
-  DataType_* value_buf_ = buf + 2 * input_tensor_size;
-  DataType_* query_ = buf + 3 * input_tensor_size;
-  DataType_* key_ = buf + 4 * input_tensor_size;
-  DataType_* value_ = buf + 5 * input_tensor_size;
+  DataType_* query_ = buf + 0 * input_tensor_size;
+  DataType_* key_ = buf + 1 * input_tensor_size;
+  DataType_* value_ = buf + 2 * input_tensor_size;
   /// buffer for self attention
   DataType_* qk_buf_ = buf + 0 * input_tensor_size;
   DataType_* transpose_dst_ =
@@ -100,14 +103,21 @@ void bt_mha(
   /// buffer for output matmat
   DataType_* attr_out_buf_ = buf + 1 * input_tensor_size;
   // DataType_* attr_matmul_buf_ = buf + 0 * input_tensor_size;
-  DataType_* attr_matmul_buf_ = result;
+  auto float_options =
+      torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
+  int64_t result_numel = valid_word_num * head_num_ * size_per_head_;
+  at::Tensor result = torch::empty({result_numel}, float_options);
+  DataType_* attr_matmul_buf_ = result.data_ptr<float>();
   // DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
-
-  /// 4. get valid word num
-  int valid_word_num = valid_word_num_;
 
   // 5. input -> Q K V
   {
+    at::Tensor query_buf = torch::empty({result_numel}, float_options);
+    at::Tensor key_buf = torch::empty({result_numel}, float_options);
+    at::Tensor value_buf = torch::empty({result_numel}, float_options);
+    DataType_* query_buf_ = query_buf.data_ptr<DataType_>();
+    DataType_* key_buf_ = key_buf.data_ptr<DataType_>();
+    DataType_* value_buf_ = value_buf.data_ptr<DataType_>();
     int m = valid_word_num;
     int k = head_num * size_per_head;
     int n = k;
@@ -326,6 +336,7 @@ void bt_mha(
          static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
   // stream.synchronize();
    }
+   return result;
   //
   //    add_bias_input_layernorm_kernelLauncher<DataType_>(
   //        attr_matmul_buf_,
@@ -397,7 +408,7 @@ void bt_mha(
   //  }
 };
 
-template void bt_mha<float>(
+template at::Tensor bt_mha<float>(
     float* from_tensor,
     float* attr_kernel_Q,
     float* attr_kernel_K,
@@ -414,8 +425,9 @@ template void bt_mha<float>(
     int64_t head_num_,
     int64_t seq_len_,
     int64_t size_per_head_,
-    int64_t valid_word_num_,
     float* buf,
     float scaler,
-    float* result);
+    int* prefix_sum_ptr,
+    int* input_mask_ptr,
+    int word_num);
 } // namespace effectivetransformer

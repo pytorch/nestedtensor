@@ -935,7 +935,7 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             torch.cuda.synchronize()
             t0 = time.time()
-            for _ in range(1):
+            for _ in range(5):
                 result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                               head_size,
                                                               0.5,
@@ -957,7 +957,6 @@ class TestFunctional(TestCase):
                                                               attr_mask)
             result_nt = nestedtensor.NestedTensor(result_nt)
             torch.cuda.synchronize()
-            return
             t1 = time.time()
             a = t1 - t0
 
@@ -977,7 +976,7 @@ class TestFunctional(TestCase):
             time.sleep(5)
             torch.cuda.synchronize()
             t0 = time.time()
-            for _ in range(1):
+            for _ in range(5):
                 attn_output, _ = mha(input_batch, input_batch, input_batch)
             torch.cuda.synchronize()
             t1 = time.time()
@@ -993,8 +992,8 @@ class TestFunctional(TestCase):
         # test(8, 8, 50, 16, 128)
         # test(16, 64, 50, 16, 256)
         # test(16, 128, 50, 16, 256)
-        # test(16, 256, 50, 16, 256)
-        test(16, 256, 50, 64, 1024)
+        test(16, 256, 50, 16, 256)
+        # test(16, 256, 50, 64, 1024)
 
 
 if __name__ == "__main__":
