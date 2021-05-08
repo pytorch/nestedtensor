@@ -4,8 +4,8 @@
 namespace torch {
 namespace nested_tensor {
 
-struct PackedStorage {
-  explicit PackedStorage(TensorNode&& structure) :
+struct ListStorage {
+  explicit ListStorage(TensorNode&& structure) :
     _structure(structure),
     _nested_size(map(
         [](at::Tensor tensor) { return tensor.sizes().vec(); },

@@ -7,7 +7,7 @@
 #include <torch/csrc/autograd/autograd.h>
 #include <torch/extension.h>
 #include <torch/library.h>
-#include <nestedtensor/csrc/storage/Packed.h>
+#include <nestedtensor/csrc/storage/Storage.h>
 
 // #define TRACEPACKED 1
 // #define USEPACKED 1
