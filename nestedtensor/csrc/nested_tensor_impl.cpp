@@ -22,12 +22,6 @@ int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
   return size[0] * stride[0];
 }
 
-std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
-  return construct_size(
-      map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-          get_structure()));
-}
-
 std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   std::vector<int64_t> stride(size.size());
   int64_t p = 1;

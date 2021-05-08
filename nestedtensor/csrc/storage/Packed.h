@@ -85,6 +85,9 @@ struct PackedStorage {
   const SizeNode nested_stride() const {
     return _nested_stride;
   }
+  const std::vector<c10::optional<int64_t>> opt_sizes() const {
+    return _opt_sizes;
+  }
 
 private:
   TensorNode _structure;

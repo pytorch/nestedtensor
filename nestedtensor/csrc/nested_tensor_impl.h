@@ -209,8 +209,9 @@ struct NestedTensorImpl : public c10::TensorImpl {
   const SizeNode nested_stride() const {
     return _storage.nested_stride();
   }
-
-  std::vector<c10::optional<int64_t>> opt_sizes() const;
+  const std::vector<c10::optional<int64_t>> opt_sizes() const {
+    return _storage.opt_sizes();
+  }
   IntArrayRef sizes() const override {
     TORCH_CHECK(
         false,
@@ -250,25 +251,10 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-template <class A>
-static inline bool is_packed(A tensor) {
-  return is_nested_tensor_impl(tensor) &&
-      get_nested_tensor_structure(tensor).buffer().has_value();
-}
-
-template <class A, class B>
-static inline bool is_packed(A first, B other) {
-  return is_packed(first) && is_packed(other);
-}
-
-template <class A, class B, class... C>
-static inline bool is_packed(A first, B second, C... other) {
-  return is_packed(first, second) && is_packed(other...);
-}
-
 static inline at::Tensor get_buffer(const at::Tensor& tensor) {
-  TORCH_CHECK(is_packed(tensor), "Given Tensor doesn't have buffer.");
-  return *(get_nested_tensor_structure(tensor).buffer());
+  c10::optional<at::Tensor> opt_buffer = get_nested_tensor_structure(tensor).buffer();
+  TORCH_CHECK(opt_buffer, "Given Tensor doesn't have buffer.");
+  return *opt_buffer;
 }
 
 static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
