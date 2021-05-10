@@ -26,10 +26,12 @@ struct ListStorage {
                 : _structure.height()),
         _is_pinned(
             get_first_leaf(structure) ? get_first_leaf(structure)->is_pinned()
-                                      : false){TORCH_CHECK(
-            !_structure.is_leaf(),
-            "NestedTensorImpl must be given structure of at least height 1.")} int64_t
-        dim() const {
+                                      : false) {
+    TORCH_CHECK(
+        !_structure.is_leaf(),
+        "NestedTensorImpl must be given structure of at least height 1.");
+  }
+  int64_t dim() const {
     return _dim;
   }
   const TensorNode& get_structure() const {
