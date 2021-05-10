@@ -48,11 +48,11 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensorImpl::NestedTensorImpl(NestedTensorStorage storage)
+NestedTensorImpl::NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey}),
-          storage.dtype(),
-          storage.device()),
+          storage->dtype(),
+          storage->device()),
       _storage(storage) {
   remove_autograd_key();
   key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::ADInplaceOrView});
@@ -94,8 +94,10 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }
+  ListStorage* ls = new ListStorage(std::move(result));
+  NestedTensorStorage* ls_base = dynamic_cast<NestedTensorStorage*>(ls);
   return at::detail::make_tensor<NestedTensorImpl>(
-      NestedTensorStorage(std::move(result)));
+      std::shared_ptr<NestedTensorStorage>(ls_base));
 }
 
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
@@ -358,10 +360,11 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 //     optional<int64_t> storage_offset_) {
 //   throw std::runtime_error(
 //       "as_strided is not implemented for NestedTensor. "
-//       "Please create an issue on https://github.com/pytorch/nestedtensor with your usecase.");
+//       "Please create an issue on https://github.com/pytorch/nestedtensor with
+//       your usecase.");
 //   return self;
 // }
-// 
+//
 // Tensor& NestedTensor_as_strided_(
 //     Tensor& self,
 //     IntArrayRef size,
@@ -369,7 +372,8 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 //     optional<int64_t> storage_offset_) {
 //   throw std::runtime_error(
 //       "as_strided_ is not implemented for NestedTensor. "
-//       "Please create an issue on https://github.com/pytorch/nestedtensor with your usecase.");
+//       "Please create an issue on https://github.com/pytorch/nestedtensor with
+//       your usecase.");
 //   return self;
 // }
 

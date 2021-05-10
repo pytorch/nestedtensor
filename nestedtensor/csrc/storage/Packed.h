@@ -1,10 +1,10 @@
 #pragma once
-#include <nestedtensor/csrc/storage/common.h>
+#include <nestedtensor/csrc/storage/StorageBase.h>
 
 namespace torch {
 namespace nested_tensor {
 
-struct PackedStorage {
+struct PackedStorage : public NestedTensorStorage {
   explicit PackedStorage(
       at::Tensor&& buffer,
       SizeNode nested_size,
@@ -36,7 +36,7 @@ struct PackedStorage {
                   return torch::nested_tensor::impl::_cont_stride(sizes);
                 },
                 nested_size)) {}
-  int64_t dim() const {
+  int64_t dim() const override {
     return _dim;
   }
   at::Tensor& get_buffer() {
@@ -45,23 +45,26 @@ struct PackedStorage {
   const at::Tensor& get_buffer() const {
     return _buffer;
   }
-  const caffe2::TypeMeta dtype() const {
+  const caffe2::TypeMeta dtype() const override {
     return _data_type;
   }
-  c10::Device device() const {
+  c10::Device device() const override {
     return _device;
   }
-  bool is_pinned() const {
+  bool is_pinned() const override {
     return _is_pinned;
   }
-  const SizeNode nested_size() const {
+  const SizeNode nested_size() const override {
     return _nested_size;
   }
-  const SizeNode nested_stride() const {
+  const SizeNode nested_stride() const override {
     return _nested_stride;
   }
-  const std::vector<c10::optional<int64_t>> opt_sizes() const {
+  const std::vector<c10::optional<int64_t>> opt_sizes() const override {
     return construct_size(_nested_size);
+  }
+  NestedTensorStorageKind kind() const {
+    return NestedTensorStorageKind::packed;
   }
 
  private:

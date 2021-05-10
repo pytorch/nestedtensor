@@ -149,10 +149,10 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(NestedTensorStorage storage);
+  explicit NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage);
 
   int64_t dim() const override {
-    return _storage.dim();
+    return _storage->dim();
   }
   int64_t numel() const override {
     return reduce(
@@ -173,16 +173,16 @@ struct NestedTensorImpl : public c10::TensorImpl {
         get_structure().buffer().has_value();
   }
   TensorNode& get_structure() {
-    return _storage.get_structure();
+    return _storage->get_structure();
   }
   const TensorNode& get_structure() const {
-    return _storage.get_structure();
+    return _storage->get_structure();
   }
   int64_t nested_dim() const {
     return get_structure().height();
   }
   bool is_pinned() const {
-    return _storage.is_pinned();
+    return _storage->is_pinned();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //
@@ -206,13 +206,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
   const SizeNode nested_size() const {
-    return _storage.nested_size();
+    return _storage->nested_size();
   }
   const SizeNode nested_stride() const {
-    return _storage.nested_stride();
+    return _storage->nested_stride();
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
-    return _storage.opt_sizes();
+    return _storage->opt_sizes();
   }
   IntArrayRef sizes() const override {
     TORCH_CHECK(
@@ -224,7 +224,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   IntArrayRef strides() const override;
 
  private:
-  NestedTensorStorage _storage;
+  std::shared_ptr<NestedTensorStorage> _storage;
 };
 
 int64_t nt_size(Tensor tensor, int64_t dim);
