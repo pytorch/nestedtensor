@@ -41,7 +41,7 @@ struct ListStorage {
   const caffe2::TypeMeta dtype() const {
     return _data_type;
   }
-  Device device() const {
+  c10::Device device() const {
     return _device;
   }
   bool is_pinned() const {
@@ -63,7 +63,7 @@ struct ListStorage {
   const SizeNode _nested_stride;
   const std::vector<c10::optional<int64_t>> _opt_sizes;
   const caffe2::TypeMeta _data_type;
-  Device _device;
+  c10::Device _device;
   int64_t _dim;
   bool _is_pinned;
 };

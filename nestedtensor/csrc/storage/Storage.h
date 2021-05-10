@@ -56,7 +56,7 @@ struct NestedTensorStorage {
         break;
     }
   }
-  Device device() const {
+  c10::Device device() const {
     switch (_kind) {
       case packed:
         return _packed_storage->device();

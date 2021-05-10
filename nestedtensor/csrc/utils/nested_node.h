@@ -348,15 +348,17 @@ inline NestedNode<std::vector<A>> zip(
 
 // TODO: Assuming all NestedNodes have same shape.
 template <typename F, typename A, typename... B>
-inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
-  A result = ident;
+inline typename c10::guts::infer_function_traits<F>::type::return_type reduce(
+    F fn,
+    A ident,
+    NestedNode<B>... nested_node) {
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.is_leaf()) {
-    result = fn(nested_node.payload()..., result);
-  } else {
-    for (size_t i = 0; i < first_node.degree(); i++) {
-      result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
-    }
+    return fn(nested_node.payload()..., ident);
+  }
+  A result = ident;
+  for (size_t i = 0; i < first_node.degree(); i++) {
+    result = reduce<F, A, B...>(fn, result, nested_node.children(i)...);
   }
   return result;
 }
@@ -441,7 +443,9 @@ inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   return std::vector<int64_t>(stride);
 }
 
-inline int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
+inline int64_t num_memory(
+    std::vector<int64_t> size,
+    std::vector<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.
@@ -487,9 +491,7 @@ inline TensorNode build_structure(
          std::vector<int64_t> size,
          std::vector<int64_t> stride) {
         return at::as_strided(
-            buffer,
-            c10::IntArrayRef(size),
-            c10::IntArrayRef(stride));
+            buffer, c10::IntArrayRef(size), c10::IntArrayRef(stride));
       },
       tmp,
       nested_size,
@@ -502,8 +504,9 @@ inline TensorNode build_structure(
     const SizeNode& nested_size) {
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
-  SizeNode nested_stride = map(
-      [](std::vector<int64_t> size) { return _cont_stride(size); }, nested_size);
+  SizeNode nested_stride =
+      map([](std::vector<int64_t> size) { return _cont_stride(size); },
+          nested_size);
   return build_structure(std::move(buffer), nested_size, nested_stride);
 }
 } // namespace impl
@@ -512,8 +515,7 @@ inline TensorNode pack(TensorNode&& structure) {
   TensorNode flat_structure =
       map([](at::Tensor tensor) { return tensor.reshape({-1}); }, structure);
   auto nested_size =
-      map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-          structure);
+      map([](at::Tensor tensor) { return tensor.sizes().vec(); }, structure);
   auto tensors = flatten(flat_structure);
   if (tensors.size() == 0) {
     return impl::build_structure(at::ones({0}), nested_size);
