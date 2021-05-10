@@ -48,7 +48,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensorImpl::NestedTensorImpl(PackedStorage storage)
+NestedTensorImpl::NestedTensorImpl(NestedTensorStorage storage)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey}),
           storage.dtype(),
@@ -94,7 +94,8 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }
-  return at::detail::make_tensor<NestedTensorImpl>(PackedStorage(std::move(result)));
+  return at::detail::make_tensor<NestedTensorImpl>(
+      NestedTensorStorage(std::move(result)));
 }
 
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {

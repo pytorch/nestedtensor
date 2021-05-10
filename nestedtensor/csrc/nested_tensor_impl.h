@@ -149,7 +149,7 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(PackedStorage storage);
+  explicit NestedTensorImpl(NestedTensorStorage storage);
 
   int64_t dim() const override {
     return _storage.dim();
@@ -222,7 +222,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   IntArrayRef strides() const override;
 
  private:
-  PackedStorage _storage;
+  NestedTensorStorage _storage;
 };
 
 int64_t nt_size(Tensor tensor, int64_t dim);

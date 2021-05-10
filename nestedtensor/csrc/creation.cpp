@@ -225,8 +225,7 @@ at::Tensor nested_tensor_impl(
       _verify_variables(*first, structure, true);
     }
   }
-  auto result = at::detail::make_tensor<NestedTensorImpl>(
-      PackedStorage(std::move(structure)));
+  auto result = wrap_tensor_node(std::move(structure));
   result = result.contiguous();
   if (requires_grad) {
     result.requires_grad_();
