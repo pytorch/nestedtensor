@@ -10,10 +10,7 @@ struct NestedTensorStorage {
   virtual int64_t dim() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual TensorNode& get_structure() {
-    TORCH_CHECK(false, "Not Implemented.");
-  }
-  virtual const TensorNode& get_structure() const {
+  virtual TensorNode get_structure() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
   virtual const caffe2::TypeMeta dtype() const {
@@ -35,6 +32,9 @@ struct NestedTensorStorage {
     TORCH_CHECK(false, "Not Implemented.");
   }
   virtual NestedTensorStorageKind kind() const {
+    TORCH_CHECK(false, "Not Implemented.");
+  }
+  virtual bool is_contiguous() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
 };

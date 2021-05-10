@@ -34,10 +34,7 @@ struct ListStorage : public NestedTensorStorage {
   int64_t dim() const override {
     return _dim;
   }
-  TensorNode& get_structure() override {
-    return _structure;
-  }
-  const TensorNode& get_structure() const override {
+  TensorNode get_structure() const override {
     return _structure;
   }
   const caffe2::TypeMeta dtype() const override {
@@ -60,6 +57,9 @@ struct ListStorage : public NestedTensorStorage {
   }
   NestedTensorStorageKind kind() const {
     return NestedTensorStorageKind::list;
+  }
+  bool is_contiguous() const {
+    return false;
   }
 
  private:
