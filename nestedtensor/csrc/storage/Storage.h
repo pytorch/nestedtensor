@@ -31,10 +31,22 @@ struct NestedTensorStorage {
     }
   }
   TensorNode& get_structure() {
-    return _list_storage->get_structure();
+    switch(_kind)
+    {
+      case packed: 
+        TORCH_CHECK(false, "PackedStorage doesn't provide structure.");
+        break;
+      case list: return _list_storage->get_structure(); break;
+    }
   }
   const TensorNode& get_structure() const {
-    return _list_storage->get_structure();
+    switch(_kind)
+    {
+      case packed: 
+        TORCH_CHECK(false, "PackedStorage doesn't provide structure.");
+        break;
+      case list: return _list_storage->get_structure(); break;
+    }
   }
   const caffe2::TypeMeta dtype() const {
     switch(_kind)
