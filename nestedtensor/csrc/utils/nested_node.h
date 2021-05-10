@@ -352,14 +352,13 @@ inline typename c10::guts::infer_function_traits<F>::type::return_type reduce(
     F fn,
     A ident,
     NestedNode<B>... nested_node) {
-  A result = ident;
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.is_leaf()) {
-    result = fn(nested_node.payload()..., result);
-  } else {
-    for (size_t i = 0; i < first_node.degree(); i++) {
-      result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
-    }
+    return fn(nested_node.payload()..., ident);
+  }
+  A result = ident;
+  for (size_t i = 0; i < first_node.degree(); i++) {
+    result = reduce<F, A, B...>(fn, result, nested_node.children(i)...);
   }
   return result;
 }
