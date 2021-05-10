@@ -170,9 +170,6 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true) &&
         get_structure().buffer().has_value();
   }
-  TensorNode& get_structure() {
-    return _storage.get_structure();
-  }
   const TensorNode& get_structure() const {
     return _storage.get_structure();
   }

@@ -32,9 +32,6 @@ struct ListStorage {
         dim() const {
     return _dim;
   }
-  TensorNode& get_structure() {
-    return _structure;
-  }
   const TensorNode& get_structure() const {
     return _structure;
   }

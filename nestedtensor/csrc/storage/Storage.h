@@ -26,16 +26,6 @@ struct NestedTensorStorage {
         break;
     }
   }
-  TensorNode& get_structure() {
-    switch (_kind) {
-      case packed:
-        TORCH_CHECK(false, "PackedStorage doesn't provide structure.");
-        break;
-      case list:
-        return _list_storage->get_structure();
-        break;
-    }
-  }
   const TensorNode& get_structure() const {
     switch (_kind) {
       case packed:
