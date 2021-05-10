@@ -9,8 +9,7 @@ struct PackedStorage : public NestedTensorStorage {
       at::Tensor&& buffer,
       SizeNode nested_size,
       SizeNode nested_stride)
-      : _kind(NestedTensorStorageKind::packed),
-        _buffer(buffer),
+      : _buffer(buffer),
         _nested_size(nested_size),
         _nested_stride(nested_stride),
         _opt_sizes(construct_size(_nested_size)),
@@ -64,9 +63,11 @@ struct PackedStorage : public NestedTensorStorage {
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
     return construct_size(_nested_size);
   }
+  NestedTensorStorageKind kind() const {
+    return NestedTensorStorageKind::packed;
+  }
 
  private:
-  NestedTensorStorageKind _kind;
   at::Tensor _buffer;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;

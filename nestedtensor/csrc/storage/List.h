@@ -6,8 +6,7 @@ namespace nested_tensor {
 
 struct ListStorage : public NestedTensorStorage {
   explicit ListStorage(TensorNode&& structure)
-      : _kind(NestedTensorStorageKind::list),
-        _structure(structure),
+      : _structure(structure),
         _nested_size(
             map([](at::Tensor tensor) { return tensor.sizes().vec(); },
                 _structure)),
@@ -59,9 +58,11 @@ struct ListStorage : public NestedTensorStorage {
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
     return _opt_sizes;
   }
+  NestedTensorStorageKind kind() const {
+    return NestedTensorStorageKind::list;
+  }
 
  private:
-  NestedTensorStorageKind _kind;
   TensorNode _structure;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;

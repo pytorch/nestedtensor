@@ -34,6 +34,9 @@ struct NestedTensorStorage {
   virtual const std::vector<c10::optional<int64_t>> opt_sizes() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
+  virtual NestedTensorStorageKind kind() const {
+    TORCH_CHECK(false, "Not Implemented.");
+  }
 };
 } // namespace nested_tensor
 } // namespace torch
