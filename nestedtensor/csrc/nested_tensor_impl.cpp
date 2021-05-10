@@ -22,12 +22,6 @@ int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
   return size[0] * stride[0];
 }
 
-std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
-  return construct_size(
-      map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-          get_structure()));
-}
-
 std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   std::vector<int64_t> stride(size.size());
   int64_t p = 1;
@@ -54,7 +48,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensorImpl::NestedTensorImpl(PackedStorage storage)
+NestedTensorImpl::NestedTensorImpl(NestedTensorStorage storage)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey}),
           storage.dtype(),
@@ -100,7 +94,8 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }
-  return at::detail::make_tensor<NestedTensorImpl>(PackedStorage(std::move(result)));
+  return at::detail::make_tensor<NestedTensorImpl>(
+      NestedTensorStorage(std::move(result)));
 }
 
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
