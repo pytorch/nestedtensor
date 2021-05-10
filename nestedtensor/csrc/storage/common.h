@@ -10,7 +10,8 @@ using IValueNode = NestedNode<c10::IValue>;
 using SizeNode = NestedNode<std::vector<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 
-static std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
+static std::vector<c10::optional<int64_t>> construct_size(
+    const SizeNode& size_node) {
   if (size_node.is_leaf()) {
     std::vector<c10::optional<int64_t>> result;
     for (const auto& size : size_node.payload()) {
@@ -38,5 +39,5 @@ static std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_n
   return result;
 }
 
-}
-}
+} // namespace nested_tensor
+} // namespace torch
