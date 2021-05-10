@@ -171,7 +171,6 @@ class TestTensorMask(TestCase):
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_scalar_and_empty_nt_cuda(self):
-        return
         a = nt.nested_tensor([
             nt.nested_tensor([], dtype=torch.long,
                              device=torch.device('cuda')),
