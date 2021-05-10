@@ -5,36 +5,39 @@ namespace torch {
 namespace nested_tensor {
 
 struct PackedStorage {
-  explicit PackedStorage(TensorNode&& structure) :
-    _structure(structure),
-    _nested_size(map(
-        [](at::Tensor tensor) { return tensor.sizes().vec(); },
-        _structure)),
-    _nested_stride(map(
-        [](at::Tensor tensor) { return tensor.strides().vec(); },
-        _structure)),
+  explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size,
+      SizeNode nested_stride) :
+    _buffer(buffer),
+    _nested_size(nested_size),
+    _nested_stride(nested_stride),
     _opt_sizes(construct_size(_nested_size)),
-    _data_type(get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
-                              : at::ones({}).dtype()),
-    _device(get_first_leaf(structure) ? get_first_leaf(structure)->device()
-                              : at::ones({}).device()),
-    _dim(get_first_leaf(structure) ? get_first_leaf(structure)->dim() + _structure.height()
-                              : _structure.height()),
-    _is_pinned(get_first_leaf(structure) ? get_first_leaf(structure)->is_pinned()
-                              : false)
+    _data_type(buffer.dtype()),
+    _device(buffer.device()),
+    _dim(get_first_leaf(_nested_size) ? get_first_leaf(_nested_size)->size() +
+        _nested_size.height()
+                              : _nested_size.height()),
+    _is_pinned(buffer.is_pinned())
   {
     TORCH_CHECK(
-        !_structure.is_leaf(),
-        "NestedTensorImpl must be given structure of at least height 1.")
+        !_nested_size.is_leaf(),
+        "PackedStorage must be given NestedSize of at least height 1.");
+    TORCH_CHECK(
+        !_nested_stride.is_leaf(),
+        "PackedStorage must be given NestedStride of at least height 1.");
+  }
+  explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size) :
+    PackedStorage(std::move(buffer), nested_size, map([](std::vector<int64_t> sizes) {
+          return torch::nested_tensor::impl::_cont_stride(sizes);
+          }, nested_size)) {
   }
   int64_t dim() const {
     return _dim;
   }
-  TensorNode& get_structure() {
-    return _structure;
+  at::Tensor& get_buffer() {
+    return _buffer;
   }
-  const TensorNode& get_structure() const {
-    return _structure;
+  const at::Tensor& get_buffer() const {
+    return _buffer;
   }
   const caffe2::TypeMeta dtype() const {
     return _data_type;
@@ -56,7 +59,7 @@ struct PackedStorage {
   }
 
 private:
-  TensorNode _structure;
+  at::Tensor _buffer;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;
   const std::vector<c10::optional<int64_t>> _opt_sizes;

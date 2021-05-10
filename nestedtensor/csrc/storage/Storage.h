@@ -16,39 +16,67 @@ struct NestedTensorStorage {
       _kind(NestedTensorStorageKind::packed) {
   }
   explicit NestedTensorStorage(TensorNode&& structure) :
-      _packed_storage(PackedStorage(std::move(structure))),
-      _kind(NestedTensorStorageKind::packed) {
+      _list_storage(ListStorage(std::move(structure))),
+      _kind(NestedTensorStorageKind::list) {
   }
   explicit NestedTensorStorage(ListStorage&& list_storage) :
       _list_storage(list_storage),
       _kind(NestedTensorStorageKind::list) {
   }
   int64_t dim() const {
-    return _packed_storage->dim();
+    switch(_kind)
+    {
+      case packed: return _packed_storage->dim(); break;
+      case list: return _list_storage->dim(); break;
+    }
   }
   TensorNode& get_structure() {
-    return _packed_storage->get_structure();
+    return _list_storage->get_structure();
   }
   const TensorNode& get_structure() const {
-    return _packed_storage->get_structure();
+    return _list_storage->get_structure();
   }
   const caffe2::TypeMeta dtype() const {
-    return _packed_storage->dtype();
+    switch(_kind)
+    {
+      case packed: return _packed_storage->dtype(); break;
+      case list: return _list_storage->dtype(); break;
+    }
   }
   Device device() const {
-    return _packed_storage->device();
+    switch(_kind)
+    {
+      case packed: return _packed_storage->device(); break;
+      case list: return _list_storage->device(); break;
+    }
   }
   bool is_pinned() const {
-    return _packed_storage->is_pinned();
+    switch(_kind)
+    {
+      case packed: return _packed_storage->is_pinned(); break;
+      case list: return _list_storage->is_pinned(); break;
+    }
   }
   const SizeNode nested_size() const {
-    return _packed_storage->nested_size();
+    switch(_kind)
+    {
+      case packed: return _packed_storage->nested_size(); break;
+      case list: return _list_storage->nested_size(); break;
+    }
   }
   const SizeNode nested_stride() const {
-    return _packed_storage->nested_stride();
+    switch(_kind)
+    {
+      case packed: return _packed_storage->nested_stride(); break;
+      case list: return _list_storage->nested_stride(); break;
+    }
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
-    return _packed_storage->opt_sizes();
+    switch(_kind)
+    {
+      case packed: return _packed_storage->opt_sizes(); break;
+      case list: return _list_storage->opt_sizes(); break;
+    }
   }
 
 private:
