@@ -12,7 +12,7 @@ import utils
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -245,15 +245,6 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.nested_size(0), 2)
             self.assertEqual(a.nested_size(1), (1, 2))
             self.assertRaises(IndexError, lambda: a.nested_size(2))
-
-    def test_serialize_nested_size(self):
-        a = ntnt([[torch.randn(1, 2)],
-                  [torch.randn(2, 1), torch.randn(1, 1)]])
-        result = nestedtensor._C.serialize_nested_size(a._impl)
-        result_a = nestedtensor._C.deserialize_nested_size(result)
-        self.assertEqual(a.nested_size()[0][0], result_a[0][0])
-        self.assertEqual(a.nested_size()[1][0], result_a[1][0])
-        self.assertEqual(a.nested_size()[1][1], result_a[1][1])
 
     def test_nested_stride(self):
         for constructor in _iter_constructors():
@@ -591,12 +582,15 @@ class TestNestedTensor(TestCase):
                                   [list(map(lambda x: x.unbind(), t_c.unbind()))]])
             self.assertEqual(a.to_nested_tensor(3), result)
             self.assertRaises(IndexError, lambda: a.to_nested_tensor(4))
-            
+
             t = torch.randn(2, 3)
             self.assertEqual(t, nestedtensor.to_nested_tensor(t, 0))
-            self.assertEqual(ntnt_nograd(t.unbind()), nestedtensor.to_nested_tensor(t, 1))
-            self.assertEqual(ntnt_nograd([ti.unbind() for ti in t.unbind()]), nestedtensor.to_nested_tensor(t, 2))
-            self.assertRaises(IndexError, lambda: nestedtensor.to_nested_tensor(t, 3))
+            self.assertEqual(ntnt_nograd(t.unbind()),
+                             nestedtensor.to_nested_tensor(t, 1))
+            self.assertEqual(ntnt_nograd(
+                [ti.unbind() for ti in t.unbind()]), nestedtensor.to_nested_tensor(t, 2))
+            self.assertRaises(
+                IndexError, lambda: nestedtensor.to_nested_tensor(t, 3))
 
     def test_to(self):
         tensors = [torch.randn(1, 8),
@@ -621,9 +615,10 @@ class TestNestedTensor(TestCase):
         tensors = [torch.randn(1, 8),
                    torch.randn(3, 8),
                    torch.randn(7, 8)]
-        a1 = nestedtensor.nested_tensor(tensors, requires_grad=True)
+        a1 = ntnt_nograd(tensors)
         self.assertIsNone(a1.grad)
 
+    @unittest.skip("Not implemented")
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_pin_memory(self):
         # Check if it can be applied widely
@@ -661,9 +656,10 @@ class TestNestedTensor(TestCase):
         tmp = nt[0, :, 0]
         self.assertEqual(tmp[0], a[:, 0])
         self.assertEqual(tmp[1], b[:, 0])
-        self.assertEqual(nt[0, :, 0].contiguous(), ntnt_nograd([a[:, 0], b[:, 0]]))
+        self.assertEqual(nt[0, :, 0].contiguous(),
+                         ntnt_nograd([a[:, 0], b[:, 0]]))
         self.assertEqual(nt[None], ntnt_nograd([[[a, b], [c]]]))
-        self.assertEqual(nt[0], ntnt_nograd([a, b])) # Supports grad
+        self.assertEqual(nt[0], ntnt_nograd([a, b]))  # Supports grad
         self.assertEqual(nt[:], nt)
         self.assertEqual(nt[:, 0], ntnt_nograd([a, c]))
         self.assertEqual(nt[-1:], ntnt_nograd([[c]]))
@@ -690,12 +686,12 @@ class TestNestedTensor(TestCase):
         b = a + 12
         c = b + 12
 
-        nt0 = ntnt([a, b])
-        nt1 = ntnt([c])
+        nt0 = ntnt_nograd([a, b])
+        nt1 = ntnt_nograd([c])
         self.assertEqual(torch.cat([nt0, nt1], dim=0), ntnt_nograd([a, b, c]))
-        self.assertEqual(nestedtensor.cat(
+        self.assertEqual(torch.cat(
             [nt0, nt1], dim=1), ntnt_nograd([torch.cat([a, c]), b]))
-        self.assertEqual(nestedtensor.cat([nt0, nt1], dim=2), ntnt_nograd(
+        self.assertEqual(torch.cat([nt0, nt1], dim=2), ntnt_nograd(
             [torch.cat([a, c], dim=1), b]))
 
     def test_stack(self):
@@ -703,15 +699,16 @@ class TestNestedTensor(TestCase):
         b = a + 12
         c = b + 12
 
-        nt = nestedtensor.nested_tensor([[a, b], [c]])
-        nt0 = nestedtensor.nested_tensor([a, b])
-        nt1 = nestedtensor.nested_tensor([c])
-        self.assertEqual(nestedtensor.stack(
+        nt0 = ntnt_nograd([a, b])
+        nt1 = ntnt_nograd([c])
+        self.assertEqual(torch.stack(
             [nt0, nt1], dim=0), ntnt_nograd([[a, b], [c]]))
-        self.assertEqual(nestedtensor.stack(
-            [nt0, nt1], dim=1), ntnt_nograd([torch.stack([a, c]), b.reshape(1, 3, 4)]))
-        self.assertEqual(nestedtensor.stack(
-            [nt0, nt1], dim=2), ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
+        self.assertEqual(torch.stack(
+            [nt0, nt1], dim=1),
+            ntnt_nograd([torch.stack([a, c]), b.reshape(1, 3, 4)]))
+        self.assertEqual(torch.stack(
+            [nt0, nt1], dim=2),
+            ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
 
 class TestContiguous(TestCase):
@@ -719,7 +716,7 @@ class TestContiguous(TestCase):
         for _ in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
-            nt = nestedtensor.nested_tensor(data)
+            nt = ntnt_nograd(data)
             self.assertTrue(nt.is_contiguous())
             # buf = nt.flatten()
             self.assertEqual(nt, nt)

@@ -7,10 +7,10 @@ assignees: ''
 
 ---
 
-### The main reason you want to use nestedtensor and what value you want it to add for you
+### The main reason I want to use nestedtensor and what value I want it to add
 
-### The features you wish nestedtensor had
+### The features I wish nestedtensor had
 
-### The things about nestedtensor that frustrate you
+### The things about nestedtensor that frustrate me
 
-### [Optional] Example code or project you want to integrate with nestedtensor
+### [Optional] Example code or project I want to integrate with nestedtensor

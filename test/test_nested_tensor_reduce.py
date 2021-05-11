@@ -13,7 +13,7 @@ import utils
 from nestedtensor.nested.nested import native_is_expandable_to
 
 
-def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=False)
 
 
 def _flatten_list(ts):
@@ -120,10 +120,12 @@ class TestReduce(TestCase):
         test([[t0, t1], [t2, t3], [t4]])
 
     def test_sum_all(self):
-        self._test_allreduce(lambda x: x.sum(), True)
+        # self._test_allreduce(lambda x: x.sum(), True)
+        self._test_allreduce(lambda x: x.sum(), False)
 
     def test_sum_dim(self):
-        self._test_reduce_dim(torch.sum, True)
+        # self._test_reduce_dim(torch.sum, True)
+        self._test_reduce_dim(torch.sum, False)
 
     def test_max_all(self):
         self._test_allreduce(lambda x: x.max())
@@ -136,13 +138,15 @@ class TestReduce(TestCase):
         self._test_allreduce(lambda x: x.mean())
 
     def test_mean_dim(self):
-        self._test_reduce_dim(torch.mean, True)
+        # self._test_reduce_dim(torch.mean, True)
+        self._test_reduce_dim(torch.mean, False)
 
     def test_prod(self):
         self._test_allreduce(lambda x: x.prod())
 
     def test_var(self):
-        self._test_allreduce(lambda x: x.var(unbiased=False), True)
+        # self._test_allreduce(lambda x: x.var(unbiased=False), True)
+        self._test_allreduce(lambda x: x.var(unbiased=False), False)
         self._test_allreduce(lambda x: x.var(unbiased=True))
 
     def test_var_dim(self):
@@ -207,6 +211,7 @@ class TestReduce(TestCase):
         self.assertEqual(
             ntnt([[t0_var1, t1_var1], [t2_var1, t3_var1]]), torch.var(nt, 3))
 
+    @unittest.skip("Not implemented - needed for autograd.")
     def test_sum_to_size(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(2, 1) + 2])
@@ -235,6 +240,7 @@ class TestReduce(TestCase):
         # b = ntnt([torch.randn(1), torch.randn(1)])
         pass
 
+    @unittest.skip("Not implemented - needed for autograd.")
     def test_native_is_expandable_to(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])
@@ -255,6 +261,7 @@ class TestReduce(TestCase):
         # Shape NT, desired T
         pass
 
+    @unittest.skip("Not implemented - needed for autograd.")
     def test_sizes_equal(self):
         a = ntnt([torch.arange(2).reshape(1, 2),
                   torch.arange(2).reshape(1, 2) + 2])

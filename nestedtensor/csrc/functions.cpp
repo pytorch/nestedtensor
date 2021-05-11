@@ -16,14 +16,14 @@ Tensor NestedTensor_embedding(
     bool sparse) {
   if (is_nested_tensor_impl(weight)) {
     // TODO: Needs test coverage
-    return autograd_map_nested_tensor(
+    return map_nested_tensor(
         [&](at::Tensor w, at::Tensor i) {
           return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse);
         },
         weight,
         indices);
   }
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](at::Tensor i) {
         return at::embedding(
             weight, i, padding_idx, scale_grad_by_freq, sparse);
@@ -47,7 +47,7 @@ Tensor NestedTensor_layer_norm(
       "Cannot normalize across irregular dimension ",
       std::to_string(input.dim() - 1));
   if (weight && bias) {
-    return autograd_map_nested_tensor(
+    return map_nested_tensor(
         [normalized_shape, eps](const at::Tensor t, Tensor w, Tensor b) {
           return at::layer_norm(t, normalized_shape, w, b, eps, true);
         },
@@ -56,7 +56,7 @@ Tensor NestedTensor_layer_norm(
         *bias);
   }
   TORCH_CHECK(!weight && !bias, "Either both weight and bias are used or not.");
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [normalized_shape, eps](const at::Tensor t) {
         return at::layer_norm(
             t, normalized_shape, c10::nullopt, c10::nullopt, eps, true);
@@ -108,7 +108,7 @@ Tensor NestedTensor__log_softmax(
     const Tensor& self,
     const int64_t dim_,
     const bool half_to_float) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
 }
 
@@ -130,7 +130,7 @@ Tensor NestedTensor_flatten(
   TORCH_CHECK(
       end_dim >= nested_dim, "Cannot flatten nested dimension ", end_dim);
   // XXX: Write test that checks for flatten autograd support.
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [start_dim, end_dim, nested_dim](at::Tensor tensor) {
         return at::flatten(
             tensor, start_dim - nested_dim, end_dim - nested_dim);
@@ -147,9 +147,9 @@ std::vector<Tensor> get_stack_inputs(TensorList tensors, int64_t dim) {
 }
 
 Tensor& NestedTensor_stack_out(
-    Tensor& result,
     TensorList tensors,
-    int64_t dim) {
+    int64_t dim,
+    Tensor& result) {
   TORCH_CHECK(tensors.size() > 0, "stack expects a non-empty TensorList");
   dim = maybe_wrap_dim(dim, tensors[0].dim() + 1);
   return at::cat_out(result, get_stack_inputs(tensors, dim), dim);
@@ -161,7 +161,7 @@ Tensor NestedTensor_stack(TensorList tensors, int64_t dim) {
   return at::cat(get_stack_inputs(tensors, dim), dim);
 }
 
-Tensor& NestedTensor_cat_out(Tensor& result, TensorList tensors, int64_t dim) {
+Tensor& NestedTensor_cat_out(TensorList tensors, int64_t dim, Tensor& result) {
   auto tmp = at::cat(tensors, dim);
   result.copy_(tmp);
   return result;
@@ -212,7 +212,7 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "embedding", NestedTensor_embedding);
   nt_impl(m, "any", NestedTensor_any);
   nt_impl(m, "all", NestedTensor_all);

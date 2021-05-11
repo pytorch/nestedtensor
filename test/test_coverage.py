@@ -13,7 +13,7 @@ from utils import TestCase
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
 
 
 # Various smoke tests to confirm coverage of an operator
@@ -35,10 +35,10 @@ class TestCoverage(TestCase):
             return torch.max(x, dim=1, keepdim=True)[0]
 
         inputs = [torch.randn(i, 9) for i in [40, 50, 90]]
-        model(ntnt(inputs))
+        model(ntnt_nograd(inputs))
 
         inputs = [torch.randn(30, 9) for _ in range(3)]
-        x0 = model(ntnt(inputs))
+        x0 = model(ntnt_nograd(inputs))
         x1 = model(torch.stack(inputs))
         self.assertEqual(torch.stack(x0.unbind()), x1)
 

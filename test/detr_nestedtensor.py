@@ -1,7 +1,6 @@
 import torch
 import nestedtensor
 import utils
-import torchvision
 from torch.nn import functional as F
 
 import random

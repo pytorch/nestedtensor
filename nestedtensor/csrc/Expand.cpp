@@ -87,7 +87,7 @@ bool _sizes_nested_size_expands(
   }
   if (nested_size.is_leaf()) {
     return is_expandable_to(
-        IntArrayRef(nested_size.payload().vec()), IntArrayRef(grad_shape));
+        IntArrayRef(nested_size.payload()), IntArrayRef(grad_shape));
   }
   if (nested_size.degree() != grad_shape[0] && nested_size.degree() != 1) {
     return false;
@@ -107,8 +107,8 @@ bool _sizes_nested_size_expands(
 bool _nested_size_nested_size_expands(SizeNode shape, SizeNode desired) {
   if (shape.is_leaf() && desired.is_leaf()) {
     return at::is_expandable_to(
-        IntArrayRef(shape.payload().vec()),
-        IntArrayRef(desired.payload().vec()));
+        IntArrayRef(shape.payload()),
+        IntArrayRef(desired.payload()));
   }
   if (shape.is_leaf()) {
     for (size_t i = 0; i < shape.degree(); i++) {
@@ -162,11 +162,12 @@ bool NestedTensor_native_is_expandable_to(
     return _sizes_nested_size_expands(nested_size, grad_shape);
   }
   if (is_nested_tensor_impl(grad)) {
-    auto fn = [&metadata_shape](at::Tensor leaf, bool input) {
-      return input && at::is_expandable_to(metadata_shape, leaf.sizes());
-    };
-    return reduce<decltype(fn), bool, at::Tensor>(
-        get_nested_tensor_structure(grad), fn, true);
+    return reduce_nested_tensor(
+        [&metadata_shape](at::Tensor leaf, bool input) {
+          return input && at::is_expandable_to(metadata_shape, leaf.sizes());
+        },
+        true,
+        grad);
   }
   return at::is_expandable_to(metadata_shape, grad.sizes());
 }
@@ -183,8 +184,8 @@ Tensor NestedTensor_expand_nt(
       "self dim can't exceed nested_size tensor dim.");
   // TODO: This doesn't support NT broadcasting of leading dimensions
   return wrap_tensor_node(map(
-      [](at::Tensor self, c10::List<int64_t> size) {
-        return at::native::expand(self, IntArrayRef(size.vec()));
+      [](at::Tensor self, std::vector<int64_t> size) {
+        return at::native::expand(self, IntArrayRef(size));
       },
       get_nested_tensor_structure(self),
       nested_size));
@@ -301,8 +302,8 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
         get_nested_size(tensor).height() == desired_nested_size.height(),
         "internal error: expected result tensor height and desired shape to match.");
     return wrap_tensor_node(map(
-        [](at::Tensor t, c10::List<int64_t> s) {
-          return t.sum_to_size(IntArrayRef(s.vec()));
+        [](at::Tensor t, std::vector<int64_t> s) {
+          return t.sum_to_size(IntArrayRef(s));
         },
         get_nested_tensor_structure(tensor),
         desired_nested_size));
@@ -320,7 +321,7 @@ Tensor NestedTensor_sum_to_size(const Tensor& self, IntArrayRef shape) {
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "expand_as", NestedTensor_expand_as);
 }
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "expand_nt", NestedTensor_expand_nt);
   nt_impl(m, "native_is_expandable_to", NestedTensor_native_is_expandable_to);
   nt_impl(m, "sizes_equal", NestedTensor_sizes_equal);

@@ -9,7 +9,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
@@ -19,7 +19,7 @@ Tensor NestedTensor_upsample_bilinear2d(
     bool align_corners,
     c10::optional<double> scales_h,
     c10::optional<double> scales_w) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&](at::Tensor t) {
         return at::upsample_bilinear2d(
                    t.unsqueeze(0),
@@ -35,7 +35,7 @@ Tensor NestedTensor_upsample_bilinear2d(
 Tensor NestedTensor_clone(
     const Tensor& src,
     c10::optional<c10::MemoryFormat> optional_memory_format) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&optional_memory_format](Tensor a) {
         return at::clone(a, optional_memory_format);
       },
@@ -156,7 +156,7 @@ Tensor NestedTensor_batch_norm(
   return output;
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
   nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);

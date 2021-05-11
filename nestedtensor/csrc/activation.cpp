@@ -9,7 +9,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_gelu(const Tensor& self) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](at::Tensor tensor) { return at::gelu(tensor); }, self);
 }
 
@@ -17,12 +17,11 @@ Tensor NestedTensor_gelu(const Tensor& self) {
 Tensor NestedTensor_relu(const Tensor& self) {
   auto impl = get_nested_tensor_impl(self);
   auto structure = get_nested_tensor_structure(self);
-  if (structure.buffer()) {
+  if (self.is_contiguous()) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu" << std::endl;
 #endif
-    return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        at::relu(*structure.buffer()), impl->nested_size()));
+    return wrap_buffer(at::relu(get_buffer(self)), impl->nested_size());
   }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::relu(tensor); }, self);
@@ -38,7 +37,7 @@ Tensor& NestedTensor_relu_(Tensor& self) {
 Tensor NestedTensor_threshold_backward(
     const Tensor& grad,
     const Tensor& self,
-    Scalar threshold) {
+    const c10::Scalar& threshold) {
   return map_nested_tensor(
       [&](at::Tensor g, at::Tensor s) {
         return threshold_backward(g, s, threshold);
@@ -47,7 +46,7 @@ Tensor NestedTensor_threshold_backward(
       self);
 }
 
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
+TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "gelu", NestedTensor_gelu);
 }
 

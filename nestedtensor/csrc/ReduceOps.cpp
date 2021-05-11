@@ -136,9 +136,8 @@ std::tuple<Tensor, Tensor> NestedTensor_max_dim(
 }
 
 Tensor NestedTensor_max(const Tensor& self) {
-  auto tensors = flatten(
-      map([](at::Tensor tensor) { return at::max(tensor); },
-          get_nested_tensor_structure(self)));
+  auto tensors = flatten_nested_tensor(map_nested_tensor(
+      [](at::Tensor tensor) { return at::max(tensor); }, self));
   if (tensors.size() == 0) {
     return at::ones({0});
   }
@@ -162,9 +161,8 @@ Tensor NestedTensor_mean_dim(
 }
 
 Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-          get_nested_tensor_structure(self)));
+  auto tensors = flatten_nested_tensor(map_nested_tensor(
+      [&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); }, self));
   if (tensors.size() == 0) {
     if (dtype) {
       return at::ones({0}, *dtype);
@@ -270,8 +268,8 @@ Tensor NestedTensor_var_dim(
   auto nested_size = get_nested_size(self);
   int64_t nested_dim = get_nested_tensor_impl(self)->nested_dim();
   auto new_nested_size = map(
-      [&tensordims](c10::List<int64_t> sizes) {
-        c10::List<int64_t> new_sizes;
+      [&tensordims](std::vector<int64_t> sizes) {
+        std::vector<int64_t> new_sizes;
         for (size_t i = 0; i < sizes.size(); i++) {
           if (std::find(tensordims.begin(), tensordims.end(), i) ==
               tensordims.end()) {
@@ -325,9 +323,8 @@ Tensor NestedTensor_var_dim(
 }
 
 Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::prod(tensor, dtype); },
-          get_nested_tensor_structure(self)));
+  auto tensors = flatten_nested_tensor(map_nested_tensor(
+      [&dtype](at::Tensor tensor) { return at::prod(tensor, dtype); }, self));
   if (tensors.size() == 0) {
     if (dtype) {
       return at::ones({1}, *dtype);
@@ -336,43 +333,6 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
   }
   auto all_tensor = at::stack(tensors);
   return at::prod(all_tensor, dtype);
-}
-
-Tensor NestedTensor_var_backward_dim(
-    const Tensor& grad_,
-    const Tensor& self,
-    IntArrayRef dim,
-    bool unbiased,
-    bool keepdim) {
-  TORCH_CHECK(false, "var.dim gradient not implemented yet.");
-  return grad_;
-}
-
-Tensor NestedTensor_sum_backward(
-    const Tensor& grad,
-    IntArrayRef sizes,
-    IntArrayRef dims,
-    bool keepdim) {
-  TORCH_CHECK(false, "sum_backward not implemented yet.");
-  return grad;
-}
-
-Tensor NestedTensor_sum_backward_tensor(
-    const Tensor& grad,
-    const Tensor& self,
-    IntArrayRef dims,
-    bool keepdim) {
-  TORCH_CHECK(false, "sum_backward.tensor not implemented yet.");
-  return grad;
-}
-
-Tensor NestedTensor_mean_backward(
-    const Tensor& grad,
-    const Tensor& self,
-    IntArrayRef dims,
-    bool keepdim) {
-  TORCH_CHECK(false, "mean_backward not implemented yet.");
-  return grad;
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
@@ -384,19 +344,8 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "max.dim", NestedTensor_max_dim);
   nt_impl(m, "var", NestedTensor_var);
   nt_impl(m, "var.dim", NestedTensor_var_dim);
-  nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
-  nt_impl(m, "sum_backward", NestedTensor_sum_backward);
-  nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
-  nt_impl(m, "mean_backward", NestedTensor_mean_backward);
   nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
-}
-
-TORCH_LIBRARY_IMPL(aten, AutogradNestedTensor, m) {
-  nt_impl(m, "var_backward.dim", NestedTensor_var_backward_dim);
-  nt_impl(m, "sum_backward", NestedTensor_sum_backward);
-  nt_impl(m, "sum_backward.tensor", NestedTensor_sum_backward_tensor);
-  nt_impl(m, "mean_backward", NestedTensor_mean_backward);
 }
 
 } // namespace at

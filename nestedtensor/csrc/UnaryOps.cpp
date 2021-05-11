@@ -10,11 +10,6 @@ using namespace torch::nested_tensor;
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  if (self.is_contiguous()) {
-    at::Tensor buffer = get_buffer(self);
-    func(buffer);
-    return self;
-  }
   apply_nested_tensor([](at::Tensor& tensor) { func(tensor); }, self);
   return self;
 }
@@ -22,37 +17,27 @@ Tensor& NestedTensor_unary_(Tensor& self) {
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  if (self.is_contiguous()) {
-    at::Tensor buffer = get_buffer(self);
-    (buffer.*func)();
-    return self;
-  }
   apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
   return self;
 }
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  if (self.is_contiguous()) {
-    return wrap_buffer(func(get_buffer(self)), get_nested_size(self));
-  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return func(tensor); }, self);
 }
 
 template <class F, F func>
-Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
+Tensor& NestedTensor_unary_out(const Tensor& self, Tensor& result) {
   apply_nested_tensor(
-      [](at::Tensor& result, at::Tensor& tensor) { func(result, tensor); },
-      result,
-      self);
+      [](Tensor& result, Tensor& self) { func(result, self); }, result, self);
   return result;
 }
 
 Tensor& NestedTensor_clamp_(
     Tensor& self,
-    optional<Scalar> min,
-    optional<Scalar> max) {
+    const optional<c10::Scalar>& min,
+    const optional<c10::Scalar>& max) {
   apply_nested_tensor(
       [min, max](at::Tensor& tensor) { at::clamp_(tensor, min, max); }, self);
   return self;
@@ -60,42 +45,42 @@ Tensor& NestedTensor_clamp_(
 
 Tensor NestedTensor_clamp(
     const Tensor& self,
-    optional<Scalar> min,
-    optional<Scalar> max) {
+    const optional<c10::Scalar>& min,
+    const optional<c10::Scalar>& max) {
   return map_nested_tensor(
       [min, max](at::Tensor tensor) { return at::clamp(tensor, min, max); },
       self);
 }
 
 Tensor& NestedTensor_clamp_out(
-    Tensor& result,
     const Tensor& self,
-    optional<Scalar> min,
-    optional<Scalar> max) {
+    const optional<Scalar>& min,
+    const optional<Scalar>& max,
+    Tensor& result) {
   apply_nested_tensor(
-      [min, max](at::Tensor result, const at::Tensor tensor) {
-        at::clamp_out(result, tensor, min, max);
+      [min, max](const at::Tensor self, at::Tensor result) {
+        at::native::clamp_out(self, min, max, result);
       },
-      result,
-      self);
+      self,
+      result);
   return result;
 }
 
-Tensor& NestedTensor_clamp_min_(Tensor& self, Scalar min) {
+Tensor& NestedTensor_clamp_min_(Tensor& self, const c10::Scalar& min) {
   apply_nested_tensor(
       [min](at::Tensor& tensor) { at::clamp_min_(tensor, min); }, self);
   return self;
 }
 
-Tensor NestedTensor_clamp_min(const Tensor& self, Scalar min) {
+Tensor NestedTensor_clamp_min(const Tensor& self, const c10::Scalar& min) {
   return map_nested_tensor(
       [min](at::Tensor tensor) { return at::clamp_min(tensor, min); }, self);
 }
 
 Tensor& NestedTensor_clamp_min_out(
-    Tensor& result,
     const Tensor& self,
-    Scalar min) {
+    const c10::Scalar& min,
+    Tensor& result) {
   apply_nested_tensor(
       [min](at::Tensor result, const at::Tensor tensor) {
         at::clamp_min_out(result, tensor, min);
@@ -105,27 +90,27 @@ Tensor& NestedTensor_clamp_min_out(
   return result;
 }
 
-Tensor& NestedTensor_clamp_max_(Tensor& self, Scalar min) {
+Tensor& NestedTensor_clamp_max_(Tensor& self, const c10::Scalar& min) {
   apply_nested_tensor(
       [min](at::Tensor tensor) { at::clamp_max_(tensor, min); }, self);
   return self;
 }
 
-Tensor NestedTensor_clamp_max(const Tensor& self, Scalar min) {
+Tensor NestedTensor_clamp_max(const Tensor& self, const c10::Scalar& min) {
   return map_nested_tensor(
       [min](at::Tensor tensor) { return at::clamp_max(tensor, min); }, self);
 }
 
 Tensor& NestedTensor_clamp_max_out(
-    Tensor& result,
     const Tensor& self,
-    Scalar min) {
+    const Scalar& min,
+    Tensor& result) {
   apply_nested_tensor(
-      [min](at::Tensor result, const at::Tensor tensor) {
-        at::clamp_max_out(result, tensor, min);
+      [min](const Tensor self, Tensor result) {
+        at::native::clamp_max_out(self, min, result);
       },
-      result,
-      self);
+      self,
+      result);
   return result;
 }
 

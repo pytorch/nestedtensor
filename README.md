@@ -4,8 +4,7 @@ If you are here because you ran into a runtime error due to a missing feature or
 
 ## Tutorials
 
-If you are new to this project, we recommend you take a look at the [tutorials](https://github.com/pytorch/nestedtensor/tree/master/tutorials) to get started.
-In particular our [basic tutorial](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/tutorials/notebooks/basic.ipynb) is a whirlwind introduction to the project and the recommended place to get started.
+If you are new to this project, we recommend you take a look at our [whirlwind introduction](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/tutorials/notebooks/basic.ipynb) to get started.
 
 ## Operator support
 
@@ -32,18 +31,18 @@ One way of dealing with dynamic shapes then, is via padding and masking.
 [masks](https://github.com/pytorch/vision/blob/24f16a338391d6f45aa6291c48eb6d5513771631/references/detection/utils.py#L102)
 [that](https://github.com/pytorch/audio/blob/3250d3df168c956389bd16956aa458ce111570d0/examples/pipeline_wav2letter/datasets.py#L90), together with a data Tensor, are used as a representation for lists of dynamically shaped Tensors.
 
-Obviously this is inefficient from a memory and compute perspective if the Tensors within this list are sufficient diverse.
+Obviously this is inefficient from a memory and compute perspective if the Tensors within this list are sufficiently diverse.
 
-You can also trace through the codebase where these masks are used and what kind of code that might cause (for example [universal_sentence_embedding](https://github.com/facebookresearch/ParlAI/blob/8200396cdd08cfd26b01fe52b4a3bd0654081182/parlai/agents/drqa/utils.py#L143)).
+You can also trace through the codebase where these masks are used and observe the kind of code this approach often leads to. See for example [universal_sentence_embedding](https://github.com/facebookresearch/ParlAI/blob/8200396cdd08cfd26b01fe52b4a3bd0654081182/parlai/agents/drqa/utils.py#L143).
 
 Otherwise we also have 
 [one-off](https://pytorch.org/docs/master/generated/torch.nn.utils.rnn.pack_padded_sequence.html?highlight=pack_padded_sequence)
 [operator](https://pytorch.org/docs/master/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss)
 [support](https://pytorch.org/docs/master/generated/torch.nn.MultiheadAttention.html#torch.nn.MultiheadAttention)
 [in](https://pytorch.org/docs/master/generated/torch.nn.EmbeddingBag.html#torch.nn.EmbeddingBag) 
-PyTorch that aim to support dynamic shapes via extra arguments such as a
+PyTorch that aims to support dynamic shapes via extra arguments such as a
 [padding index](https://pytorch.org/docs/master/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss).
-Of course the upside here is that these are fast and sometimes memory efficient, but don't provide a consistent interface.
+Of course, while these functions are fast and sometimes memory efficient, they don't provide a consistent interface.
 
 Other users simply gave up and started writing [for-loops](https://github.com/pytorch/vision/blob/1aef87d01eec2c0989458387fa04baebcc86ea7b/torchvision/models/detection/transform.py#L97), or discovered that batching didn't help.
 
@@ -51,28 +50,28 @@ We want to have a single abstraction that is consistent, fast, memory efficient 
 
 ## How does nestedtensor help here?
 
-NestedTensors are a generalization of torch Tensors which eases working with data of different sizes and length. 
+NestedTensors are a generalization of torch Tensors which eases working with data of different shapes and lengths. 
 In a nutshell, Tensors have scalar entries (e.g. floats) and NestedTensors have Tensor entries. However, note that
-a NestedTensor still is a Tensor. That means it needs to have a single dimension, single dtype, single device and single layout.
+a NestedTensor is still a Tensor. That means it needs to have a single dimension, single dtype, single device and single layout.
 
- Tensor entry constraints
+ Tensor entry constraints:
  - Each Tensor constituent is of the dtype, layout and device of the containing NestedTensor.
  - The dimension of a constituent Tensor must be less than the dimension of the NestedTensor. 
  - An empty NestedTensor is of dimension zero.
 
-## Protoype classification
+## Prototype classification
 
-The nestedtensor package is a protoype intended for early stage feedback and testing. It is on the road to a beta classification, but there is no definitive timeline yet. See [PyTorch feature classification](https://pytorch.org/docs/stable/index.html) for what prototype, beta and stale means, if you desire further detail.
+The nestedtensor package is a prototype intended for early stage feedback and testing. It is on the road to a beta classification, but there is no definitive timeline yet. See [PyTorch feature classification](https://pytorch.org/docs/stable/index.html) for what prototype, beta and stale means.
 
 ## Supported platforms
 
-It is developed [against a fork](https://github.com/cpuhrsch/pytorchnestedtensor) of PyTorch to enable cutting-edge features such as improved performance or better torch.vmap integration.
+It is developed [against a fork](https://github.com/cpuhrsch/pytorchnestedtensor) of PyTorch to enable cutting-edge features such as improved performance or better `torch.vmap` integration.
 
-Developers wills thus need to build from source, but users can use the binary we will start shipping soon ([see the related issue](https://github.com/pytorch/nestedtensor/issues/262)).
+Developers will thus need to build from source, but users can use the binary we will start shipping soon ([see the related issue](https://github.com/pytorch/nestedtensor/issues/262)).
 
-If you want to use the binaries you need to run on Linux, use Python 3.8+ and have a CUDA GPU with CUDA11.
+If you want to use the binaries you need to run on Linux, use Python 3.8+ and have a CUDA-11 toolkit installed.
 
-If you want to build from source you can probably get it to work on many platforms, but supporting this won't take priority over development on the main platform. We're happy to review community contributions that achieve this however.
+If you want to build from source you can probably get it to work on many platforms, but supporting other platforms won't take priority over Linux. We're happy to review community contributions that achieve this however.
 
 ## Dependencies
 
@@ -112,4 +111,4 @@ Incremental builds
 
 
 ## Contribution
-The project is under active development. If you have a suggestions or found an bug, please file an issue!
+The project is under active development. If you have a suggestions or found a bug, please file an issue!

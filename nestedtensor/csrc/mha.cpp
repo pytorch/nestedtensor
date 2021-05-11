@@ -32,7 +32,11 @@ at::Tensor min_mha(
   TORCH_CHECK(key.dim() == 3, "key needs to be 3 dim.");
   TORCH_CHECK(value.dim() == 3, "value needs to be 3 dim.");
   TORCH_CHECK(in_proj_bias, "Input projection bias needs to be defined.");
-  int64_t edim = query.size(2);
+  auto opt_sizes = get_opt_sizes(query);
+  if (!opt_sizes[2]) {
+    throw std::runtime_error("query's third dimension must be regular.");
+  }
+  int64_t edim = *(opt_sizes[2]);
 
   at::Tensor q, k, v;
   q = at::addmm(
@@ -62,8 +66,10 @@ at::Tensor min_mha(
   return attn_output;
 }
 
-static auto registry =
-    torch::RegisterOperators().op("nestedtensor::min_mha", &min_mha);
+TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
+  m.def("min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor in_proje_weight, Tensor? in_proj_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias) -> Tensor", &min_mha);
+  m.impl("min_mha", NestedTensorKey, &min_mha);
+}
 
 } // namespace nested_tensor
 } // namespace torch

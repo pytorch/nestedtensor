@@ -33,7 +33,7 @@ at::Tensor cross_entropy(
     options = options.ignore_index(ignore_index.value());
   }
 
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&, options](at::Tensor input_tensor, at::Tensor target_tensor) {
         return F::cross_entropy(
                    input_tensor.unsqueeze(0),
@@ -77,7 +77,7 @@ at::Tensor interpolate(
   // Either scale factor or size can be passed
   if (scale_factor.has_value()) {
     options = options.scale_factor(scale_factor.value().vec());
-    return autograd_map_nested_tensor(
+    return map_nested_tensor(
         [&options](at::Tensor input_tensor) {
           return F::interpolate(input_tensor.unsqueeze(0), options).squeeze(0);
         },
@@ -85,9 +85,8 @@ at::Tensor interpolate(
   }
 
   // Get input leaves count
-  auto fn = [](at::Tensor leaf, int64_t input) { return input + 1; };
-  auto leaves_count = size_t(reduce<decltype(fn), int64_t, at::Tensor>(
-      get_nested_tensor_structure(input), fn, 0));
+  auto leaves_count = reduce_nested_tensor(
+      [](at::Tensor leaf, int64_t input) { return input + 1; }, 0, input);
 
   if (size.has_value()) {
     // There can be either 1 size for all tensor or an individual size value per
@@ -98,7 +97,7 @@ at::Tensor interpolate(
     }
 
     if (size.value().size() == 1) {
-      return autograd_map_nested_tensor(
+      return map_nested_tensor(
           [&options, &size](at::Tensor input_tensor) {
             options = options.size(size.value()[0]);
             return F::interpolate(input_tensor.unsqueeze(0), options)
@@ -107,7 +106,7 @@ at::Tensor interpolate(
           input);
     } else {
       int size_i = 0;
-      return autograd_map_nested_tensor(
+      return map_nested_tensor(
           [&options, &size_i, &size](at::Tensor input_tensor) {
             options = options.size(size.value()[size_i]);
             size_i++;

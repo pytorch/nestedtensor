@@ -43,48 +43,26 @@ at::Tensor to_tensor(NestedTensorImpl* nt_impl) {
   return _to_tensor(nt_impl->get_structure());
 }
 
-struct NestedTensorFunction_to_tensor
-    : public torch::autograd::Function<NestedTensorFunction_to_tensor> {
-  static Tensor forward(
-      torch::autograd::AutogradContext* ctx,
-      const Tensor& input) {
-    // TODO: Not necessarily a view because of stack and reshape.
-    std::vector<int64_t> new_size;
-    auto impl_data = get_nested_tensor_impl(input);
-    for (const auto& si : impl_data->opt_sizes()) {
-      if (!si) {
-        // TODO: This assumes we'll extend to_tensor to also work with int64_t
-        // at this level.
-        throw std::out_of_range(
-            "to_tensor()/to_tensor(0) only works if there is no None in size().");
-      }
-      new_size.push_back(*si);
-    }
-    ctx->save_for_backward({input});
-    return _to_tensor(impl_data->get_structure());
-  }
-  static torch::autograd::variable_list backward(
-      torch::autograd::AutogradContext* ctx,
-      torch::autograd::variable_list grad_output_) {
-    TORCH_CHECK(grad_output_.size() == 1, "grad_output must be of size 1.");
-    auto saved = ctx->get_saved_variables();
-    at::Tensor input = saved[0];
-    at::Tensor grad_output = grad_output_[0];
-    return {wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-        grad_output.clone().reshape({-1}),
-        get_nested_tensor_impl(input)->nested_size()))};
-  }
-};
-
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   if (!dim_) {
-    return NestedTensorFunction_to_tensor::apply(tensor);
+    return NestedTensor_to_tensor(tensor, 0);
   }
   int64_t dim = maybe_wrap_dim((*dim_), tensor.dim());
-  if (dim == 0) {
-    return NestedTensorFunction_to_tensor::apply(tensor);
+  if (dim != 0) {
+    TORCH_CHECK(false, "Non-zero dimension ", *dim_, " is currently not supported.");
   }
-  TORCH_CHECK(false, "Non-zero dimension ", *dim_, " is currently not supported.");
+  std::vector<int64_t> new_size;
+  auto impl_data = get_nested_tensor_impl(tensor);
+  for (const auto& si : impl_data->opt_sizes()) {
+    if (!si) {
+      // TODO: This assumes we'll extend to_tensor to also work with int64_t
+      // at this level.
+      throw std::out_of_range(
+          "to_tensor()/to_tensor(0) only works if there is no None in size().");
+    }
+    new_size.push_back(*si);
+  }
+  return _to_tensor(impl_data->get_structure());
   // // If dim is bigger than nested_dim the NestedTensor is already
   // // of Tensor for dimensions bigger than the given.
   // if (impl_data->nested_dim() == 1) {
@@ -109,10 +87,16 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   // return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
-static auto registry = torch::RegisterOperators().op(
-    "nestedtensor::to_tensor",
-    [](Tensor tensor, c10::optional<int64_t> dim) {
-      return NestedTensor_to_tensor(tensor, dim);
-    });
+TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
+  m.def("to_tensor(Tensor tensor, int? dim) -> Tensor");
+  m.impl("to_tensor", NestedTensorKey,
+  [](Tensor tensor, c10::optional<int64_t> dim) {
+    return NestedTensor_to_tensor(tensor, dim);
+  });
+  m.impl("to_tensor", c10::DispatchKey::CPU,
+  [](Tensor tensor, c10::optional<int64_t> dim) {
+    return NestedTensor_to_tensor(tensor, dim);
+  });
+}
 
 } // namespace at

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -x
+set -e
 
 # This script is for setting up environment in which unit test is ran.
 # To speed up the CI time, the resulting environment is cached.
@@ -25,7 +27,7 @@ eval "$(${conda_dir}/bin/conda shell.bash hook)"
 # 2. Create test environment at ./env
 if [ ! -d "${env_dir}" ]; then
     printf "* Creating a test environment\n"
-    conda create --prefix "${env_dir}" -y python="$PYTHON_VERSION"
+    conda create --prefix "${env_dir}" -y python="$PARAMETERS_PYTHON_VERSION"
 fi
 conda activate "${env_dir}"
 

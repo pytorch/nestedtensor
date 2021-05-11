@@ -1,5 +1,4 @@
 import setuptools
-import datetime
 import torch
 import distutils.command.clean
 import shutil
@@ -25,7 +24,7 @@ def read(*names, **kwargs):
         return fp.read()
 
 
-version = "0.0.1"
+version = "0.1.4"
 sha = "Unknown"
 package_name = "nestedtensor"
 
@@ -40,7 +39,7 @@ try:
 except Exception:
     pass
 
-if os.getenv("BUILD_VERSION"):
+if os.getenv("BUILD_VERSION") is not None:
     version = os.getenv("BUILD_VERSION")
 elif sha != "Unknown":
     version = version + "+" + sha[:7]
@@ -84,9 +83,6 @@ def get_extensions():
         extra_compile_args = {
             "cxx": ["-O0", "-fno-inline", "-g", "-std=c++14"]}
         extra_link_args = ["-O0", "-g"]
-    if int(os.environ.get("USE_SUBMODULE", 0)):
-        extra_compile_args["cxx"] = extra_compile_args["cxx"] + \
-            ["-DUSE_SUBMODULE=1"]
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv(
         "FORCE_CUDA", "0"
     ) == "1":
@@ -165,6 +161,7 @@ setuptools.setup(
     cmdclass={
         "clean": clean,
         "build_ext": BuildExtension.with_options(
+            no_python_abi_suffix=True,
             use_ninja=os.environ.get("USE_NINJA", False)
         ),
     },

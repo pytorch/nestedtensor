@@ -9,11 +9,9 @@ from utils import TestCase
 import random
 import utils
 from torch.nn import functional as F
-from torchvision.models._utils import IntermediateLayerGetter
 from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 from position_encoding import PositionEmbeddingSine
 from joiner import Joiner
-from detr_nestedtensor import DETRNestedTensor
 from torch import nn
 
 
@@ -22,6 +20,7 @@ def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 
 class TestAutogradFunctional(TestCase):
+    @unittest.skip("Requires autograd support")
     def test_nn_conv2d(self):
         def _test(Conv2d):
             inputs = [
@@ -58,6 +57,7 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torch.nn.Conv2d(
             3, 33, kernel_size=(1, 1), stride=(1, 1), bias=False))
 
+    @unittest.skip("Requires autograd support")
     def test_nn_linear(self):
         def _test(linear):
             inputs = [
@@ -88,6 +88,7 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
+    @unittest.skip("Requires autograd support")
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d, has_grad=True):
             inputs = torch.randn(5, 3, 18, 18, requires_grad=True)
@@ -133,6 +134,7 @@ class TestAutogradFunctional(TestCase):
                                            affine=False, track_running_stats=True).eval())
         _test(lambda: torch.nn.BatchNorm2d(3), False)
 
+    @unittest.skip("Requires autograd support")
     def test_nn_relu(self):
         inputs = [
             torch.randn(3, 500, 600, requires_grad=True),
@@ -160,6 +162,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(inputs[0].grad, nt.grad[0])
         self.assertEqual(inputs[1].grad, nt.grad[1])
 
+    @unittest.skip("Requires autograd support")
     def test_add(self):
         inputs0_ = [
             torch.randn(5, 6, requires_grad=True),
@@ -177,6 +180,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(inputs0.grad.sum(),
                          inputs1.grad.sum() + inputs1.grad.sum())
 
+    @unittest.skip("Requires autograd support")
     def test_resnet_bottleneck(self):
         import torchvision
 
@@ -224,6 +228,7 @@ class TestAutogradFunctional(TestCase):
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64), False)
         _test(lambda: torchvision.models.resnet.Bottleneck(256, 64).eval())
 
+    @unittest.skip("Requires autograd support")
     def test_resnet_classification(self):
         import torchvision
 
@@ -265,8 +270,10 @@ class TestAutogradFunctional(TestCase):
         # _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64))
         _test(lambda: torchvision.models.segmentation.fcn.FCNHead(256, 64).eval())
 
+    @unittest.skip("Requires autograd support")
     def test_backbone(self):
         import torchvision
+        from torchvision.models._utils import IntermediateLayerGetter
 
         def _test(FCNHead):
             inputs_ = [
@@ -315,129 +322,7 @@ class TestAutogradFunctional(TestCase):
             pretrained=True, norm_layer=NTFrozenBatchNorm2d), return_layers),
             PositionEmbeddingSine(128, normalize=True)))
 
-    def test_mha(self):
-        embed_dim = 2
-        num_heads = 2
-        torch.manual_seed(1010)
-        mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
-        query = torch.randn(3, 1, embed_dim, requires_grad=True)
-        key = torch.randn(2, 1, embed_dim, requires_grad=True)
-        value = torch.randn(2, 1, embed_dim, requires_grad=True)
-        attn_output, _ = mha(query, key, value)
-        nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
-        nt_mha.in_proj_weight = mha.in_proj_weight
-        nt_mha.in_proj_bias = mha.in_proj_bias
-        nt_mha.out_proj.weight = mha.out_proj.weight
-        nt_mha.out_proj.bias = mha.out_proj.bias
-        query_nt = ntnt([query.squeeze(1)])
-        key_nt = ntnt([key.squeeze(1)])
-        value_nt = ntnt([value.squeeze(1)])
-        nt_attn_output, _ = nt_mha(
-            query_nt, key_nt, value_nt, need_weights=False)
-        # nt_attn_output.sum().backward()
-        # For regular tensors the batch dimension is along dimension 1
-        scalar1 = attn_output.sum()
-        scalar2 = nt_attn_output.sum()
-        scalar1.backward()
-        scalar2.backward()
-        self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
-        # XXX: This needs a test that actually checks the parameter gradients
-
-    def test_mha_detr(self):
-        NDIM = 128
-        BSZ = 8
-        NHEAD = 8
-        RAND_INTS = [(1, 5), (7, 9)]
-        MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).eval()
-
-        src_list = nestedtensor.nested_tensor(
-            [torch.randn(NDIM, i, j) for (i, j) in RAND_INTS])
-        detr_nt_src = DETRNestedTensor.from_tensor_list(src_list)
-        src0, mask = detr_nt_src.decompose()
-        src0.requires_grad_()
-        src = src0.flatten(2).permute(2, 0, 1)
-        mask = mask.flatten(1)
-        result, _ = MODEL(src, src, src, key_padding_mask=mask,
-                          need_weights=False)  # [0].sum().backward()
-        mask = (~mask.t().unsqueeze(2)).float()
-        result = result * mask
-        result_sum = result.sum()
-        result_sum.backward()
-        grad_sum = src0.grad.sum()
-
-        src = ntnt([t.flatten(1).permute(
-            1, 0) for t in src_list])
-        result, _ = MODEL(src, src, src, need_weights=False)
-        self.assertEqual(result_sum, result.sum())
-        result.sum().backward()
-        # TODO: The numerical instabilities of summation seem to add up here.
-        self.assertEqual(src.grad.sum(), grad_sum, prec=6e-5)
-
-    def test_squeeze(self):
-        t = torch.randn(2, 3)
-        result = ntnt_nograd([t])
-
-        nt = ntnt_nograd([[t.reshape(1, 2, 1, 3)]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([t.reshape(2, 3)])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([[t.reshape(2, 3)]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([t.reshape(1, 2, 3)])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([t.reshape(1, 2, 1, 3, 1)])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        nt = ntnt_nograd([[[t.reshape(1, 2, 3)]]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
-
-        result = ntnt([t])
-        nt = ntnt([t.reshape(1, 2, 3)])
-        self.assertEqual(nt.squeeze(1), result)
-        self.assertRaisesRegex(
-            RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
-        self.assertRaisesRegex(
-            RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
-        self.assertRaisesRegex(
-            RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
-        self.assertRaises(IndexError, lambda: nt.squeeze(4))
-        a = nt.squeeze(1)
-        a.sum().backward()
-        self.assertEqual(nt.grad, ntnt_nograd(
-            [t.reshape(1, 2, 3).mul(0).add(1)]))
-
-        nt = ntnt([[t.reshape(1, 2, 1, 3)]])
-        self.assertRaisesRegex(
-            RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
-        # self.assertEqual(nt.squeeze(1), ntnt(
-        #     [t.reshape(1, 2, 1, 3)]))
-        self.assertEqual(nt.squeeze(
-            2), ntnt([[t.reshape(2, 1, 3)]]))
-        self.assertEqual(nt.squeeze(
-            4), ntnt([[t.reshape(1, 2, 3)]]))
-
+    @unittest.skip("Requires autograd support")
     def test_nn_max_pool2d(self):
         data = [
             [
@@ -463,6 +348,7 @@ class TestAutogradFunctional(TestCase):
             nt_res = maxPool2d(nt)
             self.assertEqual(ntnt(tensor_res), nt_res)
 
+    @unittest.skip("Requires autograd support")
     def test_fzbn2d(self):
         class FrozenBatchNorm2d(torch.nn.Module):
             """
@@ -527,6 +413,7 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)
 
+    @unittest.skip("Requires autograd support")
     def test_layer_norm(self):
         layer_norm = torch.nn.LayerNorm((0,))
         t0 = torch.randn(3)
@@ -586,138 +473,6 @@ class TestAutogradFunctional(TestCase):
         self.assertRaisesRegex(RuntimeError,
                                "Currently only singleton tuples of integers supported for layer_norm.",
                                lambda: layer_norm(nt))
-
-    def test_decoder(self):
-        class TransformerDecoderLayer(nn.Module):
-
-            def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
-                         activation="relu", normalize_before=False):
-                super().__init__()
-                self.self_attn = nestedtensor.nn.MultiheadAttention(
-                    d_model, nhead, dropout=dropout)
-                self.multihead_attn = nestedtensor.nn.MultiheadAttention(
-                    d_model, nhead, dropout=dropout)
-                # Implementation of Feedforward model
-                self.linear1 = nn.Linear(d_model, dim_feedforward)
-                self.dropout = nn.Dropout(dropout)
-                self.linear2 = nn.Linear(dim_feedforward, d_model)
-
-                self.norm1 = nn.LayerNorm(d_model)
-                self.norm2 = nn.LayerNorm(d_model)
-                self.norm3 = nn.LayerNorm(d_model)
-                self.dropout1 = nn.Dropout(dropout)
-                self.dropout2 = nn.Dropout(dropout)
-                self.dropout3 = nn.Dropout(dropout)
-
-                self.activation = torch.nn.functional.relu
-                self.normalize_before = normalize_before
-
-            def with_pos_embed(self, tensor, pos):
-                return tensor if pos is None else tensor + pos
-
-            def forward(self, tgt, memory,
-                        # tgt_mask: Optional[Tensor] = None,
-                        # memory_mask: Optional[Tensor] = None,
-                        # tgt_key_padding_mask: Optional[Tensor] = None,
-                        # memory_key_padding_mask: Optional[Tensor] = None,
-                        pos=None, query_pos=None):
-                q = k = self.with_pos_embed(tgt, query_pos)
-                tgt2 = self.self_attn(q, k, value=tgt,
-                                      need_weights=False)[0]
-                # tgt = tgt + self.dropout1(tgt2)
-                tgt = tgt + tgt2
-                tgt = self.norm1(tgt)
-                tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
-                                           key=self.with_pos_embed(
-                                               memory, pos),
-                                           value=memory,
-                                           need_weights=False)[0]
-                # tgt = tgt + self.dropout2(tgt2)
-                tgt = tgt + tgt2
-                tgt = self.norm2(tgt)
-                tgt2 = self.linear2(self.dropout(
-                    self.activation(self.linear1(tgt))))
-                # tgt = tgt + self.dropout3(tgt2)
-                tgt = tgt + tgt2
-                tgt = self.norm3(tgt)
-                # print('tgt.requires_grad')
-                # print(tgt.requires_grad)
-                return tgt
-
-        d = TransformerDecoderLayer(256, 8)
-        d.zero_grad()
-        a = d(
-            ntnt([
-                torch.randn(864, 256),
-                torch.randn(360, 256)]),
-            ntnt([
-                torch.randn(864, 256),
-                torch.randn(360, 256)]),
-            pos=ntnt([
-                torch.randn(864, 256),
-                torch.randn(360, 256)]),
-            query_pos=ntnt([
-                torch.randn(864, 256),
-                torch.randn(360, 256)]),
-        )
-        a.sum().backward()
-        # for (n, p) in d.named_parameters():
-        #     print(n)
-        #     print(p is None)
-
-    def _test_softmax(self, ts, nt):
-        fn = F.softmax
-        self.assertRaises(RuntimeError, lambda: fn(nt, 0))
-        self.assertRaises(RuntimeError, lambda: fn(nt, 1))
-
-        def _map_fn(dim, result):
-            result = fn(nt, 2)
-
-            map(self.assertEqual, tuple(
-                map(lambda x: fn(x, dim), ts[0])), result[0])
-            map(self.assertEqual, tuple(
-                map(lambda x: fn(x, dim), ts[1])), result[1])
-            s = result.sum()
-            # s.backward()
-            # ts[0][0].requires_grad_()
-            # ts[0][1].requires_grad_()
-            # ts[1][0].requires_grad_()
-            # map(lambda x: fn(x, dim).sum().backward(), ts[0])
-            # map(lambda x: fn(x, dim).sum().backward(), ts[1])
-            # map(self.assertEqual, tuple(
-            #     map(lambda x: x.grad, ts[0])), nt.grad[0])
-            # map(self.assertEqual, tuple(
-            #     map(lambda x: x.grad, ts[1])), nt.grad[1])
-
-        for i in range(nt.dim() - nt.nested_dim()):
-            _map_fn(i, fn(nt, i + nt.nested_dim()))
-
-    def test_softmax_1(self):
-        ts = [[], []]
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
-
-    def test_softmax_2(self):
-        t0 = torch.randn(3, requires_grad=True)
-        t1 = torch.randn(2, requires_grad=True)
-        t2 = torch.randn(3, requires_grad=True)
-        ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
-
-    def test_softmax_3(self):
-        t0 = torch.randn(3, 2, 1, requires_grad=True)
-        t1 = torch.randn(2, 3, 1, requires_grad=True)
-        t2 = torch.randn(3, 1, 2, requires_grad=True)
-        ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
-
-    def test_softmax_4(self):
-        ts = torch.randn(6, 4, 3, 2, 5, requires_grad=True)
-        ts = list(map(lambda x: x.unbind(), ts.unbind()))
-        nt = ntnt(ts)
-        self._test_softmax(ts, nt)
 
 
 if __name__ == "__main__":
