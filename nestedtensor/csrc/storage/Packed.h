@@ -5,7 +5,7 @@ namespace torch {
 namespace nested_tensor {
 namespace impl {
 inline std::tuple<TensorNode, at::Tensor> build_structure(
-    at::Tensor buffer,
+    const at::Tensor& buffer,
     const SizeNode& nested_size,
     const SizeNode& nested_stride) {
   std::vector<int64_t> split_sizes = flatten(
@@ -49,7 +49,7 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
 }
 
 inline std::tuple<TensorNode, at::Tensor> build_structure(
-    at::Tensor buffer,
+    const at::Tensor& buffer,
     const SizeNode& nested_size) {
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
@@ -59,7 +59,7 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
   return build_structure(buffer, nested_size, nested_stride);
 }
 
-inline at::Tensor pack(TensorNode structure) {
+inline at::Tensor pack(const TensorNode& structure) {
   TensorNode flat_structure =
       map([](at::Tensor tensor) { return tensor.reshape({-1}); }, structure);
   auto nested_size =
@@ -80,7 +80,6 @@ struct PackedStorage : public NestedTensorStorage {
       : _buffer(buffer),
         _nested_size(nested_size),
         _nested_stride(nested_stride),
-        _opt_sizes(construct_size(_nested_size)),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
         _dim(
@@ -169,7 +168,6 @@ struct PackedStorage : public NestedTensorStorage {
   at::Tensor _buffer;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;
-  const std::vector<c10::optional<int64_t>> _opt_sizes;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
   int64_t _dim;
