@@ -2,6 +2,7 @@
 #include <ATen/ATen.h>
 #include <ATen/MemoryOverlap.h>
 #include <c10/util/Metaprogramming.h>
+#include <nestedtensor/csrc/storage/Storage.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/autograd/autograd.h>
@@ -148,44 +149,35 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(TensorNode structure);
+  explicit NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage);
 
   int64_t dim() const override {
-    return _first_variable.dim() + nested_dim();
+    return _storage->dim();
   }
   int64_t numel() const override {
-    auto fn = [](at::Tensor leaf, int64_t input) {
-      return input + leaf.numel();
-    };
-    return reduce<decltype(fn), int64_t, at::Tensor>(get_structure(), fn, 0);
+    return reduce(
+        [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
+        0,
+        get_structure());
   }
   bool is_contiguous(at::MemoryFormat memory_format) const override {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
     // buffer. For this to be contiguous not only the individuals Tensors have
     // to be but also the buffer.
-    auto fn = [](at::Tensor leaf, bool input) {
-      return input && leaf.is_contiguous();
-    };
-    return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true) &&
-        get_structure().buffer().has_value();
+    return (_storage->kind() == NestedTensorStorageKind::packed) &&
+        _storage->is_contiguous();
   }
-  TensorNode& get_structure() {
-    return _structure;
+  TensorNode get_structure() const {
+    return _storage->get_structure();
   }
-  const TensorNode& get_structure() const {
-    return _structure;
+  std::shared_ptr<NestedTensorStorage> get_storage() {
+    return _storage;
   }
-  c10::intrusive_ptr<c10::TensorImpl> shallow_copy_and_detach(
-      const c10::VariableVersion& version_counter,
-      bool allow_tensor_metadata_change) const override;
-
-  // TODO:
-  void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
   int64_t nested_dim() const {
     return get_structure().height();
   }
   bool is_pinned() const {
-    return _first_variable.is_pinned();
+    return _storage->is_pinned();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //
@@ -208,31 +200,26 @@ struct NestedTensorImpl : public c10::TensorImpl {
   //
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
-  SizeNode nested_size() const {
-    return map(
-        [](at::Tensor tensor) { return tensor.sizes().vec(); },
-        get_structure());
+  const SizeNode nested_size() const {
+    return _storage->nested_size();
   }
-  SizeNode nested_stride() const {
-    return map(
-        [](at::Tensor tensor) { return tensor.strides().vec(); },
-        get_structure());
+  const SizeNode nested_stride() const {
+    return _storage->nested_stride();
   }
-
-  std::vector<c10::optional<int64_t>> opt_sizes() const;
+  const std::vector<c10::optional<int64_t>> opt_sizes() const {
+    return _storage->opt_sizes();
+  }
   IntArrayRef sizes() const override {
     TORCH_CHECK(
         false,
         "Internal error: NestedTensorImpl doesn't support sizes. Please file an issue on https://github.com/pytorch/nestedtensor");
-    return IntArrayRef(_sizes);
+    std::vector<int64_t> sizes;
+    return IntArrayRef(sizes);
   }
   IntArrayRef strides() const override;
 
  private:
-  TensorNode _structure;
-  at::Tensor _first_variable;
-  SizeNode _nested_size;
-  std::vector<int64_t> _sizes;
+  std::shared_ptr<NestedTensorStorage> _storage;
 };
 
 int64_t nt_size(Tensor tensor, int64_t dim);
@@ -240,8 +227,6 @@ int64_t nt_size(Tensor tensor, int64_t dim);
 Tensor NestedTensor_to_nested_tensor(
     at::Tensor input,
     c10::optional<int64_t> dim__);
-
-std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
 
 inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   if (!is_nested_tensor_impl(tensor)) {
@@ -263,25 +248,14 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-template <class A>
-static inline bool is_packed(A tensor) {
-  return is_nested_tensor_impl(tensor) &&
-      get_nested_tensor_structure(tensor).buffer().has_value();
-}
-
-template <class A, class B>
-static inline bool is_packed(A first, B other) {
-  return is_packed(first) && is_packed(other);
-}
-
-template <class A, class B, class... C>
-static inline bool is_packed(A first, B second, C... other) {
-  return is_packed(first, second) && is_packed(other...);
-}
-
 static inline at::Tensor get_buffer(const at::Tensor& tensor) {
-  TORCH_CHECK(is_packed(tensor), "Given Tensor doesn't have buffer.");
-  return *(get_nested_tensor_structure(tensor).buffer());
+  auto storage = get_nested_tensor_impl(tensor)->get_storage();
+  TORCH_CHECK(
+      storage.get()->kind() == NestedTensorStorageKind::packed,
+      "Given Tensor doesn't have buffer.");
+  NestedTensorStorage* storagep = storage.get();
+  PackedStorage* ps = dynamic_cast<PackedStorage*>(storagep);
+  return ps->get_buffer();
 }
 
 static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
@@ -321,7 +295,7 @@ static inline typename c10::guts::infer_function_traits<F>::type::return_type
 reduce_nested_tensor(F&& fn, I init, A... a) {
   // torch_check_tensor_shape_matches(a...);
   // torch_check_is_nested_tensor(a...);
-  return reduce<F, I, A...>(get_nested_tensor_structure(a)..., fn, init);
+  return reduce(fn, init, get_nested_tensor_structure(a)...);
 }
 
 static inline std::vector<at::Tensor> flatten_nested_tensor(at::Tensor tensor) {

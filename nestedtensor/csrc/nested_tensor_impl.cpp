@@ -22,63 +22,6 @@ int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
   return size[0] * stride[0];
 }
 
-std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
-  if (size_node.is_leaf()) {
-    std::vector<c10::optional<int64_t>> result;
-    for (const auto& size : size_node.payload()) {
-      result.push_back(size);
-    }
-    return result;
-  }
-  std::vector<c10::optional<int64_t>> result;
-  result.push_back(size_node.degree());
-
-  if (size_node.degree() > 0) {
-    for (const auto& size : construct_size(size_node.children(0))) {
-      result.push_back(size);
-    }
-    for (size_t i = 1; i < size_node.degree(); i++) {
-      auto size_node_i = construct_size(size_node.children(i));
-      for (size_t j = 1; j < result.size(); j++) {
-        if (result[j] && ((*result[j]) != size_node_i[j - 1])) {
-          result[j] = c10::nullopt;
-        }
-      }
-    }
-  }
-
-  return result;
-}
-
-c10::intrusive_ptr<c10::TensorImpl> NestedTensorImpl::shallow_copy_and_detach(
-    const c10::VariableVersion& version_counter,
-    bool allow_tensor_metadata_change) const {
-  auto impl = c10::make_intrusive<NestedTensorImpl>(_structure);
-  copy_tensor_metadata(
-      /*src_impl=*/this,
-      /*dest_impl=*/impl.get(),
-      /*version_counter=*/version_counter,
-      /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
-  return impl;
-}
-
-void NestedTensorImpl::shallow_copy_from(
-    const c10::intrusive_ptr<TensorImpl>& impl) {
-  NestedTensorImpl* nested_impl = dynamic_cast<NestedTensorImpl*>(impl.get());
-  copy_tensor_metadata(
-      /*src_impl=*/nested_impl,
-      /*dest_impl=*/this,
-      /*version_counter=*/version_counter(),
-      /*allow_tensor_metadata_change=*/allow_tensor_metadata_change());
-  nested_impl->_structure = _structure;
-}
-
-std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
-  return construct_size(
-      map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-          get_structure()));
-}
-
 std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   std::vector<int64_t> stride(size.size());
   int64_t p = 1;
@@ -89,12 +32,6 @@ std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
     p *= size[p_i];
   }
   return std::vector<int64_t>(stride);
-}
-
-SizeNode infer_nested_size(const TensorNode& _structure) {
-  return map(
-      [](at::Tensor tensor) { return tensor.sizes().vec(); },
-      _structure);
 }
 
 TensorNode _unbind_tensors(TensorNode structure) {
@@ -111,34 +48,12 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensorImpl::NestedTensorImpl(TensorNode structure)
+NestedTensorImpl::NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey}),
-          get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
-                                    : at::ones({}).dtype(),
-          get_first_leaf(structure) ? get_first_leaf(structure)->device()
-                                    : at::ones({}).device()),
-      _structure(structure),
-      _first_variable(
-          get_first_leaf(_structure) ? *get_first_leaf(_structure)
-                                     : at::ones({})),
-      _nested_size(map(
-          [](at::Tensor tensor) { return tensor.sizes().vec(); },
-          _structure)) {
-  TORCH_CHECK(
-      !_structure.is_leaf(),
-      "NestedTensorImpl must be given structure of at least height 1.")
-  for (auto opt_int : construct_size(_nested_size)) {
-    if (opt_int) {
-      _sizes.push_back(*opt_int);
-    } else {
-      // TODO: Should we prefer this over opt_sizes?
-      // TODO: Using -1 here is of of a similar thought as using -1 in reshape
-      // as a placeholder. Unfortunatly using -1 here interacts very badly with
-      // the rest of the functions that consume size.
-      _sizes.push_back(0);
-    }
-  }
+          storage->dtype(),
+          storage->device()),
+      _storage(storage) {
   remove_autograd_key();
   key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::ADInplaceOrView});
 }
@@ -161,7 +76,8 @@ IntArrayRef NestedTensorImpl::strides() const {
   TORCH_CHECK(
       false,
       "Internal error: NestedTensorImpl doesn't support strides. Please file an issue on https://github.com/pytorch/nestedtensor");
-  return _sizes;
+  std::vector<int64_t> strides;
+  return IntArrayRef(strides);
 }
 
 int64_t nt_size(Tensor tensor, int64_t dim) {
@@ -178,7 +94,10 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }
-  return at::detail::make_tensor<NestedTensorImpl>(result);
+  ListStorage* ls = new ListStorage(std::move(result));
+  NestedTensorStorage* ls_base = dynamic_cast<NestedTensorStorage*>(ls);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ls_base));
 }
 
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
@@ -191,8 +110,13 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
 
 at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
-  return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-      std::move(buffer), nested_size));
+  if (nested_size.is_leaf()) {
+    return buffer.reshape(IntArrayRef(nested_size.payload()));
+  }
+  PackedStorage* ps = new PackedStorage(std::move(buffer), nested_size);
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
@@ -202,7 +126,10 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
+  PackedStorage* ps = new PackedStorage(get_nested_tensor_structure(self));
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
@@ -441,10 +368,11 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 //     optional<int64_t> storage_offset_) {
 //   throw std::runtime_error(
 //       "as_strided is not implemented for NestedTensor. "
-//       "Please create an issue on https://github.com/pytorch/nestedtensor with your usecase.");
+//       "Please create an issue on https://github.com/pytorch/nestedtensor with
+//       your usecase.");
 //   return self;
 // }
-// 
+//
 // Tensor& NestedTensor_as_strided_(
 //     Tensor& self,
 //     IntArrayRef size,
@@ -452,7 +380,8 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 //     optional<int64_t> storage_offset_) {
 //   throw std::runtime_error(
 //       "as_strided_ is not implemented for NestedTensor. "
-//       "Please create an issue on https://github.com/pytorch/nestedtensor with your usecase.");
+//       "Please create an issue on https://github.com/pytorch/nestedtensor with
+//       your usecase.");
 //   return self;
 // }
 
