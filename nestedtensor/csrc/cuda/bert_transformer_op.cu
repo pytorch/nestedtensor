@@ -90,19 +90,6 @@ at::Tensor bt_mha(
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
-  /// 3. assign intermediate pointer
-  /// DataType_* buf = buf_tensor.data_ptr<DataType_>();
-  /// buffer for qkv
-//  DataType_* query_ = buf + 0 * input_tensor_size;
-//  DataType_* key_ = buf + 1 * input_tensor_size;
-//  DataType_* value_ = buf + 2 * input_tensor_size;
-//  /// buffer for self attention
-//  DataType_* qk_buf_ = buf + 3 * input_tensor_size;
-//  /// buffer for output matmat
-//  DataType_* attr_out_buf_ = buf + 4 * input_tensor_size;
-//  DataType_* transpose_dst_ =
-//      buf + 4 * input_tensor_size + std::max(attn_tensor_size, input_tensor_size);
-
    DataType_* query_buf_     = buf + 0 * input_tensor_size;
    DataType_* key_buf_       = buf + 1 * input_tensor_size;
    DataType_* value_buf_     = buf + 2 * input_tensor_size;
@@ -114,31 +101,18 @@ at::Tensor bt_mha(
    /// buffer for output matmat
    DataType_* attr_out_buf_     = buf + 7 * input_tensor_size;
    DataType_* transpose_dst_    = buf + 8 * input_tensor_size;
-   // DataType_* attr_matmul_buf_  = buf + 8 * input_tensor_size;
-   // DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
-  // DataType_* attr_matmul_buf_ = buf + 0 * input_tensor_size;
+
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   int64_t result_numel = valid_word_num * head_num_ * size_per_head_;
   at::Tensor result = torch::empty({result_numel}, float_options);
   DataType_* attr_matmul_buf_ = result.data_ptr<float>();
-std::cout << "valid_word_num: " << valid_word_num << std::endl;
-  // DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
 
   // 5. input -> Q K V
   {
-    // at::Tensor query_buf = torch::empty({result_numel}, float_options);
-    // at::Tensor key_buf = torch::empty({result_numel}, float_options);
-    // at::Tensor value_buf = torch::empty({result_numel}, float_options);
-    // DataType_* query_buf_ = query_buf.data_ptr<DataType_>();
-    // DataType_* key_buf_ = key_buf.data_ptr<DataType_>();
-    // DataType_* value_buf_ = value_buf.data_ptr<DataType_>();
     int m = valid_word_num;
     int k = head_num * size_per_head;
     int n = k;
-  // std::cout << "n: " << n << std::endl;
-  // std::cout << "m: " << m << std::endl;
-  // std::cout << "k: " << k << std::endl;
 
     check_cuda_error(cublasGemmEx(
         cublas_handle,
