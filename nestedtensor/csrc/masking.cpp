@@ -82,7 +82,7 @@ std::vector<int64_t> get_max_size(Tensor nt) {
 std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
   if (!is_nested_tensor_impl(nt)) {
     if (nt.numel() == 0) {
-      throw std::runtime_error("Empty tensors are not yet supported.");
+      TORCH_CHECK(false, "Empty tensors are not yet supported.");
     }
     // Dont pad in case of a scalar
     if (nt.dim() == 0) {
