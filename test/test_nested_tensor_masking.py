@@ -181,10 +181,10 @@ class TestTensorMask(TestCase):
 
         # TODO: Fix this case together with C++ rewrite.
         self.assertRaisesRegex(
-            RuntimeError, "Expected all tensors to be on the same device, but found at least two devices, cpu and cuda:0", lambda: a.to_tensor_mask())
+            RuntimeError, "all input tensors must be on the same device. Received cpu and cuda", lambda: a.to_tensor_mask())
         # tensor, mask = a.to_tensor_mask()
-        # TestCase.assertEqual(self, tensor, torch.tensor([[0], [11]], dtype=torch.long))
-        # TestCase.assertEqual(self, mask, torch.tensor([False,  True]))
+        # TestCase.assertEqual(self, tensor, torch.tensor([[0], [11]], dtype=torch.long, device='cuda'))
+        # TestCase.assertEqual(self, mask, torch.tensor([False,  True], device='cuda'))
 
     def test_single_tensor(self):
         a = nt.nested_tensor([
