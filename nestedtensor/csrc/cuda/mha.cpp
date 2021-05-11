@@ -64,7 +64,7 @@ at::Tensor bt_min_mha(
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 9 + attn_tensor_size;
+  int64_t buf_size = input_tensor_size * 6 + attn_tensor_size;
   at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
   Tensor tmp_int =  torch::zeros({
           input_mask.size(0) * input_mask.size(1) * 2

@@ -90,14 +90,14 @@ at::Tensor bt_mha(
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
-   DataType_* query_         = buf + 3 * input_tensor_size;
-   DataType_* key_           = buf + 4 * input_tensor_size;
-   DataType_* value_         = buf + 5 * input_tensor_size;
+   DataType_* query_         = buf + 0 * input_tensor_size;
+   DataType_* key_           = buf + 1 * input_tensor_size;
+   DataType_* value_         = buf + 2 * input_tensor_size;
    /// buffer for self attention
-   DataType_* qk_buf_           = buf + 6 * input_tensor_size;
+   DataType_* qk_buf_           = buf + 3 * input_tensor_size;
    /// buffer for output matmat
-   DataType_* attr_out_buf_     = buf + 7 * input_tensor_size;
-   DataType_* transpose_dst_    = buf + 8 * input_tensor_size;
+   DataType_* attr_out_buf_     = buf + 4 * input_tensor_size;
+   DataType_* transpose_dst_    = buf + 5 * input_tensor_size;
 
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
