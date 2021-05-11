@@ -109,8 +109,6 @@ struct PackedStorage : public NestedTensorStorage {
             impl::pack(structure),
             map([](at::Tensor tensor) { return tensor.sizes().vec(); },
                 structure)) {}
-//             map([](at::Tensor tensor) { return tensor.strides().vec(); },
-//                 structure)) {}
 
   int64_t dim() const override {
     return _dim;
