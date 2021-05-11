@@ -13,14 +13,11 @@ namespace effectivetransformer {
 template <typename DataType_>
 at::Tensor bt_mha(
     DataType_* from_tensor,
-    DataType_* query_buf_,
-    DataType_* key_buf_,
-    DataType_* value_buf_,
     DataType_* to_tensor,
-    DataType_* attr_bias_Q,
-    DataType_* attr_bias_K,
-    DataType_* attr_bias_V,
     DataType_* attr_output_kernel,
+    DataType_* query_,
+    DataType_* key_,
+    DataType_* value_,
     int* batch_idx,
     int* word_idx,
     DataType_* attr_mask,
@@ -32,5 +29,5 @@ at::Tensor bt_mha(
     DataType_ scaler,
     int* prefix_sum_ptr,
     int* input_mask_ptr,
-    int word_num);
+    int valid_word_num);
 }

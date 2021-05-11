@@ -20,14 +20,11 @@ namespace effectivetransformer {
 template <typename DataType_>
 at::Tensor bt_mha(
     DataType_* from_tensor,
-    DataType_* query_buf_,
-    DataType_* key_buf_,
-    DataType_* value_buf_,
     DataType_* to_tensor,
-    DataType_* attr_bias_Q,
-    DataType_* attr_bias_K,
-    DataType_* attr_bias_V,
     DataType_* attr_output_kernel,
+    DataType_* query_,
+    DataType_* key_,
+    DataType_* value_,
     int* batch_idx,
     int* word_idx,
     DataType_* attr_mask,
@@ -39,26 +36,11 @@ at::Tensor bt_mha(
     DataType_ scaler,
     int* prefix_sum_ptr,
     int* input_mask_ptr,
-    int word_num) {
+    int valid_word_num) {
   at::cuda::CUDAStream stream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(stream);
   cublasHandle_t cublas_handle = at::cuda::getCurrentCUDABlasHandle();
   check_cuda_error(cublasSetStream(cublas_handle, stream));
-
-  /// 4. get valid word num
-  // int valid_word_num = valid_word_num_;
-  int valid_word_num;
-  check_cuda_error(cudaMemcpyAsync(
-    &valid_word_num,
-    prefix_sum_ptr + word_num - 1, sizeof(int), cudaMemcpyDeviceToHost, stream));
-  int last_mask;
-  check_cuda_error(cudaMemcpyAsync(
-    &last_mask,
-    input_mask_ptr + word_num - 1, sizeof(int), cudaMemcpyDeviceToHost, stream));
-  if (last_mask == 1) {
-    valid_word_num++;
-  }
-
 
   /// 1. Set compute type
   cudaDataType_t computeType, AType, BType, CType;
@@ -90,9 +72,6 @@ at::Tensor bt_mha(
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
-   DataType_* query_         = buf + 0 * input_tensor_size;
-   DataType_* key_           = buf + 1 * input_tensor_size;
-   DataType_* value_         = buf + 2 * input_tensor_size;
    /// buffer for self attention
    DataType_* qk_buf_           = buf + 3 * input_tensor_size;
    /// buffer for output matmat
@@ -117,30 +96,30 @@ at::Tensor bt_mha(
     // check_cuda_error(cudaMemsetAsync(query_, 0, input_tensor_size * sizeof(DataType_), stream));
     // check_cuda_error(cudaMemsetAsync(key_, 0, input_tensor_size * sizeof(DataType_), stream));
     // check_cuda_error(cudaMemsetAsync(value_, 0, input_tensor_size * sizeof(DataType_), stream));
-    check_cuda_error(cudaMemsetAsync(
-        query_, 0, 3 * input_tensor_size * sizeof(DataType_), stream));
+    // check_cuda_error(cudaMemsetAsync(
+    //     query_, 0, 3 * input_tensor_size * sizeof(DataType_), stream));
   // std::cout << "015" << std::endl;
   // stream.synchronize();
 
     /// add bias & add padding & transpose for self-attention
-    cuda::add_QKV_bias_padding_kernelLauncher<DataType_>(
-        query_buf_,
-        attr_bias_Q,
-        key_buf_,
-        attr_bias_K,
-        value_buf_,
-        attr_bias_V,
-        query_,
-        key_,
-        value_,
-        valid_word_num,
-        batch_size,
-        from_seq_len,
-        head_num,
-        size_per_head,
-        batch_idx,
-        word_idx,
-        stream);
+    // cuda::add_QKV_bias_padding_kernelLauncher<DataType_>(
+    //     query_buf_,
+    //     attr_bias_Q,
+    //     key_buf_,
+    //     attr_bias_K,
+    //     value_buf_,
+    //     attr_bias_V,
+    //     query_,
+    //     key_,
+    //     value_,
+    //     valid_word_num,
+    //     batch_size,
+    //     from_seq_len,
+    //     head_num,
+    //     size_per_head,
+    //     batch_idx,
+    //     word_idx,
+    //     stream);
   // std::cout << "016" << std::endl;
   // stream.synchronize();
   }
@@ -260,14 +239,11 @@ at::Tensor bt_mha(
 
 template at::Tensor bt_mha<float>(
     float* from_tensor,
-    float* query_buf_,
-    float* key_buf_,
-    float* value_buf_,
     float* to_tensor,
-    float* attr_bias_Q,
-    float* attr_bias_K,
-    float* attr_bias_V,
     float* attr_output_kernel,
+    float* query_,
+    float* key_,
+    float* value_,
     int* batch_idx,
     int* word_idx,
     float* attr_mask,
@@ -279,5 +255,5 @@ template at::Tensor bt_mha<float>(
     float scaler,
     int* prefix_sum_ptr,
     int* input_mask_ptr,
-    int word_num);
+    int valid_word_num);
 } // namespace effectivetransformer

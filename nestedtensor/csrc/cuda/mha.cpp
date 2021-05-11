@@ -66,15 +66,15 @@ at::Tensor bt_min_mha(
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
   int64_t buf_size = input_tensor_size * 6 + attn_tensor_size;
   at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
-  Tensor tmp_int =  torch::zeros({
-          input_mask.size(0) * input_mask.size(1) * 2
-          + batch_size * seq_len
-          + batch_size * seq_len
-          }, options);
+  Tensor tmp_int = torch::zeros(
+      {input_mask.size(0) * input_mask.size(1) * 2 + batch_size * seq_len +
+       batch_size * seq_len},
+      options);
 
   int* prefix_sum_ptr = tmp_int.data_ptr<int>();
-  int* batch_idx_ptr = prefix_sum_ptr + input_mask.size(0) * input_mask.size(1) * 2;
-  int* word_idx_ptr = batch_idx_ptr + batch_size* seq_len;
+  int* batch_idx_ptr =
+      prefix_sum_ptr + input_mask.size(0) * input_mask.size(1) * 2;
+  int* word_idx_ptr = batch_idx_ptr + batch_size * seq_len;
   int word_num = batch_size * seq_len;
 
   at::Tensor tmp = get_buffer(query);
@@ -99,30 +99,48 @@ at::Tensor bt_min_mha(
 
   at::Tensor q, k, v;
   q = at::addmm(
-      attr_bias_Q.contiguous(),
-      query,
-      attr_kernel_Q.t().contiguous());
-  k = at::addmm(
-      attr_bias_K.contiguous(),
-      key,
-      attr_kernel_K.t().contiguous());
+      attr_bias_Q.contiguous(), query, attr_kernel_Q.t().contiguous());
+  k = at::addmm(attr_bias_K.contiguous(), key, attr_kernel_K.t().contiguous());
   v = at::addmm(
-      attr_bias_V.contiguous(),
-      value,
-      attr_kernel_V.t().contiguous());
+      attr_bias_V.contiguous(), value, attr_kernel_V.t().contiguous());
   at::Tensor q_buf = get_buffer(q);
   at::Tensor k_buf = get_buffer(k);
   at::Tensor v_buf = get_buffer(v);
 
+  int valid_word_num = tmp_int.reshape({-1})[word_num - 1].item<int>();
+  int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
+  if (last_mask == 1) {
+    valid_word_num++;
+  }
+
+  float* query_ptr = buf_tensor.data_ptr<float>() + 0 * input_tensor_size;
+  float* key_ptr = buf_tensor.data_ptr<float>() + 1 * input_tensor_size;
+  float* value_ptr = buf_tensor.data_ptr<float>() + 2 * input_tensor_size;
+  effectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
+      q_buf.data_ptr<float>(),
+      attr_bias_Q.data_ptr<float>(),
+      k_buf.data_ptr<float>(),
+      attr_bias_K.data_ptr<float>(),
+      v_buf.data_ptr<float>(),
+      attr_bias_V.data_ptr<float>(),
+      query_ptr,
+      key_ptr,
+      value_ptr,
+      valid_word_num,
+      batch_size,
+      seq_len,
+      head_num,
+      size_per_head,
+      batch_idx_ptr,
+      word_idx_ptr,
+      defaultStream);
+
   Tensor result = effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
-      q_buf.data_ptr<float>(),
-      k_buf.data_ptr<float>(),
-      v_buf.data_ptr<float>(),
       tmp.data_ptr<float>(),
-      attr_bias_Q.data_ptr<float>(),
-      attr_bias_K.data_ptr<float>(),
-      attr_bias_V.data_ptr<float>(),
+      query_ptr,
+      key_ptr,
+      value_ptr,
       out_proj_weight.data_ptr<float>(),
       batch_idx_ptr,
       word_idx_ptr,
@@ -135,7 +153,7 @@ at::Tensor bt_min_mha(
       (float)(scaling),
       prefix_sum_ptr,
       input_mask.data_ptr<int>(),
-      word_num);
+      valid_word_num);
   return wrap_buffer(std::move(result), get_nested_size(query));
 }
 
