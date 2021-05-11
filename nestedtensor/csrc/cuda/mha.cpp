@@ -138,10 +138,10 @@ at::Tensor bt_min_mha(
   Tensor result = effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
       tmp.data_ptr<float>(),
+      out_proj_weight.data_ptr<float>(),
       query_ptr,
       key_ptr,
       value_ptr,
-      out_proj_weight.data_ptr<float>(),
       batch_idx_ptr,
       word_idx_ptr,
       attr_mask.data_ptr<float>(),
