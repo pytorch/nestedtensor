@@ -275,7 +275,7 @@ void softmax_kernel(T* qk_buf_, const T* attr_mask,
       s_max = max_val;
     __syncthreads();
 
-    qk = threadIdx.x < seq_len ? __expf(tmp - s_max) : 0.0f;
+    qk = threadIdx.x < seq_len ? expf(tmp - s_max) : 0.0f;
 
     float sum_val = blockReduceSum<float>(qk);
 
@@ -320,7 +320,7 @@ void softmax_kernel_v2(T* qk_buf_, const T* attr_mask,
     s_max = max_val;
   __syncthreads();
 
-  float qk_tmp = threadIdx.x < seq_len ? __expf((float)(tmp - s_max)) : 0.0f;
+  float qk_tmp = threadIdx.x < seq_len ? expf((float)(tmp - s_max)) : 0.0f;
   float sum_val = blockReduceSum<float>(qk_tmp);
 
   if(threadIdx.x == 0)

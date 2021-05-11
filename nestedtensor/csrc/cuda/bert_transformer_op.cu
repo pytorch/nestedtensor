@@ -93,31 +93,46 @@ at::Tensor bt_mha(
   /// 3. assign intermediate pointer
   /// DataType_* buf = buf_tensor.data_ptr<DataType_>();
   /// buffer for qkv
-  DataType_* query_ = buf + 0 * input_tensor_size;
-  DataType_* key_ = buf + 1 * input_tensor_size;
-  DataType_* value_ = buf + 2 * input_tensor_size;
-  /// buffer for self attention
-  DataType_* qk_buf_ = buf + 0 * input_tensor_size;
-  DataType_* transpose_dst_ =
-      buf + std::max(attn_tensor_size, input_tensor_size);
-  /// buffer for output matmat
-  DataType_* attr_out_buf_ = buf + 1 * input_tensor_size;
+//  DataType_* query_ = buf + 0 * input_tensor_size;
+//  DataType_* key_ = buf + 1 * input_tensor_size;
+//  DataType_* value_ = buf + 2 * input_tensor_size;
+//  /// buffer for self attention
+//  DataType_* qk_buf_ = buf + 3 * input_tensor_size;
+//  /// buffer for output matmat
+//  DataType_* attr_out_buf_ = buf + 4 * input_tensor_size;
+//  DataType_* transpose_dst_ =
+//      buf + 4 * input_tensor_size + std::max(attn_tensor_size, input_tensor_size);
+
+   DataType_* query_buf_     = buf + 0 * input_tensor_size;
+   DataType_* key_buf_       = buf + 1 * input_tensor_size;
+   DataType_* value_buf_     = buf + 2 * input_tensor_size;
+   DataType_* query_         = buf + 3 * input_tensor_size;
+   DataType_* key_           = buf + 4 * input_tensor_size;
+   DataType_* value_         = buf + 5 * input_tensor_size;
+   /// buffer for self attention
+   DataType_* qk_buf_           = buf + 6 * input_tensor_size;
+   /// buffer for output matmat
+   DataType_* attr_out_buf_     = buf + 7 * input_tensor_size;
+   DataType_* transpose_dst_    = buf + 8 * input_tensor_size;
+   // DataType_* attr_matmul_buf_  = buf + 8 * input_tensor_size;
+   // DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
   // DataType_* attr_matmul_buf_ = buf + 0 * input_tensor_size;
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   int64_t result_numel = valid_word_num * head_num_ * size_per_head_;
   at::Tensor result = torch::empty({result_numel}, float_options);
   DataType_* attr_matmul_buf_ = result.data_ptr<float>();
+std::cout << "valid_word_num: " << valid_word_num << std::endl;
   // DataType_* inter_matmul_buf_ = buf + 2 * input_tensor_size;
 
   // 5. input -> Q K V
   {
-    at::Tensor query_buf = torch::empty({result_numel}, float_options);
-    at::Tensor key_buf = torch::empty({result_numel}, float_options);
-    at::Tensor value_buf = torch::empty({result_numel}, float_options);
-    DataType_* query_buf_ = query_buf.data_ptr<DataType_>();
-    DataType_* key_buf_ = key_buf.data_ptr<DataType_>();
-    DataType_* value_buf_ = value_buf.data_ptr<DataType_>();
+    // at::Tensor query_buf = torch::empty({result_numel}, float_options);
+    // at::Tensor key_buf = torch::empty({result_numel}, float_options);
+    // at::Tensor value_buf = torch::empty({result_numel}, float_options);
+    // DataType_* query_buf_ = query_buf.data_ptr<DataType_>();
+    // DataType_* key_buf_ = key_buf.data_ptr<DataType_>();
+    // DataType_* value_buf_ = value_buf.data_ptr<DataType_>();
     int m = valid_word_num;
     int k = head_num * size_per_head;
     int n = k;
@@ -193,11 +208,9 @@ at::Tensor bt_mha(
   // std::cout << "014" << std::endl;
   // stream.synchronize();
 
-    // check_cuda_error(cudaMemsetAsync(query_, 0, input_tensor_size *
-    // sizeof(DataType_), stream)); check_cuda_error(cudaMemsetAsync(key_, 0,
-    // input_tensor_size * sizeof(DataType_), stream));
-    // check_cuda_error(cudaMemsetAsync(value_, 0, input_tensor_size *
-    // sizeof(DataType_), stream));
+    // check_cuda_error(cudaMemsetAsync(query_, 0, input_tensor_size * sizeof(DataType_), stream));
+    // check_cuda_error(cudaMemsetAsync(key_, 0, input_tensor_size * sizeof(DataType_), stream));
+    // check_cuda_error(cudaMemsetAsync(value_, 0, input_tensor_size * sizeof(DataType_), stream));
     check_cuda_error(cudaMemsetAsync(
         query_, 0, 3 * input_tensor_size * sizeof(DataType_), stream));
   // std::cout << "015" << std::endl;
@@ -337,75 +350,6 @@ at::Tensor bt_mha(
   // stream.synchronize();
    }
    return result;
-  //
-  //    add_bias_input_layernorm_kernelLauncher<DataType_>(
-  //        attr_matmul_buf_,
-  //        param.from_tensor,
-  //        param.attr_output_bias,
-  //        param.attr_output_layernorm_gamma,
-  //        param.attr_output_layernorm_beta,
-  //        m,
-  //        n,
-  //        param.stream);
-  //
-  //    n *= 4;
-  //    check_cuda_error(cublasGemmEx(
-  //        param.cublas_handle,
-  //        CUBLAS_OP_N,
-  //        CUBLAS_OP_N,
-  //        n,
-  //        m,
-  //        k,
-  //        &alpha,
-  //        param.inter_kernel,
-  //        AType,
-  //        n,
-  //        attr_matmul_buf_,
-  //        BType,
-  //        k,
-  //        &beta,
-  //        inter_matmul_buf_,
-  //        CType,
-  //        n,
-  //        computeType,
-  //        static_cast<cublasGemmAlgo_t>(cublasAlgo[1])));
-  //
-  //    add_bias_act_kernelLauncher<DataType_>(
-  //        inter_matmul_buf_, param.inter_bias, m, n, param.stream);
-  //
-  //    n = k;
-  //    k *= 4;
-  //    check_cuda_error(cublasGemmEx(
-  //        param.cublas_handle,
-  //        CUBLAS_OP_N,
-  //        CUBLAS_OP_N,
-  //        n,
-  //        m,
-  //        k,
-  //        &alpha,
-  //        param.output_kernel,
-  //        AType,
-  //        n,
-  //        inter_matmul_buf_,
-  //        BType,
-  //        k,
-  //        &beta,
-  //        param.transformer_out,
-  //        CType,
-  //        n,
-  //        computeType,
-  //        static_cast<cublasGemmAlgo_t>(cublasAlgo[2])));
-  //
-  //    add_bias_input_layernorm_kernelLauncher<DataType_>(
-  //        param.transformer_out,
-  //        attr_matmul_buf_,
-  //        param.output_bias,
-  //        param.output_layernorm_gamma,
-  //        param.output_layernorm_beta,
-  //        m,
-  //        n,
-  //        param.stream);
-  //  }
 };
 
 template at::Tensor bt_mha<float>(

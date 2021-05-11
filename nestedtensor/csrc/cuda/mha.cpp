@@ -64,9 +64,9 @@ at::Tensor bt_min_mha(
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 3 + attn_tensor_size;
-  at::Tensor buf_tensor = torch::empty({buf_size}, float_options);
-  Tensor tmp_int =  torch::empty({
+  int64_t buf_size = input_tensor_size * 9 + attn_tensor_size;
+  at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
+  Tensor tmp_int =  torch::zeros({
           input_mask.size(0) * input_mask.size(1) * 2
           + batch_size * seq_len
           + batch_size * seq_len
@@ -95,6 +95,8 @@ at::Tensor bt_min_mha(
       (int32_t)(embedding_dim),
       defaultStream);
 
+  defaultStream.synchronize();
+
   Tensor result = effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
       attr_kernel_Q.data_ptr<float>(),
@@ -117,13 +119,6 @@ at::Tensor bt_min_mha(
       prefix_sum_ptr,
       input_mask.data_ptr<int>(),
       word_num);
-  // Tensor tmp2 =
-  //     buf_tensor.narrow(0, 0, query.numel()).reshape({-1});
-  // tmp2 = tmp2.contiguous();
-  // return result;
-  // auto end = std::chrono::system_clock::now();
-  // auto elapsed = end - start;
-  // std::cout << "elapsed.count(): " << elapsed.count() << '\n';
   return wrap_buffer(std::move(result), get_nested_size(query));
 }
 
