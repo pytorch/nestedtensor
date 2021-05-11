@@ -97,11 +97,28 @@ at::Tensor bt_min_mha(
 
   defaultStream.synchronize();
 
+  at::Tensor q, k, v;
+  q = at::addmm(
+      attr_bias_Q.contiguous(),
+      query,
+      attr_kernel_Q.t().contiguous());
+  k = at::addmm(
+      attr_bias_K.contiguous(),
+      key,
+      attr_kernel_K.t().contiguous());
+  v = at::addmm(
+      attr_bias_V.contiguous(),
+      value,
+      attr_kernel_V.t().contiguous());
+  at::Tensor q_buf = get_buffer(q);
+  at::Tensor k_buf = get_buffer(k);
+  at::Tensor v_buf = get_buffer(v);
+
   Tensor result = effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
-      attr_kernel_Q.data_ptr<float>(),
-      attr_kernel_K.data_ptr<float>(),
-      attr_kernel_V.data_ptr<float>(),
+      q_buf.data_ptr<float>(),
+      k_buf.data_ptr<float>(),
+      v_buf.data_ptr<float>(),
       tmp.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
       attr_bias_K.data_ptr<float>(),

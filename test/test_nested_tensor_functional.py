@@ -943,11 +943,11 @@ class TestFunctional(TestCase):
             # in_proj_weight = mha.in_proj_weight.clone().cuda()
             # in_proj_bias = mha.in_proj_bias.clone().cuda()
             # out_proj_weight = mha.out_proj.weight.clone().cuda().t().contiguous()
-            attr_kernel_Q = in_proj_weight[:embedding_dim, :].t().contiguous()
+            attr_kernel_Q = in_proj_weight[:embedding_dim, :].contiguous()
             attr_kernel_K = in_proj_weight[embedding_dim:2 *
-                                           embedding_dim, :].t().contiguous()
+                                           embedding_dim, :].contiguous()
             attr_kernel_V = in_proj_weight[2 *
-                                           embedding_dim:, :].t().contiguous()
+                                           embedding_dim:, :].contiguous()
 
             attr_bias_Q = in_proj_bias[:embedding_dim].contiguous()
             attr_bias_K = in_proj_bias[embedding_dim:2 *
@@ -1006,20 +1006,20 @@ class TestFunctional(TestCase):
             c = t1 - t0
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
-        test(2, 1, 2, 1, 2, use_arange=True)
-        test(1, 1, 1, 4, 4, use_arange=True)
-        test(1, 1, 2, 2, 2, use_arange=True)
-        test(1, 2, 2, 1, 1, use_arange=True)
-        test(1, 4, 3, 2, 2, use_arange=True)
+        test(2, 1, 2, 1, 2) # , use_arange=True)
+        test(1, 1, 1, 4, 4) # , use_arange=True)
+        test(1, 1, 2, 2, 2) # , use_arange=True)
+        test(1, 2, 2, 1, 1) # , use_arange=True)
+        test(1, 4, 3, 2, 2) # , use_arange=True)
         test(2, 1, 2, 2, 4)
         test(2, 3, 5, 2, 4)
         test(1, 3, 5, 4, 4)
-        test(8, 8, 50, 16, 128)
-        test(16, 64, 50, 16, 256)
-        test(16, 128, 50, 16, 256)
-        test(16, 256, 50, 16, 256)
-        test(4,  256, 50, 256, 1024)
-        test(16, 256, 50, 64, 1024)
+        # test(8, 8, 50, 16, 128)
+        # test(16, 64, 50, 16, 256)
+        # test(16, 128, 50, 16, 256)
+        # test(16, 256, 50, 16, 256)
+        # test(4,  256, 50, 256, 1024)
+        # test(16, 256, 50, 64, 1024)
 
 
 if __name__ == "__main__":

@@ -20,9 +20,9 @@ namespace effectivetransformer {
 template <typename DataType_>
 at::Tensor bt_mha(
     DataType_* from_tensor,
-    DataType_* attr_kernel_Q,
-    DataType_* attr_kernel_K,
-    DataType_* attr_kernel_V,
+    DataType_* query_buf_,
+    DataType_* key_buf_,
+    DataType_* value_buf_,
     DataType_* to_tensor,
     DataType_* attr_bias_Q,
     DataType_* attr_bias_K,
@@ -90,9 +90,9 @@ at::Tensor bt_mha(
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
-   DataType_* query_buf_     = buf + 0 * input_tensor_size;
-   DataType_* key_buf_       = buf + 1 * input_tensor_size;
-   DataType_* value_buf_     = buf + 2 * input_tensor_size;
+   // DataType_* query_buf_     = buf + 0 * input_tensor_size;
+   // DataType_* key_buf_       = buf + 1 * input_tensor_size;
+   // DataType_* value_buf_     = buf + 2 * input_tensor_size;
    DataType_* query_         = buf + 3 * input_tensor_size;
    DataType_* key_           = buf + 4 * input_tensor_size;
    DataType_* value_         = buf + 5 * input_tensor_size;
@@ -114,71 +114,6 @@ at::Tensor bt_mha(
     int k = head_num * size_per_head;
     int n = k;
 
-    check_cuda_error(cublasGemmEx(
-        cublas_handle,
-        CUBLAS_OP_N,
-        CUBLAS_OP_N,
-        n,
-        m,
-        k,
-        &alpha,
-        attr_kernel_Q,
-        AType,
-        n,
-        from_tensor,
-        BType,
-        k,
-        &beta,
-        query_buf_,
-        CType,
-        n,
-        computeType,
-        static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
-  // stream.synchronize();
-
-    check_cuda_error(cublasGemmEx(
-        cublas_handle,
-        CUBLAS_OP_N,
-        CUBLAS_OP_N,
-        n,
-        m,
-        k,
-        &alpha,
-        attr_kernel_K,
-        AType,
-        n,
-        to_tensor,
-        BType,
-        k,
-        &beta,
-        key_buf_,
-        CType,
-        n,
-        computeType,
-        static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
-  // std::cout << "013" << std::endl;
-  // stream.synchronize();
-
-    check_cuda_error(cublasGemmEx(
-        cublas_handle,
-        CUBLAS_OP_N,
-        CUBLAS_OP_N,
-        n,
-        m,
-        k,
-        &alpha,
-        attr_kernel_V,
-        AType,
-        n,
-        to_tensor,
-        BType,
-        k,
-        &beta,
-        value_buf_,
-        CType,
-        n,
-        computeType,
-        static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
   // std::cout << "014" << std::endl;
   // stream.synchronize();
 
@@ -328,9 +263,9 @@ at::Tensor bt_mha(
 
 template at::Tensor bt_mha<float>(
     float* from_tensor,
-    float* attr_kernel_Q,
-    float* attr_kernel_K,
-    float* attr_kernel_V,
+    float* query_buf_,
+    float* key_buf_,
+    float* value_buf_,
     float* to_tensor,
     float* attr_bias_Q,
     float* attr_bias_K,
