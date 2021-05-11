@@ -955,7 +955,7 @@ class TestFunctional(TestCase):
                                                               out_proj_weight,
                                                               in_proj_bias,
                                                               attr_mask)
-            result_nt = nestedtensor.NestedTensor(result_nt)
+                result_nt = nestedtensor.NestedTensor(result_nt)
             torch.cuda.synchronize()
             t1 = time.time()
             a = t1 - t0
@@ -963,14 +963,14 @@ class TestFunctional(TestCase):
             mha = mha.cuda()
             torch.cuda.synchronize()
             torch.cuda.synchronize()
-            ## t0 = time.time()
-            ## for _ in range(1):
-            ##     attn_output, _ = mha(input_nt, input_nt, input_nt)
-            ## torch.cuda.synchronize()
-            ## t1 = time.time()
-            ## b = t1 - t0
+            t0 = time.time()
+            for _ in range(1):
+                attn_output, _ = mha(input_nt, input_nt, input_nt)
+            torch.cuda.synchronize()
+            t1 = time.time()
+            b = t1 - t0
 
-            ## self.assertEqual(result_nt, attn_output)
+            self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
             torch.cuda.synchronize()
@@ -980,18 +980,18 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t1 = time.time()
             c = t1 - t0
-            # print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
-            print("bt: ", a, "\tdense: ", c, "\tdense/bt: ", c/a)
+            print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
         # test(1, 1, 2, 2, 2)
         # test(1, 2, 2, 1, 1)
-        test(1, 4, 3, 2, 2)
+        # test(1, 4, 3, 2, 2)
         test(2, 3, 5, 2, 4)
         test(1, 3, 5, 4, 4)
         test(8, 8, 50, 16, 128)
         test(16, 64, 50, 16, 256)
         test(16, 128, 50, 16, 256)
         test(16, 256, 50, 16, 256)
+        test(4,  256, 50, 256, 1024)
         test(16, 256, 50, 64, 1024)
 
 
