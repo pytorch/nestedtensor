@@ -430,10 +430,14 @@ inline int64_t num_memory(
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.
-  if (size.size() == 0) {
-    return 1;
+  int64_t result = 1;
+  for (int64_t i = 0; i < size.size(); i++) {
+    if (size[i] == 0) {
+      return 0;
+    }
+    result = result + ((size[i] - 1) * stride[i]);
   }
-  return size[0] * stride[0];
+  return result;
 }
 } // namespace impl
 

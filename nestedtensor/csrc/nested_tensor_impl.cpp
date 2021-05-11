@@ -110,6 +110,9 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
 
 at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
+  if (nested_size.is_leaf()) {
+    return buffer.reshape(IntArrayRef(nested_size.payload()));
+  }
   PackedStorage* ps = new PackedStorage(std::move(buffer), nested_size);
   NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
   return at::detail::make_tensor<NestedTensorImpl>(
