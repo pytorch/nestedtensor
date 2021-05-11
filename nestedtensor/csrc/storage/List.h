@@ -13,7 +13,6 @@ struct ListStorage : public NestedTensorStorage {
         _nested_stride(
             map([](at::Tensor tensor) { return tensor.strides().vec(); },
                 _structure)),
-        _opt_sizes(construct_size(_nested_size)),
         _data_type(
             get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
                                       : at::ones({}).dtype()),
@@ -34,10 +33,7 @@ struct ListStorage : public NestedTensorStorage {
   int64_t dim() const override {
     return _dim;
   }
-  TensorNode& get_structure() override {
-    return _structure;
-  }
-  const TensorNode& get_structure() const override {
+  TensorNode get_structure() const override {
     return _structure;
   }
   const caffe2::TypeMeta dtype() const override {
@@ -56,17 +52,19 @@ struct ListStorage : public NestedTensorStorage {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
-    return _opt_sizes;
+    return construct_size(_nested_size);
   }
   NestedTensorStorageKind kind() const {
     return NestedTensorStorageKind::list;
+  }
+  bool is_contiguous() const {
+    return false;
   }
 
  private:
   TensorNode _structure;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;
-  const std::vector<c10::optional<int64_t>> _opt_sizes;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
   int64_t _dim;

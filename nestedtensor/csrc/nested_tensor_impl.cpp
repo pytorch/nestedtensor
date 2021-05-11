@@ -110,8 +110,13 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
 
 at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
-  return wrap_tensor_node(torch::nested_tensor::impl::build_structure(
-      std::move(buffer), nested_size));
+  if (nested_size.is_leaf()) {
+    return buffer.reshape(IntArrayRef(nested_size.payload()));
+  }
+  PackedStorage* ps = new PackedStorage(std::move(buffer), nested_size);
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
@@ -121,7 +126,10 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return wrap_tensor_node(pack(get_nested_tensor_structure(self)));
+  PackedStorage* ps = new PackedStorage(get_nested_tensor_structure(self));
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {

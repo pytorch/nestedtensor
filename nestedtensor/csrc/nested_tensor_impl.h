@@ -164,19 +164,14 @@ struct NestedTensorImpl : public c10::TensorImpl {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
     // buffer. For this to be contiguous not only the individuals Tensors have
     // to be but also the buffer.
-    return reduce(
-               [](at::Tensor leaf, bool input) {
-                 return input && leaf.is_contiguous();
-               },
-               true,
-               get_structure()) &&
-        get_structure().buffer().has_value();
+    return (_storage->kind() == NestedTensorStorageKind::packed) &&
+        _storage->is_contiguous();
   }
-  TensorNode& get_structure() {
+  TensorNode get_structure() const {
     return _storage->get_structure();
   }
-  const TensorNode& get_structure() const {
-    return _storage->get_structure();
+  std::shared_ptr<NestedTensorStorage> get_storage() {
+    return _storage;
   }
   int64_t nested_dim() const {
     return get_structure().height();
@@ -254,10 +249,13 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
 }
 
 static inline at::Tensor get_buffer(const at::Tensor& tensor) {
-  c10::optional<at::Tensor> opt_buffer =
-      get_nested_tensor_structure(tensor).buffer();
-  TORCH_CHECK(opt_buffer, "Given Tensor doesn't have buffer.");
-  return *opt_buffer;
+  auto storage = get_nested_tensor_impl(tensor)->get_storage();
+  TORCH_CHECK(
+      storage.get()->kind() == NestedTensorStorageKind::packed,
+      "Given Tensor doesn't have buffer.");
+  NestedTensorStorage* storagep = storage.get();
+  PackedStorage* ps = dynamic_cast<PackedStorage*>(storagep);
+  return ps->get_buffer();
 }
 
 static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
