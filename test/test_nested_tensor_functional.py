@@ -883,6 +883,144 @@ class TestFunctional(TestCase):
         #     print(n)
         #     print(p is None)
 
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_effective_transformer_mha(self):
+        def sequence_mask(lengths, max_len=None, is_2d=True):
+            batch_size = lengths.numel()
+            max_len = max_len or lengths.max()
+            mask = (torch.arange(0, max_len, device=lengths.device)
+                    .type_as(lengths)
+                    .repeat(batch_size, 1)
+                    .lt(lengths.unsqueeze(1)))
+            if is_2d:
+                return mask
+            else:
+                mask = mask.view(-1, 1, 1, max_len)
+                m2 = mask.transpose(2, 3)
+                return mask * m2
+
+        def test(num_heads, batch_size, seq_len_, head_size, embedding_dim,
+                 use_arange=False):
+            assert num_heads * head_size == embedding_dim
+            import random
+            inputs = []
+            k = 0
+            seq_len = 0
+            seq_lens = []
+            for _ in range(batch_size):
+                # i = random.randint(1, seq_len_)
+                i = seq_len_
+                seq_len = max(i, seq_len)
+                seq_lens.append(i)
+                if use_arange:
+                    inputs.append(torch.arange(
+                        i * embedding_dim).reshape(i, embedding_dim))
+                else:
+                    inputs.append(torch.randn(i, embedding_dim))
+            input_nt = nestedtensor.nested_tensor(
+                inputs, device=torch.device('cuda'), dtype=torch.float)
+            attr_mask = sequence_mask(torch.tensor(
+                seq_lens), None, False).to(torch.float).cuda()
+
+            input_batch, input_mask = input_nt.to_tensor_mask(mask_dim=2)
+            input_mask = input_mask.to(torch.int32).cuda()
+
+            mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
+            if use_arange:
+                in_proj_weight_test = torch.arange(mha.in_proj_weight.numel()).reshape(
+                    mha.in_proj_weight.shape).to(torch.float)
+                mha.in_proj_weight.copy_(in_proj_weight_test)
+            in_proj_weight = mha.in_proj_weight.clone().cuda()
+
+            in_proj_bias = mha.in_proj_bias.clone().cuda()
+
+            if use_arange:
+                out_proj_weight_test = torch.arange(mha.out_proj.weight.numel()).reshape(
+                    mha.out_proj.weight.shape).to(torch.float)
+                mha.out_proj.weight.copy_(
+                    out_proj_weight_test)
+            out_proj_weight = mha.out_proj.weight.clone().cuda()
+            # in_proj_weight = mha.in_proj_weight.clone().cuda()
+            # in_proj_bias = mha.in_proj_bias.clone().cuda()
+            # out_proj_weight = mha.out_proj.weight.clone().cuda().t().contiguous()
+            attr_kernel_Q = in_proj_weight[:embedding_dim, :].t().contiguous()
+            attr_kernel_K = in_proj_weight[embedding_dim:2 *
+                                           embedding_dim, :].t().contiguous()
+            attr_kernel_V = in_proj_weight[2 *
+                                           embedding_dim:, :].t().contiguous()
+
+            attr_bias_Q = in_proj_bias[:embedding_dim].contiguous()
+            attr_bias_K = in_proj_bias[embedding_dim:2 *
+                                       embedding_dim].contiguous()
+            attr_bias_V = in_proj_bias[2*embedding_dim:].contiguous()
+
+            import time
+            torch.cuda.synchronize()
+            torch.cuda.synchronize()
+            t0 = time.time()
+            result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
+                                                          head_size,
+                                                          0.5,
+                                                          False,
+                                                          input_mask,
+                                                          input_nt._impl,
+                                                          input_nt._impl,
+                                                          input_nt._impl,
+                                                          attr_kernel_Q,
+                                                          attr_kernel_K,
+                                                          attr_kernel_V,
+                                                          attr_bias_Q,
+                                                          attr_bias_K,
+                                                          attr_bias_V,
+                                                          float(
+                                                              head_size ** -0.5),
+                                                          out_proj_weight.t().contiguous(),
+                                                          in_proj_bias,
+                                                          attr_mask)
+
+            result_nt = nestedtensor.NestedTensor(result_nt)
+
+            torch.cuda.synchronize()
+            t1 = time.time()
+            a = t1 - t0
+
+            mha = mha.cuda()
+            torch.cuda.synchronize()
+            torch.cuda.synchronize()
+            t0 = time.time()
+            attn_output, _ = mha(input_nt, input_nt, input_nt)
+
+            torch.cuda.synchronize()
+            t1 = time.time()
+            b = t1 - t0
+
+            self.assertEqual(result_nt, attn_output)
+
+            torch.cuda.synchronize()
+            torch.cuda.synchronize()
+            t0 = time.time()
+            attn_output, _ = mha(input_batch, input_batch, input_batch)
+
+            torch.cuda.synchronize()
+            t1 = time.time()
+            c = t1 - t0
+            print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
+
+        test(2, 1, 2, 1, 2, use_arange=True)
+        test(1, 1, 1, 4, 4, use_arange=True)
+        test(1, 1, 2, 2, 2, use_arange=True)
+        test(1, 2, 2, 1, 1, use_arange=True)
+        test(1, 4, 3, 2, 2, use_arange=True)
+        test(2, 1, 2, 2, 4)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
+        test(8, 8, 50, 16, 128)
+        test(16, 64, 50, 16, 256)
+        test(16, 128, 50, 16, 256)
+        test(16, 256, 50, 16, 256)
+        test(4,  256, 50, 256, 1024)
+        test(16, 256, 50, 64, 1024)
+
 
 if __name__ == "__main__":
     unittest.main()
