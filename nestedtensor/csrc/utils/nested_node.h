@@ -432,9 +432,6 @@ inline int64_t num_memory(
   // but carry 0 memory.
   int64_t result = 1;
   for (int64_t i = 0; i < size.size(); i++) {
-    if (size[i] == 0) {
-      return 0;
-    }
     result = result + ((size[i] - 1) * stride[i]);
   }
   return result;
