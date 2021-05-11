@@ -90,9 +90,6 @@ at::Tensor bt_mha(
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
-   // DataType_* query_buf_     = buf + 0 * input_tensor_size;
-   // DataType_* key_buf_       = buf + 1 * input_tensor_size;
-   // DataType_* value_buf_     = buf + 2 * input_tensor_size;
    DataType_* query_         = buf + 3 * input_tensor_size;
    DataType_* key_           = buf + 4 * input_tensor_size;
    DataType_* value_         = buf + 5 * input_tensor_size;
