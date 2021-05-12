@@ -14,17 +14,17 @@ struct ListStorage : public NestedTensorStorage {
             map([](at::Tensor tensor) { return tensor.strides().vec(); },
                 _structure)),
         _data_type(
-            get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
+            get_first_leaf(_structure) ? get_first_leaf(_structure)->dtype()
                                       : at::ones({}).dtype()),
         _device(
-            get_first_leaf(structure) ? get_first_leaf(structure)->device()
+            get_first_leaf(_structure) ? get_first_leaf(_structure)->device()
                                       : at::ones({}).device()),
         _dim(
-            get_first_leaf(structure)
-                ? get_first_leaf(structure)->dim() + _structure.height()
+            get_first_leaf(_structure)
+                ? get_first_leaf(_structure)->dim() + _structure.height()
                 : _structure.height()),
         _is_pinned(
-            get_first_leaf(structure) ? get_first_leaf(structure)->is_pinned()
+            get_first_leaf(_structure) ? get_first_leaf(_structure)->is_pinned()
                                       : false) {
     TORCH_CHECK(
         !_structure.is_leaf(),
@@ -45,10 +45,10 @@ struct ListStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  const SizeNode nested_size() const override {
+  const SizeNode& nested_size() const override {
     return _nested_size;
   }
-  const SizeNode nested_stride() const override {
+  const SizeNode& nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
