@@ -12,17 +12,6 @@
 // #define TRACEPACKED 1
 // #define USEPACKED 1
 
-namespace torch {
-namespace nested_tensor {
-
-using TensorNode = NestedNode<at::Tensor>;
-using IValueNode = NestedNode<c10::IValue>;
-using SizeNode = NestedNode<std::vector<int64_t>>;
-using IntegerNode = NestedNode<int64_t>;
-
-} // namespace nested_tensor
-} // namespace torch
-
 namespace at {
 
 using namespace torch::nested_tensor;

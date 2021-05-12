@@ -5,11 +5,6 @@
 namespace torch {
 namespace nested_tensor {
 
-using TensorNode = NestedNode<at::Tensor>;
-using IValueNode = NestedNode<c10::IValue>;
-using SizeNode = NestedNode<std::vector<int64_t>>;
-using IntegerNode = NestedNode<int64_t>;
-
 static std::vector<c10::optional<int64_t>> construct_size(
     const SizeNode& size_node) {
   if (size_node.is_leaf()) {
