@@ -983,6 +983,7 @@ class TestFunctional(TestCase):
 
             mha = mha.cuda()
             torch.cuda.synchronize()
+            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             attn_output, _ = mha(input_nt, input_nt, input_nt)
@@ -994,6 +995,7 @@ class TestFunctional(TestCase):
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
+            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             attn_output, _ = mha(input_batch, input_batch, input_batch)
@@ -1005,21 +1007,21 @@ class TestFunctional(TestCase):
 
         # test(1, 1, 1, 4, 4, use_arange=True)
         # test(2, 1, 2, 1, 2)
-        test(1, 3, 5, 4, 4)
-        test(2, 3, 5, 2, 4)
+        # test(1, 3, 5, 4, 4)
+        # test(2, 3, 5, 2, 4)
         # test(1, 1, 2, 2, 2, use_arange=True)
         # test(1, 2, 2, 1, 1, use_arange=True)
         # test(1, 4, 3, 2, 2, use_arange=True)
         # test(2, 1, 2, 2, 4)
-        test(2, 1, 2, 2, 4)
-        test(2, 3, 5, 2, 4)
-        test(1, 3, 5, 4, 4)
-        test(8, 8, 50, 16, 128)
-        test(16, 64, 50, 16, 256)
-        test(16, 128, 50, 16, 256)
+        # test(2, 1, 2, 2, 4)
+        # test(2, 3, 5, 2, 4)
+        # test(1, 3, 5, 4, 4)
+        # test(8, 8, 50, 16, 128)
+        # test(16, 64, 50, 16, 256)
+        # test(16, 128, 50, 16, 256)
         test(16, 256, 50, 16, 256)
-        test(4,  256, 50, 256, 1024)
-        test(16, 256, 50, 64, 1024)
+        # test(4,  256, 50, 256, 1024)
+        # test(16, 256, 50, 64, 1024)
 
 
 if __name__ == "__main__":
