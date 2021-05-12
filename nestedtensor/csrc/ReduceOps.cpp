@@ -244,9 +244,6 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
   }
   std::tie(m2_tensor, mean_tensor, numel) =
       _make_m2(tensors, IntArrayRef(tensordims));
-  // std::cout << "0 m2_tensor: " << std::endl << m2_tensor << std::endl;
-  // std::cout << "0 mean_tensor: " << std::endl << mean_tensor << std::endl;
-  // std::cout << "0 numel: " << std::endl << numel << std::endl;
   std::tie(m2_tensor, mean_tensor, numel) =
       _merge_m2(m2_tensor, mean_tensor, numel);
   TORCH_CHECK(m2_tensor.size(0) == 1, "output size wrong.");
