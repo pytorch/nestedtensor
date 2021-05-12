@@ -144,24 +144,34 @@ at::Tensor bt_min_mha(
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
-  effectivetransformer::bt_mha(
-      tmp.data_ptr<float>(),
-      tmp.data_ptr<float>(),
+  effectivetransformer::cuda::softmax_kernel_kernelLauncher<float>(
       attn_output_weights.data_ptr<float>(),
-      value_ptr,
-      batch_idx_ptr,
-      word_idx_ptr,
       attr_mask.data_ptr<float>(),
       batch_size,
       head_num,
       seq_len,
-      size_per_head,
-      buf_tensor.data_ptr<float>(),
       (float)(scaling),
-      prefix_sum_ptr,
-      input_mask.data_ptr<int>(),
-      valid_word_num);
-  at::Tensor attr_out = at::slice(buf_tensor, 0, 0, valid_word_num * embedding_dim);
+      defaultStream);
+
+  at::Tensor val_buf =
+      at::slice(buf_tensor, 0, 2 * input_tensor_size, 3 * input_tensor_size)
+          .reshape({batch_size, head_num, seq_len, size_per_head});
+  auto attn_output = at::matmul(attn_output_weights, val_buf);
+
+  effectivetransformer::cuda::transpose_rm_padding_kernelLauncher<DataType_>(
+      attn_output.data_ptr<float>(),
+      buf_tensor.data_ptr<float>(),
+      valid_word_num,
+      batch_size,
+      seq_len,
+      head_num,
+      size_per_head,
+      batch_idx,
+      word_idx,
+      defaultStream);
+
+  at::Tensor attr_out =
+      at::slice(buf_tensor, 0, 0, valid_word_num * embedding_dim);
   attr_out = attr_out.reshape({-1, embedding_dim});
   // TODO: Bias is variably sized, need to add support for that.
   // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());

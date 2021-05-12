@@ -19,13 +19,10 @@ namespace effectivetransformer {
 
 template <typename DataType_>
 void bt_mha(
-    DataType_* from_tensor,
-    DataType_* to_tensor,
-    DataType_* qk_buf_,
+    DataType_* transpose_dst_,
     DataType_* value_,
     int* batch_idx,
     int* word_idx,
-    DataType_* attr_mask,
     int64_t batch_size_,
     int64_t head_num_,
     int64_t seq_len_,
@@ -71,39 +68,36 @@ void bt_mha(
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
    DataType_* attr_out_buf_     = buf + 0 * input_tensor_size;
-   DataType_* transpose_dst_    = buf + 1 * input_tensor_size;
+   // DataType_* transpose_dst_    = buf + 1 * input_tensor_size;
 
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
 
   {
-     cuda::softmax_kernel_kernelLauncher<DataType_>(
-         qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
-
-    check_cuda_error(cublasGemmStridedBatchedEx(
-        cublas_handle,
-        CUBLAS_OP_N,
-        CUBLAS_OP_N,
-        size_per_head,
-        from_seq_len,
-        from_seq_len,
-        &alpha,
-        value_,
-        AType,
-        size_per_head,
-        from_seq_len * size_per_head,
-        qk_buf_,
-        BType,
-        from_seq_len,
-        from_seq_len * from_seq_len,
-        &beta,
-        transpose_dst_,
-        CType,
-        size_per_head,
-        from_seq_len * size_per_head,
-        batch_size * head_num,
-        computeType,
-        static_cast<cublasGemmAlgo_t>(cublasAlgo[2])));
+    // check_cuda_error(cublasGemmStridedBatchedEx(
+    //     cublas_handle,
+    //     CUBLAS_OP_N,
+    //     CUBLAS_OP_N,
+    //     size_per_head,
+    //     from_seq_len,
+    //     from_seq_len,
+    //     &alpha,
+    //     value_,
+    //     AType,
+    //     size_per_head,
+    //     from_seq_len * size_per_head,
+    //     qk_buf_,
+    //     BType,
+    //     from_seq_len,
+    //     from_seq_len * from_seq_len,
+    //     &beta,
+    //     transpose_dst_,
+    //     CType,
+    //     size_per_head,
+    //     from_seq_len * size_per_head,
+    //     batch_size * head_num,
+    //     computeType,
+    //     static_cast<cublasGemmAlgo_t>(cublasAlgo[2])));
 
     cuda::transpose_rm_padding_kernelLauncher<DataType_>(
         transpose_dst_,
@@ -120,13 +114,10 @@ void bt_mha(
 };
 
 template void bt_mha<float>(
-    float* from_tensor,
-    float* to_tensor,
-    float* qk_buf_,
+    float* transpose_dst_,
     float* value_,
     int* batch_idx,
     int* word_idx,
-    float* attr_mask,
     int64_t batch_size_,
     int64_t head_num_,
     int64_t seq_len_,

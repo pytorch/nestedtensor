@@ -12,13 +12,10 @@
 namespace effectivetransformer {
 template <typename DataType_>
 void bt_mha(
-    DataType_* from_tensor,
     DataType_* to_tensor,
-    DataType_* qk_buf_,
     DataType_* value_,
     int* batch_idx,
     int* word_idx,
-    DataType_* attr_mask,
     int64_t batch_size_,
     int64_t head_num_,
     int64_t seq_len_,
