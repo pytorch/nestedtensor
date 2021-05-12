@@ -63,8 +63,6 @@ at::Tensor bt_min_mha(
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 3 + attn_tensor_size;
-  at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
   Tensor tmp_int = torch::zeros(
       {input_mask.size(0) * input_mask.size(1) * 2 + batch_size * seq_len +
        batch_size * seq_len},
@@ -112,9 +110,9 @@ at::Tensor bt_min_mha(
     valid_word_num++;
   }
 
-  float* query_ptr = buf_tensor.data_ptr<float>() + 0 * input_tensor_size;
-  float* key_ptr = buf_tensor.data_ptr<float>() + 1 * input_tensor_size;
-  float* value_ptr = buf_tensor.data_ptr<float>() + 2 * input_tensor_size;
+  at::Tensor query_buf = torch::zeros({batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor key_buf = torch::zeros({batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor val_buf = torch::zeros({batch_size, head_num, seq_len, size_per_head}, float_options);
   effectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
       q_buf.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
@@ -122,9 +120,9 @@ at::Tensor bt_min_mha(
       attr_bias_K.data_ptr<float>(),
       v_buf.data_ptr<float>(),
       attr_bias_V.data_ptr<float>(),
-      query_ptr,
-      key_ptr,
-      value_ptr,
+      query_buf.data_ptr<float>(),
+      key_buf.data_ptr<float>(),
+      val_buf.data_ptr<float>(),
       valid_word_num,
       batch_size,
       seq_len,
@@ -134,12 +132,6 @@ at::Tensor bt_min_mha(
       word_idx_ptr,
       defaultStream);
 
-  at::Tensor query_buf =
-      at::slice(buf_tensor, 0, 0, input_tensor_size)
-          .reshape({batch_size, head_num, seq_len, size_per_head});
-  at::Tensor key_buf =
-      at::slice(buf_tensor, 0, input_tensor_size, 2 * input_tensor_size)
-          .reshape({batch_size, head_num, seq_len, size_per_head});
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
@@ -152,14 +144,12 @@ at::Tensor bt_min_mha(
       (float)(scaling),
       defaultStream);
 
-  at::Tensor val_buf =
-      at::slice(buf_tensor, 0, 2 * input_tensor_size, 3 * input_tensor_size)
-          .reshape({batch_size, head_num, seq_len, size_per_head});
   auto attn_output = at::matmul(attn_output_weights, val_buf);
 
+  at::Tensor attr_out = torch::zeros({valid_word_num, embedding_dim}, float_options);
   effectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
       attn_output.data_ptr<float>(),
-      buf_tensor.data_ptr<float>(),
+      attr_out.data_ptr<float>(),
       valid_word_num,
       batch_size,
       seq_len,
@@ -169,9 +159,6 @@ at::Tensor bt_min_mha(
       word_idx_ptr,
       defaultStream);
 
-  at::Tensor attr_out =
-      at::slice(buf_tensor, 0, 0, valid_word_num * embedding_dim);
-  attr_out = attr_out.reshape({valid_word_num, embedding_dim});
   // TODO: Bias is variably sized, need to add support for that.
   // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());
   at::Tensor result = at::matmul(attr_out, out_proj_weight.t());
