@@ -909,7 +909,6 @@ class TestFunctional(TestCase):
             seq_lens = []
             for _ in range(batch_size):
                 i = random.randint(1, seq_len_)
-                # i = seq_len_
                 seq_len = max(i, seq_len)
                 seq_lens.append(i)
                 if use_arange:
@@ -924,6 +923,15 @@ class TestFunctional(TestCase):
 
             input_batch, input_mask = input_nt.to_tensor_mask(mask_dim=2)
             input_mask = input_mask.to(torch.int32).cuda()
+            # print("input_nt")
+            # print(input_nt)
+            # print("seq_lens")
+            # print(seq_lens)
+            # print("seq_len")
+            # print(seq_len)
+            # print("input_mask")
+            # print(input_mask)
+            # print(input_mask.size())
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             if use_arange:
@@ -1005,8 +1013,9 @@ class TestFunctional(TestCase):
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
         # test(1, 1, 1, 4, 4, use_arange=True)
+        # test(2, 1, 2, 1, 2)
+        test(1, 3, 5, 4, 4)
         test(2, 3, 5, 2, 4)
-        test(2, 1, 2, 1, 2)
         # test(1, 1, 2, 2, 2, use_arange=True)
         # test(1, 2, 2, 1, 1, use_arange=True)
         # test(1, 4, 3, 2, 2, use_arange=True)

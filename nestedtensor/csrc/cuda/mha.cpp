@@ -64,7 +64,7 @@ at::Tensor bt_min_mha(
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 2 + attn_tensor_size;
+  int64_t buf_size = input_tensor_size * 3 + attn_tensor_size;
   at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
   Tensor tmp_int = torch::zeros(
       {input_mask.size(0) * input_mask.size(1) * 2 + batch_size * seq_len +
@@ -158,7 +158,7 @@ at::Tensor bt_min_mha(
           .reshape({batch_size, head_num, seq_len, size_per_head});
   auto attn_output = at::matmul(attn_output_weights, val_buf);
 
-  effectivetransformer::cuda::transpose_rm_padding_kernelLauncher<DataType_>(
+  effectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
       attn_output.data_ptr<float>(),
       buf_tensor.data_ptr<float>(),
       valid_word_num,
@@ -166,13 +166,13 @@ at::Tensor bt_min_mha(
       seq_len,
       head_num,
       size_per_head,
-      batch_idx,
-      word_idx,
+      batch_idx_ptr,
+      word_idx_ptr,
       defaultStream);
 
   at::Tensor attr_out =
       at::slice(buf_tensor, 0, 0, valid_word_num * embedding_dim);
-  attr_out = attr_out.reshape({-1, embedding_dim});
+  attr_out = attr_out.reshape({valid_word_num, embedding_dim});
   // TODO: Bias is variably sized, need to add support for that.
   // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());
   at::Tensor result = at::matmul(attr_out, out_proj_weight.t());
