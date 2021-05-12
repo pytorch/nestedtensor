@@ -40,19 +40,19 @@ at::Tensor min_mha(
 
   at::Tensor q, k, v;
   q = at::addmm(
-      at::slice(*in_proj_bias, 0, 0, edim),
+      at::slice(*in_proj_bias, 0, 0, edim).contiguous(),
       query,
-      at::slice(in_proj_weight, 0, 0, edim).t(),
+      at::slice(in_proj_weight, 0, 0, edim).t().contiguous(),
       scaling,
       scaling);
   k = at::addmm(
-      at::slice(*in_proj_bias, 0, edim, 2 * edim),
+      at::slice(*in_proj_bias, 0, edim, 2 * edim).contiguous(),
       key,
-      at::slice(in_proj_weight, 0, edim, 2 * edim).t());
+      at::slice(in_proj_weight, 0, edim, 2 * edim).t().contiguous());
   v = at::addmm(
-      at::slice(*in_proj_bias, 0, 2 * edim),
+      at::slice(*in_proj_bias, 0, 2 * edim).contiguous(),
       value,
-      at::slice(in_proj_weight, 0, 2 * edim).t());
+      at::slice(in_proj_weight, 0, 2 * edim).t().contiguous());
 
   q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
