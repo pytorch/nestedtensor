@@ -11,10 +11,9 @@
 #include <torch/extension.h>
 namespace effectivetransformer {
 template <typename DataType_>
-at::Tensor bt_mha(
+void bt_mha(
     DataType_* from_tensor,
     DataType_* to_tensor,
-    DataType_* attr_output_kernel,
     DataType_* qk_buf_,
     DataType_* value_,
     int* batch_idx,

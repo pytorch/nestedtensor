@@ -992,10 +992,6 @@ class TestFunctional(TestCase):
             t1 = time.time()
             b = t1 - t0
 
-            # print("result_nt")
-            # print(result_nt)
-            # print("attn_output")
-            # print(attn_output)
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()

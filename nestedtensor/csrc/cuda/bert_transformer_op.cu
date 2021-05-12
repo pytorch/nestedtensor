@@ -18,10 +18,9 @@
 namespace effectivetransformer {
 
 template <typename DataType_>
-at::Tensor bt_mha(
+void bt_mha(
     DataType_* from_tensor,
     DataType_* to_tensor,
-    DataType_* attr_output_kernel,
     DataType_* qk_buf_,
     DataType_* value_,
     int* batch_idx,
@@ -76,9 +75,6 @@ at::Tensor bt_mha(
 
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
-  int64_t result_numel = valid_word_num * head_num_ * size_per_head_;
-  at::Tensor result = torch::empty({result_numel}, float_options);
-  DataType_* attr_matmul_buf_ = result.data_ptr<float>();
 
   {
      cuda::softmax_kernel_kernelLauncher<DataType_>(
@@ -121,13 +117,11 @@ at::Tensor bt_mha(
         word_idx,
         stream);
   }
-   return result;
 };
 
-template at::Tensor bt_mha<float>(
+template void bt_mha<float>(
     float* from_tensor,
     float* to_tensor,
-    float* attr_output_kernel,
     float* qk_buf_,
     float* value_,
     int* batch_idx,

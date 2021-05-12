@@ -144,10 +144,9 @@ at::Tensor bt_min_mha(
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
-  Tensor result = effectivetransformer::bt_mha(
+  effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
       tmp.data_ptr<float>(),
-      out_proj_weight.data_ptr<float>(),
       attn_output_weights.data_ptr<float>(),
       value_ptr,
       batch_idx_ptr,
@@ -166,7 +165,7 @@ at::Tensor bt_min_mha(
   attr_out = attr_out.reshape({-1, embedding_dim});
   // TODO: Bias is variably sized, need to add support for that.
   // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());
-  result = at::matmul(attr_out, out_proj_weight.t());
+  at::Tensor result = at::matmul(attr_out, out_proj_weight.t());
   result = result.reshape({-1});
   return wrap_buffer(std::move(result), get_nested_size(query));
 }
