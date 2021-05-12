@@ -71,11 +71,8 @@ at::Tensor bt_mha(
   int input_tensor_size = batch_size * head_num * from_seq_len * size_per_head;
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
-   /// buffer for self attention
-   // DataType_* qk_buf_           = buf + 3 * input_tensor_size;
-   /// buffer for output matmat
-   DataType_* attr_out_buf_     = buf + 4 * input_tensor_size;
-   DataType_* transpose_dst_    = buf + 5 * input_tensor_size;
+   DataType_* attr_out_buf_     = buf + 0 * input_tensor_size;
+   DataType_* transpose_dst_    = buf + 1 * input_tensor_size;
 
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
@@ -83,84 +80,9 @@ at::Tensor bt_mha(
   at::Tensor result = torch::empty({result_numel}, float_options);
   DataType_* attr_matmul_buf_ = result.data_ptr<float>();
 
-  // 5. input -> Q K V
   {
-    int m = valid_word_num;
-    int k = head_num * size_per_head;
-    int n = k;
-
-  // std::cout << "014" << std::endl;
-  // stream.synchronize();
-
-    // check_cuda_error(cudaMemsetAsync(query_, 0, input_tensor_size * sizeof(DataType_), stream));
-    // check_cuda_error(cudaMemsetAsync(key_, 0, input_tensor_size * sizeof(DataType_), stream));
-    // check_cuda_error(cudaMemsetAsync(value_, 0, input_tensor_size * sizeof(DataType_), stream));
-    // check_cuda_error(cudaMemsetAsync(
-    //     query_, 0, 3 * input_tensor_size * sizeof(DataType_), stream));
-  // std::cout << "015" << std::endl;
-  // stream.synchronize();
-
-    /// add bias & add padding & transpose for self-attention
-    // cuda::add_QKV_bias_padding_kernelLauncher<DataType_>(
-    //     query_buf_,
-    //     attr_bias_Q,
-    //     key_buf_,
-    //     attr_bias_K,
-    //     value_buf_,
-    //     attr_bias_V,
-    //     query_,
-    //     key_,
-    //     value_,
-    //     valid_word_num,
-    //     batch_size,
-    //     from_seq_len,
-    //     head_num,
-    //     size_per_head,
-    //     batch_idx,
-    //     word_idx,
-    //     stream);
-  // std::cout << "016" << std::endl;
-  // stream.synchronize();
-  }
-
-  /// 6. self-attention
-  {
-//    check_cuda_error(cublasGemmStridedBatchedEx(
-//        cublas_handle,
-//        CUBLAS_OP_T,
-//        CUBLAS_OP_N,
-//        from_seq_len,
-//        from_seq_len,
-//        size_per_head,
-//        &alpha,
-//        key_,
-//        AType,
-//        size_per_head,
-//        from_seq_len * size_per_head,
-//        query_,
-//        BType,
-//        size_per_head,
-//        from_seq_len * size_per_head,
-//        &beta,
-//        qk_buf_,
-//        CType,
-//        from_seq_len,
-//        from_seq_len * from_seq_len,
-//        batch_size * head_num,
-//        computeType,
-//        static_cast<cublasGemmAlgo_t>(cublasAlgo[1])));
-  // std::cout << "017" << std::endl;
-  // stream.synchronize();
-
-    // DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
-    // DataType_ scaler = 1;
-    // DataType_ scaler = 1 / sqrtf(size_per_head * 1.0f);
-  // std::cout << "018" << std::endl;
-  // stream.synchronize();
      cuda::softmax_kernel_kernelLauncher<DataType_>(
          qk_buf_, attr_mask, batch_size, head_num, from_seq_len, scaler, stream);
-  // std::cout << "019" << std::endl;
-  // stream.synchronize();
 
     check_cuda_error(cublasGemmStridedBatchedEx(
         cublas_handle,
@@ -186,8 +108,6 @@ at::Tensor bt_mha(
         batch_size * head_num,
         computeType,
         static_cast<cublasGemmAlgo_t>(cublasAlgo[2])));
-  // std::cout << "020" << std::endl;
-  // stream.synchronize();
 
     cuda::transpose_rm_padding_kernelLauncher<DataType_>(
         transpose_dst_,

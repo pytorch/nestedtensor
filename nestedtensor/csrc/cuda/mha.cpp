@@ -64,7 +64,7 @@ at::Tensor bt_min_mha(
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int64_t buf_size = input_tensor_size * 6 + attn_tensor_size;
+  int64_t buf_size = input_tensor_size * 2 + attn_tensor_size;
   at::Tensor buf_tensor = torch::zeros({buf_size}, float_options);
   Tensor tmp_int = torch::zeros(
       {input_mask.size(0) * input_mask.size(1) * 2 + batch_size * seq_len +
@@ -142,13 +142,7 @@ at::Tensor bt_min_mha(
       at::slice(buf_tensor, 0, input_tensor_size, 2 * input_tensor_size)
           .reshape({batch_size, head_num, seq_len, size_per_head});
   key_buf = key_buf.transpose(2, 3);
-  // std::cout << "query_buf: " << query_buf << std::endl;
-  // std::cout << "key_buf: " << key_buf << std::endl;
-  // at::Tensor attn_output_weights = at::matmul(query_buf, key_buf.transpose(2, 3)).contiguous();
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
-  // attn_output_weights = attn_output_weights.transpose(0, 1);
-  // std::cout << "attn_output_weights: " << attn_output_weights << std::endl;
-  // std::cout << "attr_mask: " << attr_mask << std::endl;
 
   Tensor result = effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
