@@ -908,8 +908,8 @@ class TestFunctional(TestCase):
             seq_len = 0
             seq_lens = []
             for _ in range(batch_size):
-                # i = random.randint(1, seq_len_)
-                i = seq_len_
+                i = random.randint(1, seq_len_)
+                # i = seq_len_
                 seq_len = max(i, seq_len)
                 seq_lens.append(i)
                 if use_arange:
@@ -940,9 +940,7 @@ class TestFunctional(TestCase):
                 mha.out_proj.weight.copy_(
                     out_proj_weight_test)
             out_proj_weight = mha.out_proj.weight.clone().cuda()
-            # in_proj_weight = mha.in_proj_weight.clone().cuda()
-            # in_proj_bias = mha.in_proj_bias.clone().cuda()
-            # out_proj_weight = mha.out_proj.weight.clone().cuda().t().contiguous()
+
             attr_kernel_Q = in_proj_weight[:embedding_dim, :].contiguous()
             attr_kernel_K = in_proj_weight[embedding_dim:2 *
                                            embedding_dim, :].contiguous()
@@ -958,6 +956,7 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             torch.cuda.synchronize()
             t0 = time.time()
+            scaling = float(head_size ** -0.5)
             result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                           head_size,
                                                           0.5,
@@ -972,8 +971,7 @@ class TestFunctional(TestCase):
                                                           attr_bias_Q,
                                                           attr_bias_K,
                                                           attr_bias_V,
-                                                          float(
-                                                              head_size ** -0.5),
+                                                          scaling,
                                                           out_proj_weight.t().contiguous(),
                                                           in_proj_bias,
                                                           attr_mask)
@@ -994,6 +992,10 @@ class TestFunctional(TestCase):
             t1 = time.time()
             b = t1 - t0
 
+            # print("result_nt")
+            # print(result_nt)
+            # print("attn_output")
+            # print(attn_output)
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
@@ -1006,20 +1008,22 @@ class TestFunctional(TestCase):
             c = t1 - t0
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
-        test(2, 1, 2, 1, 2) # , use_arange=True)
-        test(1, 1, 1, 4, 4) # , use_arange=True)
-        test(1, 1, 2, 2, 2) # , use_arange=True)
-        test(1, 2, 2, 1, 1) # , use_arange=True)
-        test(1, 4, 3, 2, 2) # , use_arange=True)
+        test(2, 3, 5, 2, 4)
+        test(2, 1, 2, 1, 2)
+        # test(1, 1, 1, 4, 4, use_arange=True)
+        # test(1, 1, 2, 2, 2, use_arange=True)
+        # test(1, 2, 2, 1, 1, use_arange=True)
+        # test(1, 4, 3, 2, 2, use_arange=True)
+        # test(2, 1, 2, 2, 4)
         test(2, 1, 2, 2, 4)
         test(2, 3, 5, 2, 4)
         test(1, 3, 5, 4, 4)
-        # test(8, 8, 50, 16, 128)
-        # test(16, 64, 50, 16, 256)
-        # test(16, 128, 50, 16, 256)
-        # test(16, 256, 50, 16, 256)
-        # test(4,  256, 50, 256, 1024)
-        # test(16, 256, 50, 64, 1024)
+        test(8, 8, 50, 16, 128)
+        test(16, 64, 50, 16, 256)
+        test(16, 128, 50, 16, 256)
+        test(16, 256, 50, 16, 256)
+        test(4,  256, 50, 256, 1024)
+        test(16, 256, 50, 64, 1024)
 
 
 if __name__ == "__main__":

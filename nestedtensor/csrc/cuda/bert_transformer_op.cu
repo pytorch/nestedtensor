@@ -22,8 +22,7 @@ at::Tensor bt_mha(
     DataType_* from_tensor,
     DataType_* to_tensor,
     DataType_* attr_output_kernel,
-    DataType_* query_,
-    DataType_* key_,
+    DataType_* qk_buf_,
     DataType_* value_,
     int* batch_idx,
     int* word_idx,
@@ -73,7 +72,7 @@ at::Tensor bt_mha(
   int attn_tensor_size = batch_size * head_num * from_seq_len * from_seq_len;
 
    /// buffer for self attention
-   DataType_* qk_buf_           = buf + 3 * input_tensor_size;
+   // DataType_* qk_buf_           = buf + 3 * input_tensor_size;
    /// buffer for output matmat
    DataType_* attr_out_buf_     = buf + 4 * input_tensor_size;
    DataType_* transpose_dst_    = buf + 5 * input_tensor_size;
@@ -126,30 +125,30 @@ at::Tensor bt_mha(
 
   /// 6. self-attention
   {
-    check_cuda_error(cublasGemmStridedBatchedEx(
-        cublas_handle,
-        CUBLAS_OP_T,
-        CUBLAS_OP_N,
-        from_seq_len,
-        from_seq_len,
-        size_per_head,
-        &alpha,
-        key_,
-        AType,
-        size_per_head,
-        from_seq_len * size_per_head,
-        query_,
-        BType,
-        size_per_head,
-        from_seq_len * size_per_head,
-        &beta,
-        qk_buf_,
-        CType,
-        from_seq_len,
-        from_seq_len * from_seq_len,
-        batch_size * head_num,
-        computeType,
-        static_cast<cublasGemmAlgo_t>(cublasAlgo[1])));
+//    check_cuda_error(cublasGemmStridedBatchedEx(
+//        cublas_handle,
+//        CUBLAS_OP_T,
+//        CUBLAS_OP_N,
+//        from_seq_len,
+//        from_seq_len,
+//        size_per_head,
+//        &alpha,
+//        key_,
+//        AType,
+//        size_per_head,
+//        from_seq_len * size_per_head,
+//        query_,
+//        BType,
+//        size_per_head,
+//        from_seq_len * size_per_head,
+//        &beta,
+//        qk_buf_,
+//        CType,
+//        from_seq_len,
+//        from_seq_len * from_seq_len,
+//        batch_size * head_num,
+//        computeType,
+//        static_cast<cublasGemmAlgo_t>(cublasAlgo[1])));
   // std::cout << "017" << std::endl;
   // stream.synchronize();
 
@@ -241,8 +240,7 @@ template at::Tensor bt_mha<float>(
     float* from_tensor,
     float* to_tensor,
     float* attr_output_kernel,
-    float* query_,
-    float* key_,
+    float* qk_buf_,
     float* value_,
     int* batch_idx,
     int* word_idx,

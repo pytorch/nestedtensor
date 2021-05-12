@@ -57,7 +57,20 @@ at::Tensor min_mha(
   q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   v = v.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
+  // map_nested_tensor([](at::Tensor ti) {
+  //     std::cout << "qi: " << ti << std::endl;
+  //     return ti;
+  //     }, q);
+  // map_nested_tensor([](at::Tensor ti) {
+  //     std::cout << "ki: " << ti << std::endl;
+  //     return ti;
+  //     }, k.transpose(2, 3));
   auto attn_output_weights = at::matmul(q, k.transpose(2, 3));
+  // map_nested_tensor([](at::Tensor ti) {
+  //     std::cout << "ti: " << ti << std::endl;
+  //     return ti;
+  //     }, attn_output_weights);
+  // std::cout << "attn_output_weights: " << attn_output_weights << std::endl;
   attn_output_weights = at::softmax(attn_output_weights, -1);
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
   auto attn_output = at::matmul(attn_output_weights, v);

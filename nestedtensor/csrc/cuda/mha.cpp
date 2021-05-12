@@ -135,12 +135,26 @@ at::Tensor bt_min_mha(
       word_idx_ptr,
       defaultStream);
 
+  at::Tensor query_buf =
+      at::slice(buf_tensor, 0, 0, input_tensor_size)
+          .reshape({batch_size, head_num, seq_len, size_per_head});
+  at::Tensor key_buf =
+      at::slice(buf_tensor, 0, input_tensor_size, 2 * input_tensor_size)
+          .reshape({batch_size, head_num, seq_len, size_per_head});
+  key_buf = key_buf.transpose(2, 3);
+  // std::cout << "query_buf: " << query_buf << std::endl;
+  // std::cout << "key_buf: " << key_buf << std::endl;
+  // at::Tensor attn_output_weights = at::matmul(query_buf, key_buf.transpose(2, 3)).contiguous();
+  at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
+  // attn_output_weights = attn_output_weights.transpose(0, 1);
+  // std::cout << "attn_output_weights: " << attn_output_weights << std::endl;
+  // std::cout << "attr_mask: " << attr_mask << std::endl;
+
   Tensor result = effectivetransformer::bt_mha(
       tmp.data_ptr<float>(),
       tmp.data_ptr<float>(),
       out_proj_weight.data_ptr<float>(),
-      query_ptr,
-      key_ptr,
+      attn_output_weights.data_ptr<float>(),
       value_ptr,
       batch_idx_ptr,
       word_idx_ptr,
