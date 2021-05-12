@@ -1,7 +1,6 @@
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/cuda/attention.h>
-#include <nestedtensor/csrc/cuda/bert_transformer_op.h>
 #include <nestedtensor/csrc/cuda/cuda_kernels.h>
 #include <nestedtensor/csrc/masking.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
