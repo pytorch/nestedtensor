@@ -124,35 +124,35 @@ at::Tensor bt_mha(
   // stream.synchronize();
   }
 
-   /// 7. matmat & layer norm
-   {
-     int m = valid_word_num;
-     int k = head_num * size_per_head;
-     int n = k;
-     // TODO: Currently does not support bias!
-  
-     check_cuda_error(cublasGemmEx(
-         cublas_handle,
-         CUBLAS_OP_N,
-         CUBLAS_OP_N,
-         n,
-         m,
-         k,
-         &alpha,
-         attr_output_kernel,
-         AType,
-         n,
-         attr_out_buf_,
-         BType,
-         k,
-         &beta,
-         attr_matmul_buf_,
-         CType,
-         n,
-         computeType,
-         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
-  // stream.synchronize();
-   }
+//   /// 7. matmat & layer norm
+//   {
+//     int m = valid_word_num;
+//     int k = head_num * size_per_head;
+//     int n = k;
+//     // TODO: Currently does not support bias!
+//  
+//     check_cuda_error(cublasGemmEx(
+//         cublas_handle,
+//         CUBLAS_OP_N,
+//         CUBLAS_OP_N,
+//         n,
+//         m,
+//         k,
+//         &alpha,
+//         attr_output_kernel,
+//         AType,
+//         n,
+//         attr_out_buf_,
+//         BType,
+//         k,
+//         &beta,
+//         attr_matmul_buf_,
+//         CType,
+//         n,
+//         computeType,
+//         static_cast<cublasGemmAlgo_t>(cublasAlgo[0])));
+//  // stream.synchronize();
+//   }
    return result;
 };
 

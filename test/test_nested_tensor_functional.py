@@ -972,7 +972,7 @@ class TestFunctional(TestCase):
                                                           attr_bias_K,
                                                           attr_bias_V,
                                                           scaling,
-                                                          out_proj_weight.t().contiguous(),
+                                                          out_proj_weight,
                                                           in_proj_bias,
                                                           attr_mask)
 
@@ -1008,9 +1008,9 @@ class TestFunctional(TestCase):
             c = t1 - t0
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
+        # test(1, 1, 1, 4, 4, use_arange=True)
         test(2, 3, 5, 2, 4)
         test(2, 1, 2, 1, 2)
-        # test(1, 1, 1, 4, 4, use_arange=True)
         # test(1, 1, 2, 2, 2, use_arange=True)
         # test(1, 2, 2, 1, 1, use_arange=True)
         # test(1, 4, 3, 2, 2, use_arange=True)

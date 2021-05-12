@@ -162,6 +162,12 @@ at::Tensor bt_min_mha(
       prefix_sum_ptr,
       input_mask.data_ptr<int>(),
       valid_word_num);
+  at::Tensor attr_out = at::slice(buf_tensor, 0, 0, valid_word_num * embedding_dim);
+  attr_out = attr_out.reshape({-1, embedding_dim});
+  // TODO: Bias is variably sized, need to add support for that.
+  // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());
+  result = at::matmul(attr_out, out_proj_weight.t());
+  result = result.reshape({-1});
   return wrap_buffer(std::move(result), get_nested_size(query));
 }
 
