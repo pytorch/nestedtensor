@@ -30,15 +30,23 @@ Tensor NestedTensor_addmm(
         if (input_opt_sizes[2]) {
           if (*input_opt_sizes[2] == weight.size(1)) {
             Tensor input_buffer = get_buffer(input);
-            Tensor result_buffer = at::addmm(bias, input_buffer.reshape({-1,
-                  weight.size(1)}), weight, alpha, beta).reshape({-1});
+            Tensor result_buffer =
+                at::addmm(
+                    bias,
+                    input_buffer.reshape({-1, weight.size(1)}),
+                    weight,
+                    alpha,
+                    beta)
+                    .reshape({-1});
             int64_t weight_size_1 = weight.size(1);
-            auto result_nested_size = map([&weight_size_1](std::vector<int64_t> size) {
-                std::vector<int64_t> result;
-                result.push_back(size[0]);
-                result.push_back(weight_size_1);
-                return result;
-                }, get_nested_size(input));
+            auto result_nested_size = map(
+                [&weight_size_1](std::vector<int64_t> size) {
+                  std::vector<int64_t> result;
+                  result.push_back(size[0]);
+                  result.push_back(weight_size_1);
+                  return result;
+                },
+                get_nested_size(input));
             return wrap_buffer(std::move(result_buffer), result_nested_size);
           }
         }
