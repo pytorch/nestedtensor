@@ -1,5 +1,6 @@
 #pragma once
 #include <nestedtensor/csrc/storage/StorageBase.h>
+#include <nestedtensor/csrc/storage/EfficientSizeNode.h>
 
 namespace torch {
 namespace nested_tensor {
