@@ -112,7 +112,7 @@ jobs:
   unittest_linux_gpu:
     <<: *binary_common
     machine:
-      image: "ubuntu-1604:202007-01"
+      image: ubuntu-1604-cuda-10.2:202012-01
     resource_class: gpu.nvidia.medium
     steps:
       - checkout
