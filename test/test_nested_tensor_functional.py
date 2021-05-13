@@ -956,26 +956,27 @@ class TestFunctional(TestCase):
             torch.cuda.synchronize()
             t0 = time.time()
             scaling = float(head_size ** -0.5)
-            result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
-                                                          head_size,
-                                                          0.5,
-                                                          False,
-                                                          input_mask,
-                                                          input_nt._impl,
-                                                          input_nt._impl,
-                                                          input_nt._impl,
-                                                          attr_kernel_Q,
-                                                          attr_kernel_K,
-                                                          attr_kernel_V,
-                                                          attr_bias_Q,
-                                                          attr_bias_K,
-                                                          attr_bias_V,
-                                                          scaling,
-                                                          out_proj_weight,
-                                                          in_proj_bias,
-                                                          attr_mask)
+            for _ in range(5):
+                result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
+                                                              head_size,
+                                                              0.5,
+                                                              False,
+                                                              input_mask,
+                                                              input_nt._impl,
+                                                              input_nt._impl,
+                                                              input_nt._impl,
+                                                              attr_kernel_Q,
+                                                              attr_kernel_K,
+                                                              attr_kernel_V,
+                                                              attr_bias_Q,
+                                                              attr_bias_K,
+                                                              attr_bias_V,
+                                                              scaling,
+                                                              out_proj_weight,
+                                                              in_proj_bias,
+                                                              attr_mask)
 
-            result_nt = nestedtensor.NestedTensor(result_nt)
+                result_nt = nestedtensor.NestedTensor(result_nt)
 
             torch.cuda.synchronize()
             t1 = time.time()
@@ -986,7 +987,8 @@ class TestFunctional(TestCase):
             time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
-            attn_output, _ = mha(input_nt, input_nt, input_nt)
+            for _ in range(5):
+                attn_output, _ = mha(input_nt, input_nt, input_nt)
 
             torch.cuda.synchronize()
             t1 = time.time()
@@ -998,7 +1000,8 @@ class TestFunctional(TestCase):
             time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
-            attn_output, _ = mha(input_batch, input_batch, input_batch)
+            for _ in range(5):
+                attn_output, _ = mha(input_batch, input_batch, input_batch)
 
             torch.cuda.synchronize()
             t1 = time.time()
@@ -1016,12 +1019,12 @@ class TestFunctional(TestCase):
         # test(2, 1, 2, 2, 4)
         # test(2, 3, 5, 2, 4)
         # test(1, 3, 5, 4, 4)
-        # test(8, 8, 50, 16, 128)
-        # test(16, 64, 50, 16, 256)
-        # test(16, 128, 50, 16, 256)
+        test(8, 8, 50, 16, 128)
+        test(16, 64, 50, 16, 256)
+        test(16, 128, 50, 16, 256)
         test(16, 256, 50, 16, 256)
-        # test(4,  256, 50, 256, 1024)
-        # test(16, 256, 50, 64, 1024)
+        test(4,  256, 50, 256, 1024)
+        test(16, 256, 50, 64, 1024)
 
 
 if __name__ == "__main__":

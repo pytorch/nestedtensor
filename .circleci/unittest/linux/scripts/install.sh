@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -x
+set -e
 
 unset PYTORCH_VERSION
 # For unittest, nightly PyTorch is used as the following section,
@@ -45,9 +47,9 @@ fi
 # fi
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    pip3 -q install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+    conda install -y pytorch torchvision torchaudio cpuonly -c pytorch-nightly
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
-    pip3 -q install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cu102/torch_nightly.html
-    USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
+    conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-nightly
+    FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi

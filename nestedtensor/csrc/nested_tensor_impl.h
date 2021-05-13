@@ -12,17 +12,6 @@
 // #define TRACEPACKED 1
 // #define USEPACKED 1
 
-namespace torch {
-namespace nested_tensor {
-
-using TensorNode = NestedNode<at::Tensor>;
-using IValueNode = NestedNode<c10::IValue>;
-using SizeNode = NestedNode<std::vector<int64_t>>;
-using IntegerNode = NestedNode<int64_t>;
-
-} // namespace nested_tensor
-} // namespace torch
-
 namespace at {
 
 using namespace torch::nested_tensor;
@@ -200,10 +189,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   //
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
-  const SizeNode nested_size() const {
+  const SizeNode& nested_size() const {
     return _storage->nested_size();
   }
-  const SizeNode nested_stride() const {
+  const SizeNode& nested_stride() const {
     return _storage->nested_stride();
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const {

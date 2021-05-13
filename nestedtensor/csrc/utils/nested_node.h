@@ -64,54 +64,6 @@ struct NestedNode {
   int64_t _height;
 };
 
-template <>
-struct NestedNode<at::Tensor> {
-  // NestedNode() : _is_leaf(false), _height(1) {}
-  NestedNode<at::Tensor>() = delete;
-  NestedNode<at::Tensor>(std::vector<NestedNode<at::Tensor>>&& children)
-      : _is_leaf(false), _children(children), _height(1) {
-    for (const auto& child : children) {
-      if (child.height() + 1 > _height) {
-        _height = child.height() + 1;
-      }
-    }
-  }
-  // NestedNode(NestedNode&) = delete;
-  // NestedNode(const NestedNode&) = delete;
-  // NestedNode& operator=(NestedNode) = delete;
-  NestedNode<at::Tensor>(at::Tensor&& payload)
-      : _is_leaf(true), _payload(payload), _height(0) {}
-  inline bool is_leaf() const {
-    return _is_leaf;
-  }
-  inline size_t degree() const {
-    return _children.size();
-  }
-  inline int64_t height() const {
-    return _height;
-  }
-  inline const std::vector<NestedNode<at::Tensor>> unbind() const {
-    return _children;
-  }
-  inline NestedNode<at::Tensor> children(size_t i) const {
-    return _children[i];
-  }
-  inline const at::Tensor& payload() const {
-    return _payload;
-  }
-  inline at::Tensor& payload() {
-    return _payload;
-  }
-
- private:
-  bool _is_leaf;
-  std::vector<NestedNode<at::Tensor>> _children;
-  // TODO: Make this const?
-  // _VariableNode _variable_node;
-  at::Tensor _payload;
-  int64_t _height;
-};
-
 // TODO: Should have specialized construction check that all payloads are of
 // same size for SizeNode
 using SizeNode = NestedNode<std::vector<int64_t>>;
