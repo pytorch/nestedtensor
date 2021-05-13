@@ -195,7 +195,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   const SizeNode& nested_stride() const {
     return _storage->nested_stride();
   }
-  const std::vector<c10::optional<int64_t>> opt_sizes() const {
+  const std::vector<c10::optional<int64_t>>& opt_sizes() const {
     return _storage->opt_sizes();
   }
   IntArrayRef sizes() const override {
@@ -247,8 +247,8 @@ static inline at::Tensor get_buffer(const at::Tensor& tensor) {
   return ps->get_buffer();
 }
 
-static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
-    at::Tensor tensor) {
+static inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
+    const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->opt_sizes();

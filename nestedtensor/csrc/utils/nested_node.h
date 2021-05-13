@@ -377,8 +377,8 @@ inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
 }
 
 inline int64_t num_memory(
-    std::vector<int64_t> size,
-    std::vector<int64_t> stride) {
+    const std::vector<int64_t>& size,
+    const std::vector<int64_t>& stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.

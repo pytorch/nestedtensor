@@ -138,7 +138,7 @@ struct PackedStorage : public NestedTensorStorage {
   const SizeNode& nested_stride() const override {
     return _nested_stride;
   }
-  const std::vector<c10::optional<int64_t>> opt_sizes() const override {
+  const std::vector<c10::optional<int64_t>>& opt_sizes() const override {
     return _opt_sizes;
   }
   NestedTensorStorageKind kind() const {
@@ -173,7 +173,7 @@ struct PackedStorage : public NestedTensorStorage {
   c10::Device _device;
   int64_t _dim;
   bool _is_pinned;
-  std::vector<c10::optional<int64_t>> _opt_sizes;
+  const std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
 } // namespace nested_tensor
