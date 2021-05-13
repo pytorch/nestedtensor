@@ -12,28 +12,6 @@ namespace at {
 using namespace torch::nested_tensor;
 using namespace c10;
 
-int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
-  // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
-  // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
-  // but carry 0 memory.
-  if (size.size() == 0) {
-    return 1;
-  }
-  return size[0] * stride[0];
-}
-
-std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
-  std::vector<int64_t> stride(size.size());
-  int64_t p = 1;
-  size_t p_i = size.size();
-  for (size_t i = 0; i < size.size(); i++) {
-    p_i--;
-    stride[p_i] = p;
-    p *= size[p_i];
-  }
-  return std::vector<int64_t>(stride);
-}
-
 TensorNode _unbind_tensors(TensorNode structure) {
   std::vector<TensorNode> result_nodes;
   if (structure.is_leaf()) {
@@ -270,11 +248,6 @@ Tensor NestedTensor_slice(
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
-  // auto self_data = get_nested_tensor_impl(self);
-  // auto src_data = get_nested_tensor_impl(src);
-  // TORCH_CHECK(
-  //     shape_matches(self_data->nested_size(), src_data->nested_size()),
-  //     "self and source don't match in shape");
   apply_nested_tensor(
       [](at::Tensor& self, at::Tensor& source) { return self.copy_(source); },
       self,
@@ -361,30 +334,6 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-// Tensor NestedTensor_as_strided(
-//     const Tensor& self,
-//     IntArrayRef size,
-//     IntArrayRef stride,
-//     optional<int64_t> storage_offset_) {
-//   throw std::runtime_error(
-//       "as_strided is not implemented for NestedTensor. "
-//       "Please create an issue on https://github.com/pytorch/nestedtensor with
-//       your usecase.");
-//   return self;
-// }
-//
-// Tensor& NestedTensor_as_strided_(
-//     Tensor& self,
-//     IntArrayRef size,
-//     IntArrayRef stride,
-//     optional<int64_t> storage_offset_) {
-//   throw std::runtime_error(
-//       "as_strided_ is not implemented for NestedTensor. "
-//       "Please create an issue on https://github.com/pytorch/nestedtensor with
-//       your usecase.");
-//   return self;
-// }
-
 Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
   auto nt_impl = get_nested_tensor_impl(tensor);
   std::vector<int64_t> out;
@@ -392,10 +341,6 @@ Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
-  // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
-  // nt_impl(m, "size.int", NestedTensor_size_int);
-  // nt_impl(m, "as_strided", NestedTensor_as_strided);
-  // nt_impl(m, "as_strided_", NestedTensor_as_strided_);
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
