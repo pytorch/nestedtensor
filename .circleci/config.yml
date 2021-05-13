@@ -114,8 +114,6 @@ jobs:
     machine:
       image: "ubuntu-1604:202007-01"
     resource_class: gpu.nvidia.medium
-    environment:
-      image_name: "pytorch/manylinux-cuda102"
     steps:
       - checkout
       - run:
