@@ -86,7 +86,8 @@ struct PackedStorage : public NestedTensorStorage {
             get_first_leaf(_nested_size)
                 ? get_first_leaf(_nested_size)->size() + _nested_size.height()
                 : _nested_size.height()),
-        _is_pinned(buffer.is_pinned()) {
+        _is_pinned(buffer.is_pinned()),
+        _opt_sizes(construct_size(_nested_size)) {
     TORCH_CHECK(
         !_nested_size.is_leaf(),
         "PackedStorage must be given NestedSize of at least height 1.");
@@ -138,7 +139,7 @@ struct PackedStorage : public NestedTensorStorage {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
-    return construct_size(_nested_size);
+    return _opt_sizes;
   }
   NestedTensorStorageKind kind() const {
     return NestedTensorStorageKind::packed;
@@ -154,7 +155,7 @@ struct PackedStorage : public NestedTensorStorage {
                  if (sizes.size() != strides.size()) {
                    TORCH_CHECK(false, "Sizes and strides don't match in size.");
                  }
-                 for (int64_t i = 0; i < sizes.size(); i++) {
+                 for (size_t i = 0; i < sizes.size(); i++) {
                    equal = equal && (strides[i] == cont_strides[i]);
                  }
                  return equal && input;
@@ -172,6 +173,7 @@ struct PackedStorage : public NestedTensorStorage {
   c10::Device _device;
   int64_t _dim;
   bool _is_pinned;
+  std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
 } // namespace nested_tensor

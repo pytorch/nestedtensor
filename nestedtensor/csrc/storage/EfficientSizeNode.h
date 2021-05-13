@@ -7,6 +7,6 @@ struct EfficientSizeNode {
   int64_t _height;
   int64_t _tensor_dim;
   int64_t num_leaf;
-}
+};
 }
 }

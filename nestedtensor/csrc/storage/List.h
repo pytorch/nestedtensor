@@ -1,6 +1,6 @@
 #pragma once
-#include <nestedtensor/csrc/storage/StorageBase.h>
 #include <nestedtensor/csrc/storage/EfficientSizeNode.h>
+#include <nestedtensor/csrc/storage/StorageBase.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -16,17 +16,18 @@ struct ListStorage : public NestedTensorStorage {
                 _structure)),
         _data_type(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->dtype()
-                                      : at::ones({}).dtype()),
+                                       : at::ones({}).dtype()),
         _device(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->device()
-                                      : at::ones({}).device()),
+                                       : at::ones({}).device()),
         _dim(
             get_first_leaf(_structure)
                 ? get_first_leaf(_structure)->dim() + _structure.height()
                 : _structure.height()),
         _is_pinned(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->is_pinned()
-                                      : false) {
+                                       : false),
+        _opt_sizes(construct_size(_nested_size)) {
     TORCH_CHECK(
         !_structure.is_leaf(),
         "NestedTensorImpl must be given structure of at least height 1.");
@@ -53,7 +54,7 @@ struct ListStorage : public NestedTensorStorage {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
-    return construct_size(_nested_size);
+    return _opt_sizes;
   }
   NestedTensorStorageKind kind() const {
     return NestedTensorStorageKind::list;
@@ -70,6 +71,7 @@ struct ListStorage : public NestedTensorStorage {
   c10::Device _device;
   int64_t _dim;
   bool _is_pinned;
+  std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
 } // namespace nested_tensor
