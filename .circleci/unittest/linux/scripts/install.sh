@@ -48,6 +48,8 @@ if [ "${CU_VERSION:-}" == cpu ] ; then
     conda install -y pytorch torchvision torchaudio cpuonly -c pytorch-nightly
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
+    which nvcc
+    nvcc --version
     conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-nightly
     FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
