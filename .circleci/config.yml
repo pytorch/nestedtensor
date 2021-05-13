@@ -62,6 +62,36 @@ binary_common: &binary_common
     CU_VERSION: << parameters.cu_version >>
 
 jobs:
+  # Requires org-member context
+  binary_wheel_upload:
+    parameters:
+      subfolder:
+        description: "What whl subfolder to upload to, e.g., blank or cu100/ (trailing slash is important)"
+        type: string
+      python_version:
+        description: "Dummy param to make circleci configuration happy for matrix"
+        type: string
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - attach_workspace:
+          at: ~/workspace
+      - designate_upload_channel
+      - checkout
+      - run:
+          command: |
+            pip install --user awscli
+            export PATH="$HOME/.local/bin:$PATH"
+            # Prevent credential from leaking
+            set +x
+            export AWS_ACCESS_KEY_ID="${PYTORCH_BINARY_AWS_ACCESS_KEY_ID}"
+            export AWS_SECRET_ACCESS_KEY="${PYTORCH_BINARY_AWS_SECRET_ACCESS_KEY}"
+            set -x
+            ls ~/workspace
+            for pkg in ~/workspace/*.whl; do
+                aws s3 cp "$pkg" "s3://pytorch/nestedtensor/whl/${UPLOAD_CHANNEL}/<< parameters.subfolder >>/py<< parameters.python_version >>/" --acl public-read
+            done
+
   unittest_linux_cpu:
     <<: *binary_common
     machine:
@@ -171,3 +201,14 @@ workflows:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
               cu_version: ["cu102"]
+      - binary_wheel_upload:
+          context: org-member
+          matrix:
+            parameters:
+              python_version: ["3.6", "3.7", "3.8"]
+              subfolder: ["cpu", "cu102"]
+          filters:
+            branches:
+              only: nightly
+          requires:
+            - unittest_linux_<< matrix.subfolder >>_py<< matrix.python_version >>
