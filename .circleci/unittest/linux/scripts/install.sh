@@ -54,5 +54,6 @@ else
     # which python
     # which nvcc
     # nvcc --version
+    python -c "import torch; print(torch.randn(1, 2).cuda())"
     CUDA_HOME=/home/circleci/project/env FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
