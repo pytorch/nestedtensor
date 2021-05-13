@@ -51,6 +51,7 @@ if [ "${CU_VERSION:-}" == cpu ] ; then
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
     conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-nightly
+    which python
     which nvcc
     nvcc --version
     FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
