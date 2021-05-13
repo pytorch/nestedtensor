@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -x
+set -e
 
 unset PYTORCH_VERSION
 # For unittest, nightly PyTorch is used as the following section,
