@@ -94,10 +94,10 @@ at::Tensor bt_min_mha(
 
   at::Tensor q, k, v;
   q = at::addmm(
-      attr_bias_Q.contiguous(), query, attr_kernel_Q.t().contiguous());
-  k = at::addmm(attr_bias_K.contiguous(), key, attr_kernel_K.t().contiguous());
+      attr_bias_Q, query, attr_kernel_Q.t());
+  k = at::addmm(attr_bias_K, key, attr_kernel_K.t());
   v = at::addmm(
-      attr_bias_V.contiguous(), value, attr_kernel_V.t().contiguous());
+      attr_bias_V, value, attr_kernel_V.t());
   at::Tensor q_buf = get_buffer(q);
   at::Tensor k_buf = get_buffer(k);
   at::Tensor v_buf = get_buffer(v);
