@@ -962,9 +962,9 @@ class TestFunctional(TestCase):
                                                               0.5,
                                                               False,
                                                               input_mask,
-                                                              input_nt._impl,
-                                                              input_nt._impl,
-                                                              input_nt._impl,
+                                                              input_nt,#._impl,
+                                                              input_nt,#._impl,
+                                                              input_nt,#._impl,
                                                               attr_kernel_Q,
                                                               attr_kernel_K,
                                                               attr_kernel_V,
@@ -975,8 +975,6 @@ class TestFunctional(TestCase):
                                                               out_proj_weight,
                                                               in_proj_bias,
                                                               attr_mask)
-
-                result_nt = nestedtensor.NestedTensor(result_nt)
 
             torch.cuda.synchronize()
             t1 = time.time()
