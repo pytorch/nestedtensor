@@ -91,7 +91,12 @@ struct EfficientSizeNode {
         _sizes(impl::stack_sizes(size_node)),
         _opt_sizes(impl::construct_efficient_size(
             impl::efficient_deserialize(_structure, _height),
-            _sizes)) {}
+            _sizes)) {
+          // for (size_t i = 0; i < _structure.size(); i++) {
+          //   std::cout << "_structure[" << i << "]: " << _structure[i] << std::endl;
+          // }
+          // std::cout << "---" << std::endl;
+        }
 
   explicit EfficientSizeNode(
       int64_t height,

@@ -957,6 +957,9 @@ class TestFunctional(TestCase):
             t0 = time.time()
             scaling = float(head_size ** -0.5)
             for _ in range(5):
+                # print("input_nt")
+                # print(input_nt)
+                # print("---")
                 result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                               head_size,
                                                               0.5,

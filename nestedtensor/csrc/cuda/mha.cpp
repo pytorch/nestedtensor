@@ -91,6 +91,11 @@ at::Tensor bt_min_mha(
       (int32_t)(embedding_dim),
       defaultStream);
 
+  // std::cout << "input_mask: " << input_mask << std::endl;
+  // std::cout << "prefix_sum: " << prefix_sum << std::endl;
+  // std::cout << "batch_idx: " << batch_idx << std::endl;
+  // std::cout << "word_idx: " << word_idx << std::endl;
+
   at::Tensor q, k, v;
   q = at::addmm(attr_bias_Q, query, attr_kernel_Q.t());
   k = at::addmm(attr_bias_K, key, attr_kernel_K.t());
