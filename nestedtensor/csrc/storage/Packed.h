@@ -1,4 +1,5 @@
 #pragma once
+#include <nestedtensor/csrc/storage/EfficientSizeNode.h>
 #include <nestedtensor/csrc/storage/StorageBase.h>
 
 namespace torch {
@@ -78,21 +79,21 @@ struct PackedStorage : public NestedTensorStorage {
       SizeNode nested_size,
       SizeNode nested_stride)
       : _buffer(buffer),
-        _nested_size(nested_size),
-        _nested_stride(nested_stride),
+        _opt_sizes(construct_size(nested_size)),
+        _dim(
+            get_first_leaf(nested_size)
+                ? get_first_leaf(nested_size)->size() + nested_size.height()
+                : nested_size.height()),
+        _nested_size(EfficientSizeNode(nested_size, _opt_sizes, _dim)),
+        _nested_stride(EfficientSizeNode(nested_stride, _opt_sizes, _dim)),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
-        _dim(
-            get_first_leaf(_nested_size)
-                ? get_first_leaf(_nested_size)->size() + _nested_size.height()
-                : _nested_size.height()),
-        _is_pinned(buffer.is_pinned()),
-        _opt_sizes(construct_size(_nested_size)) {
+        _is_pinned(buffer.is_pinned()) {
     TORCH_CHECK(
-        !_nested_size.is_leaf(),
+        _nested_size.height(),
         "PackedStorage must be given NestedSize of at least height 1.");
     TORCH_CHECK(
-        !_nested_stride.is_leaf(),
+        _nested_stride.height(),
         "PackedStorage must be given NestedStride of at least height 1.");
   }
   explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size)
@@ -114,8 +115,8 @@ struct PackedStorage : public NestedTensorStorage {
     return _dim;
   }
   TensorNode get_structure() const {
-    return std::get<0>(
-        impl::build_structure(_buffer, _nested_size, _nested_stride));
+    return std::get<0>(impl::build_structure(
+        _buffer, _nested_size.to_size_node(), _nested_stride.to_size_node()));
   }
   at::Tensor& get_buffer() {
     return _buffer;
@@ -132,11 +133,11 @@ struct PackedStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  const SizeNode& nested_size() const override {
-    return _nested_size;
+  SizeNode nested_size() const override {
+    return _nested_size.to_size_node();
   }
-  const SizeNode& nested_stride() const override {
-    return _nested_stride;
+  SizeNode nested_stride() const override {
+    return _nested_stride.to_size_node();
   }
   const std::vector<c10::optional<int64_t>>& opt_sizes() const override {
     return _opt_sizes;
@@ -161,19 +162,19 @@ struct PackedStorage : public NestedTensorStorage {
                  return equal && input;
                },
                true,
-               _nested_size,
-               _nested_stride);
+               _nested_size.to_size_node(),
+               _nested_stride.to_size_node());
   }
 
  private:
   at::Tensor _buffer;
-  const SizeNode _nested_size;
-  const SizeNode _nested_stride;
+  const std::vector<c10::optional<int64_t>> _opt_sizes;
+  int64_t _dim;
+  EfficientSizeNode _nested_size;
+  EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
-  int64_t _dim;
   bool _is_pinned;
-  const std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
 } // namespace nested_tensor

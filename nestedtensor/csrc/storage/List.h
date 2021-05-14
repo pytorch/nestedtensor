@@ -47,10 +47,10 @@ struct ListStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  const SizeNode& nested_size() const override {
+  SizeNode nested_size() const override {
     return _nested_size;
   }
-  const SizeNode& nested_stride() const override {
+  SizeNode nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>>& opt_sizes() const override {

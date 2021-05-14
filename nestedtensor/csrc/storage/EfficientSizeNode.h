@@ -1,24 +1,25 @@
+#pragma once
 #include <nestedtensor/csrc/storage/common.h>
 
 namespace torch {
 namespace nested_tensor {
-namespace impl {
-
-static void _count_children(
-    const SizeNode& size_node,
-    std::vector<int64_t>& child_count,
-    int64_t level) {
-  child_count[level] += size_node.degree();
-  for (auto const& child : size_node.unbind()) {
-    _count_children(child, child_count, level + 1);
-  }
-}
-
-} // namespace impl
+// namespace impl {
+// 
+// static void _count_children(
+//     const SizeNode& size_node,
+//     std::vector<int64_t>& child_count,
+//     int64_t level) {
+//   child_count[level] += size_node.degree();
+//   for (auto const& child : size_node.unbind()) {
+//     _count_children(child, child_count, level + 1);
+//   }
+// }
+// 
+// } // namespace impl
 
 struct EfficientSizeNode {
   explicit EfficientSizeNode(
-      const SizeNode& size_node,
+      SizeNode size_node,
       const std::vector<c10::optional<int64_t>>& opt_sizes,
       int64_t dim)
       : _height(size_node.height()),
@@ -32,8 +33,11 @@ struct EfficientSizeNode {
             size_node)),
         _sizes(flatten(size_node)) {}
 
-  SizeNode to_size_node() {
+  SizeNode to_size_node() const {
     return unflatten(_structure, _sizes);
+  }
+  int64_t height() const {
+    return _height;
   }
 
  private:

@@ -22,10 +22,10 @@ struct NestedTensorStorage {
   virtual bool is_pinned() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual const SizeNode& nested_size() const {
+  virtual SizeNode nested_size() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual const SizeNode& nested_stride() const {
+  virtual SizeNode nested_stride() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
   virtual const std::vector<c10::optional<int64_t>>& opt_sizes() const {
