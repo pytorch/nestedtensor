@@ -32,9 +32,7 @@ static at::Tensor stack_sizes(SizeNode size_node) {
 static std::vector<c10::optional<int64_t>> construct_efficient_size(
     SizeNode size_node,
     at::Tensor sizes) {
-  // std::cout << "sizes: " << sizes << std::endl;
   std::vector<c10::optional<int64_t>> result = construct_size(size_node);
-  // std::cout << "result.size(): " << result.size() << std::endl;
   size_t nested_dim = result.size();
   if (sizes.dim() > 0) {
     int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
@@ -51,14 +49,6 @@ static std::vector<c10::optional<int64_t>> construct_efficient_size(
       }
     }
   }
-  // for (size_t i = 0; i < result.size(); i++) {
-  //   if(result[i]) {
-  //     std::cout << "result[" << i << "]: " << *result[i] << std::endl;
-  //   } else {
-  //     std::cout << "result[" << i << "]: None" << std::endl;
-  //   }
-  // }
-  // std::cout << std::endl;
   return result;
 }
 
