@@ -953,7 +953,6 @@ class TestFunctional(TestCase):
 
             import time
             torch.cuda.synchronize()
-            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             scaling = float(head_size ** -0.5)
@@ -985,7 +984,6 @@ class TestFunctional(TestCase):
 
             mha = mha.cuda()
             torch.cuda.synchronize()
-            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             for _ in range(5):
@@ -998,7 +996,6 @@ class TestFunctional(TestCase):
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
-            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             for _ in range(5):

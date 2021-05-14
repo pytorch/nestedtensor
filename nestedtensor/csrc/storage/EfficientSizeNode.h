@@ -3,19 +3,6 @@
 
 namespace torch {
 namespace nested_tensor {
-// namespace impl {
-//
-// static void _count_children(
-//     const SizeNode& size_node,
-//     std::vector<int64_t>& child_count,
-//     int64_t level) {
-//   child_count[level] += size_node.degree();
-//   for (auto const& child : size_node.unbind()) {
-//     _count_children(child, child_count, level + 1);
-//   }
-// }
-//
-// } // namespace impl
 
 namespace impl {
 static at::Tensor stack_sizes(SizeNode size_node) {
@@ -115,14 +102,6 @@ struct EfficientSizeNode {
         _structure(structure),
         _sizes(sizes),
         _opt_sizes(opt_sizes) {}
-
-  // EfficientSizeNode(const EfficientSizeNode& other)
-  //     : _height(other._height),
-  //       _structure(other._structure),
-  //       _sizes(other._sizes.clone()),
-  //       _opt_sizes(other._opt_sizes) {
-  //   // std::cout << "copy constructors" << std::endl;
-  // }
 
   SizeNode to_size_node() const {
     std::vector<std::vector<int64_t>> _tmp_sizes;
