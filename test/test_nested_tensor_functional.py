@@ -965,14 +965,17 @@ class TestFunctional(TestCase):
             t0 = time.time()
             scaling = float(head_size ** -0.5)
             for _ in range(5):
+                # print("input_nt")
+                # print(input_nt)
+                # print("---")
                 result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                               head_size,
                                                               0.5,
                                                               False,
                                                               input_mask,
-                                                              input_nt._impl,
-                                                              input_nt._impl,
-                                                              input_nt._impl,
+                                                              input_nt,
+                                                              input_nt,
+                                                              input_nt,
                                                               attr_kernel_Q,
                                                               attr_kernel_K,
                                                               attr_kernel_V,
@@ -984,15 +987,12 @@ class TestFunctional(TestCase):
                                                               in_proj_bias,
                                                               attr_mask)
 
-                result_nt = nestedtensor.NestedTensor(result_nt)
-
             torch.cuda.synchronize()
             t1 = time.time()
             a = t1 - t0
 
             mha = mha.cuda()
             torch.cuda.synchronize()
-            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             for _ in range(5):
@@ -1005,7 +1005,6 @@ class TestFunctional(TestCase):
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
-            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             for _ in range(5):
@@ -1017,16 +1016,16 @@ class TestFunctional(TestCase):
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
         # test(1, 1, 1, 4, 4, use_arange=True)
-        # test(2, 1, 2, 1, 2)
-        # test(1, 3, 5, 4, 4)
-        # test(2, 3, 5, 2, 4)
         # test(1, 1, 2, 2, 2, use_arange=True)
         # test(1, 2, 2, 1, 1, use_arange=True)
         # test(1, 4, 3, 2, 2, use_arange=True)
-        # test(2, 1, 2, 2, 4)
-        # test(2, 1, 2, 2, 4)
-        # test(2, 3, 5, 2, 4)
-        # test(1, 3, 5, 4, 4)
+        test(2, 1, 2, 1, 2)
+        test(1, 3, 5, 4, 4)
+        test(2, 3, 5, 2, 4)
+        test(2, 1, 2, 2, 4)
+        test(2, 1, 2, 2, 4)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
         test(8, 8, 50, 16, 128)
         test(16, 64, 50, 16, 256)
         test(16, 128, 50, 16, 256)

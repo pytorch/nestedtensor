@@ -1,4 +1,5 @@
 #pragma once
+#include <nestedtensor/csrc/storage/EfficientSizeNode.h>
 #include <nestedtensor/csrc/storage/StorageBase.h>
 
 namespace torch {
@@ -75,25 +76,30 @@ inline at::Tensor pack(const TensorNode& structure) {
 struct PackedStorage : public NestedTensorStorage {
   explicit PackedStorage(
       at::Tensor&& buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride)
+      EfficientSizeNode nested_size,
+      EfficientSizeNode nested_stride)
       : _buffer(buffer),
         _nested_size(nested_size),
         _nested_stride(nested_stride),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
-        _dim(
-            get_first_leaf(_nested_size)
-                ? get_first_leaf(_nested_size)->size() + _nested_size.height()
-                : _nested_size.height()),
         _is_pinned(buffer.is_pinned()) {
     TORCH_CHECK(
-        !_nested_size.is_leaf(),
+        _nested_size.height(),
         "PackedStorage must be given NestedSize of at least height 1.");
     TORCH_CHECK(
-        !_nested_stride.is_leaf(),
+        _nested_stride.height(),
         "PackedStorage must be given NestedStride of at least height 1.");
   }
+
+  explicit PackedStorage(
+      at::Tensor&& buffer,
+      SizeNode nested_size,
+      SizeNode nested_stride)
+      : PackedStorage(std::move(buffer),
+        EfficientSizeNode(nested_size),
+        EfficientSizeNode(nested_stride)) {}
+
   explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size)
       : PackedStorage(
             std::move(buffer),
@@ -103,6 +109,7 @@ struct PackedStorage : public NestedTensorStorage {
                   return torch::nested_tensor::impl::_cont_stride(sizes);
                 },
                 nested_size)) {}
+
   explicit PackedStorage(TensorNode structure)
       : PackedStorage(
             impl::pack(structure),
@@ -110,11 +117,11 @@ struct PackedStorage : public NestedTensorStorage {
                 structure)) {}
 
   int64_t dim() const override {
-    return _dim;
+    return _nested_size.dim();
   }
   TensorNode get_structure() const {
-    return std::get<0>(
-        impl::build_structure(_buffer, _nested_size, _nested_stride));
+    return std::get<0>(impl::build_structure(
+        _buffer, _nested_size.to_size_node(), _nested_stride.to_size_node()));
   }
   at::Tensor& get_buffer() {
     return _buffer;
@@ -131,46 +138,43 @@ struct PackedStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  const SizeNode& nested_size() const override {
+  EfficientSizeNode nested_size() const override {
     return _nested_size;
   }
-  const SizeNode& nested_stride() const override {
+  EfficientSizeNode nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
-    return construct_size(_nested_size);
+    return _nested_size.opt_sizes();
   }
   NestedTensorStorageKind kind() const {
     return NestedTensorStorageKind::packed;
   }
   bool is_contiguous() const {
-    return _buffer.is_contiguous() &&
-        reduce(
-               [](std::vector<int64_t> sizes,
-                  std::vector<int64_t> strides,
-                  bool input) {
-                 std::vector<int64_t> cont_strides = impl::_cont_stride(sizes);
-                 bool equal = true;
-                 if (sizes.size() != strides.size()) {
-                   TORCH_CHECK(false, "Sizes and strides don't match in size.");
-                 }
-                 for (int64_t i = 0; i < sizes.size(); i++) {
-                   equal = equal && (strides[i] == cont_strides[i]);
-                 }
-                 return equal && input;
-               },
-               true,
-               _nested_size,
-               _nested_stride);
+    if (!_buffer.is_contiguous()) {
+      return false;
+    }
+    const at::Tensor& sizes_sizes = _nested_size.sizes();
+    const at::Tensor& strides_sizes = _nested_stride.sizes();
+    int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
+    int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
+    for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
+      if (!impl::_is_cont_stride(
+          sizes_sizes_ptr + i * sizes_sizes.size(1),
+          strides_sizes_ptr + i * strides_sizes.size(1),
+          sizes_sizes.size(1))) {
+        return false;
+      }
+    }
+    return true;
   }
 
  private:
   at::Tensor _buffer;
-  const SizeNode _nested_size;
-  const SizeNode _nested_stride;
+  EfficientSizeNode _nested_size;
+  EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
-  int64_t _dim;
   bool _is_pinned;
 };
 

@@ -189,11 +189,11 @@ struct NestedTensorImpl : public c10::TensorImpl {
   //
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
-  const SizeNode& nested_size() const {
-    return _storage->nested_size();
+  SizeNode nested_size() const {
+    return _storage->nested_size().to_size_node();
   }
-  const SizeNode& nested_stride() const {
-    return _storage->nested_stride();
+  SizeNode nested_stride() const {
+    return _storage->nested_stride().to_size_node();
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
     return _storage->opt_sizes();
@@ -247,14 +247,28 @@ static inline at::Tensor get_buffer(const at::Tensor& tensor) {
   return ps->get_buffer();
 }
 
-static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
-    at::Tensor tensor) {
+static inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
+    const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->opt_sizes();
 }
 
-static inline SizeNode get_nested_size(at::Tensor tensor) {
+static inline const EfficientSizeNode get_efficient_nested_size(
+    at::Tensor tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->get_storage()->nested_size();
+}
+
+static inline const EfficientSizeNode get_efficient_nested_stride(
+    at::Tensor tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->get_storage()->nested_stride();
+}
+
+static inline const SizeNode get_nested_size(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_size();
@@ -270,6 +284,10 @@ at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 at::Tensor wrap_buffer(at::Tensor&&, SizeNode nested_size);
+at::Tensor wrap_buffer(
+    at::Tensor&&,
+    EfficientSizeNode efficient_nested_size,
+    EfficientSizeNode efficient_nested_stride);
 
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {

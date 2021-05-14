@@ -23,8 +23,7 @@ Tensor NestedTensor_addmm(
     const c10::Scalar& beta) {
   if (!is_nested_tensor_impl(bias) && is_nested_tensor_impl(input) &&
       !is_nested_tensor_impl(weight)) {
-    if (bias.is_contiguous() && input.is_contiguous() &&
-        weight.is_contiguous()) {
+    if (input.is_contiguous()) {
       if (bias.dim() == 1 && input.dim() == 3 && weight.dim() == 2) {
         auto input_opt_sizes = get_opt_sizes(input);
         if (input_opt_sizes[2]) {
@@ -39,15 +38,17 @@ Tensor NestedTensor_addmm(
                     beta)
                     .reshape({-1});
             int64_t weight_size_1 = weight.size(1);
-            auto result_nested_size = map(
-                [&weight_size_1](std::vector<int64_t> size) {
-                  std::vector<int64_t> result;
-                  result.push_back(size[0]);
-                  result.push_back(weight_size_1);
-                  return result;
+            EfficientSizeNode result_nested_size = map_efficient_size(
+                [weight_size_1](int64_t* data_ptr, int64_t size) {
+                  data_ptr[1] = weight_size_1;
                 },
-                get_nested_size(input));
-            return wrap_buffer(std::move(result_buffer), result_nested_size);
+                get_efficient_nested_size(input));
+            EfficientSizeNode input_nested_stride =
+                get_efficient_nested_stride(input);
+            return wrap_buffer(
+                std::move(result_buffer),
+                result_nested_size,
+                input_nested_stride);
           }
         }
       }
