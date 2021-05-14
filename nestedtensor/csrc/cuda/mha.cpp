@@ -93,11 +93,9 @@ at::Tensor bt_min_mha(
       defaultStream);
 
   at::Tensor q, k, v;
-  q = at::addmm(
-      attr_bias_Q, query, attr_kernel_Q.t());
+  q = at::addmm(attr_bias_Q, query, attr_kernel_Q.t());
   k = at::addmm(attr_bias_K, key, attr_kernel_K.t());
-  v = at::addmm(
-      attr_bias_V, value, attr_kernel_V.t());
+  v = at::addmm(attr_bias_V, value, attr_kernel_V.t());
   at::Tensor q_buf = get_buffer(q);
   at::Tensor k_buf = get_buffer(k);
   at::Tensor v_buf = get_buffer(v);
@@ -108,9 +106,12 @@ at::Tensor bt_min_mha(
     valid_word_num++;
   }
 
-  at::Tensor query_buf = torch::zeros({batch_size, head_num, seq_len, size_per_head}, float_options);
-  at::Tensor key_buf = torch::zeros({batch_size, head_num, seq_len, size_per_head}, float_options);
-  at::Tensor val_buf = torch::zeros({batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor query_buf = torch::zeros(
+      {batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor key_buf = torch::zeros(
+      {batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor val_buf = torch::zeros(
+      {batch_size, head_num, seq_len, size_per_head}, float_options);
   effectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
       q_buf.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
@@ -144,7 +145,8 @@ at::Tensor bt_min_mha(
 
   auto attn_output = at::matmul(attn_output_weights, val_buf);
 
-  at::Tensor attr_out = torch::zeros({valid_word_num, embedding_dim}, float_options);
+  at::Tensor attr_out =
+      torch::zeros({valid_word_num, embedding_dim}, float_options);
   effectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
       attn_output.data_ptr<float>(),
       attr_out.data_ptr<float>(),
@@ -161,7 +163,10 @@ at::Tensor bt_min_mha(
   // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());
   at::Tensor result = at::matmul(attr_out, out_proj_weight.t());
   result = result.reshape({-1});
-  return wrap_buffer(std::move(result), get_nested_size(query));
+  return wrap_buffer(
+      std::move(result),
+      get_efficient_nested_size(query),
+      get_efficient_nested_stride(query));
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {

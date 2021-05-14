@@ -105,12 +105,24 @@ struct EfficientSizeNode {
         _opt_sizes(impl::construct_efficient_size(
             impl::efficient_deserialize(_structure, _height),
             _sizes)) {}
-  EfficientSizeNode(const EfficientSizeNode& other)
-      : _height(other._height),
-        _structure(other._structure),
-        _sizes(other._sizes.clone()),
-        _opt_sizes(other._opt_sizes) {
-        }
+
+  explicit EfficientSizeNode(
+      int64_t height,
+      const std::vector<int64_t>& structure,
+      const at::Tensor& sizes,
+      const std::vector<c10::optional<int64_t>>& opt_sizes)
+      : _height(height),
+        _structure(structure),
+        _sizes(sizes),
+        _opt_sizes(opt_sizes) {}
+
+  // EfficientSizeNode(const EfficientSizeNode& other)
+  //     : _height(other._height),
+  //       _structure(other._structure),
+  //       _sizes(other._sizes.clone()),
+  //       _opt_sizes(other._opt_sizes) {
+  //   // std::cout << "copy constructors" << std::endl;
+  // }
 
   SizeNode to_size_node() const {
     std::vector<std::vector<int64_t>> _tmp_sizes;
@@ -139,21 +151,28 @@ struct EfficientSizeNode {
   const at::Tensor& sizes() const {
     return _sizes;
   }
+  const std::vector<int64_t>& structure() const {
+    return _structure;
+  }
 
  private:
   int64_t _height;
   std::vector<int64_t> _structure;
-  at::Tensor _sizes;
+  const at::Tensor _sizes;
   const std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
 template <class F>
-static inline void apply(F&& fn, EfficientSizeNode size_node) {
-  const at::Tensor& sizes = size_node.sizes();
+static inline EfficientSizeNode map_efficient_size(
+    F&& fn,
+    const EfficientSizeNode& size_node) {
+  at::Tensor sizes = size_node.sizes().clone();
   int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
   for (int64_t i = 0; i < sizes.size(0); i++) {
     fn(sizes_ptr + i * sizes.size(1), sizes.size(0));
   }
+  return EfficientSizeNode(
+      size_node.height(), size_node.structure(), sizes, size_node.opt_sizes());
 }
 
 } // namespace nested_tensor
