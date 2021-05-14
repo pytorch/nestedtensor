@@ -32,7 +32,9 @@ static void __construct_levels(
 static std::vector<at::Tensor> _construct_levels(
     const SizeNode& size_node,
     const std::vector<c10::optional<int64_t>>& opt_sizes,
-    int64_t dim) {
+    int64_t dim,
+    std::vector<int64_t>& offset,
+    std::vector<bool>& is_vector) {
   std::vector<int64_t> child_count(dim, 0);
   _count_children(size_node, child_count, 0);
   std::vector<at::Tensor> result;
@@ -54,6 +56,38 @@ static std::vector<at::Tensor> _construct_levels(
   return result;
 }
 
+SizeNode _construct_size_node(
+    int64_t height,
+    int64_t dim,
+    std::vector<at::Tensor> levels,
+    int64_t level,
+    std::vector<int64_t>& offsets,
+    std::vector<bool>& is_vector) {
+  std::vector<int64_t> size;
+  TORCH_CHECK(level <= height, "internal error.");
+  if (level == height) {
+    for (size_t i = level; i < dim; i++) {
+      levels[i][offsets[i]].item<int64_t>();
+    }
+  }
+  if (is_vector[level]) {
+    std::vector<SizeNode> nodes;
+    for (size_t i = 0; i < levels[level][offsets[level]]; i++) {
+      nodes.push_back(
+          _construct_size_node(height, levels, level + 1, offsets, is_vector));
+    }
+    return SizeNode(std::move(nodes));
+  } else {
+    std::vector<SizeNode> nodes;
+    for (size_t i = 0; i < levels[level].item<int64_t>(); i++) {
+      nodes.push_back(
+          _construct_size_node(height, levels, level + 1, offsets, is_vector));
+    }
+    return SizeNode(std::move(nodes));
+  }
+  return levels[0];
+}
+
 } // namespace impl
 
 struct EfficientSizeNode {
@@ -62,11 +96,29 @@ struct EfficientSizeNode {
       const std::vector<c10::optional<int64_t>>& opt_sizes,
       int64_t dim)
       : _height(size_node.height()),
-        _levels(impl::_construct_levels(size_node, opt_sizes, dim)),
+        _dim(dim),
+        _offsets(dim, 0),
+        _is_vector(dim, false),
+        _levels(impl::_construct_levels(
+            size_node,
+            opt_sizes,
+            dim,
+            _offsets,
+            _is_vector)),
         _opt_sizes(opt_sizes) {}
+
+  SizeNode to_size_node() {
+    for (size_t i = 0; i < _offsets.size(); i++) {
+      _offsets[i] = 0;
+    }
+    return impl::_construct_size_node(_height, _levels, 0, _offsets, _levels);
+  }
 
  private:
   int64_t _height;
+  int64_t _dim;
+  std::vector<int64_t> _offsets;
+  std::vector<bool> _is_vector;
   std::vector<at::Tensor> _levels;
   const std::vector<c10::optional<int64_t>> _opt_sizes;
 };
