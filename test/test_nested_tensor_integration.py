@@ -65,16 +65,18 @@ class TestIntegration(TestCase):
         from torchvision.models._utils import IntermediateLayerGetter
         EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 10, 10) for _ in range(3)]
         model = torchvision.models.resnet.resnet18(pretrained=True).eval()
-        result_model_nt = model(ntnt_nograd(
-            EXAMPLE_IMAGE_TENSORS)).unbind()
-        result_model = model(torch.stack(EXAMPLE_IMAGE_TENSORS)).unbind()
+        with torch.inference_mode():
+            result_model_nt = model(ntnt_nograd(
+                EXAMPLE_IMAGE_TENSORS)).unbind()
+            result_model = model(torch.stack(EXAMPLE_IMAGE_TENSORS)).unbind()
         for t0, t1 in zip(result_model_nt, result_model):
             self.assertEqual(t0, t1)
 
         # non-regular shape smoke test
         EXAMPLE_IMAGE_TENSORS = [torch.randn(
             3, 100 * i, 100) for i in range(1, 4)]
-        model(ntnt_nograd(EXAMPLE_IMAGE_TENSORS))
+        with torch.inference_mode():
+            model(ntnt_nograd(EXAMPLE_IMAGE_TENSORS))
 
     def test_segmentation_pretrained_test_only(self):
 
@@ -125,7 +127,8 @@ class TestIntegration(TestCase):
             if use_confmat:
                 confmat2 = ConfusionMatrix(num_classes)
 
-            output2 = model2(nt_input)
+            with torch.inference_mode():
+                output2 = model2(nt_input)
             if use_confmat:
                 output2 = output2["out"]
             else:
@@ -179,7 +182,8 @@ class TestIntegration(TestCase):
 
         res_0 = t(src0.unsqueeze(1), tgt0.unsqueeze(1)).squeeze(1)
         res_1 = t(src1.unsqueeze(1), tgt1.unsqueeze(1)).squeeze(1)
-        res_nt = t(nt_src, nt_tgt)
+        with torch.inference_mode():
+            res_nt = t(nt_src, nt_tgt)
 
         for t0, t1 in zip(res_nt.unbind(), [res_0, res_1]):
             self.assertEqual(t0, t1)

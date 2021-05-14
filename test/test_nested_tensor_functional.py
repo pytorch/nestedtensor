@@ -51,6 +51,7 @@ class TestFunctional(TestCase):
         # nt_cont = relu(nt)
         # self.assertEqual(True, nt_cont.is_contiguous())
 
+    @torch.inference_mode()
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
         x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
@@ -59,6 +60,7 @@ class TestFunctional(TestCase):
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 
+    @torch.inference_mode()
     def test_nn_embedding_bag(self):
 
         def run_test(EmbeddingBag, inputs):
@@ -92,6 +94,7 @@ class TestFunctional(TestCase):
         run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [
                  torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
 
+    @torch.inference_mode()
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
         tensor2 = torch.rand(3, 300, 400)
@@ -376,6 +379,7 @@ class TestFunctional(TestCase):
                 3), constructor([t.reshape(2, 3, 1)]))
             self.assertRaises(IndexError, lambda: nt.unsqueeze(4))
 
+    @torch.inference_mode()
     def test_matmul(self):
         for constructor in _iter_constructors():
             t1 = torch.randn(2, 3)
@@ -528,6 +532,7 @@ class TestFunctional(TestCase):
         nt = ntnt_nograd(ts)
         self._test_softmax(ts, nt)
 
+    @torch.inference_mode()
     def test_mha(self):
         embed_dim = 2
         num_heads = 2
@@ -549,6 +554,7 @@ class TestFunctional(TestCase):
             query_nt, key_nt, value_nt, need_weights=False)
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
+    @torch.inference_mode()
     def test_mha_detr(self):
         NDIM = 128
         BSZ = 8
@@ -805,6 +811,7 @@ class TestFunctional(TestCase):
                                "Currently only singleton tuples of integers supported for layer_norm.",
                                lambda: layer_norm(nt))
 
+    @torch.inference_mode()
     def test_decoder(self):
         class TransformerDecoderLayer(nn.Module):
 
@@ -883,6 +890,7 @@ class TestFunctional(TestCase):
         #     print(n)
         #     print(p is None)
 
+    @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_effective_transformer_mha(self):
         def sequence_mask(lengths, max_len=None, is_2d=True):
