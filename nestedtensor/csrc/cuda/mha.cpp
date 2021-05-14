@@ -92,8 +92,6 @@ at::Tensor bt_min_mha(
       (int32_t)(embedding_dim),
       defaultStream);
 
-  defaultStream.synchronize();
-
   at::Tensor q, k, v;
   q = at::addmm(
       attr_bias_Q.contiguous(), query, attr_kernel_Q.t().contiguous());
