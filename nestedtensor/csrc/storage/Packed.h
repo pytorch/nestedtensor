@@ -79,10 +79,8 @@ struct PackedStorage : public NestedTensorStorage {
       SizeNode nested_size,
       SizeNode nested_stride)
       : _buffer(buffer),
-        _nested_size(
-            EfficientSizeNode(nested_size)),
-        _nested_stride(
-            EfficientSizeNode(nested_stride)),
+        _nested_size(EfficientSizeNode(nested_size)),
+        _nested_stride(EfficientSizeNode(nested_stride)),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
         _is_pinned(buffer.is_pinned()) {
@@ -143,24 +141,22 @@ struct PackedStorage : public NestedTensorStorage {
     return NestedTensorStorageKind::packed;
   }
   bool is_contiguous() const {
-    return _buffer.is_contiguous() &&
-        reduce(
-               [](std::vector<int64_t> sizes,
-                  std::vector<int64_t> strides,
-                  bool input) {
-                 std::vector<int64_t> cont_strides = impl::_cont_stride(sizes);
-                 bool equal = true;
-                 if (sizes.size() != strides.size()) {
-                   TORCH_CHECK(false, "Sizes and strides don't match in size.");
-                 }
-                 for (size_t i = 0; i < sizes.size(); i++) {
-                   equal = equal && (strides[i] == cont_strides[i]);
-                 }
-                 return equal && input;
-               },
-               true,
-               _nested_size.to_size_node(),
-               _nested_stride.to_size_node());
+    if (!_buffer.is_contiguous()) {
+      return false;
+    }
+    const at::Tensor& sizes_sizes = _nested_size.sizes();
+    const at::Tensor& strides_sizes = _nested_stride.sizes();
+    int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
+    int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
+    for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
+      if (!impl::_is_cont_stride(
+          sizes_sizes_ptr + i * sizes_sizes.size(1),
+          strides_sizes_ptr + i * strides_sizes.size(1),
+          sizes_sizes.size(1))) {
+        return false;
+      }
+    }
+    return true;
   }
 
  private:

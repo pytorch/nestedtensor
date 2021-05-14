@@ -376,6 +376,19 @@ inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   return std::vector<int64_t>(stride);
 }
 
+inline bool _is_cont_stride(int64_t* size, int64_t* stride, size_t length) {
+  int64_t p = 1;
+  size_t p_i = length;
+  for (size_t i = 0; i < length; i++) {
+    p_i--;
+    if (p != stride[p_i]) {
+      return false;
+    }
+    p *= size[p_i];
+  }
+  return true;
+}
+
 inline int64_t num_memory(
     const std::vector<int64_t>& size,
     const std::vector<int64_t>& stride) {

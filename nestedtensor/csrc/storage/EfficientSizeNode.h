@@ -89,6 +89,9 @@ struct EfficientSizeNode {
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
     return _opt_sizes;
   }
+  const at::Tensor& sizes() const {
+    return _sizes;
+  }
 
  private:
   int64_t _height;
