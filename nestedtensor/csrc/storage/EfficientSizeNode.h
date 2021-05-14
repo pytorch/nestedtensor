@@ -52,19 +52,59 @@ static std::vector<c10::optional<int64_t>> construct_efficient_size(
   return result;
 }
 
+inline void _efficient_serialize(
+    SizeNode nested_node,
+    std::vector<int64_t>& out) {
+  if (!nested_node.is_leaf()) {
+    out.push_back(nested_node.degree());
+    for (size_t i = 0; i < nested_node.degree(); i++) {
+      _efficient_serialize(nested_node.children(i), out);
+    }
+  }
+}
+
+inline std::vector<int64_t> efficient_serialize(SizeNode nested_node) {
+  std::vector<int64_t> out;
+  _efficient_serialize(nested_node, out);
+  return out;
+}
+
+inline std::tuple<size_t, SizeNode> _efficient_deserialize(
+    std::vector<int64_t> out,
+    size_t index,
+    int64_t height) {
+  if (height == 0) {
+    return std::make_tuple(index, SizeNode(std::vector<int64_t>()));
+  } else {
+    int64_t degree = out[index];
+    index++;
+    std::vector<SizeNode> children;
+    for (int64_t i = 0; i < degree; i++) {
+      auto result_i = _efficient_deserialize(out, index, height - 1);
+      index = std::get<0>(result_i);
+      children.push_back(std::get<1>(result_i));
+    }
+    return std::make_tuple(index, SizeNode(std::move(children)));
+  }
+}
+
+inline SizeNode efficient_deserialize(
+    std::vector<int64_t> out,
+    int64_t height) {
+  auto tmp = _efficient_deserialize(out, 0, height);
+  return std::get<1>(tmp);
+}
+
 } // namespace impl
 
 struct EfficientSizeNode {
   explicit EfficientSizeNode(SizeNode size_node)
       : _height(size_node.height()),
-        _structure(serialize(map(
-            [](std::vector<int64_t> sizes) {
-              std::vector<int64_t> result;
-              return result;
-            },
-            size_node))),
+        _structure(impl::efficient_serialize(size_node)),
         _sizes(impl::stack_sizes(size_node)),
-        _opt_sizes(impl::construct_efficient_size(deserialize_size_node(_structure), _sizes)) {}
+        _opt_sizes(impl::construct_efficient_size(
+            impl::efficient_deserialize(_structure, _height),
+            _sizes)) {}
 
   SizeNode to_size_node() const {
     std::vector<std::vector<int64_t>> _tmp_sizes;
@@ -78,7 +118,7 @@ struct EfficientSizeNode {
         }
       }
     }
-    return unflatten(deserialize_size_node(_structure), _tmp_sizes);
+    return unflatten(impl::efficient_deserialize(_structure, _height), _tmp_sizes);
   }
   int64_t height() const {
     return _height;
