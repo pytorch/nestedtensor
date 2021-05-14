@@ -133,11 +133,11 @@ struct PackedStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  SizeNode nested_size() const override {
-    return _nested_size.to_size_node();
+  EfficientSizeNode nested_size() const override {
+    return _nested_size;
   }
-  SizeNode nested_stride() const override {
-    return _nested_stride.to_size_node();
+  EfficientSizeNode nested_stride() const override {
+    return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>>& opt_sizes() const override {
     return _opt_sizes;

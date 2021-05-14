@@ -190,10 +190,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
   SizeNode nested_size() const {
-    return _storage->nested_size();
+    return _storage->nested_size().to_size_node();
   }
   SizeNode nested_stride() const {
-    return _storage->nested_stride();
+    return _storage->nested_stride().to_size_node();
   }
   const std::vector<c10::optional<int64_t>>& opt_sizes() const {
     return _storage->opt_sizes();

@@ -8,26 +8,32 @@ namespace nested_tensor {
 struct ListStorage : public NestedTensorStorage {
   explicit ListStorage(TensorNode&& structure)
       : _structure(structure),
-        _nested_size(
+        _opt_sizes(construct_size(
             map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-                _structure)),
-        _nested_stride(
+                _structure))),
+        _dim(
+            get_first_leaf(_structure)
+                ? get_first_leaf(_structure)->dim() + _structure.height()
+                : _structure.height()),
+        _nested_size(EfficientSizeNode(
+            map([](at::Tensor tensor) { return tensor.sizes().vec(); },
+                _structure),
+            _opt_sizes,
+            _dim)),
+        _nested_stride(EfficientSizeNode(
             map([](at::Tensor tensor) { return tensor.strides().vec(); },
-                _structure)),
+                _structure),
+            _opt_sizes,
+            _dim)),
         _data_type(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->dtype()
                                        : at::ones({}).dtype()),
         _device(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->device()
                                        : at::ones({}).device()),
-        _dim(
-            get_first_leaf(_structure)
-                ? get_first_leaf(_structure)->dim() + _structure.height()
-                : _structure.height()),
         _is_pinned(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->is_pinned()
-                                       : false),
-        _opt_sizes(construct_size(_nested_size)) {
+                                       : false) {
     TORCH_CHECK(
         !_structure.is_leaf(),
         "NestedTensorImpl must be given structure of at least height 1.");
@@ -47,10 +53,10 @@ struct ListStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  SizeNode nested_size() const override {
+  EfficientSizeNode nested_size() const override {
     return _nested_size;
   }
-  SizeNode nested_stride() const override {
+  EfficientSizeNode nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>>& opt_sizes() const override {
@@ -65,14 +71,14 @@ struct ListStorage : public NestedTensorStorage {
 
  private:
   TensorNode _structure;
-  const SizeNode _nested_size;
-  const SizeNode _nested_stride;
+  const std::vector<c10::optional<int64_t>> _opt_sizes;
+  int64_t _dim;
+  EfficientSizeNode _nested_size;
+  EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
-  int64_t _dim;
   bool _is_pinned;
-  const std::vector<c10::optional<int64_t>> _opt_sizes;
-};
+}; // namespace nested_tensor
 
 } // namespace nested_tensor
 } // namespace torch
