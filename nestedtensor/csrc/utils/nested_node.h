@@ -181,7 +181,7 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
     const std::vector<R>& content,
     int64_t index) {
   if (structure.is_leaf()) {
-    at::Tensor tmp = content[index];
+    R tmp = content[index];
     return std::pair<int64_t, NestedNode<R>>(
         index + 1, NestedNode<R>(std::move(tmp)));
 
