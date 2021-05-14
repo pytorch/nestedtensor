@@ -4,7 +4,7 @@
 namespace torch {
 namespace nested_tensor {
 // namespace impl {
-// 
+//
 // static void _count_children(
 //     const SizeNode& size_node,
 //     std::vector<int64_t>& child_count,
@@ -14,16 +14,14 @@ namespace nested_tensor {
 //     _count_children(child, child_count, level + 1);
 //   }
 // }
-// 
+//
 // } // namespace impl
 
 struct EfficientSizeNode {
   explicit EfficientSizeNode(
       SizeNode size_node,
-      const std::vector<c10::optional<int64_t>>& opt_sizes,
-      int64_t dim)
+      const std::vector<c10::optional<int64_t>>& opt_sizes)
       : _height(size_node.height()),
-        _dim(dim),
         _opt_sizes(opt_sizes),
         _structure(map(
             [](std::vector<int64_t> sizes) {
@@ -39,10 +37,12 @@ struct EfficientSizeNode {
   int64_t height() const {
     return _height;
   }
+  int64_t dim() const {
+    return _sizes.size() > 0 ? _height + _sizes[0].size() : _height;
+  }
 
  private:
   int64_t _height;
-  int64_t _dim;
   const std::vector<c10::optional<int64_t>> _opt_sizes;
   SizeNode _structure;
   std::vector<std::vector<int64_t>> _sizes;

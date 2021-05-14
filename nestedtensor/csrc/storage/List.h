@@ -11,20 +11,14 @@ struct ListStorage : public NestedTensorStorage {
         _opt_sizes(construct_size(
             map([](at::Tensor tensor) { return tensor.sizes().vec(); },
                 _structure))),
-        _dim(
-            get_first_leaf(_structure)
-                ? get_first_leaf(_structure)->dim() + _structure.height()
-                : _structure.height()),
         _nested_size(EfficientSizeNode(
             map([](at::Tensor tensor) { return tensor.sizes().vec(); },
                 _structure),
-            _opt_sizes,
-            _dim)),
+            _opt_sizes)),
         _nested_stride(EfficientSizeNode(
             map([](at::Tensor tensor) { return tensor.strides().vec(); },
                 _structure),
-            _opt_sizes,
-            _dim)),
+            _opt_sizes)),
         _data_type(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->dtype()
                                        : at::ones({}).dtype()),
@@ -39,7 +33,7 @@ struct ListStorage : public NestedTensorStorage {
         "NestedTensorImpl must be given structure of at least height 1.");
   }
   int64_t dim() const override {
-    return _dim;
+    return _nested_size.dim();
   }
   TensorNode get_structure() const override {
     return _structure;
@@ -72,7 +66,6 @@ struct ListStorage : public NestedTensorStorage {
  private:
   TensorNode _structure;
   const std::vector<c10::optional<int64_t>> _opt_sizes;
-  int64_t _dim;
   EfficientSizeNode _nested_size;
   EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;
