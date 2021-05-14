@@ -63,16 +63,14 @@ at::Tensor bt_min_mha(
 
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  Tensor tmp_int = torch::zeros(
-      {input_mask.size(0) * input_mask.size(1) * 2 + batch_size * seq_len +
-       batch_size * seq_len},
-      options);
-
-  int* prefix_sum_ptr = tmp_int.data_ptr<int>();
-  int* batch_idx_ptr =
-      prefix_sum_ptr + input_mask.size(0) * input_mask.size(1) * 2;
-  int* word_idx_ptr = batch_idx_ptr + batch_size * seq_len;
   int word_num = batch_size * seq_len;
+  Tensor prefix_sum = torch::zeros({word_num}, options);
+  Tensor batch_idx = torch::zeros({word_num}, options);
+  Tensor word_idx = torch::zeros({word_num}, options);
+
+  int* prefix_sum_ptr = prefix_sum.data_ptr<int>();
+  int* batch_idx_ptr = batch_idx.data_ptr<int>();
+  int* word_idx_ptr = word_idx.data_ptr<int>();
 
   at::Tensor tmp = get_buffer(query);
 
@@ -81,6 +79,7 @@ at::Tensor bt_min_mha(
       input_mask.data_ptr<int>(),
       input_mask.size(0) * input_mask.size(1),
       defaultStream);
+
 
   effectivetransformer::compressBertInput_kernelLauncher(
       input_mask.data_ptr<int>(),
@@ -100,7 +99,7 @@ at::Tensor bt_min_mha(
   at::Tensor k_buf = get_buffer(k);
   at::Tensor v_buf = get_buffer(v);
 
-  int valid_word_num = tmp_int.reshape({-1})[word_num - 1].item<int>();
+  int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
   int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
   if (last_mask == 1) {
     valid_word_num++;
