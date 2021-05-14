@@ -76,11 +76,11 @@ inline at::Tensor pack(const TensorNode& structure) {
 struct PackedStorage : public NestedTensorStorage {
   explicit PackedStorage(
       at::Tensor&& buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride)
+      EfficientSizeNode nested_size,
+      EfficientSizeNode nested_stride)
       : _buffer(buffer),
-        _nested_size(EfficientSizeNode(nested_size)),
-        _nested_stride(EfficientSizeNode(nested_stride)),
+        _nested_size(nested_size),
+        _nested_stride(nested_stride),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
         _is_pinned(buffer.is_pinned()) {
@@ -91,6 +91,15 @@ struct PackedStorage : public NestedTensorStorage {
         _nested_stride.height(),
         "PackedStorage must be given NestedStride of at least height 1.");
   }
+
+  explicit PackedStorage(
+      at::Tensor&& buffer,
+      SizeNode nested_size,
+      SizeNode nested_stride)
+      : PackedStorage(std::move(buffer),
+        EfficientSizeNode(nested_size),
+        EfficientSizeNode(nested_stride)) {}
+
   explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size)
       : PackedStorage(
             std::move(buffer),
@@ -100,6 +109,7 @@ struct PackedStorage : public NestedTensorStorage {
                   return torch::nested_tensor::impl::_cont_stride(sizes);
                 },
                 nested_size)) {}
+
   explicit PackedStorage(TensorNode structure)
       : PackedStorage(
             impl::pack(structure),

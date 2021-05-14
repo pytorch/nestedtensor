@@ -105,6 +105,12 @@ struct EfficientSizeNode {
         _opt_sizes(impl::construct_efficient_size(
             impl::efficient_deserialize(_structure, _height),
             _sizes)) {}
+  EfficientSizeNode(const EfficientSizeNode& other)
+      : _height(other._height),
+        _structure(other._structure),
+        _sizes(other._sizes.clone()),
+        _opt_sizes(other._opt_sizes) {
+        }
 
   SizeNode to_size_node() const {
     std::vector<std::vector<int64_t>> _tmp_sizes;
@@ -118,7 +124,8 @@ struct EfficientSizeNode {
         }
       }
     }
-    return unflatten(impl::efficient_deserialize(_structure, _height), _tmp_sizes);
+    return unflatten(
+        impl::efficient_deserialize(_structure, _height), _tmp_sizes);
   }
   int64_t height() const {
     return _height;
@@ -139,6 +146,15 @@ struct EfficientSizeNode {
   at::Tensor _sizes;
   const std::vector<c10::optional<int64_t>> _opt_sizes;
 };
+
+template <class F>
+static inline void apply(F&& fn, EfficientSizeNode size_node) {
+  const at::Tensor& sizes = size_node.sizes();
+  int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
+  for (int64_t i = 0; i < sizes.size(0); i++) {
+    fn(sizes_ptr + i * sizes.size(1), sizes.size(0));
+  }
+}
 
 } // namespace nested_tensor
 } // namespace torch
