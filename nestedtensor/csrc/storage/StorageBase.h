@@ -28,7 +28,7 @@ struct NestedTensorStorage {
   virtual EfficientSizeNode nested_stride() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual const std::vector<c10::optional<int64_t>>& opt_sizes() const {
+  virtual const std::vector<c10::optional<int64_t>> opt_sizes() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
   virtual NestedTensorStorageKind kind() const {

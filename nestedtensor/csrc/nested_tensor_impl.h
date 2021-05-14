@@ -195,7 +195,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   SizeNode nested_stride() const {
     return _storage->nested_stride().to_size_node();
   }
-  const std::vector<c10::optional<int64_t>>& opt_sizes() const {
+  const std::vector<c10::optional<int64_t>> opt_sizes() const {
     return _storage->opt_sizes();
   }
   IntArrayRef sizes() const override {

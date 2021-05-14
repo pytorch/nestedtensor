@@ -32,11 +32,9 @@ static at::Tensor stack_sizes(SizeNode size_node) {
 } // namespace impl
 
 struct EfficientSizeNode {
-  explicit EfficientSizeNode(
-      SizeNode size_node,
-      const std::vector<c10::optional<int64_t>>& opt_sizes)
+  explicit EfficientSizeNode(SizeNode size_node)
       : _height(size_node.height()),
-        _opt_sizes(opt_sizes),
+        _opt_sizes(construct_size(size_node)),
         _structure(serialize(map(
             [](std::vector<int64_t> sizes) {
               std::vector<int64_t> result;
@@ -61,6 +59,9 @@ struct EfficientSizeNode {
   }
   int64_t dim() const {
     return _sizes.size(0) > 0 ? _height + _sizes.size(1) : _height;
+  }
+  const std::vector<c10::optional<int64_t>> opt_sizes() const {
+    return _opt_sizes;
   }
 
  private:

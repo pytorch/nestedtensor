@@ -79,9 +79,10 @@ struct PackedStorage : public NestedTensorStorage {
       SizeNode nested_size,
       SizeNode nested_stride)
       : _buffer(buffer),
-        _opt_sizes(construct_size(nested_size)),
-        _nested_size(EfficientSizeNode(nested_size, _opt_sizes)),
-        _nested_stride(EfficientSizeNode(nested_stride, _opt_sizes)),
+        _nested_size(
+            EfficientSizeNode(nested_size)),
+        _nested_stride(
+            EfficientSizeNode(nested_stride)),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
         _is_pinned(buffer.is_pinned()) {
@@ -135,8 +136,8 @@ struct PackedStorage : public NestedTensorStorage {
   EfficientSizeNode nested_stride() const override {
     return _nested_stride;
   }
-  const std::vector<c10::optional<int64_t>>& opt_sizes() const override {
-    return _opt_sizes;
+  const std::vector<c10::optional<int64_t>> opt_sizes() const override {
+    return _nested_size.opt_sizes();
   }
   NestedTensorStorageKind kind() const {
     return NestedTensorStorageKind::packed;
@@ -164,7 +165,6 @@ struct PackedStorage : public NestedTensorStorage {
 
  private:
   at::Tensor _buffer;
-  const std::vector<c10::optional<int64_t>> _opt_sizes;
   EfficientSizeNode _nested_size;
   EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;

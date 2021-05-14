@@ -8,17 +8,12 @@ namespace nested_tensor {
 struct ListStorage : public NestedTensorStorage {
   explicit ListStorage(TensorNode&& structure)
       : _structure(structure),
-        _opt_sizes(construct_size(
-            map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-                _structure))),
         _nested_size(EfficientSizeNode(
             map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-                _structure),
-            _opt_sizes)),
+                _structure))),
         _nested_stride(EfficientSizeNode(
             map([](at::Tensor tensor) { return tensor.strides().vec(); },
-                _structure),
-            _opt_sizes)),
+                _structure))),
         _data_type(
             get_first_leaf(_structure) ? get_first_leaf(_structure)->dtype()
                                        : at::ones({}).dtype()),
@@ -53,8 +48,8 @@ struct ListStorage : public NestedTensorStorage {
   EfficientSizeNode nested_stride() const override {
     return _nested_stride;
   }
-  const std::vector<c10::optional<int64_t>>& opt_sizes() const override {
-    return _opt_sizes;
+  const std::vector<c10::optional<int64_t>> opt_sizes() const override {
+    return _nested_size.opt_sizes();
   }
   NestedTensorStorageKind kind() const {
     return NestedTensorStorageKind::list;
@@ -65,7 +60,6 @@ struct ListStorage : public NestedTensorStorage {
 
  private:
   TensorNode _structure;
-  const std::vector<c10::optional<int64_t>> _opt_sizes;
   EfficientSizeNode _nested_size;
   EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;
