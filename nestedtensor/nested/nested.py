@@ -82,7 +82,8 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
     _not_impl_raise(max_norm, "max_norm")
     _not_impl_raise(per_sample_weights, "per_sample_weights")
 
-    if input.dim() == 2:
+    input_dim = torch.ops.nestedtensor.get_dim(input)
+    if input_dim == 2:
         if offsets is not None:
             type_str = "<unknown>"
             # TODO: Remove this once script supports type() calls
@@ -97,9 +98,9 @@ def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, nor
         for i in range(1, len(offsets)):
             offsets[i] = offsets[i - 1] + offsets_[i - 1][0]
         offsets = offsets.to(input.device)
-    elif input.dim() == 1:
+    elif input_dim == 1:
         raise ValueError("input has to be 2D NestedTensor,"
-                         " but got NestedTensor of dimension {}".format(input.dim()))
+                         " but got NestedTensor of dimension {}".format(input_dim))
     if mode == 'sum':
         mode_enum = 0
     elif mode == 'mean':
@@ -364,6 +365,12 @@ class NestedTensor(metaclass=NestedTensorMeta):
             else:
                 impl = gradient._impl
         self._impl.backward(impl, retain_graph, create_graph)
+
+    def numel(self):
+        return torch.ops.nestedtensor.get_numel(self._impl)
+
+    def dim(self):
+        return torch.ops.nestedtensor.get_dim(self._impl)
 
     def nested_dim(self):
         """

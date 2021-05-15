@@ -246,6 +246,7 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a.nested_size(1), (1, 2))
             self.assertRaises(IndexError, lambda: a.nested_size(2))
 
+    @torch.inference_mode()
     def test_nested_stride(self):
         for constructor in _iter_constructors():
             tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
@@ -255,6 +256,10 @@ class TestNestedTensor(TestCase):
             ans = a.nested_stride()
             result = tuple(ans[i] for i in range(len(ans)))
             for r, s in zip(result, na):
+                print("r")
+                print(r)
+                print("s")
+                print(s)
                 self.assertEqual(r, s)
 
     def test_len(self):

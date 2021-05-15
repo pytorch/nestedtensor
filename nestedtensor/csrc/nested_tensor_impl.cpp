@@ -50,14 +50,6 @@ int64_t NestedTensor_size_int(const Tensor& self, int64_t dim) {
       "NestedTensor size at dim is not Tensor shape compliant.");
 }
 
-IntArrayRef NestedTensorImpl::strides() const {
-  TORCH_CHECK(
-      false,
-      "Internal error: NestedTensorImpl doesn't support strides. Please file an issue on https://github.com/pytorch/nestedtensor");
-  std::vector<int64_t> strides;
-  return IntArrayRef(strides);
-}
-
 int64_t nt_size(Tensor tensor, int64_t dim) {
   auto impl = get_nested_tensor_impl(tensor);
   std::vector<c10::optional<int64_t>> size = impl->opt_sizes();

@@ -53,7 +53,7 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
     const at::Tensor& buffer,
     const SizeNode& nested_size) {
   TORCH_CHECK(
-      get_dim(buffer) == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
+      buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
   SizeNode nested_stride =
       map([](std::vector<int64_t> size) { return _cont_stride(size); },
           nested_size);

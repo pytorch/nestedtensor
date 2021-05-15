@@ -66,7 +66,7 @@ Tensor NestedTensor_layer_norm(
 
 Tensor NestedTensor_all(const Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self);
-  if (self.numel() == 0) {
+  if (get_numel(self) == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
     Tensor result = at::empty({0}, at::kBool); //, self.options());
@@ -86,7 +86,7 @@ Tensor NestedTensor_all(const Tensor& self) {
 
 Tensor NestedTensor_any(const Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self);
-  if (self.numel() == 0) {
+  if (get_numel(self) == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
     Tensor result = at::empty({0}, at::kBool); //, self.options());
