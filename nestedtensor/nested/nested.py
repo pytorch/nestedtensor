@@ -452,7 +452,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
-        print("func: ", func)
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
         # TODO:This was disabled for now to focus on DETR

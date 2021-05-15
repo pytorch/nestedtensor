@@ -751,6 +751,7 @@ class TestFunctional(TestCase):
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)
 
+    @torch.inference_mode()
     def test_layer_norm(self):
         layer_norm = torch.nn.LayerNorm((0,))
         t0 = torch.randn(3)
