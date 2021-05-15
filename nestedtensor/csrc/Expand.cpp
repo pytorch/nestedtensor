@@ -29,9 +29,9 @@ Tensor NestedTensor_expand_as(const Tensor& self_, const Tensor& other) {
       !is_nested_tensor_impl(self),
       "Cannot expand a NestedTensor as a Tensor.");
   TORCH_CHECK(
-      self.dim() <= other.dim(),
+      get_dim(self) <= get_dim(other),
       "Cannot expand to a Tensor of smaller dimension.");
-  while (self.dim() > 0 && self.size(0) == 1) {
+  while (get_dim(self) > 0 && self.size(0) == 1) {
     self = self.squeeze(0);
   }
   return map_nested_tensor(

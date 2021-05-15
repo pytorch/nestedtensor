@@ -60,7 +60,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
 
 Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   auto self_data = get_nested_tensor_impl(self);
-  auto ndims = self.dim();
+  auto ndims = get_dim(self);
   dim0 = maybe_wrap_dim(dim0, ndims);
   dim1 = maybe_wrap_dim(dim1, ndims);
   if (dim0 == dim1) {

@@ -43,9 +43,9 @@ Tensor NestedTensor_layer_norm(
       "Currently only singleton tuples of integers supported for layer_norm.");
   auto input_data = get_nested_tensor_impl(input);
   TORCH_CHECK(
-      input_data->opt_sizes()[input.dim() - 1],
+      input_data->opt_sizes()[get_dim(input) - 1],
       "Cannot normalize across irregular dimension ",
-      std::to_string(input.dim() - 1));
+      std::to_string(get_dim(input) - 1));
   if (weight && bias) {
     return map_nested_tensor(
         [normalized_shape, eps](const at::Tensor t, Tensor w, Tensor b) {
@@ -66,7 +66,7 @@ Tensor NestedTensor_layer_norm(
 
 Tensor NestedTensor_all(const Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self);
-  if (self.numel() == 0) {
+  if (get_numel(self) == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
     Tensor result = at::empty({0}, at::kBool); //, self.options());
@@ -86,7 +86,7 @@ Tensor NestedTensor_all(const Tensor& self) {
 
 Tensor NestedTensor_any(const Tensor& self) {
   auto self_impl = get_nested_tensor_impl(self);
-  if (self.numel() == 0) {
+  if (get_numel(self) == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
     Tensor result = at::empty({0}, at::kBool); //, self.options());
@@ -122,8 +122,8 @@ Tensor NestedTensor_flatten(
     int64_t start_dim,
     int64_t end_dim) {
   auto self_data = get_nested_tensor_impl(self);
-  start_dim = maybe_wrap_dim(start_dim, self.dim());
-  end_dim = maybe_wrap_dim(end_dim, self.dim());
+  start_dim = maybe_wrap_dim(start_dim, get_dim(self));
+  end_dim = maybe_wrap_dim(end_dim, get_dim(self));
   int64_t nested_dim = self_data->nested_dim();
   TORCH_CHECK(
       start_dim >= nested_dim, "Cannot flatten nested dimension ", start_dim);
@@ -151,13 +151,13 @@ Tensor& NestedTensor_stack_out(
     int64_t dim,
     Tensor& result) {
   TORCH_CHECK(tensors.size() > 0, "stack expects a non-empty TensorList");
-  dim = maybe_wrap_dim(dim, tensors[0].dim() + 1);
+  dim = maybe_wrap_dim(dim, get_dim(tensors[0]) + 1);
   return at::cat_out(result, get_stack_inputs(tensors, dim), dim);
 }
 
 Tensor NestedTensor_stack(TensorList tensors, int64_t dim) {
   TORCH_CHECK(tensors.size() > 0, "stack expects a non-empty TensorList");
-  dim = maybe_wrap_dim(dim, tensors[0].dim() + 1);
+  dim = maybe_wrap_dim(dim, get_dim(tensors[0]) + 1);
   return at::cat(get_stack_inputs(tensors, dim), dim);
 }
 
@@ -170,14 +170,14 @@ Tensor& NestedTensor_cat_out(TensorList tensors, int64_t dim, Tensor& result) {
 Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   TORCH_CHECK(tensors.size() > 0, "Cannot cat an empty list.");
   auto nested_dim_0 = get_nested_tensor_impl(tensors[0])->nested_dim();
-  auto dim_0 = get_nested_tensor_impl(tensors[0])->dim();
+  auto dim_0 = get_dim(tensors[0]);
   // TORCH_CHECK(dim == 0, "cat currently only supports dim set to 0.")
   for (size_t i = 1; i < tensors.size(); i++) {
     TORCH_CHECK(
         nested_dim_0 == get_nested_tensor_impl(tensors[i])->nested_dim(),
         "Nested dimension of NestedTensors must match for cat to succeed.");
     TORCH_CHECK(
-        dim_0 == get_nested_tensor_impl(tensors[i])->dim(),
+        dim_0 == get_dim(tensors[i]),
         "Dimension of NestedTensors must match for cat to succeed.");
   }
   if (dim == 0) {

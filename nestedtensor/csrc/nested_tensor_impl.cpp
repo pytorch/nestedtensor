@@ -50,14 +50,6 @@ int64_t NestedTensor_size_int(const Tensor& self, int64_t dim) {
       "NestedTensor size at dim is not Tensor shape compliant.");
 }
 
-IntArrayRef NestedTensorImpl::strides() const {
-  TORCH_CHECK(
-      false,
-      "Internal error: NestedTensorImpl doesn't support strides. Please file an issue on https://github.com/pytorch/nestedtensor");
-  std::vector<int64_t> strides;
-  return IntArrayRef(strides);
-}
-
 int64_t nt_size(Tensor tensor, int64_t dim) {
   auto impl = get_nested_tensor_impl(tensor);
   std::vector<c10::optional<int64_t>> size = impl->opt_sizes();
@@ -136,7 +128,7 @@ std::vector<at::Tensor> NestedTensor_unbind(
     const at::Tensor& self,
     int64_t dim) {
   auto _data = get_nested_tensor_impl(self);
-  dim = at::maybe_wrap_dim(dim, _data->dim());
+  dim = at::maybe_wrap_dim(dim, get_dim(self));
   auto node = _data->get_structure();
   if (dim == 0) {
     return wrap_tensor_node(node.unbind());
@@ -160,7 +152,7 @@ std::vector<at::Tensor> NestedTensor_unbind(
 }
 
 Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
-  int64_t ndim = self.dim();
+  int64_t ndim = get_dim(self);
   dim = maybe_wrap_dim(dim, ndim);
   if (dim != 0) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
@@ -175,10 +167,10 @@ Tensor NestedTensor_to_nested_tensor(
   int64_t dim = 0;
   if (dim_) {
     dim = *dim_;
-    dim = maybe_wrap_dim(*dim_, input.dim() + 1);
+    dim = maybe_wrap_dim(*dim_, get_dim(input) + 1);
   }
   TORCH_CHECK(
-      dim <= input.dim(),
+      dim <= get_dim(input),
       "target nested dimension needs to be equal or less than to input dimension");
   // if dim < nested_dim() the NestedTensor is already nested
   // up to the given dimension.
@@ -224,7 +216,7 @@ Tensor NestedTensor_slice(
   } else {
     end = 9223372036854775807;
   }
-  int64_t ndim = self.dim();
+  int64_t ndim = get_dim(self);
   if (ndim == 0) {
     TORCH_CHECK_INDEX(false, "slice() cannot be applied to a 0-dim tensor.");
   }
@@ -289,7 +281,7 @@ Tensor _NestedTensor_squeeze_(Tensor self, c10::optional<int64_t> dim_) {
     }
     return self;
   }
-  int64_t dim = at::maybe_wrap_dim(*dim_, self.dim());
+  int64_t dim = at::maybe_wrap_dim(*dim_, get_dim(self));
   TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
   TORCH_CHECK(
       ((get_nested_tensor_impl(self)->opt_sizes()[dim]) &&
@@ -316,7 +308,7 @@ Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
 }
 
 Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
-  dim = at::maybe_wrap_dim(dim, self.dim());
+  dim = at::maybe_wrap_dim(dim, get_dim(self));
   auto self_impl = get_nested_tensor_impl(self);
   int64_t nested_dim = self_impl->nested_dim();
   TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
@@ -337,7 +329,7 @@ Tensor NestedTensor_squeeze(const Tensor& self) {
 }
 
 Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
-  dim = maybe_wrap_dim(dim, self.dim() + 1);
+  dim = maybe_wrap_dim(dim, get_dim(self) + 1);
   if (dim == 0) {
     std::vector<TensorNode> one_node;
     one_node.push_back(get_nested_tensor_structure(self));

@@ -24,7 +24,7 @@ Tensor NestedTensor_addmm(
   if (!is_nested_tensor_impl(bias) && is_nested_tensor_impl(input) &&
       !is_nested_tensor_impl(weight)) {
     if (input.is_contiguous()) {
-      if (bias.dim() == 1 && input.dim() == 3 && weight.dim() == 2) {
+      if (get_dim(bias) == 1 && get_dim(input) == 3 && get_dim(weight) == 2) {
         auto input_opt_sizes = get_opt_sizes(input);
         if (input_opt_sizes[2]) {
           if (*input_opt_sizes[2] == weight.size(1)) {

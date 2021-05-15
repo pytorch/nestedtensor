@@ -39,9 +39,9 @@ at::Tensor bt_min_mha(
     at::Tensor out_proj_bias,
     at::Tensor attr_mask) {
   // TODO: Assert that max seq_len is 1024!
-  TORCH_CHECK(query.dim() == 3, "query needs to be 3 dim.");
-  TORCH_CHECK(key.dim() == 3, "key needs to be 3 dim.");
-  TORCH_CHECK(value.dim() == 3, "value needs to be 3 dim.");
+  TORCH_CHECK(get_dim(query) == 3, "query needs to be 3 dim.");
+  TORCH_CHECK(get_dim(key) == 3, "key needs to be 3 dim.");
+  TORCH_CHECK(get_dim(value) == 3, "value needs to be 3 dim.");
   // TORCH_CHECK(in_proj_bias, "Input projection bias needs to be defined.");
   // auto opt_sizes = get_opt_sizes(query);
   // if (!opt_sizes[2]) {

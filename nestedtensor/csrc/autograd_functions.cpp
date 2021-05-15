@@ -107,7 +107,7 @@ Tensor NestedTensor_batch_norm(
     check_dims_match_num_input_features("bias", n_input, bias->numel());
   }
 
-  auto scalar_shape = make_scalar_shape(input.dim(), n_input);
+  auto scalar_shape = make_scalar_shape(get_dim(input), n_input);
 
   at::Tensor mean;
   at::Tensor invstd;
@@ -115,7 +115,7 @@ Tensor NestedTensor_batch_norm(
   at::Tensor save_invstd;
 
   if (training) {
-    auto reduce_dims = make_reduce_dims(input.dim());
+    auto reduce_dims = make_reduce_dims(get_dim(input));
     save_mean = at::mean(input, IntArrayRef(reduce_dims));
 
     save_invstd =

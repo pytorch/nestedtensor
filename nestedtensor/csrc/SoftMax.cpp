@@ -13,7 +13,7 @@ Tensor NestedTensor_softmax(
     const Tensor& input,
     const int64_t dim_,
     c10::optional<ScalarType> dtype) {
-  int64_t dim = maybe_wrap_dim(dim_, input.dim());
+  int64_t dim = maybe_wrap_dim(dim_, get_dim(input));
   auto input_data = get_nested_tensor_impl(input);
   int64_t nested_dim = input_data->nested_dim();
   TORCH_CHECK(

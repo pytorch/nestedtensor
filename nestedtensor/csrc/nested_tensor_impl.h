@@ -140,15 +140,18 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage);
 
+#ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   int64_t dim() const override {
-    return _storage->dim();
+    TORCH_CHECK(
+        false, "dim is disabled. These methods are not virtual in fbcode.");
   }
+#endif
+#ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   int64_t numel() const override {
-    return reduce(
-        [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
-        0,
-        get_structure());
+    TORCH_CHECK(
+        false, "numel is disabled. These methods are not virtual in fbcode.");
   }
+#endif
   bool is_contiguous(at::MemoryFormat memory_format) const override {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
     // buffer. For this to be contiguous not only the individuals Tensors have
@@ -198,6 +201,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
     return _storage->opt_sizes();
   }
+#ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   IntArrayRef sizes() const override {
     TORCH_CHECK(
         false,
@@ -205,7 +209,16 @@ struct NestedTensorImpl : public c10::TensorImpl {
     std::vector<int64_t> sizes;
     return IntArrayRef(sizes);
   }
-  IntArrayRef strides() const override;
+#endif
+#ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
+  IntArrayRef strides() const override {
+    TORCH_CHECK(
+        false,
+        "Internal error: NestedTensorImpl doesn't support strides. Please file an issue on https://github.com/pytorch/nestedtensor");
+    std::vector<int64_t> strides;
+    return IntArrayRef(strides);
+  }
+#endif
 
  private:
   std::shared_ptr<NestedTensorStorage> _storage;
@@ -268,10 +281,33 @@ static inline const EfficientSizeNode get_efficient_nested_stride(
   return get_nested_tensor_impl(tensor)->get_storage()->nested_stride();
 }
 
-static inline const SizeNode get_nested_size(at::Tensor tensor) {
+static inline SizeNode get_nested_size(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_size();
+}
+
+static inline SizeNode get_nested_stride(at::Tensor tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->nested_stride();
+}
+
+static inline const int64_t get_dim(const at::Tensor& tensor) {
+  if (is_nested_tensor_impl(tensor)) {
+    return get_nested_tensor_impl(tensor)->get_storage()->dim();
+  }
+  return tensor.dim();
+}
+
+static inline const int64_t get_numel(const at::Tensor& tensor) {
+  if (is_nested_tensor_impl(tensor)) {
+    return reduce(
+        [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
+        0,
+        get_nested_tensor_structure(tensor));
+  }
+  return tensor.numel();
 }
 
 static inline int64_t get_nested_dim(const at::Tensor& tensor) {
