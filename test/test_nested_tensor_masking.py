@@ -460,6 +460,7 @@ class TestTensorMask(TestCase):
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(
             torch.tensor([]), None))
 
+    @torch.inference_mode()
     def test_ntftm_empty(self):
         tensor = torch.tensor([])
 

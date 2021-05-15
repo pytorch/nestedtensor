@@ -23,7 +23,7 @@ Tensor NestedTensor_addmm(
     const c10::Scalar& beta) {
   if (!is_nested_tensor_impl(bias) && is_nested_tensor_impl(input) &&
       !is_nested_tensor_impl(weight)) {
-    if (input.is_contiguous()) {
+    if (get_is_contiguous(input)) {
       if (get_dim(bias) == 1 && get_dim(input) == 3 && get_dim(weight) == 2) {
         auto input_opt_sizes = get_opt_sizes(input);
         if (input_opt_sizes[2]) {

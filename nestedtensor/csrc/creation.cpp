@@ -226,10 +226,7 @@ at::Tensor nested_tensor_impl(
     }
   }
   auto result = wrap_tensor_node(std::move(structure));
-  result = result.contiguous();
-  if (requires_grad) {
-    result.requires_grad_();
-  }
+  result = NestedTensor_contiguous(result);
   if (pin_memory) {
     result.pin_memory();
   }

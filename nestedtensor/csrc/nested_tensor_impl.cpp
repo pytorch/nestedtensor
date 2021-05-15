@@ -108,7 +108,7 @@ at::Tensor wrap_buffer(
 }
 
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
-  if (self.is_contiguous(memory_format)) {
+  if (get_is_contiguous(self, memory_format)) {
     return self;
   }
   TORCH_CHECK(
