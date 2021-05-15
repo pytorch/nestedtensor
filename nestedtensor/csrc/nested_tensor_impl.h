@@ -152,13 +152,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
         false, "numel is disabled. These methods are not virtual in fbcode.");
   }
 #endif
+#ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   bool is_contiguous(at::MemoryFormat memory_format) const override {
-    // NOTE: The Tensors themselves might not be contiguous even if there is a
-    // buffer. For this to be contiguous not only the individuals Tensors have
-    // to be but also the buffer.
-    return (_storage->kind() == NestedTensorStorageKind::packed) &&
-        _storage->is_contiguous();
+    TORCH_CHECK(
+        false, "is_contiguous is disabled. These methods are not virtual in fbcode.");
   }
+#endif
   TensorNode get_structure() const {
     return _storage->get_structure();
   }
@@ -308,6 +307,13 @@ static inline const int64_t get_numel(const at::Tensor& tensor) {
         get_nested_tensor_structure(tensor));
   }
   return tensor.numel();
+}
+
+static inline const int64_t get_is_contiguous(const at::Tensor& tensor) {
+  if (is_nested_tensor_impl(tensor)) {
+    return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous();
+  }
+  return tensor.is_contiguous();
 }
 
 static inline int64_t get_nested_dim(const at::Tensor& tensor) {
