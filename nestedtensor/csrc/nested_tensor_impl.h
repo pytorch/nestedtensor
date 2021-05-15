@@ -155,7 +155,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
 #ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   bool is_contiguous(at::MemoryFormat memory_format) const override {
     TORCH_CHECK(
-        false, "is_contiguous is disabled. These methods are not virtual in fbcode.");
+        false,
+        "is_contiguous is disabled. These methods are not virtual in fbcode.");
   }
 #endif
   TensorNode get_structure() const {
@@ -309,7 +310,9 @@ static inline const int64_t get_numel(const at::Tensor& tensor) {
   return tensor.numel();
 }
 
-static inline const int64_t get_is_contiguous(const at::Tensor& tensor) {
+static inline const int64_t get_is_contiguous(
+    const at::Tensor& tensor,
+    at::MemoryFormat memory_format = MemoryFormat::Preserve) {
   if (is_nested_tensor_impl(tensor)) {
     return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous();
   }

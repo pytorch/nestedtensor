@@ -5,8 +5,6 @@ from . import masking
 from . import creation
 
 import nestedtensor
-from torch._C import _disabled_torch_function_impl
-
 
 def _not_impl_raise(cond, msg):
     if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
@@ -209,7 +207,6 @@ class NestedTensorMeta(type):
 
 
 class NestedTensor(metaclass=NestedTensorMeta):
-    __torch_function__ = _disabled_torch_function_impl
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its
@@ -372,6 +369,14 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def dim(self):
         return torch.ops.nestedtensor.get_dim(self._impl)
 
+    def contiguous(self):
+        if self.is_contiguous():
+            return self
+        return _wrap_result(torch.ops.nestedtensor.make_contiguous(self._impl))
+
+    def is_contiguous(self):
+        return torch.ops.nestedtensor.get_is_contiguous(self._impl)
+
     def nested_dim(self):
         """
         The nested dimension of ```self``` NestedTensor.
@@ -447,6 +452,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
     # --- dependent on impl ends ---
 
     def __torch_function__(self, func, types, args=(), kwargs=None):
+        print("func: ", func)
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
         # TODO:This was disabled for now to focus on DETR
