@@ -8,8 +8,6 @@
 #include <torch/extension.h>
 #include <chrono>
 
-static c10::InferenceMode guard;
-
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because
 // tensor([]) is of dimension 1, but it is also
@@ -176,6 +174,18 @@ TORCH_LIBRARY(nestedtensor, m) {
     return (int64_t)(get_nested_tensor_structure(self).degree());
   });
 
+  m.def("get_dim(Tensor self) -> int");
+  m.impl("get_dim", NestedTensorKey, [](Tensor self) { return get_dim(self); });
+
+  m.def("get_numel(Tensor self) -> int");
+  m.impl("get_numel", NestedTensorKey, [](Tensor self) { return get_numel(self); });
+
+  m.def("get_is_contiguous(Tensor self) -> int");
+  m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) { return get_is_contiguous(self); });
+
+  m.def("make_contiguous(Tensor self) -> Tensor");
+  m.impl("make_contiguous", NestedTensorKey, [](Tensor self) { return NestedTensor_contiguous(self); });
+
   m.def("to_tensor_list(Tensor tensor) -> Tensor[]");
   m.impl("to_tensor_list", NestedTensorKey, [](Tensor tensor) {
     return flatten_nested_tensor(tensor);
@@ -213,7 +223,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 #endif
 
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor_impl(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map(
@@ -221,12 +230,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 return py::reinterpret_steal<py::object>(
                     THPSize_NewFromSizes(e.size(), e.data()));
               },
-              nt->nested_size()),
+              get_nested_size(self)),
           "NestedSize"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
-    SizeNode size_node = nt->nested_size();
-    return _nested_helper(index, std::move(size_node));
+    int64_t index = at::maybe_wrap_dim((*index_), get_dim(self));
+    return _nested_helper(index, get_nested_size(self));
   });
 
   m.def("serialize_nested_size", [](Tensor self) {
@@ -246,17 +254,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   });
 
   m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor_impl(self);
     if (!index_) {
       return py::cast(THPPythonNode(
           map([](std::vector<int64_t> e)
                   -> py::object { return py::tuple(py::cast(e)); },
-              nt->nested_stride()),
+              get_nested_stride(self)),
           "NestedStride"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
-    SizeNode size_node = nt->nested_stride();
-    return _nested_helper(index, std::move(size_node));
+    int64_t index = at::maybe_wrap_dim((*index_), get_dim(self));
+    return _nested_helper(index, get_nested_stride(self));
   });
 
   add_functions(m);

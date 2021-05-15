@@ -417,6 +417,7 @@ class TestTensorMask(TestCase):
         TestCase.assertEqual(self, expected_t, tensor)
         TestCase.assertEqual(self, expected_m, mask)
 
+    @torch.inference_mode()
     def test_mask_dim_too_small_error(self):
         a = nt.nested_tensor([
             torch.tensor([1, 2, ]),
@@ -459,6 +460,7 @@ class TestTensorMask(TestCase):
         self.assertRaises(RuntimeError, lambda: nt.nested_tensor_from_tensor_mask(
             torch.tensor([]), None))
 
+    @torch.inference_mode()
     def test_ntftm_empty(self):
         tensor = torch.tensor([])
 

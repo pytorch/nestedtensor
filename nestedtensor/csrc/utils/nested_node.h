@@ -181,7 +181,7 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
     const std::vector<R>& content,
     int64_t index) {
   if (structure.is_leaf()) {
-    at::Tensor tmp = content[index];
+    R tmp = content[index];
     return std::pair<int64_t, NestedNode<R>>(
         index + 1, NestedNode<R>(std::move(tmp)));
 
@@ -376,14 +376,27 @@ inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   return std::vector<int64_t>(stride);
 }
 
+inline bool _is_cont_stride(int64_t* size, int64_t* stride, size_t length) {
+  int64_t p = 1;
+  size_t p_i = length;
+  for (size_t i = 0; i < length; i++) {
+    p_i--;
+    if (p != stride[p_i]) {
+      return false;
+    }
+    p *= size[p_i];
+  }
+  return true;
+}
+
 inline int64_t num_memory(
-    std::vector<int64_t> size,
-    std::vector<int64_t> stride) {
+    const std::vector<int64_t>& size,
+    const std::vector<int64_t>& stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.
   int64_t result = 1;
-  for (int64_t i = 0; i < size.size(); i++) {
+  for (size_t i = 0; i < size.size(); i++) {
     result = result + ((size[i] - 1) * stride[i]);
   }
   return result;

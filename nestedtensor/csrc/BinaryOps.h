@@ -15,12 +15,12 @@ inline void check_binary_shape(const Tensor& self, const Tensor& other) {
   } else if (is_nested_tensor_impl(other)) {
     int64_t other_nested_dim = get_nested_tensor_impl(other)->nested_dim();
     TORCH_CHECK(
-        self.dim() <= other.dim() - other_nested_dim,
+        get_dim(self) <= get_dim(other) - other_nested_dim,
         "tensor dimension of other must match or be greater than dimension of self.");
   } else if (is_nested_tensor_impl(self)) {
     int64_t self_nested_dim = get_nested_tensor_impl(self)->nested_dim();
     TORCH_CHECK(
-        other.dim() <= self.dim() - self_nested_dim,
+        get_dim(other) <= get_dim(self) - self_nested_dim,
         "tensor dimension of self must match or be greater than dimension of other.");
   } else {
     TORCH_CHECK(false, "check_binary_shape can only be used in NT context.");
@@ -44,12 +44,12 @@ inline std::tuple<at::Tensor, at::Tensor> _expand_other_as(const Tensor& self, c
   TORCH_CHECK(
       is_nested_tensor_impl(self),
       "_expand_other_as can only be used in NT context.");
-  if (other.dim() >= self.dim()) {
+  if (get_dim(other) >= get_dim(self)) {
     at::Tensor other_nt = NestedTensor_to_nested_tensor(other, get_nested_dim(self));
     return std::make_tuple(self, other_nt);
   }
   int64_t self_nested_dim = get_nested_tensor_impl(self)->nested_dim();
-  if (other.dim() + self_nested_dim >= self.dim()) {
+  if (get_dim(other) + self_nested_dim >= get_dim(self)) {
     at::Tensor other_ = other;
     for (int64_t i = 0; i < self_nested_dim; i++) {
       if (other.size(0) == 1) {

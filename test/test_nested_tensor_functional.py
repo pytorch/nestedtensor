@@ -51,6 +51,7 @@ class TestFunctional(TestCase):
         # nt_cont = relu(nt)
         # self.assertEqual(True, nt_cont.is_contiguous())
 
+    @torch.inference_mode()
     def test_nn_embedding(self):
         inputs = [torch.randint(100, (L,)) for L in torch.randint(5, 50, (8,))]
         x = nestedtensor.nested_tensor(inputs, dtype=torch.int64)
@@ -59,6 +60,7 @@ class TestFunctional(TestCase):
         for i, inp in enumerate(inputs):
             self.assertEqual(emb(inp), y[i])
 
+    @torch.inference_mode()
     def test_nn_embedding_bag(self):
 
         def run_test(EmbeddingBag, inputs):
@@ -92,6 +94,7 @@ class TestFunctional(TestCase):
         run_test(lambda: torch.nn.EmbeddingBag(100, 8, sparse=True), [
                  torch.randint(100, (L,)) for L in torch.randint(3, 7, (5,))])
 
+    @torch.inference_mode()
     def test_nn_functional_conv2d(self):
         tensor1 = torch.rand(3, 128, 128)
         tensor2 = torch.rand(3, 300, 400)
@@ -376,6 +379,7 @@ class TestFunctional(TestCase):
                 3), constructor([t.reshape(2, 3, 1)]))
             self.assertRaises(IndexError, lambda: nt.unsqueeze(4))
 
+    @torch.inference_mode()
     def test_matmul(self):
         for constructor in _iter_constructors():
             t1 = torch.randn(2, 3)
@@ -528,6 +532,7 @@ class TestFunctional(TestCase):
         nt = ntnt_nograd(ts)
         self._test_softmax(ts, nt)
 
+    @torch.inference_mode()
     def test_mha(self):
         embed_dim = 2
         num_heads = 2
@@ -549,6 +554,7 @@ class TestFunctional(TestCase):
             query_nt, key_nt, value_nt, need_weights=False)
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
+    @torch.inference_mode()
     def test_mha_detr(self):
         NDIM = 128
         BSZ = 8
@@ -745,6 +751,7 @@ class TestFunctional(TestCase):
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)
 
+    @torch.inference_mode()
     def test_layer_norm(self):
         layer_norm = torch.nn.LayerNorm((0,))
         t0 = torch.randn(3)
@@ -805,6 +812,7 @@ class TestFunctional(TestCase):
                                "Currently only singleton tuples of integers supported for layer_norm.",
                                lambda: layer_norm(nt))
 
+    @torch.inference_mode()
     def test_decoder(self):
         class TransformerDecoderLayer(nn.Module):
 
@@ -883,6 +891,7 @@ class TestFunctional(TestCase):
         #     print(n)
         #     print(p is None)
 
+    @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_effective_transformer_mha(self):
         def sequence_mask(lengths, max_len=None, is_2d=True):
@@ -957,14 +966,17 @@ class TestFunctional(TestCase):
             t0 = time.time()
             scaling = float(head_size ** -0.5)
             for _ in range(5):
+                # print("input_nt")
+                # print(input_nt)
+                # print("---")
                 result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                               head_size,
                                                               0.5,
                                                               False,
                                                               input_mask,
-                                                              input_nt._impl,
-                                                              input_nt._impl,
-                                                              input_nt._impl,
+                                                              input_nt,
+                                                              input_nt,
+                                                              input_nt,
                                                               attr_kernel_Q,
                                                               attr_kernel_K,
                                                               attr_kernel_V,
@@ -976,15 +988,12 @@ class TestFunctional(TestCase):
                                                               in_proj_bias,
                                                               attr_mask)
 
-                result_nt = nestedtensor.NestedTensor(result_nt)
-
             torch.cuda.synchronize()
             t1 = time.time()
             a = t1 - t0
 
             mha = mha.cuda()
             torch.cuda.synchronize()
-            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             for _ in range(5):
@@ -997,7 +1006,6 @@ class TestFunctional(TestCase):
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
-            time.sleep(2)
             torch.cuda.synchronize()
             t0 = time.time()
             for _ in range(5):
@@ -1009,16 +1017,16 @@ class TestFunctional(TestCase):
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
         # test(1, 1, 1, 4, 4, use_arange=True)
-        # test(2, 1, 2, 1, 2)
-        # test(1, 3, 5, 4, 4)
-        # test(2, 3, 5, 2, 4)
         # test(1, 1, 2, 2, 2, use_arange=True)
         # test(1, 2, 2, 1, 1, use_arange=True)
         # test(1, 4, 3, 2, 2, use_arange=True)
-        # test(2, 1, 2, 2, 4)
-        # test(2, 1, 2, 2, 4)
-        # test(2, 3, 5, 2, 4)
-        # test(1, 3, 5, 4, 4)
+        test(2, 1, 2, 1, 2)
+        test(1, 3, 5, 4, 4)
+        test(2, 3, 5, 2, 4)
+        test(2, 1, 2, 2, 4)
+        test(2, 1, 2, 2, 4)
+        test(2, 3, 5, 2, 4)
+        test(1, 3, 5, 4, 4)
         test(8, 8, 50, 16, 128)
         test(16, 64, 50, 16, 256)
         test(16, 128, 50, 16, 256)

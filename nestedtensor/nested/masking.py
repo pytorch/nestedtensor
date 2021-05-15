@@ -47,7 +47,7 @@ def nt_from_tensor_mask(tensor, mask, nested_dim):
     result = torch.ops.nestedtensor.nt_from_tensor_mask(
         tensor, mask, nested_dim)
     assert result is not None
-    return nestedtensor.NestedTensor(result.contiguous())
+    return nestedtensor.NestedTensor(result).contiguous()
 
 
 def get_tensor_mask(nt, shape):
