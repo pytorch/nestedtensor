@@ -112,10 +112,10 @@ std::tuple<Tensor, Tensor> NestedTensor_max_dim(
     std::vector<TensorNode> result = unzip(map(
         [nested_dim, dim, keepdims](at::Tensor tensor) {
           auto tmp = at::max(tensor, dim - nested_dim, keepdims);
-          std::vector<at::Tensor> result;
-          result.push_back(std::get<0>(tmp));
-          result.push_back(std::get<1>(tmp));
-          return result;
+          std::vector<at::Tensor> result_i;
+          result_i.push_back(std::get<0>(tmp));
+          result_i.push_back(std::get<1>(tmp));
+          return result_i;
         },
         get_nested_tensor_structure(output)));
     return std::make_tuple(

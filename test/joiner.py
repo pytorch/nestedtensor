@@ -5,7 +5,7 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
+from utils_test_case import TestCase
 import random
 import utils
 from torch import nn
@@ -19,7 +19,7 @@ class Joiner(nn.Sequential):
         xs = self[0](tensor_list)
         out = []
         pos = []
-        for name, x in xs.items():
+        for _, x in xs.items():
             out.append(x)
             pos.append(self[1](x))
 

@@ -1,11 +1,7 @@
-import traceback
-import functools
-import pdb
-import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
+from utils_test_case import TestCase
 import random
 import utils
 from torch.nn import functional as F

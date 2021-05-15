@@ -1,14 +1,7 @@
-import traceback
-import functools
-import pdb
-import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
-import random
-import utils
-from frozen_batch_norm_2d import NTFrozenBatchNorm2d
+from utils_test_case import TestCase
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
@@ -62,7 +55,6 @@ class ConfusionMatrix(object):
 class TestIntegration(TestCase):
     def test_resnet18(self):
         import torchvision
-        from torchvision.models._utils import IntermediateLayerGetter
         EXAMPLE_IMAGE_TENSORS = [torch.randn(3, 10, 10) for _ in range(3)]
         model = torchvision.models.resnet.resnet18(pretrained=True).eval()
         with torch.inference_mode():

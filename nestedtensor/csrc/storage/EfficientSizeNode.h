@@ -5,7 +5,7 @@ namespace torch {
 namespace nested_tensor {
 
 namespace impl {
-static at::Tensor stack_sizes(SizeNode size_node) {
+inline at::Tensor stack_sizes(SizeNode size_node) {
   std::vector<at::Tensor> flattened = flatten(map(
       [](std::vector<int64_t> sizes) {
         return torch::tensor(sizes, torch::kInt64);
@@ -16,7 +16,7 @@ static at::Tensor stack_sizes(SizeNode size_node) {
   }
   return at::stack(flattened);
 }
-static std::vector<c10::optional<int64_t>> construct_efficient_size(
+inline std::vector<c10::optional<int64_t>> construct_efficient_size(
     SizeNode size_node,
     at::Tensor sizes) {
   std::vector<c10::optional<int64_t>> result = construct_size(size_node);

@@ -6,7 +6,7 @@
 namespace torch {
 namespace nested_tensor {
 
-static std::vector<c10::optional<int64_t>> construct_size(
+inline std::vector<c10::optional<int64_t>> construct_size(
     const SizeNode& size_node) {
   if (size_node.is_leaf()) {
     std::vector<c10::optional<int64_t>> result;
