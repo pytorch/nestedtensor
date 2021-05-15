@@ -222,7 +222,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               nt->nested_size()),
           "NestedSize"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
+    int64_t index = at::maybe_wrap_dim((*index_), get_dim(nt));
     SizeNode size_node = nt->nested_size();
     return _nested_helper(index, std::move(size_node));
   });
@@ -252,7 +252,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               nt->nested_stride()),
           "NestedStride"));
     }
-    int64_t index = at::maybe_wrap_dim((*index_), nt->dim());
+    int64_t index = at::maybe_wrap_dim((*index_), get_dim(self));
     SizeNode size_node = nt->nested_stride();
     return _nested_helper(index, std::move(size_node));
   });

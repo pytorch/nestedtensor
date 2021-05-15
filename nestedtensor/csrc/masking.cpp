@@ -8,11 +8,11 @@ std::tuple<Tensor, Tensor> merge_tensor_mask(
     Tensor tensor,
     Tensor mask,
     c10::optional<int64_t> mask_dim) {
-  if (mask_dim && mask.dim() == (*mask_dim)) {
+  if (mask_dim && get_dim(mask) == (*mask_dim)) {
     return std::make_tuple(tensor, mask);
   }
 
-  if (mask.dim() == 0) {
+  if (get_dim(mask) == 0) {
     return std::make_tuple(tensor, mask);
   }
 
@@ -27,7 +27,7 @@ std::tuple<Tensor, Tensor> merge_tensor_mask(
     return merge_tensor_mask(tensor, collapsed_mask, mask_dim);
   }
 
-  if (mask_dim && mask_dim != mask.dim()) {
+  if (mask_dim && mask_dim != get_dim(mask)) {
     throw std::runtime_error(
         "Mask dimension is too small to represent data tensor.");
   }
@@ -40,7 +40,7 @@ std::tuple<Tensor, Tensor> merge_tensor_mask(
 Tensor pad_tensor_to_shape(Tensor t, std::vector<int64_t> goal_shape) {
   std::vector<int64_t> padd;
   auto tup = t.sizes();
-  if (t.dim() != goal_shape.size()) {
+  if (get_dim(t) != goal_shape.size()) {
     throw std::runtime_error("dimension doesn't match length of goal shape.");
   }
   for (int64_t i = tup.size() - 1; i >= 0; i--) {
@@ -85,7 +85,7 @@ std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
       TORCH_CHECK(false, "Empty tensors are not yet supported.");
     }
     // Dont pad in case of a scalar
-    if (nt.dim() == 0) {
+    if (get_dim(nt) == 0) {
       return std::make_tuple(nt, torch::tensor(true));
     }
 
@@ -131,7 +131,7 @@ c10::optional<Tensor> nt_from_tensor_mask(
       return tensor;
     }
 
-    if (mask.dim() == 1) {
+    if (get_dim(mask) == 1) {
       std::vector<Tensor> tensors;
       for (int64_t i = 0; i < mask.size(0); i++) {
         if (mask[i].item<bool>()) {
@@ -144,7 +144,7 @@ c10::optional<Tensor> nt_from_tensor_mask(
       return at::stack(tensors);
     }
 
-    if (mask.dim() > 1) {
+    if (get_dim(mask) > 1) {
       std::vector<Tensor> tensors;
       bool all_zero = true;
       for (int64_t i = 0; i < mask.size(0); i++) {

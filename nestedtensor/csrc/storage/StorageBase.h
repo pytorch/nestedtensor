@@ -7,6 +7,7 @@ namespace nested_tensor {
 enum NestedTensorStorageKind { packed, list };
 
 struct NestedTensorStorage {
+  virtual ~NestedTensorStorage() = default;
   virtual int64_t dim() const {
     TORCH_CHECK(false, "Not Implemented.");
   }

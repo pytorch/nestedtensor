@@ -47,7 +47,7 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   if (!dim_) {
     return NestedTensor_to_tensor(tensor, 0);
   }
-  int64_t dim = maybe_wrap_dim((*dim_), tensor.dim());
+  int64_t dim = maybe_wrap_dim((*dim_), get_dim(tensor));
   if (dim != 0) {
     TORCH_CHECK(false, "Non-zero dimension ", *dim_, " is currently not supported.");
   }

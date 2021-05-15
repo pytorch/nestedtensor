@@ -17,7 +17,7 @@ Tensor NestedTensor_cumsum(
     c10::optional<ScalarType> dtype) {
   auto nt_impl = get_nested_tensor_impl(self);
   int64_t nested_dim = nt_impl->nested_dim();
-  dim = maybe_wrap_dim(dim, nt_impl->dim());
+  dim = maybe_wrap_dim(dim, get_dim(self));
   TORCH_CHECK(
       dim >= nested_dim, "cumsum of nested dimensions is not implemented yet.");
   return map_nested_tensor(
@@ -35,7 +35,7 @@ std::tuple<std::vector<int64_t>, std::vector<int64_t>> make_split_dims(
   std::vector<int64_t> tensordims;
   std::vector<int64_t> nesteddims;
   for (size_t i = 0; i < dims.size(); i++) {
-    int64_t dim = maybe_wrap_dim(dims[i], self.dim());
+    int64_t dim = maybe_wrap_dim(dims[i], get_dim(self));
     if (dim < nested_dim) {
       nesteddims.push_back(dim);
     } else {
@@ -202,9 +202,6 @@ std::tuple<Tensor, Tensor, Tensor> _merge_m2(
     Tensor m2_tensor,
     Tensor mean_tensor,
     Tensor numel) {
-  // TORCH_CHECK(
-  //     m2_tensor.dim() == 1 && mean_tensor.dim() == 1 && numel.dim() == 1,
-  //     "merge tensors aren't of dimension 1.");
   if (m2_tensor.size(0) <= 1) {
     return std::make_tuple(m2_tensor, mean_tensor, numel);
   }
@@ -239,7 +236,7 @@ Tensor NestedTensor_var(const Tensor& self, bool unbiased) {
     return at::ones({0});
   }
   std::vector<int64_t> tensordims;
-  for (int64_t i = 0; i < tensors[0].dim(); i++) {
+  for (int64_t i = 0; i < get_dim(tensors[0]); i++) {
     tensordims.push_back(i);
   }
   std::tie(m2_tensor, mean_tensor, numel) =

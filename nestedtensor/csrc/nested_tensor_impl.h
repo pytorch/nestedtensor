@@ -141,13 +141,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage);
 
   int64_t dim() const override {
-    return _storage->dim();
+    TORCH_CHECK(false, "dim is disabled. These methods are not virtual in fbcode.");
   }
   int64_t numel() const override {
-    return reduce(
-        [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
-        0,
-        get_structure());
+    TORCH_CHECK(false, "numel is disabled. These methods are not virtual in fbcode.");
   }
   bool is_contiguous(at::MemoryFormat memory_format) const override {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
@@ -272,6 +269,23 @@ static inline const SizeNode get_nested_size(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_size();
+}
+
+static inline const int64_t get_dim(const at::Tensor& tensor) {
+  if (is_nested_tensor_impl(tensor)) {
+    return get_nested_tensor_impl->storage()->dim();
+  }
+  return tensor.dim();
+}
+
+static inline const int64_t get_numel(const at::Tensor& tensor) {
+  if (is_nested_tensor_impl(tensor)) {
+    return reduce(
+        [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
+        0,
+        get_nested_tensor_structure(tensor));
+  }
+  return tensor.numel();
 }
 
 static inline int64_t get_nested_dim(const at::Tensor& tensor) {

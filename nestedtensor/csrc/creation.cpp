@@ -58,11 +58,11 @@ bool _verify_variables(
     const at::Tensor& variable = nested_node.payload();
     // TODO: Add more checks?
 
-    valid = valid && (dim == variable.dim());
+    valid = valid && (dim == get_dim(variable));
     if (!valid && throw_error) {
       std::stringstream error;
       error << "Given Tensor / NestedTensor constiuent of dimension ";
-      error << variable.dim();
+      error << get_dim(variable);
       error << " doesn't match another constiuent of dimension ";
       error << dim;
       error << ". ";
@@ -156,7 +156,7 @@ bool _verify_variables(
     const at::Tensor& first_variable,
     const TensorNode& nested_node,
     bool throw_error = false) {
-  const int64_t dim = first_variable.dim();
+  const int64_t dim = get_dim(first_variable);
   const at::Layout& layout = first_variable.layout();
   const at::Device& device = first_variable.device();
   const at::ScalarType& scalar_type = first_variable.scalar_type();
