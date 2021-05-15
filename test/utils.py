@@ -4,12 +4,7 @@ import pdb
 import sys
 import torch
 import nestedtensor
-import unittest
-import random
 import urllib
-
-from utils_test_case import TestCase
-
 
 def debug_on(*exceptions):
     if not exceptions:

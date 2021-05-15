@@ -74,14 +74,14 @@ at::Tensor bt_min_mha(
 
   at::Tensor tmp = get_buffer(query);
 
-  effectivetransformer::exclusiveScan_kernelLauncher(
+  nteffectivetransformer::exclusiveScan_kernelLauncher(
       prefix_sum_ptr,
       input_mask.data_ptr<int>(),
       input_mask.size(0) * input_mask.size(1),
       defaultStream);
 
 
-  effectivetransformer::compressBertInput_kernelLauncher(
+  nteffectivetransformer::compressBertInput_kernelLauncher(
       input_mask.data_ptr<int>(),
       prefix_sum_ptr,
       batch_idx_ptr,
@@ -116,7 +116,7 @@ at::Tensor bt_min_mha(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
   at::Tensor val_buf = torch::zeros(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
-  effectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
+  nteffectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
       q_buf.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
       k_buf.data_ptr<float>(),
@@ -138,7 +138,7 @@ at::Tensor bt_min_mha(
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
-  effectivetransformer::cuda::softmax_kernel_kernelLauncher<float>(
+  nteffectivetransformer::cuda::softmax_kernel_kernelLauncher<float>(
       attn_output_weights.data_ptr<float>(),
       attr_mask.data_ptr<float>(),
       batch_size,
@@ -151,7 +151,7 @@ at::Tensor bt_min_mha(
 
   at::Tensor attr_out =
       torch::zeros({valid_word_num, embedding_dim}, float_options);
-  effectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
+  nteffectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
       attn_output.data_ptr<float>(),
       attr_out.data_ptr<float>(),
       valid_word_num,

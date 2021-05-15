@@ -16,7 +16,7 @@ template <typename T>
 struct NestedNode {
   // NestedNode() : _is_leaf(false), _height(1) {}
   NestedNode() = delete;
-  NestedNode(std::vector<NestedNode<T>>&& children)
+  explicit NestedNode(std::vector<NestedNode<T>>&& children)
       : _is_leaf(false), _children(children), _height(1) {
     for (const auto& child : children) {
       if (child.height() + 1 > _height) {
@@ -32,7 +32,7 @@ struct NestedNode {
   // NestedNode(NestedNode&) = delete;
   // NestedNode(const NestedNode&) = delete;
   // NestedNode& operator=(NestedNode) = delete;
-  NestedNode(T&& payload) : _is_leaf(true), _payload(payload), _height(0) {}
+  explicit NestedNode(T&& payload) : _is_leaf(true), _payload(payload), _height(0) {}
   inline bool is_leaf() const {
     return _is_leaf;
   }
@@ -140,7 +140,7 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
           std::move(children));
     }
     return NestedNode<A>(std::move(result));
-  };
+  }
 };
 
 // NOTE: Assuming all NestedNodes have same shape.
@@ -155,7 +155,7 @@ map(F&& fn, const NestedNode<B>&... nested_node) {
       F,
       typename c10::guts::infer_function_traits<F>::type::return_type,
       typename c10::guts::infer_function_traits<F>::type::parameter_types>::
-      function(std::move(fn), nested_node...);
+      function(std::forward<F>(fn), nested_node...);
 }
 
 template <typename A>
@@ -344,7 +344,7 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
             std::move(children));
       }
     }
-  };
+  }
 };
 
 // NOTE: Assuming all NestedNodes have same shape.
@@ -359,7 +359,7 @@ static inline void apply(F&& fn, NestedNode<A>... nested_node) {
       c10::guts::typelist::map_t<
           std::remove_reference_t,
           typename c10::guts::infer_function_traits<F>::type::
-              parameter_types>>::function(std::move(fn), nested_node...);
+              parameter_types>>::function(std::forward<F>(fn), nested_node...);
 }
 
 namespace impl {

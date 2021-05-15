@@ -131,10 +131,10 @@ inline void torch_check_tensor_shape_matches(A... a) {
 }
 
 template <class F, class... A>
-static inline void apply_nested_tensor(F&& fn, A... a) {
+inline void apply_nested_tensor(F&& fn, A... a) {
   // torch_check_tensor_shape_matches(a...);
   // torch_check_is_nested_tensor(a...);
-  apply(std::move(fn), get_nested_tensor_structure(a)...);
+  apply(std::forward<F>(fn), get_nested_tensor_structure(a)...);
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
@@ -250,7 +250,7 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-static inline at::Tensor get_buffer(const at::Tensor& tensor) {
+inline at::Tensor get_buffer(const at::Tensor& tensor) {
   auto storage = get_nested_tensor_impl(tensor)->get_storage();
   TORCH_CHECK(
       storage.get()->kind() == NestedTensorStorageKind::packed,
@@ -260,47 +260,47 @@ static inline at::Tensor get_buffer(const at::Tensor& tensor) {
   return ps->get_buffer();
 }
 
-static inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
+inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
     const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->opt_sizes();
 }
 
-static inline const EfficientSizeNode get_efficient_nested_size(
+inline const EfficientSizeNode get_efficient_nested_size(
     at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->get_storage()->nested_size();
 }
 
-static inline const EfficientSizeNode get_efficient_nested_stride(
+inline const EfficientSizeNode get_efficient_nested_stride(
     at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->get_storage()->nested_stride();
 }
 
-static inline SizeNode get_nested_size(at::Tensor tensor) {
+inline SizeNode get_nested_size(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_size();
 }
 
-static inline SizeNode get_nested_stride(at::Tensor tensor) {
+inline SizeNode get_nested_stride(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_stride();
 }
 
-static inline const int64_t get_dim(const at::Tensor& tensor) {
+inline int64_t get_dim(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
     return get_nested_tensor_impl(tensor)->get_storage()->dim();
   }
   return tensor.dim();
 }
 
-static inline const int64_t get_numel(const at::Tensor& tensor) {
+inline int64_t get_numel(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
     return reduce(
         [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
@@ -314,7 +314,7 @@ Tensor NestedTensor_contiguous(
     const Tensor& self,
     MemoryFormat memory_format = MemoryFormat::Contiguous);
 
-static inline const int64_t get_is_contiguous(
+inline int64_t get_is_contiguous(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {
@@ -323,7 +323,7 @@ static inline const int64_t get_is_contiguous(
   return tensor.is_contiguous();
 }
 
-static inline int64_t get_nested_dim(const at::Tensor& tensor) {
+inline int64_t get_nested_dim(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_dim();
@@ -339,22 +339,22 @@ at::Tensor wrap_buffer(
     EfficientSizeNode efficient_nested_stride);
 
 template <class F, class... A>
-static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
+inline at::Tensor map_nested_tensor(F&& fn, A... a) {
   // torch_check_tensor_shape_matches(a...);
   // torch_check_is_nested_tensor(a...);
   return wrap_tensor_node(
-      map(std::move(fn), get_nested_tensor_structure(a)...));
+      map(std::forward<F>(fn), get_nested_tensor_structure(a)...));
 }
 
 template <class F, class I, class... A>
-static inline typename c10::guts::infer_function_traits<F>::type::return_type
+inline typename c10::guts::infer_function_traits<F>::type::return_type
 reduce_nested_tensor(F&& fn, I init, A... a) {
   // torch_check_tensor_shape_matches(a...);
   // torch_check_is_nested_tensor(a...);
-  return reduce(fn, init, get_nested_tensor_structure(a)...);
+  return reduce(std::forward<F>(fn), init, get_nested_tensor_structure(a)...);
 }
 
-static inline std::vector<at::Tensor> flatten_nested_tensor(at::Tensor tensor) {
+inline std::vector<at::Tensor> flatten_nested_tensor(at::Tensor tensor) {
   return flatten(get_nested_tensor_structure(tensor));
 }
 

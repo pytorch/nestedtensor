@@ -19,7 +19,7 @@
 #include <cmath>
 #include <nestedtensor/csrc/cuda/attention.h>
 
-namespace effectivetransformer {
+namespace nteffectivetransformer {
 namespace cuda {
 
 // Reduce code comes from Nvidia's DeepLearningExamples
@@ -139,42 +139,6 @@ void add_QKV_bias_padding(
   dst_ptr[target_id] = src_ptr[tid] + __ldg(&bias_ptr[bias_id]);
 }
 
-template <>
-__global__
-void add_QKV_bias_padding(
-    __half* Q, const __half* bias_Q, 
-    __half* K, const __half* bias_K, 
-    __half* V, const __half* bias_V, 
-    __half* q_buf_, __half* k_buf_, __half* v_buf_,  
-    const int batch_size, const int seq_len, 
-    const int head_num, const int size_per_head, 
-    const int* batch_idx, const int* word_idx)
-{
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int batch_id  = batch_idx[blockIdx.x];
-  int seq_id    = word_idx[blockIdx.x]; 
-  int head_id   = (tid % (head_num * size_per_head)) / size_per_head;
-  int id        = tid % size_per_head;
-  int target_id = target_index(batch_id, seq_id, head_id, id, 
-                               batch_size, seq_len, head_num, size_per_head);
-  int bias_id = threadIdx.x;
-
-  half2* src_ptr = (half2*)Q;
-  half2* dst_ptr = (half2*)q_buf_;
-  const half2* bias_ptr = (const half2*)bias_Q;
-  dst_ptr[target_id] = __hadd2(src_ptr[tid],  __ldg(&bias_ptr[bias_id]));
-
-  src_ptr = (half2*)K;
-  dst_ptr = (half2*)k_buf_;
-  bias_ptr = (const half2*)bias_K;
-  dst_ptr[target_id] = __hadd2(src_ptr[tid],  __ldg(&bias_ptr[bias_id]));
-
-  src_ptr = (half2*)V;
-  dst_ptr = (half2*)v_buf_;
-  bias_ptr = (const half2*)bias_V;
-  dst_ptr[target_id] = __hadd2(src_ptr[tid],  __ldg(&bias_ptr[bias_id]));
-}
-
 template<typename T>
 void add_QKV_bias_padding_kernelLauncher(
     T* Q, const T* bias_Q, 
@@ -196,39 +160,6 @@ void add_QKV_bias_padding_kernelLauncher(
     Q, bias_Q, K, bias_K, V, bias_V, q_buf_, k_buf_, v_buf_,
     batch_size, seq_len, head_num, size_per_head, batch_idx, word_idx);
 }
-
-template<>
-void add_QKV_bias_padding_kernelLauncher(
-    __half* Q, const __half* bias_Q, 
-    __half* K, const __half* bias_K, 
-    __half* V, const __half* bias_V, 
-    __half* q_buf_, __half* k_buf_, __half* v_buf_,  
-    const int valid_word_num,
-    const int batch_size, const int seq_len, 
-    const int head_num, const int size_per_head, 
-    const int* batch_idx, const int* word_idx,
-    const cudaStream_t stream)
-{
-  dim3 grid;
-  dim3 block;
-  grid.x  = valid_word_num;
-  block.x = head_num * size_per_head / 2;
-
-  add_QKV_bias_padding<__half><<<grid, block, 0, stream>>>(
-    Q, bias_Q, K, bias_K, V, bias_V, q_buf_, k_buf_, v_buf_,
-    batch_size, seq_len, head_num, size_per_head / 2, batch_idx, word_idx);
-}
-
-template void add_QKV_bias_padding_kernelLauncher<__half>(
-    __half* Q, const __half* bias_Q, 
-    __half* K, const __half* bias_K, 
-    __half* V, const __half* bias_V, 
-    __half* q_buf_, __half* k_buf_, __half* v_buf_,  
-    const int valid_word_num,
-    const int batch_size, const int seq_len, 
-    const int head_num, const int size_per_head, 
-    const int* batch_idx, const int* word_idx,
-    const cudaStream_t stream);
 
 template void add_QKV_bias_padding_kernelLauncher<float>(
     float* Q, const float* bias_Q, 
@@ -375,12 +306,6 @@ template void softmax_kernel_kernelLauncher<float>(
     const float scaler,
     const cudaStream_t stream);
 
-// template void softmax_kernel_kernelLauncher<__half>(
-//     __half* qk_buf_, const __half* attr_mask, 
-//     const int batch_size, const int head_num, const int seq_len, 
-//     const __half scaler,
-//     const cudaStream_t stream);
-
 /// *********************************** fin ***********************************
 
 
@@ -411,34 +336,6 @@ void transpose_rm_padding(
   dst_ptr[dst_offset] = src_ptr[src_offset];
 }
 
-// template<>
-// __global__
-// void transpose_rm_padding(
-//     __half* src, __half* dst,
-//     const int batch_size, const int seq_len, 
-//     const int head_num, const int size_per_head,
-//     const int* batch_idx, const int* word_idx) 
-// {
-//   // if (threadIdx.y == (head_num - 1) && threadIdx.x >= size_per_head)
-//   //   return;
-//   int head_id  = threadIdx.y;
-//   int tid      = threadIdx.x;
-//   int batch_id = batch_idx[blockIdx.x];
-//   int word_id  = word_idx[blockIdx.x];
-// 
-//   int src_offset = batch_id * head_num * seq_len * size_per_head + 
-//                    head_id * seq_len * size_per_head +
-//                    word_id * size_per_head + 
-//                    tid;
-//   int dst_offset = blockIdx.x * head_num * size_per_head +
-//                    head_id * size_per_head + 
-//                    tid;
-//   
-//   half2* src_ptr = (half2*)src;
-//   half2* dst_ptr = (half2*)dst;
-//   dst_ptr[dst_offset] = src_ptr[src_offset];
-// }
-
 template <typename T> 
 void transpose_rm_padding_kernelLauncher(
     T* src, T* dst,
@@ -457,24 +354,6 @@ void transpose_rm_padding_kernelLauncher(
     batch_idx, word_idx);
 }
 
-// template <> 
-// void transpose_rm_padding_kernelLauncher<__half>(
-//     __half* src, __half* dst, 
-//     const int valid_word_num,
-//     const int batch_size, const int seq_len, 
-//     const int head_num, const int size_per_head,
-//     const int* batch_idx, const int* word_idx,
-//     const cudaStream_t stream)
-// {
-//   dim3 grid(valid_word_num);
-//   dim3 block(size_per_head / 2, head_num);
-//   
-//   transpose_rm_padding<__half><<<grid, block, 0, stream>>>(
-//     src, dst, 
-//     batch_size, seq_len, head_num, size_per_head / 2,
-//     batch_idx, word_idx);
-// }
-
 template void transpose_rm_padding_kernelLauncher<float>(
   float* src, float* dst, 
   const int valid_word_num,
@@ -483,15 +362,7 @@ template void transpose_rm_padding_kernelLauncher<float>(
   const int* batch_idx, const int* word_idx,
   const cudaStream_t stream);
 
-// template void transpose_rm_padding_kernelLauncher<__half>(
-//     __half* src, __half* dst, 
-//     const int valid_word_num,
-//     const int batch_size, const int seq_len, 
-//     const int head_num, const int size_per_head,
-//     const int* batch_idx, const int* word_idx,
-//     const cudaStream_t stream);
-
 /// *********************************** fin ***********************************
 
 }//namespace cuda
-}//namespace effectivetransformer
+}//namespace nteffectivetransformer

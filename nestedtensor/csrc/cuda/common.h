@@ -21,7 +21,7 @@
 #include <cublas_v2.h>
 #include <stdexcept>
 
-namespace effectivetransformer {
+namespace nteffectivetransformer {
 
   enum class OperationType{FP32, HALF};
   enum class AllocatorType{CUDA, TF};
@@ -79,4 +79,4 @@ void check(T result, char const *const func, const char *const file, int const l
   }
 }
 #define check_cuda_error(val) check((val), #val, __FILE__, __LINE__)
-}//namespace effectivetransformer
+}//namespace nteffectivetransformer

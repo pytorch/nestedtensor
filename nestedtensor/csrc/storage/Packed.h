@@ -119,7 +119,7 @@ struct PackedStorage : public NestedTensorStorage {
   int64_t dim() const override {
     return _nested_size.dim();
   }
-  TensorNode get_structure() const {
+  TensorNode get_structure() const override {
     return std::get<0>(impl::build_structure(
         _buffer, _nested_size.to_size_node(), _nested_stride.to_size_node()));
   }
@@ -147,10 +147,10 @@ struct PackedStorage : public NestedTensorStorage {
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
     return _nested_size.opt_sizes();
   }
-  NestedTensorStorageKind kind() const {
+  NestedTensorStorageKind kind() const override {
     return NestedTensorStorageKind::packed;
   }
-  bool is_contiguous() const {
+  bool is_contiguous() const override {
     if (!_buffer.is_contiguous()) {
       return false;
     }

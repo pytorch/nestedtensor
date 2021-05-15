@@ -17,7 +17,7 @@
 #pragma once
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
-namespace effectivetransformer {
+namespace nteffectivetransformer {
 
 template <typename T>
 void add_bias_act_kernelLauncher(
@@ -67,4 +67,4 @@ void restoreBertOutput_kernelLauncher(
     int hidden_size,
     cudaStream_t stream);
 
-} // namespace effectivetransformer
+} // namespace nteffectivetransformer

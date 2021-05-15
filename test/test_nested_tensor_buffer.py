@@ -1,13 +1,7 @@
-import traceback
-import functools
-import pdb
-import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
-import random
-
+from utils_test_case import TestCase
 
 # TODO: Test unbind, test grad and backward
 

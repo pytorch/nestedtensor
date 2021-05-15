@@ -3,7 +3,9 @@ import time
 import random
 import pprint
 
-import cProfile, pstats, io
+import cProfile
+import pstats
+import io
 from pstats import SortKey
 
 EMBED_DIM = 256

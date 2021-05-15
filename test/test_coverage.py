@@ -1,15 +1,10 @@
-import traceback
-import functools
-import pdb
-import sys
 import torch
 import nestedtensor
 import unittest
-import random
 from torch.nn import functional as F
 from torch import nn
 
-from utils import TestCase
+from utils_test_case import TestCase
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)

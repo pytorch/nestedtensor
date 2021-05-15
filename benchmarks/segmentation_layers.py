@@ -302,7 +302,7 @@ class SegLayersBenchMark(object):
             var_params = itertools.product(self.args.HV, self.args.WV)
         params = [[p + v for v in var_params] for p in params]
         params = sum(params, [])
-            
+
         writer = None
         i = 0
         for cuda, n, c, h, w, seed, h_var, w_var in params:
@@ -344,7 +344,7 @@ class SegLayersBenchMark(object):
         random.seed(seed)
         if cuda:
             torch.cuda.init()
-        for i in range(n):
+        for _ in range(n):
             h_res = max(1, int(random.gauss(h, h_var)))
             w_res = max(1, int(random.gauss(w, w_var)))
             input_i = torch.randn(c, h_res, w_res, device=device)
