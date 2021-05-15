@@ -184,7 +184,7 @@ TORCH_LIBRARY(nestedtensor, m) {
   m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) { return get_is_contiguous(self); });
 
   m.def("make_contiguous(Tensor self) -> Tensor");
-  m.impl("make_contiguous", NestedTensorKey, [](Tensor self) { return at::native::contiguous(self); });
+  m.impl("make_contiguous", NestedTensorKey, [](Tensor self) { return NestedTensor_contiguous(self); });
 
   m.def("to_tensor_list(Tensor tensor) -> Tensor[]");
   m.impl("to_tensor_list", NestedTensorKey, [](Tensor tensor) {
