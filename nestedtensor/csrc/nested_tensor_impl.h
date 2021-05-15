@@ -287,6 +287,12 @@ static inline SizeNode get_nested_size(at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->nested_size();
 }
 
+static inline SizeNode get_nested_stride(at::Tensor tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->nested_stride();
+}
+
 static inline const int64_t get_dim(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
     return get_nested_tensor_impl(tensor)->get_storage()->dim();

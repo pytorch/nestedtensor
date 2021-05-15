@@ -252,11 +252,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       return py::cast(THPPythonNode(
           map([](std::vector<int64_t> e)
                   -> py::object { return py::tuple(py::cast(e)); },
-              get_nested_size(self)),
+              get_nested_stride(self)),
           "NestedStride"));
     }
     int64_t index = at::maybe_wrap_dim((*index_), get_dim(self));
-    return _nested_helper(index, get_nested_size(self));
+    return _nested_helper(index, get_nested_stride(self));
   });
 
   add_functions(m);

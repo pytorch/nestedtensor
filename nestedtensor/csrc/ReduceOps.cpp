@@ -174,7 +174,7 @@ Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
 }
 
 Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
-  return at::sum(self, dtype).div_(torch::tensor(self.numel()));
+  return at::sum(self, dtype).div_(torch::tensor(get_numel(self)));
 }
 
 std::tuple<Tensor, Tensor, Tensor> _make_m2(
@@ -188,7 +188,7 @@ std::tuple<Tensor, Tensor, Tensor> _make_m2(
     at::Tensor centered = tensors[i] - mean;
     m2_tensors.push_back((centered * centered).sum(tensordims, true));
     mean_tensors.push_back(mean);
-    int64_t numel = tensors[i].numel() / mean.numel();
+    int64_t numel = get_numel(tensors[i]) / get_numel(mean);
     numel_tensors.push_back(torch::zeros_like(mean, torch::kLong).fill_(numel));
     // numel_tensors.push_back(torch::tensor({numel}));
   }

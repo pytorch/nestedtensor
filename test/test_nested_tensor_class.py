@@ -256,10 +256,6 @@ class TestNestedTensor(TestCase):
             ans = a.nested_stride()
             result = tuple(ans[i] for i in range(len(ans)))
             for r, s in zip(result, na):
-                print("r")
-                print(r)
-                print("s")
-                print(s)
                 self.assertEqual(r, s)
 
     def test_len(self):
