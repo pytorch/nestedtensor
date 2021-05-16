@@ -10,17 +10,18 @@ namespace at {
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
-            std::cout << "opt matmul 0" << std::endl;
+    std::cout << "opt matmul 0" << std::endl;
     if (get_is_contiguous(self) && get_is_contiguous(other)) {
-            std::cout << "opt matmul 1" << std::endl;
+      std::cout << "opt matmul 1" << std::endl;
       if (get_dim(self) == 3 && get_dim(other) == 2) {
-            std::cout << "opt matmul 2" << std::endl;
+        std::cout << "opt matmul 2" << std::endl;
         auto self_opt_sizes = get_opt_sizes(self);
-            std::cout << "opt matmul 3" << std::endl;
+        std::cout << "opt matmul 3" << std::endl;
         if (self_opt_sizes[2]) {
-            std::cout << "opt matmul 4" << std::endl;
-            std::cout << "*self_opt_sizes[2]: " << *self_opt_sizes[2] << std::endl;
-            std::cout << "other.size(1): " << other.size(1) << std::endl;
+          std::cout << "opt matmul 4" << std::endl;
+          std::cout << "*self_opt_sizes[2]: " << *self_opt_sizes[2]
+                    << std::endl;
+          std::cout << "other.size(1): " << other.size(1) << std::endl;
           if (*self_opt_sizes[2] == other.size(0)) {
             std::cout << "opt matmul 5" << std::endl;
             Tensor self_buffer = get_buffer(self);
@@ -28,15 +29,24 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
                 at::matmul(self_buffer.reshape({-1, other.size(0)}), other)
                     .reshape({-1});
             int64_t other_size_1 = other.size(1);
-            EfficientSizeNode result_nested_size = map_efficient_size(
-                [other_size_1](int64_t* data_ptr, int64_t size) {
-                  data_ptr[2] = other_size_1;
+            EfficientSizeNode new_nested_size = get_efficient_nested_size(self);
+            EfficientSizeNode new_nested_stride =
+                get_efficient_nested_stride(self);
+            apply_efficient_size(
+                [other_size_1](
+                    int64_t* size_ptr,
+                    int64_t size_size,
+                    int64_t* stride_ptr,
+                    int64_t stride_size) {
+                  size_ptr[2] = other_size_1;
+                  stride_ptr[2] = 1;
+                  stride_ptr[1] = other_size_1;
+                  stride_ptr[0] = size_ptr[1] * other_size_1;
                 },
-                get_efficient_nested_size(self));
+                new_nested_size,
+                new_nested_stride);
             return wrap_buffer(
-                std::move(result_buffer),
-                result_nested_size,
-                get_efficient_nested_stride(self));
+                std::move(result_buffer), new_nested_size, new_nested_stride);
           }
         }
       }

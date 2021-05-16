@@ -92,11 +92,11 @@ struct EfficientSizeNode {
         _opt_sizes(impl::construct_efficient_size(
             impl::efficient_deserialize(_structure, _height),
             _sizes)) {
-          // for (size_t i = 0; i < _structure.size(); i++) {
-          //   std::cout << "_structure[" << i << "]: " << _structure[i] << std::endl;
-          // }
-          // std::cout << "---" << std::endl;
-        }
+    // for (size_t i = 0; i < _structure.size(); i++) {
+    //   std::cout << "_structure[" << i << "]: " << _structure[i] << std::endl;
+    // }
+    // std::cout << "---" << std::endl;
+  }
 
   explicit EfficientSizeNode(
       int64_t height,
@@ -157,6 +157,33 @@ static inline EfficientSizeNode map_efficient_size(
   }
   return EfficientSizeNode(
       size_node.height(), size_node.structure(), sizes, size_node.opt_sizes());
+}
+
+template <class F>
+static inline void apply_efficient_size(
+    F&& fn,
+    EfficientSizeNode& size_node0,
+    EfficientSizeNode& size_node1) {
+  at::Tensor sizes0 = size_node0.sizes().clone();
+  at::Tensor sizes1 = size_node1.sizes().clone();
+  int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
+  int64_t* sizes1_ptr = sizes1.data_ptr<int64_t>();
+  const std::vector<int64_t>& structure0 = size_node0.structure();
+  const std::vector<int64_t>& structure1 = size_node1.structure();
+  TORCH_CHECK(
+      structure0.size() == structure1.size(),
+      "Tree structure doesn't match. Size.");
+  for (size_t i = 0; i < structure0.size(); i++) {
+    TORCH_CHECK(
+        structure0[i] == structure1[i],
+        "Tree structure doesn't match. Values.");
+  }
+  for (int64_t i = 0; i < sizes0.size(0); i++) {
+    fn(sizes0_ptr + i * sizes0.size(1),
+       sizes0.size(0),
+       sizes1_ptr + i * sizes1.size(1),
+       sizes1.size(0));
+  }
 }
 
 } // namespace nested_tensor
