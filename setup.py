@@ -63,13 +63,12 @@ readme = open("README.md").read()
 
 pytorch_dep = "torch"
 
-requirements = [
-    pytorch_dep,
-]
-
 if os.getenv("PYTORCH_VERSION"):
     pytorch_dep += "==" + os.getenv("PYTORCH_VERSION")
 
+requirements = [
+    pytorch_dep,
+]
 
 def get_extensions():
 

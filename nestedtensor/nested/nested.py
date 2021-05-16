@@ -512,4 +512,5 @@ class NestedTensor(metaclass=NestedTensorMeta):
         tensor, mask = masking.to_tensor_mask(self, mask_dim)
         while mask.dim() < tensor.dim():
             mask = mask.unsqueeze(-1)
+        mask = mask.to(torch.bool)
         return tensor.masked_fill(~mask, padding)

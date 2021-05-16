@@ -29,6 +29,14 @@ class TestFunctional(TestCase):
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)]
         )
 
+    @torch.inference_mode()
+    def test_conv2d(self):
+        nt = ntnt_nograd(
+            [torch.rand(3, 35, 56), torch.rand(3, 43, 23), torch.rand(3, 24, 52)]
+        )
+        weight = torch.randn(5, 5).repeat(3, 3, 1, 1)
+        torch.conv2d(nt, weight)
+
     def test_contiguousity(self):
         initial_t = torch.rand(2, 5, 10, 15)
         self.assertEqual(True, initial_t.is_contiguous())
