@@ -12,8 +12,6 @@ set -e
 eval "$(./conda/bin/conda shell.bash hook)"
 conda activate ./env
 
-PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")"
-
 # if [ "${CU_VERSION:-}" == cpu ] ; then
 #     cudatoolkit="cpuonly"
 # else
@@ -50,8 +48,10 @@ fi
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
     conda install -y pytorch torchvision torchaudio cpuonly -c pytorch-nightly
+    PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")"
     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
     conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-nightly
+    PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")"
     FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
