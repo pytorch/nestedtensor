@@ -6,20 +6,6 @@ If you are here because you ran into a runtime error due to a missing feature or
 
 If you are new to this project, we recommend you take a look at our [whirlwind introduction](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/tutorials/notebooks/basic.ipynb) to get started.
 
-## Operator support
-
-Please see [the list of currently supported operators](https://github.com/pytorch/nestedtensor/blob/master/nestedtensor/csrc/README.md) and [open an issue](https://github.com/pytorch/nestedtensor/issues/new/choose) if you find you need one for your project that's not listed.
-
-## Binaries
-
-The nestedtensor project is built on top of a torch fork for improved interoperability and also ships with torchvision binaries that were built against this fork. To use NestedTensors you need to install this version of torch, which is frequently rebased upon PyTorch's [viable/strict](https://github.com/pytorch/pytorch/tree/viable/strict) branch (most recent master where all tests pass).
-
-| Version | Python | CUDA | Wheels |
-| --- | ---- | ------ | ---- |
-| 0.1.1 | 3.6 | CPU-only | [torch](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/torch-1.8.0_nestedtensor_0.1.1_cpu-cp36-cp36m-linux_x86_64.whl), [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/nestedtensor-0.1.1_cpu-cp36-cp36m-linux_x86_64.whl), [torchvision](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/torchvision-0.1.1_cpu-cp36-cp36m-linux_x86_64.whl) |
-| 0.1.1 | 3.7 | CPU-only | [torch](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/torch-1.8.0_nestedtensor_0.1.1_cpu-cp37-cp37m-linux_x86_64.whl), [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/nestedtensor-0.1.1_cpu-cp37-cp37m-linux_x86_64.whl), [torchvision](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/torchvision-0.1.1_cpu-cp37-cp37m-linux_x86_64.whl) |
-| 0.1.1 | 3.8 | CPU-only | [torch](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/torch-1.8.0_nestedtensor_0.1.1_cpu-cp38-cp38m-linux_x86_64.whl), [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/nestedtensor-0.1.1_cpu-cp38-cp38m-linux_x86_64.whl), [torchvision](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/torchvision-0.1.1_cpu-cp38-cp38m-linux_x86_64.whl) |
-
 ## Why consider using this? / Dealing with dynamic shapes
 
 In general we batch data for efficiency, but usually batched kernels need, or greatly benefit from, regular, statically-shaped data.
@@ -63,52 +49,12 @@ a NestedTensor is still a Tensor. That means it needs to have a single dimension
 
 The nestedtensor package is a prototype intended for early stage feedback and testing. It is on the road to a beta classification, but there is no definitive timeline yet. See [PyTorch feature classification](https://pytorch.org/docs/stable/index.html) for what prototype, beta and stale means.
 
-## Supported platforms
-
-It is developed [against a fork](https://github.com/cpuhrsch/pytorchnestedtensor) of PyTorch to enable cutting-edge features such as improved performance or better `torch.vmap` integration.
-
-Developers will thus need to build from source, but users can use the binary we will start shipping soon ([see the related issue](https://github.com/pytorch/nestedtensor/issues/262)).
-
-If you want to use the binaries you need to run on Linux, use Python 3.8+ and have a CUDA-11 toolkit installed.
-
-If you want to build from source you can probably get it to work on many platforms, but supporting other platforms won't take priority over Linux. We're happy to review community contributions that achieve this however.
-
 ## Dependencies
 
 - pytorch (installed from nestedtensor/third_party/pytorch submodule)
 - torchvision (needed for examples and tests)
 - ipython (needed for examples)
 - notebook (needed for examples)
-
-## Build for development
-
-Get the source
-
-```
-git clone --recursive https://github.com/pytorch/nestedtensor
-cd nestedtensor
-# if you are updating an existing checkout
-git submodule sync
-git submodule update --init --recursive
-```
-
-Install the build tools
-
-```
-conda install numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests
-conda install -c pytorch magma-cuda110
-```
-
-Build from scratch
-```
-./clean_build_with_submodule.sh
-```
-
-Incremental builds
-```
-./build_with_submodule.sh
-```
-
 
 ## Contribution
 The project is under active development. If you have a suggestions or found a bug, please file an issue!
