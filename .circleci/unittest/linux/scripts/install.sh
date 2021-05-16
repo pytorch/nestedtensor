@@ -12,6 +12,8 @@ set -e
 eval "$(./conda/bin/conda shell.bash hook)"
 conda activate ./env
 
+PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")"
+
 # if [ "${CU_VERSION:-}" == cpu ] ; then
 #     cudatoolkit="cpuonly"
 # else
