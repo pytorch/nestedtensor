@@ -181,7 +181,7 @@ class TestTensorMask(TestCase):
 
         # TODO: Fix this case together with C++ rewrite.
         self.assertRaisesRegex(
-                RuntimeError, "Expected all tensors to be on the same device, but found at least two devices, cpu and cuda", lambda: a.to_tensor_mask())
+            RuntimeError, "Expected all tensors to be on the same device, but found at least two devices, cpu and cuda", lambda: a.to_tensor_mask())
         # tensor, mask = a.to_tensor_mask()
         # TestCase.assertEqual(self, tensor, torch.tensor([[0], [11]], dtype=torch.long, device='cuda'))
         # TestCase.assertEqual(self, mask, torch.tensor([False,  True], device='cuda'))
@@ -1107,28 +1107,28 @@ class TestTensorMask(TestCase):
 
     def test_to_padded_tensor(self):
         data1 = torch.tensor(
-                [[[0.8413, 0.7325, 0.0000, 0.0000],
-                 [0.0000, 0.0000, 0.0000, 0.0000],
-                 [0.0000, 0.0000, 0.0000, 0.0000]],
-        
-                [[0.6334, 0.5473, 0.3273, 0.0564],
-                 [0.3023, 0.6826, 0.3519, 0.1804],
-                 [0.8431, 0.1645, 0.1821, 0.9185]]])
+            [[[0.8413, 0.7325, 0.0000, 0.0000],
+              [0.0000, 0.0000, 0.0000, 0.0000],
+              [0.0000, 0.0000, 0.0000, 0.0000]],
+
+             [[0.6334, 0.5473, 0.3273, 0.0564],
+              [0.3023, 0.6826, 0.3519, 0.1804],
+              [0.8431, 0.1645, 0.1821, 0.9185]]])
         mask1 = torch.tensor(
-                [[[ True,  True, False, False],
-                 [False, False, False, False],
-                 [False, False, False, False]],
-        
-                [[ True,  True,  True,  True],
-                 [ True,  True,  True,  True],
-                 [ True,  True,  True,  True]]])
+            [[[True,  True, False, False],
+              [False, False, False, False],
+              [False, False, False, False]],
+
+             [[True,  True,  True,  True],
+              [True,  True,  True,  True],
+              [True,  True,  True,  True]]])
         nt2 = nt.nested_tensor_from_tensor_mask(data1, mask1)
         data2, mask2 = nt2.to_tensor_mask()
         self.assertEqual(data1, data2)
         self.assertEqual(mask1, mask2)
-        nt2.to_padded_tensor(padding=-10)
-        # TODO: Add some kind of test
-
+        data3 = nt2.to_padded_tensor(padding=-10)
+        data1 = data1 + ~mask1 * -10
+        self.assertEqual(data1, data3)
 
 
 if __name__ == "__main__":
