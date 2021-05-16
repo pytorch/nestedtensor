@@ -150,7 +150,8 @@ void add_functions(pybind11::module m) {
               align_corners);
         }
 
-        throw "Either size or scale factor have to be passed.";
+        throw std::runtime_error(
+            "Either size or scale factor have to be passed.");
       },
       py::arg("input"),
       py::arg("size") = nullptr,
@@ -186,7 +187,8 @@ void add_functions(pybind11::module m) {
               align_corners);
         }
 
-        throw "Either size or scale factor have to be passed.";
+        throw std::runtime_error(
+            "Either size or scale factor have to be passed.");
       },
       py::arg("input"),
       py::arg("size") = nullptr,
@@ -224,7 +226,8 @@ void add_functions(pybind11::module m) {
               align_corners);
         }
 
-        throw "Either size or scale factor have to be passed.";
+        throw std::runtime_error(
+            "Either size or scale factor have to be passed.");
       },
       py::arg("input"),
       py::arg("size") = nullptr,

@@ -1,18 +1,11 @@
-import traceback
-import functools
-import pdb
-import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
+from utils_test_case import TestCase
 import random
-import utils
-from torch.nn import functional as F
 from frozen_batch_norm_2d import NTFrozenBatchNorm2d
 from position_encoding import PositionEmbeddingSine
 from joiner import Joiner
-from torch import nn
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
@@ -317,7 +310,7 @@ class TestAutogradFunctional(TestCase):
         # Note: It seems expected that layer0 has no gradients.
         return_layers = {"layer1": "0", "layer2": "1",
                          "layer3": "2", "layer4": "3"}
-        _test(lambda: Joiner(IntermediateLayerGetter(getattr(torchvision.models, "resnet50")(
+        _test(lambda: Joiner(IntermediateLayerGetter(torchvision.models.resnet50(
             replace_stride_with_dilation=[False, False, False],
             pretrained=True, norm_layer=NTFrozenBatchNorm2d), return_layers),
             PositionEmbeddingSine(128, normalize=True)))

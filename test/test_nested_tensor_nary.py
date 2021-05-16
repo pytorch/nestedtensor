@@ -1,11 +1,10 @@
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
 from utils import get_unary_functions
 from utils import get_binary_functions
-from utils import get_python_binary_arithmetic_operations
 import utils
+from utils_test_case import TestCase
 
 
 def ntnt(x, device=None):

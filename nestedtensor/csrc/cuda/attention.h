@@ -19,35 +19,35 @@
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
-namespace effectivetransformer{
+namespace nteffectivetransformer{
 namespace cuda{
 
 template<typename T>
 void add_QKV_bias_padding_kernelLauncher(
-    T* Q, const T* bias_Q, 
-    T* K, const T* bias_K, 
-    T* V, const T* bias_V, 
-    T* q_buf_, T* k_buf_, T* v_buf_,  
+    T* Q, const T* bias_Q,
+    T* K, const T* bias_K,
+    T* V, const T* bias_V,
+    T* q_buf_, T* k_buf_, T* v_buf_,
     const int valid_word_num,
-    const int batch_size, const int seq_len, 
-    const int head_num, const int size_per_head, 
+    const int batch_size, const int seq_len,
+    const int head_num, const int size_per_head,
     const int* batch_idx, const int* word_idx,
     const cudaStream_t stream);
 
-template <typename T> 
+template <typename T>
 void softmax_kernel_kernelLauncher(
-    T* qk_buf_, const T* attr_mask, 
-    const int batch_size, const int head_num, const int seq_len, 
+    T* qk_buf_, const T* attr_mask,
+    const int batch_size, const int head_num, const int seq_len,
     const T scaler,
     const cudaStream_t stream);
 
-template <typename T> 
+template <typename T>
 void transpose_rm_padding_kernelLauncher(
     T* src, T* dst,
     const int valid_word_num,
-    const int batch_size, const int seq_len, 
+    const int batch_size, const int seq_len,
     const int head_num, const int size_per_head,
     const int* batch_idx, const int* word_idx,
     const cudaStream_t stream);
 }//namespace cuda
-}//namespace effectivetransformer
+}//namespace nteffectivetransformer

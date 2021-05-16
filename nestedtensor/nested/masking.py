@@ -69,7 +69,7 @@ def to_tensor_mask(nt, mask_dim):
         res_scalar = torch.tensor(
             [nt[0].item()], dtype=nt.dtype, device=nt.device, requires_grad=nt.requires_grad)
         mask = torch.tensor(
-            True) if mask_dim == 0 or mask_dim == None else torch.tensor([True])
+            True) if mask_dim == 0 or mask_dim is None else torch.tensor([True])
         return res_scalar, mask
 
     max_size = torch.ops.nestedtensor.get_max_size(nt)

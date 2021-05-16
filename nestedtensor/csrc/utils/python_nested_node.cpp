@@ -58,8 +58,9 @@ void register_python_nested_node(py::module m) {
         auto fn = [](py::object a, py::object b) -> bool {
           // return a.equal(b);
           int rv = PyObject_RichCompareBool(a.ptr(), b.ptr(), Py_EQ);
-          if (rv == -1)
+          if (rv == -1) {
               throw py::error_already_set();
+          }
           return rv == 1;
         };
         return all<decltype(fn)>(std::move(fn), a, b);

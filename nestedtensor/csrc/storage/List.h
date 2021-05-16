@@ -51,10 +51,10 @@ struct ListStorage : public NestedTensorStorage {
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
     return _nested_size.opt_sizes();
   }
-  NestedTensorStorageKind kind() const {
+  NestedTensorStorageKind kind() const override {
     return NestedTensorStorageKind::list;
   }
-  bool is_contiguous() const {
+  bool is_contiguous() const override {
     return false;
   }
 

@@ -25,7 +25,7 @@ B wrap_nested_node(NestedNode<A> nested_node) {
 template <typename T, typename F>
 std::string NestedNode___str__(
     const NestedNode<T>& nested_node,
-    const std::string name,
+    const std::string& name,
     F payload_to_str,
     const std::string& tabs = "") {
   std::stringstream result;

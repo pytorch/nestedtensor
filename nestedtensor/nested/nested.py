@@ -5,6 +5,7 @@ from . import masking
 from . import creation
 
 import nestedtensor
+import warnings
 
 def _not_impl_raise(cond, msg):
     if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
@@ -36,7 +37,7 @@ def _nn_functional_linear(input, weight, bias=None):
     # we need to disable the addition of NTs and Ts below autograd, but we still need
     # it for linear (hence add lives above autograd). Also linear insists on using the
     # in-place version, for which we don't have an op above autograd, since the custom
-    # function wrapper autograd_map_nested_tensor doesn't suport it.
+    # function wrapper autograd_map_nested_tensor doesn't support it.
     # And that's why we're writing our own version of linear here.
     output = input.matmul(weight.t())
     if bias is not None:
@@ -201,7 +202,7 @@ class NestedTensorMeta(type):
                     *(impl_args[1:]), **impl_kwargs)
                 return _wrap_result(result)
             return _wrapped_fn
-        return self.__dict__[name]
+        return cls.__dict__[name]
 
 # -------------------------NestedTensor core---------------------------
 
@@ -406,7 +407,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def to(self, *args, **kwargs):
         raise NotImplementedError(
             "NestedTensor.to is currently not implemented.")
-        return nestedtensor.as_nested_tensor(new_tensors)
 
     def __str__(self):
         def _str(x, indent=0, tab="  "):
@@ -424,9 +424,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
             s += "\n" + indent * tab + "]"
             return s
         return "nested_tensor(" + _str(self) + ")"
-
-    def __repr__(self):
-        return str(self)
 
     # --- impl forward ends ---
 

@@ -1,7 +1,7 @@
 import torch
 import nestedtensor as nt
 import unittest
-from utils import TestCase
+from utils_test_case import TestCase
 
 
 class TestTensorMask(TestCase):
