@@ -767,27 +767,27 @@ class TestFunctional(TestCase):
             self.assertRaisesRegex(RuntimeError,
                                    "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
-            t0 = utils.gen_float_tensor(1, (8, 4))
-            t1 = utils.gen_float_tensor(2, (8, 4))
+            t0 = utils.gen_float_tensor(1, (2, 32))
+            t1 = utils.gen_float_tensor(2, (2, 32))
             ts = [t0, t1, t0, t1]
             nt = ntnt_nograd(ts, device=device)
-            nt2 = ntnt_nograd(ts, device=device)
-            layer_norm = torch.nn.LayerNorm(4).to(device)
-            # print("nt")
-            # print(nt)
-            print(layer_norm(nt).nested_size())
-            print(layer_norm(nt)[0][0])
+            layer_norm = torch.nn.LayerNorm(32).to(device)
+            nt_result = layer_norm(nt)
+            for i in range(len(ts)):
+                self.assertEqual(nt_result[i], layer_norm(ts[i].reshape(1, -1, 32).squeeze(0)))
+
             layer_norm = torch.nn.LayerNorm(16).to(device)
             tt = utils.gen_float_tensor(1, (3, 23, 16)).to(device)
             res = layer_norm(tt)
             nt = nt + 3
             res = res * 5
             res = layer_norm(tt + 2)
-            t0 = utils.gen_float_tensor(1, (3, 16))
-            t1 = utils.gen_float_tensor(2, (2, 16))
-            t2 = utils.gen_float_tensor(3, (3, 16))
+            t0 = utils.gen_float_tensor(1, (3, 16)).to(device)
+            t1 = utils.gen_float_tensor(2, (2, 16)).to(device)
+            t2 = utils.gen_float_tensor(3, (3, 16)).to(device)
             ts = [[t0, t1], [t2]]
             result = ntnt_nograd(ts, device=device)
+            layer_norm(ts[0][0])
             map(self.assertEqual, tuple(
                 map(lambda x: layer_norm(x), ts[0])), result[0])
             map(self.assertEqual, tuple(
@@ -807,7 +807,6 @@ class TestFunctional(TestCase):
             self.assertRaisesRegex(RuntimeError,
                                    "Currently only singleton tuples of integers supported for layer_norm.",
                                    lambda: layer_norm(nt))
-        _test(torch.device('cpu'))
         _test(torch.device('cpu'))
         _test(torch.device('cuda'))
 
