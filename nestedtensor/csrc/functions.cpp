@@ -1,4 +1,6 @@
+#ifdef WITH_CUDA
 #include <nestedtensor/csrc/cuda/layernorm.h>
+#endif
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
@@ -56,10 +58,12 @@ Tensor NestedTensor_layer_norm(
       ") of input.");
 
   if (weight && bias) {
+#ifdef WITH_CUDA
     if (weight->is_cuda() && bias->is_cuda()) {
       return torch::nested_tensor::cuda::NestedTensor_layer_norm(
           input, normalized_shape, weight, bias, eps, true);
     }
+#endif
     return map_nested_tensor(
         [normalized_shape, eps](const at::Tensor t, Tensor w, Tensor b) {
           return at::layer_norm(t, normalized_shape, w, b, eps, true);
