@@ -114,7 +114,9 @@ template void add_bias_act_kernelLauncher<float>(
 template <typename T>
 __global__ 
 void add_bias_input_layernorm(
-  T* out, const T* input, const T* bias, const T* gamma, 
+  T* out, const T* input,
+ //  const T* bias,
+  const T* gamma, 
   const T* beta, int m, int n)
 {
   int tid = threadIdx.x;
@@ -127,7 +129,7 @@ void add_bias_input_layernorm(
   float local_out = 0.0f;
   for(int i = tid; i < n; i += blockDim.x)
     local_out += (float)(out[blockIdx.x * n + i] 
-                    + input[blockIdx.x * n + i] + __ldg(&bias[i]));
+                    + input[blockIdx.x * n + i]); // + __ldg(&bias[i]));
 
   mean = blockReduceSum<float>(local_out);
   if(threadIdx.x == 0)
@@ -155,7 +157,8 @@ void add_bias_input_layernorm_kernelLauncher(
   dim3 grid(m);
   dim3 block(n);
   add_bias_input_layernorm<T><<<grid, block, 0, stream>>>(
-    out, input, bias, gamma, beta, m, n);
+    out, input, //bias,
+    gamma, beta, m, n);
 }
 
 template void add_bias_input_layernorm_kernelLauncher<float>(
