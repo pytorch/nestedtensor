@@ -767,41 +767,40 @@ class TestFunctional(TestCase):
             self.assertRaisesRegex(RuntimeError,
                                    "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
-            t0 = torch.randn(864, 256)
-            t1 = torch.randn(360, 256)
+            t0 = utils.gen_float_tensor(1, (8, 16))
+            t1 = utils.gen_float_tensor(2, (8, 16))
             ts = [t0, t1, t0, t1]
             nt = ntnt_nograd(ts, device=device)
             nt2 = ntnt_nograd(ts, device=device)
-            layer_norm = torch.nn.LayerNorm(256).to(device)
+            layer_norm = torch.nn.LayerNorm(16).to(device)
             print(layer_norm(nt).nested_size())
             print(layer_norm(nt)[0][0])
-            import sys; sys.exit(1)
-            tt = torch.randn(30, 43, 256, requires_grad=True)
+            tt = utils.gen_float_tensor(1, (3, 23, 16)).to(device)
             res = layer_norm(tt)
             nt = nt + 3
             res = res * 5
             res = layer_norm(tt + 2)
-            t0 = torch.randn(3, 256)
-            t1 = torch.randn(2, 256)
-            t2 = torch.randn(3, 256)
+            t0 = utils.gen_float_tensor(1, (3, 16))
+            t1 = utils.gen_float_tensor(2, (2, 16))
+            t2 = utils.gen_float_tensor(3, (3, 16))
             ts = [[t0, t1], [t2]]
-            result = ntnt_nograd(ts)
+            result = ntnt_nograd(ts, device=device)
             map(self.assertEqual, tuple(
                 map(lambda x: layer_norm(x), ts[0])), result[0])
             map(self.assertEqual, tuple(
                 map(lambda x: layer_norm(x), ts[1])), result[1])
 
-            layer_norm = torch.nn.LayerNorm(3)
+            layer_norm = torch.nn.LayerNorm(3).to(device)
             t0 = torch.randn(3, 3, 4)
             t1 = torch.randn(2, 3, 4)
             t2 = torch.randn(3, 3, 4)
             ts = [[t0, t1], [t2]]
-            nt = ntnt_nograd(ts)
+            nt = ntnt_nograd(ts, device=device)
             self.assertRaisesRegex(RuntimeError,
-                                   "Given normalized_shape=\[3\], expected input with shape \[\*, 3\], but got input of size\[3, 3, 4\]",
+                                   "Normalized shape \[3\] does not match the size of the last dimension \(4\) of input.",
                                    lambda: layer_norm(nt))
 
-            layer_norm = torch.nn.LayerNorm((3, 2, 4))
+            layer_norm = torch.nn.LayerNorm((3, 2, 4)).to(device)
             self.assertRaisesRegex(RuntimeError,
                                    "Currently only singleton tuples of integers supported for layer_norm.",
                                    lambda: layer_norm(nt))

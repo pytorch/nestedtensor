@@ -18,17 +18,6 @@ Tensor NestedTensor_layer_norm(
     const c10::optional<Tensor>& bias,
     double eps,
     bool /* cudnn_enable, deprecated */) {
-  TORCH_CHECK(
-      normalized_shape.size() == 1,
-      "Currently only singleton tuples of integers supported for layer_norm.");
-  auto input_opt_sizes = get_opt_sizes(input);
-  TORCH_CHECK(
-      input_opt_sizes[get_dim(input) - 1],
-      "Cannot normalize across irregular dimension ",
-      std::to_string(get_dim(input) - 1));
-  TORCH_CHECK(
-      *input_opt_sizes[get_dim(input) - 1] == normalized_shape[0],
-      "Normalized shape does not match last dimension of input.");
   if (weight && bias) {
     std::cout << "1" << std::endl;
     if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(*weight) &&

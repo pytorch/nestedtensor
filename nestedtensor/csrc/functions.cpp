@@ -49,9 +49,17 @@ Tensor NestedTensor_layer_norm(
       std::to_string(get_dim(input) - 1));
   TORCH_CHECK(
       *input_opt_sizes[get_dim(input) - 1] == normalized_shape[0],
-      "Normalized shape does not match last dimension of input.");
+      "Normalized shape [",
+      normalized_shape[0],
+      "] does not match the size of the last dimension (",
+      *input_opt_sizes[get_dim(input) - 1],
+      ") of input.");
 
   if (weight && bias) {
+    std::cout << "0010" << std::endl;
+    std::cout << "input.device(): " << input.device() << std::endl;
+    std::cout << "weight->device(): " << weight->device() << std::endl;
+    std::cout << "bias->device(): " << bias->device() << std::endl;
     if (input.device() == torch::kCUDA && weight->device() == torch::kCUDA &&
         bias->device() == torch::kCUDA) {
       return torch::nested_tensor::cuda::NestedTensor_layer_norm(

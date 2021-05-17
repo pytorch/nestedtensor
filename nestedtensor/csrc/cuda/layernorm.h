@@ -5,7 +5,7 @@
 namespace torch {
 namespace nested_tensor {
 namespace cuda {
-inline at::Tensor NestedTensor_layer_norm(
+at::Tensor NestedTensor_layer_norm(
     const at::Tensor& input,
     at::IntArrayRef normalized_shape,
     const c10::optional<at::Tensor>& weight,
