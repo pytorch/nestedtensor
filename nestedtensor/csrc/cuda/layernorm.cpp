@@ -1,6 +1,6 @@
-#include <nestedtensor/csrc/cuda/layernorm.h>
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/cuda/cuda_kernels.h>
+#include <nestedtensor/csrc/cuda/layernorm.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 
@@ -50,7 +50,8 @@ Tensor NestedTensor_layer_norm(
             (int)(input_buffer.numel() / size2),
             (int)(size2),
             defaultStream);
-        return wrap_buffer(std::move(output_buffer),
+        return wrap_buffer(
+            std::move(output_buffer),
             get_efficient_nested_size(input),
             get_efficient_nested_stride(input));
       }
@@ -71,6 +72,6 @@ Tensor NestedTensor_layer_norm(
       },
       input);
 }
-}
-}
-}
+} // namespace cuda
+} // namespace nested_tensor
+} // namespace torch
