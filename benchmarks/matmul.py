@@ -31,8 +31,6 @@ def gen_nt_matmul():
 
     def nt():
         torch.matmul(nt0, t1)
-        # import sys
-        # sys.exit(1)
     return nt
 
 
