@@ -38,6 +38,9 @@ struct NestedTensorStorage {
   virtual bool is_contiguous() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
+  virtual bool is_cuda() const {
+    TORCH_CHECK(false, "Not Implemented.");
+  }
 };
 } // namespace nested_tensor
 } // namespace torch

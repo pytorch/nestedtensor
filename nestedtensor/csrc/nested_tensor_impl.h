@@ -323,6 +323,15 @@ inline int64_t get_is_contiguous(
   return tensor.is_contiguous();
 }
 
+inline int64_t get_is_cuda(
+    const at::Tensor& tensor,
+    at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
+  if (is_nested_tensor_impl(tensor)) {
+    return get_nested_tensor_impl(tensor)->get_storage()->is_cuda();
+  }
+  return tensor.is_cuda();
+}
+
 inline int64_t get_nested_dim(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");

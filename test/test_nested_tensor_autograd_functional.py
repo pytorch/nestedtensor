@@ -406,67 +406,6 @@ class TestAutogradFunctional(TestCase):
         self.assertEqual(len((list(b0.named_parameters()))), 0)
         self.assertEqual(len((list(b1.named_parameters()))), 0)
 
-    @unittest.skip("Requires autograd support")
-    def test_layer_norm(self):
-        layer_norm = torch.nn.LayerNorm((0,))
-        t0 = torch.randn(3)
-        t1 = torch.randn(2)
-        t2 = torch.randn(3)
-        ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
-        self.assertRaisesRegex(RuntimeError,
-                               "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
-
-        d = torch.nn.Dropout(0.1)
-        t0 = torch.randn(864, 256)
-        t1 = torch.randn(360, 256)
-        ts = [t0, t1, t0, t1]
-        nt = ntnt(ts)
-        nt2 = ntnt_nograd(ts)
-        layer_norm = torch.nn.LayerNorm(256)
-        # print(list(layer_norm.named_parameters()))
-        # print(nt)
-        tt = torch.randn(30, 43, 256, requires_grad=True)
-        # print(nt.requires_grad)
-        # res = layer_norm(nt)
-        res = layer_norm(tt)
-        nt = nt + 3
-        # print(res.requires_grad)
-        res = res * 5
-        # print(res)
-        # print(res.requires_grad)
-        res.sum().backward()
-        res = layer_norm(tt + 2)
-        res.sum().backward()
-        # print(list(layer_norm.named_parameters()))
-        # XXX: Need to check weight and bias gradients
-        # import sys
-        # sys.exit(1)
-        t0 = torch.randn(3, 256)
-        t1 = torch.randn(2, 256)
-        t2 = torch.randn(3, 256)
-        ts = [[t0, t1], [t2]]
-        result = ntnt(ts)
-        map(self.assertEqual, tuple(
-            map(lambda x: layer_norm(x), ts[0])), result[0])
-        map(self.assertEqual, tuple(
-            map(lambda x: layer_norm(x), ts[1])), result[1])
-
-        layer_norm = torch.nn.LayerNorm(3)
-        t0 = torch.randn(3, 3, 4)
-        t1 = torch.randn(2, 3, 4)
-        t2 = torch.randn(3, 3, 4)
-        ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
-        self.assertRaisesRegex(RuntimeError,
-                               "Given normalized_shape=\[3\], expected input with shape \[\*, 3\], but got input of size\[3, 3, 4\]",
-                               lambda: layer_norm(nt))
-
-        layer_norm = torch.nn.LayerNorm((3, 2, 4))
-        self.assertRaisesRegex(RuntimeError,
-                               "Currently only singleton tuples of integers supported for layer_norm.",
-                               lambda: layer_norm(nt))
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,6 @@
+#ifdef WITH_CUDA
+#include <nestedtensor/csrc/cuda/layernorm.h>
+#endif
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
@@ -41,12 +44,26 @@ Tensor NestedTensor_layer_norm(
   TORCH_CHECK(
       normalized_shape.size() == 1,
       "Currently only singleton tuples of integers supported for layer_norm.");
-  auto input_data = get_nested_tensor_impl(input);
+  auto input_opt_sizes = get_opt_sizes(input);
   TORCH_CHECK(
-      input_data->opt_sizes()[get_dim(input) - 1],
+      input_opt_sizes[get_dim(input) - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(get_dim(input) - 1));
+  TORCH_CHECK(
+      *input_opt_sizes[get_dim(input) - 1] == normalized_shape[0],
+      "Normalized shape [",
+      normalized_shape[0],
+      "] does not match the size of the last dimension (",
+      *input_opt_sizes[get_dim(input) - 1],
+      ") of input.");
+
   if (weight && bias) {
+#ifdef WITH_CUDA
+    if (weight->is_cuda() && bias->is_cuda()) {
+      return torch::nested_tensor::cuda::NestedTensor_layer_norm(
+          input, normalized_shape, weight, bias, eps, true);
+    }
+#endif
     return map_nested_tensor(
         [normalized_shape, eps](const at::Tensor t, Tensor w, Tensor b) {
           return at::layer_norm(t, normalized_shape, w, b, eps, true);
