@@ -27,17 +27,15 @@ def gen_t_matmul():
 @torch.inference_mode()
 def gen_nt_matmul():
     nt0 = nestedtensor.nested_tensor(TENSORS0, device=torch.device('cuda'), dtype=torch.float)
-    print("nt0.dim()")
-    print(nt0.dim())
     t1 = torch.randn(OUTDIM, 512).cuda()
 
     def nt():
         torch.matmul(nt0, t1)
-        import sys
-        sys.exit(1)
+        # import sys
+        # sys.exit(1)
     return nt
 
 
 if __name__ == "__main__":
-    # print(utils.benchmark_fn(gen_t_matmul()))
+    print(utils.benchmark_fn(gen_t_matmul()))
     print(utils.benchmark_fn(gen_nt_matmul()))

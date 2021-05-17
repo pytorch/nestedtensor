@@ -10,38 +10,42 @@ namespace at {
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
-    std::cout << "opt matmul 0" << std::endl;
+    // std::cout << "opt matmul 0" << std::endl;
     if (get_is_contiguous(self) && get_is_contiguous(other)) {
-      std::cout << "opt matmul 1" << std::endl;
+      // std::cout << "opt matmul 1" << std::endl;
       if (get_dim(self) == 3 && get_dim(other) == 2) {
-        std::cout << "opt matmul 2" << std::endl;
+        // std::cout << "opt matmul 2" << std::endl;
         auto self_opt_sizes = get_opt_sizes(self);
-        std::cout << "opt matmul 3" << std::endl;
+        // std::cout << "opt matmul 3" << std::endl;
         if (self_opt_sizes[2]) {
-          std::cout << "opt matmul 4" << std::endl;
-          std::cout << "*self_opt_sizes[2]: " << *self_opt_sizes[2]
-                    << std::endl;
-          std::cout << "other.size(1): " << other.size(1) << std::endl;
+          // std::cout << "opt matmul 4" << std::endl;
+          // std::cout << "*self_opt_sizes[2]: " << *self_opt_sizes[2] << std::endl;
+          // std::cout << "other.size(1): " << other.size(1) << std::endl;
           if (*self_opt_sizes[2] == other.size(0)) {
-            std::cout << "opt matmul 5" << std::endl;
+            // std::cout << "opt matmul 5" << std::endl;
             Tensor self_buffer = get_buffer(self);
             Tensor result_buffer =
-                at::matmul(self_buffer.reshape({-1, other.size(0)}), other)
-                    .reshape({-1});
+                at::matmul(self_buffer.reshape({-1, other.size(0)}), other);
+            // std::cout << "result_buffer: " << result_buffer << std::endl;
+            result_buffer = result_buffer.reshape({-1});
             int64_t other_size_1 = other.size(1);
-            EfficientSizeNode new_nested_size = get_efficient_nested_size(self);
+            EfficientSizeNode new_nested_size =
+                get_efficient_nested_size(self).clone();
             EfficientSizeNode new_nested_stride =
-                get_efficient_nested_stride(self);
+                get_efficient_nested_stride(self).clone();
             apply_efficient_size(
                 [other_size_1](
                     int64_t* size_ptr,
                     int64_t size_size,
                     int64_t* stride_ptr,
                     int64_t stride_size) {
-                  size_ptr[2] = other_size_1;
-                  stride_ptr[2] = 1;
-                  stride_ptr[1] = other_size_1;
-                  stride_ptr[0] = size_ptr[1] * other_size_1;
+                  size_ptr[1] = other_size_1;
+                  stride_ptr[1] = 1;
+                  stride_ptr[0] = other_size_1;
+                  // std::cout << "size_ptr[0]: " << size_ptr[0] << std::endl;
+                  // std::cout << "size_ptr[1]: " << size_ptr[1] << std::endl;
+                  // std::cout << "stride_ptr[0]: " << stride_ptr[0] << std::endl;
+                  // std::cout << "stride_ptr[1]: " << stride_ptr[1] << std::endl;
                 },
                 new_nested_size,
                 new_nested_stride);

@@ -138,6 +138,9 @@ struct EfficientSizeNode {
   const std::vector<int64_t>& structure() const {
     return _structure;
   }
+  EfficientSizeNode clone() const {
+    return EfficientSizeNode(_height, _structure, _sizes.clone(), _opt_sizes);
+  }
 
  private:
   int64_t _height;
@@ -164,8 +167,8 @@ static inline void apply_efficient_size(
     F&& fn,
     EfficientSizeNode& size_node0,
     EfficientSizeNode& size_node1) {
-  at::Tensor sizes0 = size_node0.sizes().clone();
-  at::Tensor sizes1 = size_node1.sizes().clone();
+  at::Tensor sizes0 = size_node0.sizes();
+  at::Tensor sizes1 = size_node1.sizes();
   int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
   int64_t* sizes1_ptr = sizes1.data_ptr<int64_t>();
   const std::vector<int64_t>& structure0 = size_node0.structure();
