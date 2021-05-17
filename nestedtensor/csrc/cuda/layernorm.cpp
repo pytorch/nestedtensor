@@ -36,6 +36,7 @@ Tensor NestedTensor_layer_norm(
             input_buffer.data_ptr<float>(),
             weight->data_ptr<float>(),
             bias->data_ptr<float>(),
+            (float)(eps),
             output_buffer.data_ptr<float>(),
             valid_word_num,
             size2,

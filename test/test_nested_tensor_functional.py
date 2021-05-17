@@ -767,8 +767,8 @@ class TestFunctional(TestCase):
             self.assertRaisesRegex(RuntimeError,
                                    "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
-            t0 = utils.gen_float_tensor(1, (2, 32))
-            t1 = utils.gen_float_tensor(2, (2, 32))
+            t0 = utils.gen_float_tensor(1, (2, 32)).to(device)
+            t1 = utils.gen_float_tensor(2, (2, 32)).to(device)
             ts = [t0, t1, t0, t1]
             nt = ntnt_nograd(ts, device=device)
             layer_norm = torch.nn.LayerNorm(32).to(device)

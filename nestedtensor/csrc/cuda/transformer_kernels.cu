@@ -261,6 +261,7 @@ __global__
 void layer_norm_kernel_generalize(const T* __restrict input, 
                           const T* __restrict gamma, 
                           const T* __restrict beta, 
+                          T eps,
                           T* output, 
                           int m, int n)
 {
@@ -292,7 +293,7 @@ void layer_norm_kernel_generalize(const T* __restrict input,
   variance = blockReduceSum<float>(local_var_sum);
 
   if(threadIdx.x == 0)
-    s_variance = rsqrtf(variance / n + 1e-6);
+    s_variance = rsqrtf(variance / n + eps);
 
   __syncthreads();
 
@@ -308,6 +309,7 @@ void layer_norm(
   const T* input,
   const T* gamma,
   const T* beta,
+  T eps,
   T* output,
   int m, int n,
   cudaStream_t stream)
@@ -324,7 +326,7 @@ void layer_norm(
   block.x = block.x / (4 / sizeof(T)); // if using half, only need half of block.x
 
   /* should pay attention to the rsqrt precision*/
-  layer_norm_kernel_generalize<T><<<grid, block, 0, stream>>>(input, gamma, beta, output, m, n); // For gpt-3
+  layer_norm_kernel_generalize<T><<<grid, block, 0, stream>>>(input, gamma, beta, eps, output, m, n); // For gpt-3
 }
 
 template void add_bias_input_layernorm_kernelLauncher<float>(
@@ -352,6 +354,7 @@ template void layer_norm<float>(
   const float* input,
   const float* gamma,
   const float* beta,
+  float eps,
   float* output,
   int m, int n,
   cudaStream_t stream);

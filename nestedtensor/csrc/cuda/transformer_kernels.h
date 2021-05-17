@@ -19,6 +19,7 @@ Changes in comparison to original at commit 3bf1d43. Apply to both header and de
  - Removed add_bias_act.* code
  - Removed code related to float16 / half
  - Added FINAL_MASK define
+ - Added eps option to layer_norm
 
  */
 
@@ -49,6 +50,6 @@ void add_bias_input_kernelLauncher(T *output, const T *bias, const T *input, con
 
 template <typename T>
 void layer_norm(const T *from_tensor, const T *gamma,
-                const T *beta, T *norm_from_tensor_buf_, const int m, const int n, cudaStream_t stream);
+                const T *beta, T eps, T *norm_from_tensor_buf_, const int m, const int n, cudaStream_t stream);
 
 } // namespace fastertransformer
