@@ -1,5 +1,5 @@
 #include <c10/cuda/CUDAStream.h>
-#include <nestedtensor/csrc/cuda/cuda_kernels.h>
+#include <nestedtensor/csrc/cuda/transformer_kernels.h>
 #include <nestedtensor/csrc/cuda/layernorm.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
@@ -29,7 +29,7 @@ Tensor NestedTensor_layer_norm(
         at::Tensor input_buffer = get_buffer(input);
         int size2 = (int)(*input_opt_sizes[2]);
         int valid_word_num = (int)(input_buffer.numel() / size2);
-        at::Tensor bias = torch::zeros({valid_word_num}, input.options());
+        at::Tensor zero_bias = torch::zeros({valid_word_num}, input.options());
         std::cout << "size2: " << size2 << std::endl;
         std::cout << "valid_word_num: " << valid_word_num << std::endl;
         std::cout << "input_buffer.numel(): " << input_buffer.numel() << std::endl;
@@ -41,7 +41,7 @@ Tensor NestedTensor_layer_norm(
         fastertransformer::add_bias_input_layernorm_kernelLauncher(
             output_buffer.data_ptr<float>(),
             input_buffer.data_ptr<float>(),
-            bias.data_ptr<float>(),
+            zero_bias.data_ptr<float>(),
             weight->data_ptr<float>(),
             bias->data_ptr<float>(),
             valid_word_num,
