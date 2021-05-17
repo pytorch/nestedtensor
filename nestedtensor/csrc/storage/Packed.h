@@ -168,6 +168,9 @@ struct PackedStorage : public NestedTensorStorage {
     }
     return true;
   }
+  bool is_cuda() const override {
+    return _buffer.is_cuda();
+  }
 
  private:
   at::Tensor _buffer;

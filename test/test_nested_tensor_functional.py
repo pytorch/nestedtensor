@@ -767,14 +767,17 @@ class TestFunctional(TestCase):
             self.assertRaisesRegex(RuntimeError,
                                    "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
-            t0 = utils.gen_float_tensor(1, (8, 16))
-            t1 = utils.gen_float_tensor(2, (8, 16))
+            t0 = utils.gen_float_tensor(1, (8, 4))
+            t1 = utils.gen_float_tensor(2, (8, 4))
             ts = [t0, t1, t0, t1]
             nt = ntnt_nograd(ts, device=device)
             nt2 = ntnt_nograd(ts, device=device)
-            layer_norm = torch.nn.LayerNorm(16).to(device)
+            layer_norm = torch.nn.LayerNorm(4).to(device)
+            # print("nt")
+            # print(nt)
             print(layer_norm(nt).nested_size())
             print(layer_norm(nt)[0][0])
+            layer_norm = torch.nn.LayerNorm(16).to(device)
             tt = utils.gen_float_tensor(1, (3, 23, 16)).to(device)
             res = layer_norm(tt)
             nt = nt + 3
@@ -804,6 +807,7 @@ class TestFunctional(TestCase):
             self.assertRaisesRegex(RuntimeError,
                                    "Currently only singleton tuples of integers supported for layer_norm.",
                                    lambda: layer_norm(nt))
+        _test(torch.device('cpu'))
         _test(torch.device('cpu'))
         _test(torch.device('cuda'))
 
