@@ -6,6 +6,43 @@ If you are here because you ran into a runtime error due to a missing feature or
 
 If you are new to this project, we recommend you take a look at our [whirlwind introduction](https://colab.research.google.com/github/pytorch/nestedtensor/blob/master/tutorials/notebooks/basic.ipynb) to get started.
 
+## Autograd support
+
+Due to missing extensibility features of PyTorch nestedtensor currently lacks autograd support. We're actively working on this and recognize that it severely limits the applicability of the project. Please run nestedtensor operations within the [inference mode](https://github.com/ailzhang/rfcs/blob/rfc0011/RFC-0011-InferenceMode.md) context to prevent any adverse interactions with the autograd system.
+
+For example
+```
+sentences = [torch.randn(10, 5), torch.randn(5, 5), torch.randn(9, 5)]
+with torch.inference_mode():    
+    nt = nestedtensor.nested_tensor(sentences)
+    nt.sum(1)
+```
+
+## Binaries
+
+Due to the development velocity of PyTorch the nestedtensor project is built on top of and dependent on a fixed, recent PyTorch nightly.
+
+| Version | Python | CUDA | Wheels |
+| --- | ---- | ------ | ---- |
+| 0.1.1 | 3.6 | CPU-only | [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/nestedtensor-0.1.1_cpu-cp36-cp36m-linux_x86_64.whl) |
+| 0.1.1 | 3.7 | CPU-only | [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/nestedtensor-0.1.1_cpu-cp37-cp37m-linux_x86_64.whl) |
+| 0.1.1 | 3.8 | CPU-only | [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/nestedtensor-0.1.1_cpu-cp38-cp38m-linux_x86_64.whl) |
+| 0.1.1 | 3.6 | CUDA 10.2 | [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.6/nestedtensor-0.1.1_cu102-cp36-cp36m-linux_x86_64.whl) |
+| 0.1.1 | 3.7 | CUDA 10.2 | [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/nestedtensor-0.1.1_cu102-cp37-cp37m-linux_x86_64.whl) |
+| 0.1.1 | 3.8 | CUDA 10.2 | [nestedtensor](https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.8/nestedtensor-0.1.1_cu102-cp38-cp38m-linux_x86_64.whl) |
+
+When installing a binary please specify the corresponding torch nightly link archive to automatically pull in the correct PyTorch nightly.
+
+CPU
+```
+pip install https://download.pytorch.org/nestedtensor/whl/nightly/cpu/py3.7/nestedtensor-0.1.1_cpu-cp37-cp37m-linux_x86_64.whl -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+```
+
+CUDA 10.2
+```
+pip install https://download.pytorch.org/nestedtensor/whl/nightly/cu102/py3.7/nestedtensor-0.1.1_cu102-cp37-cp37m-linux_x86_64.whl -f https://download.pytorch.org/whl/nightly/cu102/torch_nightly.html
+```
+
 ## Why consider using this? / Dealing with dynamic shapes
 
 In general we batch data for efficiency, but usually batched kernels need, or greatly benefit from, regular, statically-shaped data.
