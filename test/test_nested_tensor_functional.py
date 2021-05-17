@@ -808,7 +808,8 @@ class TestFunctional(TestCase):
                                    "Currently only singleton tuples of integers supported for layer_norm.",
                                    lambda: layer_norm(nt))
         _test(torch.device('cpu'))
-        _test(torch.device('cuda'))
+        if torch.cuda.is_available():
+            _test(torch.device('cuda'))
 
     @torch.inference_mode()
     def test_decoder(self):
