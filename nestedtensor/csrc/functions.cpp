@@ -56,12 +56,7 @@ Tensor NestedTensor_layer_norm(
       ") of input.");
 
   if (weight && bias) {
-    std::cout << "0010" << std::endl;
-    std::cout << "input.device(): " << input.device() << std::endl;
-    std::cout << "weight->device(): " << weight->device() << std::endl;
-    std::cout << "bias->device(): " << bias->device() << std::endl;
     if (weight->is_cuda() && bias->is_cuda()) {
-      std::cout << "Launching specialized CUDA implementaiton" << std::endl;
       return torch::nested_tensor::cuda::NestedTensor_layer_norm(
           input, normalized_shape, weight, bias, eps, true);
     }

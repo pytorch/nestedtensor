@@ -19,10 +19,8 @@ Tensor NestedTensor_layer_norm(
     double eps,
     bool /* cudnn_enable, deprecated */) {
   if (weight && bias) {
-    std::cout << "1" << std::endl;
     if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(*weight) &&
         !is_nested_tensor_impl(*bias)) {
-      std::cout << "2" << std::endl;
       auto input_opt_sizes = get_opt_sizes(input);
       if (get_dim(input) == 3 && get_is_contiguous(input) &&
           (*input_opt_sizes[2]) % 32 == 0) {
