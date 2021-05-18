@@ -252,9 +252,10 @@ def get_binary_functions():
         'mul',
         'sub',
         'div',
-        # 'pow',
+        'pow',
         'atan2',
         'remainder',
+        'floor_divide',
     ]
 
 

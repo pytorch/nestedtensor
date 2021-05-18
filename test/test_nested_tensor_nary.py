@@ -117,11 +117,11 @@ def _gen_test_unary(func__, nested_dim, device):
 
 def _gen_test_binary(func, no_grad):
     def _test_binary(self):
-        a = utils.gen_float_tensor(1, (2, 3))#  * 0 + 1
-        b = utils.gen_float_tensor(2, (2, 3))#  * 0 + 2
-        c = utils.gen_float_tensor(3, (2, 3))#  * 0 + 3
-        d = utils.gen_float_tensor(4, (3, 2))#  * 0 + 4
-        s = utils.gen_float_tensor(5, (1,))# * 0 + 5
+        a = utils.gen_float_tensor(1, (2, 3))  # * 0 + 1
+        b = utils.gen_float_tensor(2, (2, 3))  # * 0 + 2
+        c = utils.gen_float_tensor(3, (2, 3))  # * 0 + 3
+        d = utils.gen_float_tensor(4, (3, 2))  # * 0 + 4
+        s = utils.gen_float_tensor(5, (1,))  # * 0 + 5
         torch_func = getattr(torch, func)
 
         a1 = ntnt([a, b])
@@ -165,6 +165,14 @@ def _gen_test_binary(func, no_grad):
             self.assertEqual(a3, torch_func(a1, a2))
             self.assertEqual(a3, getattr(a1, func)(a2))
 
+        if func in ["pow"]:
+            apow = utils.gen_float_tensor(1, (2, 3))
+            bpow = utils.gen_float_tensor(2, (2, 3))
+            a1pow = ntnt([apow, bpow])
+            a3pow = ntnt([torch_func(3.0, apow),
+                          torch_func(3.0, bpow)])
+            self.assertEqual(a3pow, torch_func(3.0, a1pow))
+
         a1 = ntnt([a, d])
         self.assertEqual(ntnt([torch_func(a, s), torch_func(d, s)]),
                          torch_func(a1, s))
@@ -203,7 +211,6 @@ def _gen_test_binary(func, no_grad):
         # TODO: Only sub doesn't adhere to this rule but with irregular behavior
         if func == "add":
             self.assertEqual(c + a + b, getattr(a1, func + "_")(a2))
-
 
     return _test_binary
 
