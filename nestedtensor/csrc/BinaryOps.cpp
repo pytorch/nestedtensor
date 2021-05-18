@@ -97,6 +97,48 @@ Tensor& NestedTensor_div_out(
   return out;
 }
 
+Tensor NestedTensor_floor_divide_Tensor(const Tensor& self_, const Tensor& other_) {
+  Tensor self;
+  Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
+  return map_nested_tensor(
+      [](Tensor s, Tensor o) { return at::floor_divide(s, o); }, self, other);
+}
+
+Tensor& NestedTensor_floor_divide__Tensor(Tensor& self_, const Tensor& other_) {
+  at::Tensor self;
+  at::Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
+  apply_nested_tensor(
+      [](Tensor& tensor, const Tensor other) {
+        tensor.floor_divide_(other);
+        return tensor;
+      },
+      self,
+      other);
+  return self_;
+}
+
+Tensor& NestedTensor_floor_divide_out(
+    const Tensor& self,
+    const Tensor& other,
+    Tensor& out) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(out),
+      "NT binary out variant requires NT as out argument.");
+  TORCH_CHECK(
+      is_nested_tensor_impl(out, self, other),
+      "binary_out doesn't support non-NT arguments.")
+  apply_nested_tensor(
+      [](Tensor& self, Tensor& other, Tensor& out) {
+        return at::floor_divide_out(self, other, out);
+      },
+      self,
+      other,
+      out);
+  return out;
+}
+
 Tensor NestedTensor_mul_Tensor(const Tensor& self_, const Tensor& other_) {
   Tensor self;
   Tensor other;
@@ -270,6 +312,15 @@ Tensor& NestedTensor_pow__Tensor(Tensor& self_, const Tensor& other_) {
   return self_;
 }
 
+Tensor NestedTensor_pow_Scalar(const Scalar& base, const Tensor& exponent_) {
+  Tensor exponent = exponent_;
+  return map_nested_tensor(
+      [&base](Tensor exponent) {
+        return at::pow(base, exponent);
+      },
+      exponent);
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "add.Tensor", NestedTensor_add_Tensor);
   nt_impl(m, "add_.Tensor", NestedTensor_add__Tensor);
@@ -277,6 +328,9 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "div.Tensor", NestedTensor_div_Tensor);
   nt_impl(m, "div_.Tensor", NestedTensor_div__Tensor);
   nt_impl(m, "div.out", NestedTensor_div_out);
+  nt_impl(m, "floor_divide", NestedTensor_floor_divide_Tensor);
+  nt_impl(m, "floor_divide_.Tensor", NestedTensor_floor_divide__Tensor);
+  nt_impl(m, "floor_divide.out", NestedTensor_floor_divide_out);
   nt_impl(m, "mul.Tensor", NestedTensor_mul_Tensor);
   nt_impl(m, "mul_.Tensor", NestedTensor_mul__Tensor);
   nt_impl(m, "mul.out", NestedTensor_mul_out);
@@ -289,6 +343,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "atan2", NestedTensor_atan2);
   nt_impl(m, "remainder.Tensor", NestedTensor_remainder_Tensor);
   nt_impl(m, "pow_.Tensor", NestedTensor_pow__Tensor);
+  nt_impl(m, "pow.Scalar", NestedTensor_pow_Scalar);
 }
 
 } // namespace at
