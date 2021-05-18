@@ -321,6 +321,14 @@ Tensor NestedTensor_pow_Scalar(const Scalar& base, const Tensor& exponent_) {
       exponent);
 }
 
+Tensor NestedTensor_pow_Tensor_Tensor(const Tensor& self_, const Tensor& other_) {
+  Tensor self;
+  Tensor other;
+  std::tie(self, other) = _expand_other_as(self_, other_);
+  return map_nested_tensor(
+      [](Tensor s, Tensor o) { return at::pow(s, o); }, self, other);
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "add.Tensor", NestedTensor_add_Tensor);
   nt_impl(m, "add_.Tensor", NestedTensor_add__Tensor);
@@ -344,6 +352,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "remainder.Tensor", NestedTensor_remainder_Tensor);
   nt_impl(m, "pow_.Tensor", NestedTensor_pow__Tensor);
   nt_impl(m, "pow.Scalar", NestedTensor_pow_Scalar);
+  nt_impl(m, "pow.Tensor_Tensor", NestedTensor_pow_Tensor_Tensor);
 }
 
 } // namespace at
