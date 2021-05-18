@@ -57,6 +57,10 @@ struct ListStorage : public NestedTensorStorage {
   bool is_contiguous() const override {
     return false;
   }
+  bool is_cuda() const override {
+    return get_first_leaf(_structure) ? get_first_leaf(_structure)->is_cuda()
+                                      : false;
+  }
 
  private:
   TensorNode _structure;
