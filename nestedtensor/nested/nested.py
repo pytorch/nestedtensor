@@ -21,15 +21,7 @@ def _nn_functional_linear(input, weight, bias=None):
     # in-place version, for which we don't have an op above autograd, since the custom
     # function wrapper autograd_map_nested_tensor doesn't support it.
     # And that's why we're writing our own version of linear here.
-    # print("input.nested_size()")
-    # print(NestedTensor(input).nested_size())
     output = input.matmul(weight.t())
-    # print("output.nested_size()")
-    # print(NestedTensor(output).nested_size())
-    # print("bias.size()")
-    # print(bias.size())
-    # print("weight.size()")
-    # print(weight.size())
     if bias is not None:
         output = output + bias
     return output
