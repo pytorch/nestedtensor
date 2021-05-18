@@ -9,21 +9,12 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
-  // std::cout << "0 get_dim(self): " << get_dim(self) << std::endl;
-  // std::cout << "0 get_dim(other): " << get_dim(other) << std::endl;
-  // std::cout << "0 is_nested_tensor_impl(self): " << is_nested_tensor_impl(self) << std::endl;
-  // std::cout << "0 is_nested_tensor_impl(other): " << is_nested_tensor_impl(other) << std::endl;
   if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
-    // std::cout << "0" << std::endl;
     if (get_is_contiguous(self)) {
-    // std::cout << "1" << std::endl;
       if (get_dim(self) == 3 && get_dim(other) == 2) {
-    // std::cout << "2" << std::endl;
         auto self_opt_sizes = get_opt_sizes(self);
         if (self_opt_sizes[2]) {
-    // std::cout << "3" << std::endl;
           if (*self_opt_sizes[2] == other.size(0)) {
-    // std::cout << "4" << std::endl;
             Tensor self_buffer = get_buffer(self);
             Tensor result_buffer =
                 at::matmul(self_buffer.reshape({-1, other.size(0)}), other);
