@@ -9,8 +9,11 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return map_nested_tensor(
-      [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
+  if (train) {
+    return map_nested_tensor(
+        [&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
+  }
+  return input;
 }
 
 Tensor NestedTensor_upsample_bilinear2d(
@@ -100,8 +103,7 @@ Tensor NestedTensor_batch_norm(
     AT_ERROR("running_var must be defined in evaluation mode");
   }
   if (weight) {
-    check_dims_match_num_input_features(
-        "weight", n_input, weight->numel());
+    check_dims_match_num_input_features("weight", n_input, weight->numel());
   }
   if (bias) {
     check_dims_match_num_input_features("bias", n_input, bias->numel());

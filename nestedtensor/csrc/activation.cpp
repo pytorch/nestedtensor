@@ -9,6 +9,12 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_gelu(const Tensor& self) {
+  if (is_nested_tensor_impl(self) && get_is_contiguous(self)) {
+    return wrap_buffer(
+        at::gelu(get_buffer(self)),
+        get_efficient_nested_size(self),
+        get_efficient_nested_stride(self));
+  }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::gelu(tensor); }, self);
 }
