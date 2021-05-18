@@ -13,24 +13,6 @@ def _not_impl_raise(cond, msg):
             msg + " is not supported yet. Please file an issue on https://github.com/pytorch/nestedtensor")
 
 
-def _new_torch_stack(tensors, dim=0, out=None):
-    result = torch.ops.nestedtensor.stack(list(
-        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
-    result = _wrap_result(result)
-    if out is None:
-        return result
-    out.copy_(result)
-
-
-def _new_torch_cat(tensors, dim=0, out=None):
-    result = torch.ops.nestedtensor.cat(list(
-        t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
-    result = _wrap_result(result)
-    if out is None:
-        return result
-    out.copy_(result)
-
-
 def _nn_functional_linear(input, weight, bias=None):
     # TODO: This is done because autograd/engine.cpp has an is_expandable_to check
     # that doesn't support NT's extension of the .sizes() function. Therefore
