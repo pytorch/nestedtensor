@@ -11,6 +11,22 @@ Tensor NestedTensor_add_Tensor(
   Tensor self;
   Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
+  if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other) &&
+      get_is_contiguous(self)) {
+    int64_t self_dim = get_dim(self);
+    auto self_opt_sizes = get_opt_sizes(self);
+    if (self_opt_sizes[self_dim - 1] && other.dim() == 1 &&
+        (*(self_opt_sizes[self_dim - 1])) == other.size(0)) {
+      Tensor self_buffer = get_buffer(self);
+      Tensor result_buffer =
+          at::add(self_buffer.reshape({-1, other.size(0)}), other)
+              .reshape({-1});
+      return wrap_buffer(
+          std::move(result_buffer),
+          get_efficient_nested_size(self),
+          get_efficient_nested_stride(self));
+    }
+  }
   return map_nested_tensor(
       [&alpha](Tensor s, Tensor o) { return at::add(s, o, alpha); },
       self,
@@ -97,7 +113,9 @@ Tensor& NestedTensor_div_out(
   return out;
 }
 
-Tensor NestedTensor_floor_divide_Tensor(const Tensor& self_, const Tensor& other_) {
+Tensor NestedTensor_floor_divide_Tensor(
+    const Tensor& self_,
+    const Tensor& other_) {
   Tensor self;
   Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
@@ -315,13 +333,12 @@ Tensor& NestedTensor_pow__Tensor(Tensor& self_, const Tensor& other_) {
 Tensor NestedTensor_pow_Scalar(const Scalar& base, const Tensor& exponent_) {
   Tensor exponent = exponent_;
   return map_nested_tensor(
-      [&base](Tensor exponent) {
-        return at::pow(base, exponent);
-      },
-      exponent);
+      [&base](Tensor exponent) { return at::pow(base, exponent); }, exponent);
 }
 
-Tensor NestedTensor_pow_Tensor_Tensor(const Tensor& self_, const Tensor& other_) {
+Tensor NestedTensor_pow_Tensor_Tensor(
+    const Tensor& self_,
+    const Tensor& other_) {
   Tensor self;
   Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);

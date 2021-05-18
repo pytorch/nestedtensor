@@ -10,7 +10,7 @@ namespace at {
 
 Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
-    if (get_is_contiguous(self) && get_is_contiguous(other)) {
+    if (get_is_contiguous(self)) {
       if (get_dim(self) == 3 && get_dim(other) == 2) {
         auto self_opt_sizes = get_opt_sizes(self);
         if (self_opt_sizes[2]) {
