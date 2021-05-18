@@ -17,7 +17,9 @@ Tensor NestedTensor_embedding(
     int64_t padding_idx,
     bool scale_grad_by_freq,
     bool sparse) {
+  // std::cout << "00" << std::endl;
   if (is_nested_tensor_impl(weight)) {
+    // std::cout << "01" << std::endl;
     // TODO: Needs test coverage
     return map_nested_tensor(
         [&](at::Tensor w, at::Tensor i) {
@@ -26,6 +28,39 @@ Tensor NestedTensor_embedding(
         weight,
         indices);
   }
+  if (is_nested_tensor_impl(indices) && get_is_contiguous(indices)) {
+    // std::cout << "010" << std::endl;
+    Tensor indices_buffer = get_buffer(indices);
+    // std::cout << "indices_buffer: " << indices_buffer << std::endl;
+    Tensor result_buffer = at::embedding(
+        weight, indices_buffer, padding_idx, scale_grad_by_freq, sparse);
+    // std::cout << "result_buffer: " << result_buffer << std::endl;
+    EfficientSizeNode new_nested_size = get_efficient_nested_size(indices);
+    EfficientSizeNode new_nested_stride = get_efficient_nested_stride(indices);
+    auto new_nested_size_sizes = new_nested_size.sizes();
+    auto new_nested_stride_sizes = new_nested_stride.sizes();
+    auto tmp = torch::empty({new_nested_size_sizes.size(0)}, new_nested_size_sizes.options());
+    tmp.fill_(weight.size(1));
+    tmp = tmp.reshape({new_nested_size_sizes.size(0), 1});
+    new_nested_size_sizes = at::cat({new_nested_size_sizes, tmp}, 1);
+    new_nested_stride_sizes = at::cat({tmp, new_nested_stride_sizes}, 1);
+    // std::cout << "tmp: " << tmp << std::endl;
+    // std::cout << "new_nested_size_sizes: " << new_nested_size_sizes
+    //           << std::endl;
+    // std::cout << "new_nested_stride_sizes: " << new_nested_stride_sizes
+    //           << std::endl;
+    return wrap_buffer(
+        std::move(result_buffer),
+        EfficientSizeNode(
+            new_nested_size.height(),
+            new_nested_size.structure(),
+            new_nested_size_sizes),
+        EfficientSizeNode(
+            new_nested_stride.height(),
+            new_nested_stride.structure(),
+            new_nested_stride_sizes));
+  }
+  // std::cout << "02" << std::endl;
   return map_nested_tensor(
       [&](at::Tensor i) {
         return at::embedding(
