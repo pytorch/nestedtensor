@@ -91,8 +91,7 @@ struct EfficientSizeNode {
         _sizes(impl::stack_sizes(size_node)),
         _opt_sizes(impl::construct_efficient_size(
             impl::efficient_deserialize(_structure, _height),
-            _sizes)) {
-  }
+            _sizes)) {}
 
   explicit EfficientSizeNode(
       int64_t height,
@@ -145,8 +144,24 @@ struct EfficientSizeNode {
   const std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
+inline bool efficient_size_structure_matches(
+    EfficientSizeNode& size_node0,
+    EfficientSizeNode& size_node1) {
+  const std::vector<int64_t>& structure0 = size_node0.structure();
+  const std::vector<int64_t>& structure1 = size_node1.structure();
+  if (structure0.size() != structure1.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < structure0.size(); i++) {
+    if (structure0[i] != structure1[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 template <class F>
-static inline EfficientSizeNode map_efficient_size(
+inline EfficientSizeNode map_efficient_size(
     F&& fn,
     const EfficientSizeNode& size_node) {
   at::Tensor sizes = size_node.sizes().clone();
@@ -159,7 +174,7 @@ static inline EfficientSizeNode map_efficient_size(
 }
 
 template <class F>
-static inline void apply_efficient_size(
+inline void apply_efficient_size(
     F&& fn,
     EfficientSizeNode& size_node0,
     EfficientSizeNode& size_node1) {
