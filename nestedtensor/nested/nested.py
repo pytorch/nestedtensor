@@ -7,6 +7,7 @@ from . import creation
 import nestedtensor
 import warnings
 
+
 def _not_impl_raise(cond, msg):
     if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
         raise NotImplementedError(
@@ -498,3 +499,6 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def to_padded_tensor(self, padding=-1):
         padding = float(padding)
         return torch.ops.nestedtensor.to_padded_tensor(self, padding)
+
+    def to_sparse_csr_tensor(self):
+        return torch.ops.nestedtensor.to_sparse_csr(self._impl)

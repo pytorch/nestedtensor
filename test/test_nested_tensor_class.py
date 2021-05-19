@@ -7,7 +7,10 @@ import utils
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(x, requires_grad=False, device=device)
+
+
+def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -706,12 +709,24 @@ class TestNestedTensor(TestCase):
             [nt0, nt1], dim=2),
             ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
-    
+    def test_to_sparse_csr(self):
+        a = torch.arange(3) + 1
+        b = torch.arange(4) + 1
+        c = torch.arange(2) + 1
+        nt = ntnt_nograd([a, b, c])
+        data = nt.to_padded_tensor(padding=0)
+        st = nt.to_sparse_csr_tensor()
+        self.assertEqual(data, nt.to_sparse_csr_tensor().to_dense())
+        nt = ntnt_nograd([a.unsqueeze(1), b.unsqueeze(1)])
+        self.assertRaisesRegex(RuntimeError,
+                               "Given tensor must be of dimension 2, got dimension 3",
+                               lambda: nt.to_sparse_csr_tensor())
+
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_to_paded_tensor_cuda(self):
         import random
         random.seed(1010)
-        tensors=[torch.randn(random.randint(20, 40), 13) for _ in range(3)]
+        tensors = [torch.randn(random.randint(20, 40), 13) for _ in range(3)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
         data0 = nt.to_padded_tensor(padding=0)
         data1, _ = nt.to_tensor_mask()
