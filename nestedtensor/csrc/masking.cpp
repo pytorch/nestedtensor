@@ -1,5 +1,9 @@
 #include <nestedtensor/csrc/masking.h>
 #include <chrono>
+#ifdef WITH_CUDA
+#include <c10/cuda/CUDAStream.h>
+#include <nestedtensor/csrc/cuda/padding.h>
+#endif
 
 using namespace torch::nested_tensor;
 using namespace at;
@@ -77,6 +81,46 @@ std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
 
 std::vector<int64_t> get_max_size(Tensor nt) {
   return _get_max_size(get_nested_size(nt));
+}
+
+Tensor NestedTensor_to_padded_tensor(Tensor nt, double padding) {
+#ifdef WITH_CUDA
+  if (get_dim(nt) == 2) {
+    auto nt_opt_size = get_opt_sizes(nt);
+    Tensor nt_buffer = get_buffer(nt);
+    // std::cout << "nt_buffer: " << nt_buffer << std::endl;
+    // std::cout << "nt_buffer.device(): " << nt_buffer.device() << std::endl;
+    Tensor nt_sizes_ =
+        get_efficient_nested_size(nt).sizes().to(torch::kInt32).reshape({-1});
+    // std::cout << "nt_sizes__: " << nt_sizes__ << std::endl;
+    // std::cout << "nt_sizes_: " << nt_sizes_ << std::endl;
+    int max_size_1 = nt_sizes_.max().item<int>();
+    Tensor nt_sizes = at::native::cumsum(nt_sizes_, 0).to(torch::kInt32);
+    nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes});
+    // std::cout << "nt_sizes: " << nt_sizes << std::endl;
+    Tensor output =
+        torch::zeros({*nt_opt_size[0], max_size_1}, nt_buffer.options());
+    output.fill_(padding);
+    // std::cout << "output0: " << output << std::endl;
+    // std::cout << "output0.device(): : " << output.device() << std::endl;
+    // std::cout << "*nt_opt_size[0]: " << *nt_opt_size[0] << std::endl;
+    // std::cout << "max_size_1: " << max_size_1 << std::endl;
+    nt_sizes = nt_sizes.to(torch::kCUDA);
+    // std::cout << "nt_sizes.device(): " << nt_sizes.device() << std::endl;
+    at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+    nested_tensor::cuda::add_padding_kernelLauncher(
+        nt_buffer.data_ptr<float>(),
+        output.data_ptr<float>(),
+        nt_sizes.data_ptr<int>(),
+        *nt_opt_size[0],
+        max_size_1,
+        defaultStream);
+    return output;
+    // std::cout << "output1: " << output << std::endl;
+
+    // std::cout << "JDJDDJ" << std::endl;
+  }
+#endif
 }
 
 std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
@@ -219,4 +263,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
 
   m.def("get_max_size(Tensor nt) -> int[]");
   m.impl("get_max_size", NestedTensorKey, TORCH_FN(get_max_size));
+
+  m.def("to_padded_tensor(Tensor nt, float padding) -> Tensor");
+  m.impl("to_padded_tensor", NestedTensorKey, NestedTensor_to_padded_tensor);
 }

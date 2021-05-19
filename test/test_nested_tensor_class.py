@@ -7,7 +7,7 @@ import utils
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
+def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(x, requires_grad=False, device=device)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -705,6 +705,25 @@ class TestNestedTensor(TestCase):
         self.assertEqual(torch.stack(
             [nt0, nt1], dim=2),
             ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
+
+    def test_to_paded_tensor_cuda(self):
+        a = torch.randn(3)
+        b = torch.randn(4)
+        import random
+        random.seed(1010)
+        tensors=[torch.randn(random.randint(10, 20)) for _ in range(10)]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        # def fn0():
+        #     data0 = nt.to_padded_tensor(padding=0)
+        # def fn1():
+        #     data1, _ = nt.to_tensor_mask()
+        # print(utils.cuda_benchmark_torch_function(100, fn0))
+        # print(utils.cuda_benchmark_torch_function(100, fn1))
+        data0 = nt.to_padded_tensor(padding=0)
+        data1, _ = nt.to_tensor_mask()
+        self.assertEqual(data0, data1)
+        # print("data")
+        # print(data)
 
 
 class TestContiguous(TestCase):
