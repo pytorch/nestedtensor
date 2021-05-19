@@ -207,7 +207,8 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
     nt = NestedTensor_contiguous(nt);
     Tensor nt_buffer = get_buffer(nt);
     nt_buffer = nt_buffer.reshape({-1});
-    Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true) : torch::tensor({true});
+    Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true)
+                                                     : torch::tensor({true});
     return std::make_tuple(nt_buffer, result_mask);
   }
 
@@ -216,6 +217,15 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
   at::Tensor res_mask;
   std::tie(res_tensor, res_mask) = pad_nt(nt, max_size);
   return merge_tensor_mask(res_tensor, res_mask, mask_dim);
+}
+
+Tensor to_padded_tensor(Tensor nt, double padding) {
+  at::Tensor tensor;
+  at::Tensor mask;
+  std::tie(tensor, mask) = to_tensor_mask(nt, get_dim(nt));
+  mask = mask.to(torch::kBool);
+  tensor.masked_fill_(at::logical_not(mask), padding);
+  return tensor;
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
@@ -235,4 +245,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
 
   m.def("to_tensor_mask(Tensor nt, int? mask_dim) -> (Tensor, Tensor)");
   m.impl("to_tensor_mask", NestedTensorKey, to_tensor_mask);
+
+  m.def("to_padded_tensor(Tensor nt, float padding) -> Tensor");
+  m.impl("to_padded_tensor", NestedTensorKey, to_padded_tensor);
 }

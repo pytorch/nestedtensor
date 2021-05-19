@@ -495,9 +495,11 @@ class NestedTensor(metaclass=NestedTensorMeta):
         # the data tensor, an error is thrown.
         return torch.ops.nestedtensor.to_tensor_mask(self, mask_dim)
 
-    def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = torch.ops.nestedtensor.to_tensor_mask(self, mask_dim)
-        while mask.dim() < tensor.dim():
-            mask = mask.unsqueeze(-1)
-        mask = mask.to(torch.bool)
-        return tensor.masked_fill(~mask, padding)
+    def to_padded_tensor(self, padding=-1):
+        padding = float(padding)
+        return torch.ops.nestedtensor.to_padded_tensor(self, padding)
+        # tensor, mask = torch.ops.nestedtensor.to_tensor_mask(self, self.dim())
+        # while mask.dim() < tensor.dim():
+        #     mask = mask.unsqueeze(-1)
+        # mask = mask.to(torch.bool)
+        # return tensor.masked_fill(~mask, padding)
