@@ -1,5 +1,9 @@
 #include <nestedtensor/csrc/masking.h>
 #include <chrono>
+#ifdef WITH_CUDA
+#include <c10/cuda/CUDAStream.h>
+#include <nestedtensor/csrc/cuda/padding.h>
+#endif
 
 using namespace torch::nested_tensor;
 using namespace at;
@@ -220,6 +224,36 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
 }
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
+#ifdef WITH_CUDA
+  if (get_dim(nt) == 3) {
+    auto nt_opt_size = get_opt_sizes(nt);
+    if (nt_opt_size[2]) {
+      Tensor nt_buffer = get_buffer(nt);
+      Tensor nt_sizes_ =
+          get_efficient_nested_size(nt).sizes().to(torch::kInt32);
+      TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor must be of nested_dim 2.")
+      Tensor nt_sizes = at::native::narrow(nt_sizes_, 1, 0, 1);
+      int max_size_1 = nt_sizes.max().item<int>();
+      nt_sizes =
+          at::native::cumsum(nt_sizes, 0).to(torch::kInt32).reshape({-1});
+      nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes});
+      Tensor output = torch::empty(
+          {*nt_opt_size[0], max_size_1, *nt_opt_size[2]}, nt_buffer.options());
+      output.fill_(padding);
+      nt_sizes = nt_sizes.to(torch::kCUDA);
+      at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+      nested_tensor::cuda::add_padding_kernelLauncher(
+          nt_buffer.data_ptr<float>(),
+          output.data_ptr<float>(),
+          nt_sizes.data_ptr<int>(),
+          *nt_opt_size[0],
+          output.stride(0),
+          *nt_opt_size[2],
+          defaultStream);
+      return output;
+    }
+  }
+#endif
   at::Tensor tensor;
   at::Tensor mask;
   std::tie(tensor, mask) = to_tensor_mask(nt, get_dim(nt));

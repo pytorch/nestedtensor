@@ -550,3 +550,15 @@ def get_functionals():
         "upsample_nearest",
     ]
     return funcs
+
+def cuda_benchmark_torch_function(iters, f, *args):
+    f(*args)
+    torch.cuda.synchronize()
+    start_event = torch.cuda.Event(enable_timing=True)
+    end_event = torch.cuda.Event(enable_timing=True)
+    start_event.record()
+    for _ in range(iters):
+        f(*args)
+    end_event.record()
+    torch.cuda.synchronize()
+    return (start_event.elapsed_time(end_event) * 1.0e-3) / iters
