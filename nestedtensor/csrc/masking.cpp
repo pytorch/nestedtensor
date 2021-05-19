@@ -206,7 +206,7 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
     nt = NestedTensor_contiguous(nt);
     Tensor nt_buffer = get_buffer(nt);
-    nt_buffer = nt_buffer.reshape({-1})[0];
+    nt_buffer = nt_buffer.reshape({-1});
     Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true) : torch::tensor({true});
     return std::make_tuple(nt_buffer, result_mask);
   }

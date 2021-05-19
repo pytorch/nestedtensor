@@ -53,13 +53,6 @@ class TestTensorMask(TestCase):
             torch.tensor(1, dtype=torch.uint8)
         ])
         tensor, mask = a.to_tensor_mask()
-        print("")
-        print("tensor")
-        print(tensor)
-        print(tensor.dim())
-        print("mask")
-        print(mask)
-        print(mask.dim())
         TestCase.assertEqual(
             self, tensor, torch.tensor([1], dtype=torch.uint8))
         TestCase.assertEqual(self, mask, torch.tensor(True))
@@ -76,7 +69,7 @@ class TestTensorMask(TestCase):
 
         self.assertRaisesRegex(
             RuntimeError,
-            "Mask dimension is bigger than nested dimension of a nested tensor.",
+            "Requested mask dimension 2 is bigger than dimension 1 of given NestedTensor.",
             lambda: a.to_tensor_mask(mask_dim=2))
 
         a = nt.nested_tensor([
@@ -106,7 +99,9 @@ class TestTensorMask(TestCase):
         TestCase.assertEqual(self, mask, torch.tensor([[True]]))
 
         self.assertRaisesRegex(
-            RuntimeError, "Mask dimension is bigger than nested dimension of a nested tensor.", lambda: a.to_tensor_mask(mask_dim=3))
+            RuntimeError,
+            "Requested mask dimension 3 is bigger than dimension 2 of given NestedTensor.",
+            lambda: a.to_tensor_mask(mask_dim=3))
 
     # TODO once .to_list() bug fixed
     def test_multi_scalar(self):
@@ -218,7 +213,9 @@ class TestTensorMask(TestCase):
         TestCase.assertEqual(self, mask, torch.tensor([[True]]))
 
         self.assertRaisesRegex(
-            RuntimeError, "Mask dimension is bigger than nested dimension of a nested tensor.", lambda: a.to_tensor_mask(mask_dim=3))
+            RuntimeError,
+            "Requested mask dimension 3 is bigger than dimension 2 of given NestedTensor.",
+            lambda: a.to_tensor_mask(mask_dim=3))
 
         # Extra dim
         a = nt.nested_tensor([
@@ -248,7 +245,9 @@ class TestTensorMask(TestCase):
         TestCase.assertEqual(self, mask, torch.tensor([[[True]]]))
 
         self.assertRaisesRegex(
-            RuntimeError, "Mask dimension is bigger than nested dimension of a nested tensor.", lambda: a.to_tensor_mask(mask_dim=4))
+            RuntimeError,
+            "Requested mask dimension 4 is bigger than dimension 3 of given NestedTensor.",
+            lambda: a.to_tensor_mask(mask_dim=4))
 
     def test_multi_tensor(self):
         a = nt.nested_tensor([
