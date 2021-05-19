@@ -153,6 +153,17 @@ inline bool efficient_size_structure_matches(
   return true;
 }
 
+inline bool efficient_size_matches(
+    EfficientSizeNode& size_node0,
+    EfficientSizeNode& size_node1) {
+  if (!efficient_size_structure_matches(size_node0, size_node1)) {
+    return false;
+  }
+  at::Tensor sizes0 = size_node0.sizes();
+  at::Tensor sizes1 = size_node1.sizes();
+  return at::equal(sizes0, sizes1);
+}
+
 template <class F>
 inline EfficientSizeNode map_efficient_size(
     F&& fn,
