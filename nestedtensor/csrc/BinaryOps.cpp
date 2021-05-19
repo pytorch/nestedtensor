@@ -11,8 +11,30 @@ Tensor NestedTensor_add_Tensor(
   Tensor self;
   Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other) &&
-      get_is_contiguous(self)) {
+  if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
+    EfficientSizeNode self_efficient_nested_size =
+        get_efficient_nested_size(self);
+    EfficientSizeNode other_efficient_nested_size =
+        get_efficient_nested_size(other);
+    if (efficient_size_matches(
+            self_efficient_nested_size, other_efficient_nested_size)) {
+      if (!get_is_contiguous(self)) {
+        self = NestedTensor_contiguous(self);
+      }
+      if (!get_is_contiguous(other)) {
+        other = NestedTensor_contiguous(other);
+      }
+      return wrap_buffer(
+          at::add(
+              get_buffer(self).reshape({-1}), get_buffer(other).reshape({-1})),
+          self_efficient_nested_size,
+          get_efficient_nested_stride(self));
+    }
+  }
+  if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
+    if (!get_is_contiguous(self)) {
+      self = NestedTensor_contiguous(self);
+    }
     int64_t self_dim = get_dim(self);
     auto self_opt_sizes = get_opt_sizes(self);
     if (self_opt_sizes[self_dim - 1] && other.dim() == 1 &&

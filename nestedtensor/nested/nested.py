@@ -488,11 +488,13 @@ class NestedTensor(metaclass=NestedTensorMeta):
         element. These two tensors can be used to contruct a NestedTensor, however,
         nested_dim will be lost in this process."""
 
-        return masking.to_tensor_mask(self, mask_dim)
+        # Return a tuple of a tensor and a mask that represent the given tensor list
+        # Returned tensor is always the same no matter what mask_dim was passed.
+        # If mask_dim was not passed, a mask with the smallest dimensionality would be returned.
+        # if passed mask_dim is lower than the minimal dimensionality of the mask that can represent
+        # the data tensor, an error is thrown.
+        return torch.ops.nestedtensor.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, padding=-1):
-        if (self.dim() == 3):
-            return torch.ops.nestedtensor.to_padded_tensor(self._impl, padding)
-        tensor, mask = masking.to_tensor_mask(self, self.dim())
-        mask = mask.to(torch.bool)
-        return tensor.masked_fill(~mask, padding)
+        padding = float(padding)
+        return torch.ops.nestedtensor.to_padded_tensor(self, padding)
