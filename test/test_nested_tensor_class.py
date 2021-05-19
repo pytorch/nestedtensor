@@ -706,6 +706,15 @@ class TestNestedTensor(TestCase):
             [nt0, nt1], dim=2),
             ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
+    def test_to_sparse_csr(self):
+        a = torch.arange(3) + 1
+        b = torch.arange(4) + 1
+        c = torch.arange(2) + 1
+        nt = ntnt_nograd([a, b, c])
+        print(nt)
+        print(nt.to_sparse_csr_tensor())
+        print(nt.to_sparse_csr_tensor().to_dense())
+
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
