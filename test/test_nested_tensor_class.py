@@ -712,6 +712,8 @@ class TestNestedTensor(TestCase):
         c = torch.arange(2) + 1
         nt = ntnt_nograd([a, b, c])
         data = nt.to_padded_tensor(padding=0)
+        st = nt.to_sparse_csr_tensor()
+        print(st.to_dense())
         self.assertEqual(data, nt.to_sparse_csr_tensor().to_dense())
 
 

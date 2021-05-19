@@ -179,17 +179,28 @@ TORCH_LIBRARY(nestedtensor, m) {
   m.impl("get_dim", NestedTensorKey, [](Tensor self) { return get_dim(self); });
 
   m.def("get_numel(Tensor self) -> int");
-  m.impl("get_numel", NestedTensorKey, [](Tensor self) { return get_numel(self); });
+  m.impl("get_numel", NestedTensorKey, [](Tensor self) {
+    return get_numel(self);
+  });
 
   m.def("get_is_contiguous(Tensor self) -> int");
-  m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) { return get_is_contiguous(self); });
+  m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) {
+    return get_is_contiguous(self);
+  });
 
   m.def("make_contiguous(Tensor self) -> Tensor");
-  m.impl("make_contiguous", NestedTensorKey, [](Tensor self) { return NestedTensor_contiguous(self); });
+  m.impl("make_contiguous", NestedTensorKey, [](Tensor self) {
+    return NestedTensor_contiguous(self);
+  });
 
   m.def("to_tensor_list(Tensor tensor) -> Tensor[]");
   m.impl("to_tensor_list", NestedTensorKey, [](Tensor tensor) {
     return flatten_nested_tensor(tensor);
+  });
+
+  m.def("to_sparse_csr(Tensor tensor) -> Tensor");
+  m.impl("to_sparse_csr", NestedTensorKey, [](Tensor tensor) {
+    return NestedTensor_to_sparse_csr(tensor);
   });
 }
 

@@ -513,8 +513,4 @@ class NestedTensor(metaclass=NestedTensorMeta):
         values = torch.cat(tensor_list)
         data = self.to_padded_tensor(padding=0)
         size = (self.size(0), max([t.size(0) for t in tensor_list]))
-        return torch.sparse_csr_tensor(
-                crow_indices,
-                col_indices,
-                values,
-                size)
+        return torch.ops.nestedtensor.to_sparse_csr(self._impl)
