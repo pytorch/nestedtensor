@@ -706,6 +706,8 @@ class TestNestedTensor(TestCase):
             [nt0, nt1], dim=2),
             ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
+    
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_to_paded_tensor_cuda(self):
         import random
         random.seed(1010)
