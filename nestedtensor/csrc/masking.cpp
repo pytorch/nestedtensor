@@ -40,7 +40,7 @@ std::tuple<Tensor, Tensor> merge_tensor_mask(
 Tensor pad_tensor_to_shape(Tensor t, std::vector<int64_t> goal_shape) {
   std::vector<int64_t> padd;
   auto tup = t.sizes();
-  if (get_dim(t) != goal_shape.size()) {
+  if (get_dim(t) != (int64_t)(goal_shape.size())) {
     throw std::runtime_error("dimension doesn't match length of goal shape.");
   }
   for (int64_t i = tup.size() - 1; i >= 0; i--) {
@@ -182,7 +182,7 @@ c10::optional<Tensor> nt_from_tensor_mask(
     }
   }
   std::vector<TensorNode> inner_tensor_nodes;
-  for (int64_t i = 0; i < inner_tensors.size(); i++) {
+  for (size_t i = 0; i < inner_tensors.size(); i++) {
     if (inner_tensors[i]) {
       TensorNode node = get_nested_tensor_structure(*inner_tensors[i]);
       inner_tensor_nodes.push_back(node);
@@ -194,15 +194,28 @@ c10::optional<Tensor> nt_from_tensor_mask(
 std::tuple<Tensor, Tensor> to_tensor_mask(
     Tensor nt,
     c10::optional<int64_t> mask_dim) {
-  // TODO: Cover if not isinstance(nt, list) and nt.size() == (1,):
-  // TODO: Move to_tensor_mask entirely into C++
+  TORCH_CHECK(
+      !mask_dim || *mask_dim <= get_dim(nt),
+      "Requested mask dimension ",
+      *mask_dim,
+      " is bigger than dimension ",
+      get_dim(nt),
+      " of given NestedTensor.");
 
-  std::vector<int64_t> max_size = get_max_size(nt);
-  Tensor tensor;
-  Tensor mask;
-  std::tie(tensor, mask) = pad_nt(nt, max_size);
-  std::tie(tensor, mask) = merge_tensor_mask(tensor, mask, mask_dim);
-  return std::make_tuple(tensor, mask);
+  auto opt_sizes = get_opt_sizes(nt);
+  if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
+    nt = NestedTensor_contiguous(nt);
+    Tensor nt_buffer = get_buffer(nt);
+    nt_buffer = nt_buffer.reshape({-1})[0];
+    Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true) : torch::tensor({true});
+    return std::make_tuple(nt_buffer, result_mask);
+  }
+
+  auto max_size = get_max_size(nt);
+  at::Tensor res_tensor;
+  at::Tensor res_mask;
+  std::tie(res_tensor, res_mask) = pad_nt(nt, max_size);
+  return merge_tensor_mask(res_tensor, res_mask, mask_dim);
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
@@ -219,4 +232,7 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
 
   m.def("get_max_size(Tensor nt) -> int[]");
   m.impl("get_max_size", NestedTensorKey, TORCH_FN(get_max_size));
+
+  m.def("to_tensor_mask(Tensor nt, int? mask_dim) -> (Tensor, Tensor)");
+  m.impl("to_tensor_mask", NestedTensorKey, to_tensor_mask);
 }
