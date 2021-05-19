@@ -711,9 +711,8 @@ class TestNestedTensor(TestCase):
         b = torch.arange(4) + 1
         c = torch.arange(2) + 1
         nt = ntnt_nograd([a, b, c])
-        print(nt)
-        print(nt.to_sparse_csr_tensor())
-        print(nt.to_sparse_csr_tensor().to_dense())
+        data = nt.to_padded_tensor(padding=0)
+        self.assertEqual(data, nt.to_sparse_csr_tensor().to_dense())
 
 
 class TestContiguous(TestCase):
