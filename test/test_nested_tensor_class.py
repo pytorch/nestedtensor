@@ -717,6 +717,10 @@ class TestNestedTensor(TestCase):
         data = nt.to_padded_tensor(padding=0)
         st = nt.to_sparse_csr_tensor()
         self.assertEqual(data, nt.to_sparse_csr_tensor().to_dense())
+        nt = ntnt_nograd([a.unsqueeze(1), b.unsqueeze(1)])
+        self.assertRaisesRegex(RuntimeError,
+                               "Given tensor must be of dimension 2, got dimension 3",
+                               lambda: nt.to_sparse_csr_tensor())
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_to_paded_tensor_cuda(self):

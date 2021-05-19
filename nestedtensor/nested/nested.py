@@ -501,18 +501,4 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return torch.ops.nestedtensor.to_padded_tensor(self, padding)
 
     def to_sparse_csr_tensor(self):
-        if self.dim() != 2:
-            raise RuntimeError(
-                "NestedTensor needs to be of dimension 2, got dimension {}.".format(self.dim()))
-        tensor_list = self.to_tensor_list()
-        crow_indices = [0]
-        col_indices = []
-        for t in tensor_list:
-            crow_indices.append(crow_indices[-1] + len(t))
-            col_indices.append(torch.arange(len(t)))
-        crow_indices = torch.tensor(crow_indices)
-        col_indices = torch.cat(col_indices)
-        values = torch.cat(tensor_list)
-        data = self.to_padded_tensor(padding=0)
-        size = (self.size(0), max([t.size(0) for t in tensor_list]))
         return torch.ops.nestedtensor.to_sparse_csr(self._impl)
