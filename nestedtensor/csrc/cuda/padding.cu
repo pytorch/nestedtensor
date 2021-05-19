@@ -12,13 +12,14 @@ __global__
 void add_padding(
     const T* input,
     T* output,
-    const int* lengths,
+    const int* offsets,
     const int batch_size,
-    const int output_stride) 
+    const int output_stride,
+    const int inner_size) 
 {
   const int batch_id  = blockIdx.x;
-  for (int i = 0; i < lengths[batch_id + 1] - lengths[batch_id]; i++) {
-    output[batch_id * output_stride + i] = input[lengths[batch_id] + i];
+  for (int i = 0; i < (offsets[batch_id + 1] - offsets[batch_id]) * inner_size; i++) {
+    output[batch_id * output_stride + i] = input[offsets[batch_id] * inner_size + i];
   }
 }
 
@@ -26,9 +27,10 @@ template<typename T>
 void add_padding_kernelLauncher(
     T* input, // [batch_size x None]
     T* output, // [batch_size x max(input.nested_size(1))]
-    const int* lengths, // [batch_size]
-    int batch_size,
-    int output_stride,
+    const int* offsets, // [batch_size]
+    const int batch_size,
+    const int output_stride,
+    const int inner_size,
     const cudaStream_t stream)
 {
   dim3 grid;
@@ -37,17 +39,19 @@ void add_padding_kernelLauncher(
   add_padding<float><<<grid, 1, 0, stream>>>(
       input,
       output,
-      lengths,
+      offsets,
       batch_size,
-      output_stride);
+      output_stride,
+      inner_size);
 }
 
 template void add_padding_kernelLauncher<float>(
     float* input,
     float* output,
-    const int* lengths,
-    int batch_size,
-    int output_stride,
+    const int* offsets,
+    const int batch_size,
+    const int output_stride,
+    const int inner_size,
     const cudaStream_t stream);
 }
 }

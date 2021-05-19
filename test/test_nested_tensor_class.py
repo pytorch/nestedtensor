@@ -707,23 +707,13 @@ class TestNestedTensor(TestCase):
             ntnt_nograd([torch.stack([a, c], dim=1), b.reshape(3, 1, 4)]))
 
     def test_to_paded_tensor_cuda(self):
-        a = torch.randn(3)
-        b = torch.randn(4)
         import random
         random.seed(1010)
-        tensors=[torch.randn(random.randint(10, 20)) for _ in range(10)]
+        tensors=[torch.randn(random.randint(20, 40), 13) for _ in range(3)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        # def fn0():
-        #     data0 = nt.to_padded_tensor(padding=0)
-        # def fn1():
-        #     data1, _ = nt.to_tensor_mask()
-        # print(utils.cuda_benchmark_torch_function(100, fn0))
-        # print(utils.cuda_benchmark_torch_function(100, fn1))
         data0 = nt.to_padded_tensor(padding=0)
         data1, _ = nt.to_tensor_mask()
         self.assertEqual(data0, data1)
-        # print("data")
-        # print(data)
 
 
 class TestContiguous(TestCase):

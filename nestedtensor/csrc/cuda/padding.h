@@ -11,8 +11,9 @@ void add_padding_kernelLauncher(
     T* input,
     T* output,
     const int* lengths,
-    int batch_size,
-    int output_stride,
+    const int batch_size,
+    const int output_stride,
+    const int inner_size,
     const cudaStream_t stream);
 }
 } // namespace nested_tensor

@@ -491,7 +491,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return masking.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, padding=-1):
-        if (self.dim() == 2):
+        if (self.dim() == 3):
             return torch.ops.nestedtensor.to_padded_tensor(self._impl, padding)
         tensor, mask = masking.to_tensor_mask(self, self.dim())
         mask = mask.to(torch.bool)
