@@ -7,7 +7,10 @@ import utils
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
+
+
+def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -714,6 +717,16 @@ class TestNestedTensor(TestCase):
         data = nt.to_padded_tensor(padding=0)
         st = nt.to_sparse_csr_tensor()
         self.assertEqual(data, nt.to_sparse_csr_tensor().to_dense())
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_to_paded_tensor_cuda(self):
+        import random
+        random.seed(1010)
+        tensors = [torch.randn(random.randint(20, 40), 13) for _ in range(3)]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        data0 = nt.to_padded_tensor(padding=0)
+        data1, _ = nt.to_tensor_mask()
+        self.assertEqual(data0, data1)
 
 
 class TestContiguous(TestCase):
