@@ -88,13 +88,6 @@ inline bool storage_is_contiguous(
   const at::Tensor& strides_sizes = nested_stride.sizes();
   int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
   int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
-  // std::cout << "buffer.numel(): " << buffer.numel() << std::endl;
-  // std::cout << "buffer.sizes(): " << buffer.sizes() << std::endl;
-  // std::cout << "buffer.strides(): " << buffer.strides() << std::endl;
-  // std::cout << "buffer.is_contiguous(): " << buffer.is_contiguous() << std::endl;
-  // std::cout << "buffer: " << buffer << std::endl;
-  // std::cout << "sizes_sizes: " << sizes_sizes << std::endl;
-  // std::cout << "strides_sizes: " << strides_sizes << std::endl;
   for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
     if (!_is_cont_stride(
             sizes_sizes_ptr + i * sizes_sizes.size(1),

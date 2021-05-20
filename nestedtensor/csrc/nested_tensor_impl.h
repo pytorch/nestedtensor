@@ -206,10 +206,8 @@ inline int64_t get_dim(const at::Tensor& tensor) {
 
 inline int64_t get_numel(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
-    // std::cout << "get_numel() 0 " << std::endl;
     return get_nested_tensor_impl(tensor)->get_storage()->numel();
   }
-//    std::cout << "get_numel() 1 " << std::endl;
   return tensor.numel();
 }
 

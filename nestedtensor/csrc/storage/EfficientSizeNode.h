@@ -132,14 +132,12 @@ struct EfficientSizeNode {
   }
   int64_t numel() const {
     if (_sizes.dim() == 0 && _structure.size() > 0) {
-      // std::cout << "_structure[0]: " << _structure[0] << std::endl;
       return _structure[0];
     }
     if (_sizes.dim() > 0) {
       if (_sizes.numel() == 0) {
         return 0;
       }
-      // std::cout << "_sizes: " << std::endl << _sizes << std::endl;
       Tensor nt_sizes = at::native::narrow(
           _sizes, 1 /* dim */, 0 /* start */, 1 /* length */);
       for (int64_t i = 1; i < _sizes.size(1); i++) {
@@ -147,10 +145,8 @@ struct EfficientSizeNode {
             _sizes, 1 /* dim */, i /* start */, 1 /* length */);
         nt_sizes = nt_sizes * tmp;
       }
-      // std::cout << "nt_sizes.sum().item<int64_t>(): " << nt_sizes.sum().item<int64_t>() << std::endl;
       return nt_sizes.sum().item<int64_t>();
     }
-    std::cout << "numel 0" << std::endl;
     return 0;
   }
 
