@@ -1,5 +1,5 @@
-__version__ = '0.1.4+7ed5429'
-git_version = '7ed5429b83cca2c9d274541b3588136af6df6bcf'
+__version__ = '0.1.4+7136014'
+git_version = '7136014de816f73e9a6c9218e2ff13891932f6cd'
 from nestedtensor import _C
 if hasattr(_C, 'CUDA_VERSION'):
     cuda = _C.CUDA_VERSION
