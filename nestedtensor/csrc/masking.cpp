@@ -26,7 +26,7 @@ std::tuple<Tensor, Tensor> merge_tensor_mask(
   Tensor is_zero = (collapsed_mask == 0);
   int64_t is_last_size_sum = is_last_size.sum().item<int64_t>();
   int64_t is_zero_sum = is_zero.sum().item<int64_t>();
-  if ((is_last_size_sum + is_zero_sum) == collapsed_mask.numel()) {
+  if ((is_last_size_sum + is_zero_sum) == get_numel(collapsed_mask)) {
     collapsed_mask = collapsed_mask.to(torch::kBool);
     return merge_tensor_mask(tensor, collapsed_mask, mask_dim);
   }
@@ -85,7 +85,7 @@ std::vector<int64_t> get_max_size(Tensor nt) {
 
 std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
   if (!is_nested_tensor_impl(nt)) {
-    if (nt.numel() == 0) {
+    if (get_numel(nt) == 0) {
       TORCH_CHECK(false, "Empty tensors are not yet supported.");
     }
     // Dont pad in case of a scalar
@@ -131,7 +131,7 @@ c10::optional<Tensor> nt_from_tensor_mask(
     Tensor mask,
     int64_t nested_dim) {
   if (nested_dim == 0) {
-    if ((mask.numel() == 0) || (mask.numel() == 1 && mask.item<bool>())) {
+    if ((get_numel(mask) == 0) || (get_numel(mask) == 1 && mask.item<bool>())) {
       return tensor;
     }
 
@@ -153,7 +153,7 @@ c10::optional<Tensor> nt_from_tensor_mask(
       bool all_zero = true;
       for (int64_t i = 0; i < mask.size(0); i++) {
         Tensor tmp = *nt_from_tensor_mask(tensor[i], mask[i], nested_dim);
-        if (tmp.numel() > 0) {
+        if (get_numel(tmp) > 0) {
           all_zero = false;
           tensors.push_back(tmp);
         }
@@ -172,12 +172,12 @@ c10::optional<Tensor> nt_from_tensor_mask(
     return c10::nullopt;
   }
   std::vector<c10::optional<Tensor>> inner_tensors;
-  if ((mask.numel() == 0) || (mask.numel() == 1 && mask.item<bool>())) {
+  if ((get_numel(mask) == 0) || (get_numel(mask) == 1 && mask.item<bool>())) {
     for (int64_t i = 0; i < tensor.size(0); i++) {
       inner_tensors.push_back(
           nt_from_tensor_mask(tensor[i], mask, nested_dim - 1));
     }
-  } else if (mask.numel() == 1 && !mask.item<bool>()) {
+  } else if (get_numel(mask) == 1 && !mask.item<bool>()) {
     inner_tensors.push_back(c10::nullopt);
   } else {
     for (int64_t i = 0; i < tensor.size(0); i++) {

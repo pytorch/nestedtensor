@@ -37,10 +37,10 @@ def _nn_functional_batch_norm(input, running_mean, running_var, weight=None, bia
 
 
 def _nn_functional_adaptive_avg_pool2d(input, output_size):
-    serialized_nested_size = nestedtensor._C.serialize_nested_size(input)
-    _output_size = torch.nn.modules.utils._list_with_default(
-        output_size, serialized_nested_size)
-    return torch._C._nn.adaptive_avg_pool2d(input, _output_size)
+    # serialized_nested_size = nestedtensor._C.serialize_nested_size(input)
+    # _output_size = torch.nn.modules.utils._list_with_default(
+    #     output_size, serialized_nested_size)
+    return torch._C._nn.adaptive_avg_pool2d(input, output_size)
 
 
 def _nn_functional_embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
