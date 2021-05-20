@@ -7,6 +7,7 @@ from . import creation
 import nestedtensor
 import warnings
 
+
 def _not_impl_raise(cond, msg):
     if (isinstance(cond, bool) and cond) or (not isinstance(cond, bool) and cond is not None):
         raise NotImplementedError(
@@ -488,11 +489,16 @@ class NestedTensor(metaclass=NestedTensorMeta):
         element. These two tensors can be used to contruct a NestedTensor, however,
         nested_dim will be lost in this process."""
 
-        return masking.to_tensor_mask(self, mask_dim)
+        # Return a tuple of a tensor and a mask that represent the given tensor list
+        # Returned tensor is always the same no matter what mask_dim was passed.
+        # If mask_dim was not passed, a mask with the smallest dimensionality would be returned.
+        # if passed mask_dim is lower than the minimal dimensionality of the mask that can represent
+        # the data tensor, an error is thrown.
+        return torch.ops.nestedtensor.to_tensor_mask(self, mask_dim)
 
-    def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = masking.to_tensor_mask(self, mask_dim)
-        while mask.dim() < tensor.dim():
-            mask = mask.unsqueeze(-1)
-        mask = mask.to(torch.bool)
-        return tensor.masked_fill(~mask, padding)
+    def to_padded_tensor(self, padding=-1):
+        padding = float(padding)
+        return torch.ops.nestedtensor.to_padded_tensor(self, padding)
+
+    def to_sparse_csr_tensor(self):
+        return torch.ops.nestedtensor.to_sparse_csr(self._impl)
