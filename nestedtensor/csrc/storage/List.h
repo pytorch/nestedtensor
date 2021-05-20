@@ -61,6 +61,9 @@ struct ListStorage : public NestedTensorStorage {
     return get_first_leaf(_structure) ? get_first_leaf(_structure)->is_cuda()
                                       : false;
   }
+  int64_t numel() const override {
+    return _nested_size.numel();
+  }
 
  private:
   TensorNode _structure;
