@@ -130,6 +130,22 @@ struct EfficientSizeNode {
   EfficientSizeNode clone() const {
     return EfficientSizeNode(_height, _structure, _sizes.clone());
   }
+  int64_t numel() const {
+    if (_sizes.dim() == 0 && _structure.size() > 0) {
+      return _structure[0];
+    }
+    if (_sizes.dim() > 0) {
+      Tensor nt_sizes = at::native::narrow(
+          _sizes, 1 /* dim */, 0 /* start */, 1 /* length */);
+      for (int64_t i = 1; i < _sizes.size(1); i++) {
+        Tensor tmp = at::native::narrow(
+            _sizes, 1 /* dim */, i /* start */, 1 /* length */);
+        nt_sizes = nt_sizes * tmp;
+      }
+      return nt_sizes.sum().item<int64_t>();
+    }
+    return 0;
+  }
 
  private:
   int64_t _height;

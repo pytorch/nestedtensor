@@ -41,6 +41,9 @@ struct NestedTensorStorage {
   virtual bool is_cuda() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
+  virtual int64_t numel() const {
+    TORCH_CHECK(false, "Not Implemented.");
+  }
 };
 } // namespace nested_tensor
 } // namespace torch
