@@ -40,7 +40,7 @@ inline std::vector<c10::optional<int64_t>> construct_efficient_size(
 }
 
 inline void _efficient_serialize(
-    SizeNode nested_node,
+    const SizeNode& nested_node,
     std::vector<int64_t>& out) {
   if (!nested_node.is_leaf()) {
     out.push_back(nested_node.degree());
@@ -50,7 +50,7 @@ inline void _efficient_serialize(
   }
 }
 
-inline std::vector<int64_t> efficient_serialize(SizeNode nested_node) {
+inline std::vector<int64_t> efficient_serialize(const SizeNode& nested_node) {
   std::vector<int64_t> out;
   _efficient_serialize(nested_node, out);
   return out;
@@ -85,7 +85,7 @@ inline SizeNode efficient_deserialize(
 } // namespace impl
 
 struct EfficientSizeNode {
-  explicit EfficientSizeNode(SizeNode size_node)
+  explicit EfficientSizeNode(const SizeNode& size_node)
       : _height(size_node.height()),
         _structure(impl::efficient_serialize(size_node)),
         _sizes(impl::stack_sizes(size_node)) {}
