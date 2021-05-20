@@ -35,20 +35,18 @@ class TestTensorMask(TestCase):
 
     # TODO once .to_list() bug fixed
     def test_empty_tensor(self):
-        # a = nt.nested_tensor([
-        #        torch.tensor([])
-        #    ])
-        #self.assertRaisesRegex(RuntimeError, "Empty tensors are not yet supported.", lambda: a.to_tensor_mask())
+        a = nt.nested_tensor([
+               torch.tensor([])
+            ])
+        self.assertRaisesRegex(RuntimeError,
+                "Empty tensors are not yet supported.",
+                lambda: a.to_tensor_mask())
 
         a = nt.nested_tensor([
             nt.nested_tensor([
                 torch.tensor([])
             ])
         ])
-        # print(a)
-        # data, mask = a.to_tensor_mask()
-        # self.assertEqual(torch.tensor([1]).reshape(1, 1, 1).narrow(2, 0, 0), data)
-        # self.assertEqual(torch.tensor([1], dtype=torch.uint8).reshape(1, 1, 1).narrow(2, 0, 0), mask)
         self.assertRaisesRegex(
             RuntimeError, "Empty tensors are not yet supported.", lambda: a.to_tensor_mask())
 
@@ -115,7 +113,7 @@ class TestTensorMask(TestCase):
         #        torch.tensor(2),
         #        torch.tensor(3)
         #    ])
-        #tensor, mask = a.to_tensor_mask()
+        # tensor, mask = a.to_tensor_mask()
 
         a = nt.nested_tensor([
             nt.nested_tensor([
