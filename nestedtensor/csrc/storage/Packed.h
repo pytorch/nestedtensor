@@ -9,6 +9,8 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
     const at::Tensor& buffer,
     const SizeNode& nested_size,
     const SizeNode& nested_stride) {
+  TORCH_CHECK(
+      buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
   std::vector<int64_t> split_sizes = flatten(
       map([](std::vector<int64_t> a,
              std::vector<int64_t> b) { return num_memory(a, b); },
@@ -121,7 +123,7 @@ struct PackedStorage : public NestedTensorStorage {
   }
   TensorNode get_structure() const override {
     return std::get<0>(impl::build_structure(
-        _buffer, _nested_size.to_size_node(), _nested_stride.to_size_node()));
+        _buffer.reshape({-1}), _nested_size.to_size_node(), _nested_stride.to_size_node()));
   }
   at::Tensor& get_buffer() {
     return _buffer;
