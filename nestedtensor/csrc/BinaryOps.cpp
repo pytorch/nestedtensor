@@ -8,9 +8,8 @@ Tensor NestedTensor_add_Tensor(
     const Tensor& self_,
     const Tensor& other_,
     const Scalar& alpha) {
-  Tensor self;
-  Tensor other;
-  std::tie(self, other) = _expand_other_as(self_, other_);
+  Tensor self = self_;
+  Tensor other = other_;
   if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
     EfficientSizeNode self_efficient_nested_size =
         get_efficient_nested_size(self);
@@ -49,6 +48,7 @@ Tensor NestedTensor_add_Tensor(
           get_efficient_nested_stride(self));
     }
   }
+  std::tie(self, other) = _expand_other_as(self_, other_);
   return map_nested_tensor(
       [&alpha](Tensor s, Tensor o) { return at::add(s, o, alpha); },
       self,
