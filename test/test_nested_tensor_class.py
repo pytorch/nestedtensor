@@ -732,6 +732,17 @@ class TestNestedTensor(TestCase):
         data1, _ = nt.to_tensor_mask()
         self.assertEqual(data0, data1)
 
+    def test_to_tensor_mask_cuda(self):
+        import random
+        random.seed(110)
+        tensors = [torch.randn(random.randint(2, 4), 3) for _ in range(3)]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        data, mask = nt.to_tensor_mask(mask_dim=2)
+        nt1 = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
+        self.assertEqual(data, data1)
+        self.assertEqual(mask, mask1)
+
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
