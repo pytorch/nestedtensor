@@ -26,9 +26,12 @@ Tensor NestedTensor_embedding(
         weight,
         indices);
   }
-  if (is_nested_tensor_impl(indices) && get_is_contiguous(indices) &&
-      !is_nested_tensor_impl(weight) && get_dim(indices) == 2 &&
-      get_nested_dim(indices) == 1) {
+  if (is_nested_tensor_impl(indices) &&
+      !is_nested_tensor_impl(weight) &&
+      get_dim(indices) == 1 &&
+      get_dim(weight) == 2 &&
+      get_is_contiguous(indices) &&
+      get_is_contiguous(weight)) {
     Tensor indices_buffer = get_buffer(indices);
     Tensor result_buffer = at::embedding(
         weight, indices_buffer, padding_idx, scale_grad_by_freq, sparse);

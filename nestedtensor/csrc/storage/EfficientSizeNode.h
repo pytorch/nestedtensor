@@ -135,6 +135,9 @@ struct EfficientSizeNode {
       return _structure[0];
     }
     if (_sizes.dim() > 0) {
+      if (_sizes.numel() == 0) {
+        return 0;
+      }
       Tensor nt_sizes = at::native::narrow(
           _sizes, 1 /* dim */, 0 /* start */, 1 /* length */);
       for (int64_t i = 1; i < _sizes.size(1); i++) {

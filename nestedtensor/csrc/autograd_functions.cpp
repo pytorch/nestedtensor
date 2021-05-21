@@ -92,21 +92,21 @@ Tensor NestedTensor_batch_norm(
   int64_t n_input = *opt_sizes[1];
   if (running_mean) {
     check_dims_match_num_input_features(
-        "running_mean", n_input, running_mean->numel());
+        "running_mean", n_input, get_numel(*running_mean));
   } else if (!training) {
     AT_ERROR("running_mean must be defined in evaluation mode");
   }
   if (running_var) {
     check_dims_match_num_input_features(
-        "running_var", n_input, running_var->numel());
+        "running_var", n_input, get_numel(*running_var));
   } else if (!training) {
     AT_ERROR("running_var must be defined in evaluation mode");
   }
   if (weight) {
-    check_dims_match_num_input_features("weight", n_input, weight->numel());
+    check_dims_match_num_input_features("weight", n_input, get_numel(*weight));
   }
   if (bias) {
-    check_dims_match_num_input_features("bias", n_input, bias->numel());
+    check_dims_match_num_input_features("bias", n_input, get_numel(*bias));
   }
 
   auto scalar_shape = make_scalar_shape(get_dim(input), n_input);
