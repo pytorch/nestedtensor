@@ -735,13 +735,20 @@ class TestNestedTensor(TestCase):
     def test_to_tensor_mask_cuda(self):
         import random
         random.seed(110)
-        tensors = [torch.randn(random.randint(2, 4), 3) for _ in range(3)]
+        tensors = [random.randint(2, 4) for _ in range(3)]
+        tensors = [torch.arange(t * 3).reshape(t, 3).float() for t in tensors]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
         data, mask = nt.to_tensor_mask(mask_dim=2)
         nt1 = ntnt_nograd(tensors, device=torch.device('cpu'))
         data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
         self.assertEqual(data, data1)
         self.assertEqual(mask, mask1)
+        print(nt1.nested_size())
+        print(data)
+        print(mask)
+        r = torch.matmul(data, data.transpose(1, 2))
+        print(r)
+        print(nestedtensor.nested_tensor_from_padded_tensor(r, padding=0))
 
 
 class TestContiguous(TestCase):
