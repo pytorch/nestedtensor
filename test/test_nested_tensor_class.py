@@ -732,6 +732,7 @@ class TestNestedTensor(TestCase):
         data1, _ = nt.to_tensor_mask()
         self.assertEqual(data0, data1)
 
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_to_tensor_mask_cuda(self):
         import random
         random.seed(110)
