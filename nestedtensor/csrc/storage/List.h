@@ -42,10 +42,10 @@ struct ListStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  EfficientSizeNode nested_size() const override {
+  const EfficientSizeNode& nested_size() const override {
     return _nested_size;
   }
-  EfficientSizeNode nested_stride() const override {
+  const EfficientSizeNode& nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
@@ -60,6 +60,9 @@ struct ListStorage : public NestedTensorStorage {
   bool is_cuda() const override {
     return get_first_leaf(_structure) ? get_first_leaf(_structure)->is_cuda()
                                       : false;
+  }
+  int64_t numel() const override {
+    return _nested_size.numel();
   }
 
  private:

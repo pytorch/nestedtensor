@@ -249,22 +249,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, get_nested_size(self));
   });
 
-  m.def("serialize_nested_size", [](Tensor self) {
-    return serialize(get_nested_tensor_impl(self)->nested_size());
-  });
-
-  m.def("deserialize_nested_size", [](std::vector<int64_t> out) {
-    SizeNode nested_size = deserialize_size_node(out);
-    return py::cast(THPPythonNode(
-        map(
-            [](std::vector<int64_t> e) {
-              return py::reinterpret_steal<py::object>(
-                  THPSize_NewFromSizes(e.size(), e.data()));
-            },
-            nested_size),
-        "NestedSize"));
-  });
-
   m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
     if (!index_) {
       return py::cast(THPPythonNode(

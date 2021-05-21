@@ -73,6 +73,31 @@ inline at::Tensor pack(const TensorNode& structure) {
   }
   return std::get<1>(impl::build_structure(at::cat(tensors, 0), nested_size));
 }
+
+inline bool storage_is_contiguous(
+    const at::Tensor& buffer,
+    const EfficientSizeNode& nested_size,
+    const EfficientSizeNode& nested_stride) {
+  if (!buffer.is_contiguous()) {
+    return false;
+  }
+  if (buffer.numel() == 0) {
+    return true;
+  }
+  const at::Tensor& sizes_sizes = nested_size.sizes();
+  const at::Tensor& strides_sizes = nested_stride.sizes();
+  int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
+  int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
+  for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
+    if (!_is_cont_stride(
+            sizes_sizes_ptr + i * sizes_sizes.size(1),
+            strides_sizes_ptr + i * strides_sizes.size(1),
+            sizes_sizes.size(1))) {
+      return false;
+    }
+  }
+  return true;
+}
 } // namespace impl
 
 struct PackedStorage : public NestedTensorStorage {
@@ -85,7 +110,11 @@ struct PackedStorage : public NestedTensorStorage {
         _nested_stride(nested_stride),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
-        _is_pinned(buffer.is_pinned()) {
+        _is_pinned(buffer.is_pinned()),
+        _is_contiguous(impl::storage_is_contiguous(
+            _buffer,
+            _nested_size,
+            _nested_stride)) {
     TORCH_CHECK(
         _nested_size.height(),
         "PackedStorage must be given NestedSize of at least height 1.");
@@ -98,9 +127,10 @@ struct PackedStorage : public NestedTensorStorage {
       at::Tensor&& buffer,
       SizeNode nested_size,
       SizeNode nested_stride)
-      : PackedStorage(std::move(buffer),
-        EfficientSizeNode(nested_size),
-        EfficientSizeNode(nested_stride)) {}
+      : PackedStorage(
+            std::move(buffer),
+            EfficientSizeNode(nested_size),
+            EfficientSizeNode(nested_stride)) {}
 
   explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size)
       : PackedStorage(
@@ -123,7 +153,9 @@ struct PackedStorage : public NestedTensorStorage {
   }
   TensorNode get_structure() const override {
     return std::get<0>(impl::build_structure(
-        _buffer.reshape({-1}), _nested_size.to_size_node(), _nested_stride.to_size_node()));
+        _buffer.reshape({-1}),
+        _nested_size.to_size_node(),
+        _nested_stride.to_size_node()));
   }
   at::Tensor& get_buffer() {
     return _buffer;
@@ -140,10 +172,10 @@ struct PackedStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  EfficientSizeNode nested_size() const override {
+  const EfficientSizeNode& nested_size() const override {
     return _nested_size;
   }
-  EfficientSizeNode nested_stride() const override {
+  const EfficientSizeNode& nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
@@ -153,25 +185,13 @@ struct PackedStorage : public NestedTensorStorage {
     return NestedTensorStorageKind::packed;
   }
   bool is_contiguous() const override {
-    if (!_buffer.is_contiguous()) {
-      return false;
-    }
-    const at::Tensor& sizes_sizes = _nested_size.sizes();
-    const at::Tensor& strides_sizes = _nested_stride.sizes();
-    int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
-    int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
-    for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
-      if (!impl::_is_cont_stride(
-          sizes_sizes_ptr + i * sizes_sizes.size(1),
-          strides_sizes_ptr + i * strides_sizes.size(1),
-          sizes_sizes.size(1))) {
-        return false;
-      }
-    }
-    return true;
+    return _is_contiguous;
   }
   bool is_cuda() const override {
     return _buffer.is_cuda();
+  }
+  int64_t numel() const override {
+    return _nested_size.numel();
   }
 
  private:
@@ -181,6 +201,7 @@ struct PackedStorage : public NestedTensorStorage {
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
   bool _is_pinned;
+  const bool _is_contiguous;
 };
 
 } // namespace nested_tensor
