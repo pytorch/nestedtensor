@@ -743,12 +743,6 @@ class TestNestedTensor(TestCase):
         data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
         self.assertEqual(data, data1)
         self.assertEqual(mask, mask1)
-        print(nt1.nested_size())
-        print(data)
-        print(mask)
-        r = torch.matmul(data, data.transpose(1, 2))
-        print(r)
-        print(nestedtensor.nested_tensor_from_padded_tensor(r, padding=0))
 
 
 class TestContiguous(TestCase):
