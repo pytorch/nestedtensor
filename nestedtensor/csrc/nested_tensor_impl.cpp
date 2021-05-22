@@ -344,18 +344,11 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
-  auto nt_impl = get_nested_tensor_impl(tensor);
-  std::vector<int64_t> out;
-  return torch::tensor(torch::nested_tensor::serialize(nt_impl->nested_size()));
-}
-
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   nt_impl(m, "select.int", NestedTensor_select);
-  nt_impl(m, "serialize_nested_size", NestedTensor_serialize_nested_size);
   nt_impl(m, "size.int", NestedTensor_size_int);
   nt_impl(m, "slice.Tensor", NestedTensor_slice);
   nt_impl(m, "squeeze", NestedTensor_squeeze);

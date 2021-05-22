@@ -206,10 +206,7 @@ inline int64_t get_dim(const at::Tensor& tensor) {
 
 inline int64_t get_numel(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
-    return reduce(
-        [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
-        0,
-        get_nested_tensor_structure(tensor));
+    return get_nested_tensor_impl(tensor)->get_storage()->numel();
   }
   return tensor.numel();
 }
@@ -304,8 +301,8 @@ inline Tensor NestedTensor_to_sparse_csr(Tensor tensor) {
     col_indices_.push_back(torch::arange({tensor_sizes_ptr[i]}));
   }
   at::Tensor col_indices = at::cat(col_indices_);
-  return at::native::sparse_csr_tensor(crow_indices, col_indices, values,
-      c10::nullopt, torch::kSparseCsr);
+  return at::native::sparse_csr_tensor(
+      crow_indices, col_indices, values, c10::nullopt, torch::kSparseCsr);
 }
 
 inline std::ostream& operator<<(

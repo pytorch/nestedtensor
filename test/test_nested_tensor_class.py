@@ -733,6 +733,19 @@ class TestNestedTensor(TestCase):
         data1, _ = nt.to_tensor_mask()
         self.assertEqual(data0, data1)
 
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_to_tensor_mask_cuda(self):
+        import random
+        random.seed(110)
+        tensors = [random.randint(2, 4) for _ in range(3)]
+        tensors = [torch.arange(t * 3).reshape(t, 3).float() for t in tensors]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        data, mask = nt.to_tensor_mask(mask_dim=2)
+        nt1 = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
+        self.assertEqual(data, data1)
+        self.assertEqual(mask, mask1)
+
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
