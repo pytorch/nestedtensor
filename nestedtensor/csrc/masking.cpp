@@ -328,7 +328,6 @@ Tensor create_nt_mask(SizeNode nt_size, std::vector<int64_t> shape) {
 Tensor to_mask(
     Tensor nt,
     c10::optional<int64_t> mask_dim) {
-  std::cout << "Calling to_mask" << std::endl;
   TORCH_CHECK(
       !mask_dim || *mask_dim <= get_dim(nt),
       "Requested mask dimension ",
