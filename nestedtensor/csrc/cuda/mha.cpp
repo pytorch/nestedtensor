@@ -24,7 +24,6 @@ at::Tensor bt_min_mha(
     int64_t head_dim,
     double dropout_p,
     bool training,
-    at::Tensor input_mask,
     at::Tensor query,
     at::Tensor key,
     at::Tensor value,
@@ -49,6 +48,10 @@ at::Tensor bt_min_mha(
   // }
   // TODO: Add explicit check that verifies query, key and value are the same
   // auto start = std::chrono::system_clock::now();
+  auto options =
+      torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
+  at::Tensor input_mask = to_mask(query, 2);
+  input_mask = input_mask.to(options);
   int64_t batch_size = input_mask.size(0);
   int64_t seq_len = input_mask.size(1);
   int64_t embedding_dim = head_dim * num_heads; //*(opt_sizes[2]);
@@ -56,8 +59,6 @@ at::Tensor bt_min_mha(
   int64_t size_per_head = embedding_dim / head_num;
   auto float_options =
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
-  auto options =
-      torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
@@ -175,7 +176,7 @@ at::Tensor bt_min_mha(
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
-      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor input_mask, Tensor query, Tensor key, Tensor value, Tensor attr_kernel_Q, Tensor attr_kernel_K, Tensor attr_kernel_V, Tensor attr_bias_Q, Tensor attr_bias_K, Tensor attr_bias_V, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
+      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor attr_kernel_Q, Tensor attr_kernel_K, Tensor attr_kernel_V, Tensor attr_bias_Q, Tensor attr_bias_K, Tensor attr_bias_V, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
   m.impl("bt_min_mha", NestedTensorKey, &bt_min_mha);
 }
 
