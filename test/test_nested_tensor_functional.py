@@ -589,6 +589,7 @@ class TestFunctional(TestCase):
         self.assertEqual(result0.sum(0).sum(0), result1.sum(1).sum(0))
 
     @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_mha_detr_cuda(self):
         NDIM = 128
         BSZ = 8
