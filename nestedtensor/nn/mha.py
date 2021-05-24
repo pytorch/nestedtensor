@@ -11,6 +11,21 @@ import nestedtensor
 # NT case query, key, value have nested_dim 1 and are of shape (bsz, tgt_len, embed_dim)
 
 
+def sequence_mask(lengths, max_len=None, is_2d=True):
+    batch_size = lengths.numel()
+    max_len = max_len or lengths.max()
+    mask = (torch.arange(0, max_len, device=lengths.device)
+            .type_as(lengths)
+            .repeat(batch_size, 1)
+            .lt(lengths.unsqueeze(1)))
+    if is_2d:
+        return mask
+    else:
+        mask = mask.view(-1, 1, 1, max_len)
+        m2 = mask.transpose(2, 3)
+        return mask * m2
+
+
 def multi_head_attention_forward(query,
                                  key,
                                  value,
@@ -60,6 +75,34 @@ def multi_head_attention_forward(query,
     head_dim = embed_dim // num_heads
     assert head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
     scaling = float(head_dim) ** -0.5
+
+    if query is key and key is value and in_proj_weight.is_cuda:
+        print("USING THIS")
+        w_q, w_k, w_v = in_proj_weight.chunk(3)
+        b_q, b_k, b_v = in_proj_bias.chunk(3)
+        seq_lens = query.nested_size(1)
+        attr_mask = sequence_mask(torch.tensor(
+            seq_lens), None, False).to(torch.float).cuda()
+        _, input_mask = query.to_tensor_mask(mask_dim=2)
+        input_mask = input_mask.to(torch.int32).cuda()
+        return torch.ops.nestedtensor.bt_min_mha(num_heads,
+                                                 head_dim,
+                                                 0.5,
+                                                 False,
+                                                 input_mask,
+                                                 query,
+                                                 query,
+                                                 query,
+                                                 w_q.contiguous(),
+                                                 w_k.contiguous(),
+                                                 w_v.contiguous(),
+                                                 b_q.contiguous(),
+                                                 b_k.contiguous(),
+                                                 b_v.contiguous(),
+                                                 scaling,
+                                                 out_proj_weight,
+                                                 in_proj_bias,
+                                                 attr_mask), None
 
     return nestedtensor.nested.nested._wrap_result(
         torch.ops.nestedtensor.min_mha(num_heads,
