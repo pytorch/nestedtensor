@@ -751,8 +751,9 @@ class TestNestedTensor(TestCase):
         tensors = [random.randint(2, 4) for _ in range(3)]
         tensors = [torch.arange(t * 3).reshape(t, 3).float() for t in tensors]
         nt = ntnt_nograd(tensors)
-        print(nt.nested_size())
-        print(torch.ops.nestedtensor.to_mask(nt, 2))
+        data, mask0 = nt.to_tensor_mask(mask_dim=2)
+        mask1 = torch.ops.nestedtensor.to_mask(nt, 2)
+        self.assertEqual(mask0, mask1)
 
 
 class TestContiguous(TestCase):
