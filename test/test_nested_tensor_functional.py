@@ -929,8 +929,7 @@ class TestFunctional(TestCase):
             attr_mask = sequence_mask(torch.tensor(
                 seq_lens), None, False).to(torch.float).cuda()
 
-            input_batch, input_mask = input_nt.to_tensor_mask(mask_dim=2)
-            input_mask = input_mask.to(torch.int32).cuda()
+            input_batch, _ = input_nt.to_tensor_mask(mask_dim=2)
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             if use_arange:
@@ -972,7 +971,6 @@ class TestFunctional(TestCase):
                                                               head_size,
                                                               0.5,
                                                               False,
-                                                              input_mask,
                                                               input_nt,
                                                               input_nt,
                                                               input_nt,
