@@ -79,7 +79,7 @@ std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<int64_t> get_max_size(Tensor nt) {
+std::vector<int64_t> get_max_size(const Tensor& nt) {
   if (get_nested_dim(nt) == 1) {
     auto nt_opt_sizes = get_opt_sizes(nt);
     if (nt_opt_sizes.size() > 0 && *nt_opt_sizes[0] > 0) {
@@ -90,7 +90,6 @@ std::vector<int64_t> get_max_size(Tensor nt) {
       for (int64_t i = 0; i < max_sizes.size(0); i++) {
         result.push_back(max_sizes[i].item<int64_t>());
       }
-      auto actual_result = _get_max_size(get_nested_size(nt));
       return result;
     }
   }
@@ -342,13 +341,12 @@ Tensor _create_nt_mask(SizeNode nt_size, std::vector<int64_t> shape) {
 
 Tensor _create_nt_mask(EfficientSizeNode nt_size, std::vector<int64_t> shape) {
   if (nt_size.height() == 1) {
-    std::cout << "_create_nt_mask efficient" << std::endl;
     std::vector<at::Tensor> tmp_masks;
     auto esizes = nt_size.sizes();
     int64_t* esizes_ptr = esizes.data_ptr<int64_t>();
     for(int64_t i = 0; i < esizes.size(0); i++) {
       std::vector<int64_t> tmp_sizes;
-      for(int64_t j = 0; j < esizes.size(1); j++) {
+      for(size_t j = 0; j < shape.size(); j++) {
         tmp_sizes.push_back(esizes_ptr[i * esizes.stride(0) + j]);
       }
       tmp_masks.push_back(_create_nt_mask(tmp_sizes, shape));
@@ -369,6 +367,7 @@ Tensor to_mask(
       get_dim(nt),
       " of given NestedTensor.");
 
+
   auto opt_sizes = get_opt_sizes(nt);
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
     Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true)
@@ -376,7 +375,18 @@ Tensor to_mask(
     return result_mask;
   }
 
-  auto max_size = get_max_size(nt);
+  std::vector<int64_t> max_size;
+  if (get_nested_dim(nt) == 1 &&
+      get_dim(nt) > 1 &&
+      mask_dim &&
+      *mask_dim > 1) {
+    auto tmp_max_size = get_max_size(nt);
+    for (int64_t i = 1; i < *mask_dim; i++) {
+      max_size.push_back(tmp_max_size[i - 1]);
+    }
+    return _create_nt_mask(get_efficient_nested_size(nt), max_size);
+  }
+  max_size = get_max_size(nt);
   at::Tensor res_mask = _create_nt_mask(get_efficient_nested_size(nt), max_size);
   return merge_mask(res_mask, mask_dim);
 }
