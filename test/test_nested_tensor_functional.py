@@ -15,7 +15,10 @@ def _iter_constructors():
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(x, requires_grad=False, device=device)
+
+
+def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device)
 
 
 class TestFunctional(TestCase):
@@ -32,7 +35,8 @@ class TestFunctional(TestCase):
     @torch.inference_mode()
     def test_conv2d(self):
         nt = ntnt_nograd(
-            [torch.rand(3, 35, 56), torch.rand(3, 43, 23), torch.rand(3, 24, 52)]
+            [torch.rand(3, 35, 56), torch.rand(
+                3, 43, 23), torch.rand(3, 24, 52)]
         )
         weight = torch.randn(5, 5).repeat(3, 3, 1, 1)
         torch.conv2d(nt, weight)
@@ -584,6 +588,31 @@ class TestFunctional(TestCase):
         result1, _ = MODEL(src, src, src, need_weights=False)
         self.assertEqual(result0.sum(0).sum(0), result1.sum(1).sum(0))
 
+    @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_mha_detr_cuda(self):
+        NDIM = 128
+        BSZ = 8
+        NHEAD = 8
+        RAND_INTS = [(1, 5), (7, 9)]
+        MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).cuda().eval()
+
+        src_list = [torch.randn(NDIM, i, j) for (i, j) in RAND_INTS]
+        detr_nt_src = DETRNestedTensor.from_tensor_list(src_list)
+        src0, mask = detr_nt_src.decompose()
+        src = src0.flatten(2).permute(2, 0, 1).cuda()
+        mask = mask.flatten(1).cuda()
+        result, _ = MODEL(src, src, src, key_padding_mask=mask,
+                          need_weights=False)  # [0].sum().backward()
+        mask = (~mask.t().unsqueeze(2)).float()
+        result0 = result * mask
+        # result_sum = result.sum()
+
+        src = ntnt_nograd([t.flatten(1).permute(
+            1, 0) for t in src_list], device=torch.device('cuda'))
+        result1, _ = MODEL(src, src, src, need_weights=False)
+        self.assertEqual(result0.sum(0).sum(0), result1.sum(1).sum(0))
+
     def test_squeeze(self):
         t = torch.randn(2, 3)
         result = ntnt_nograd([t])
@@ -774,7 +803,8 @@ class TestFunctional(TestCase):
             layer_norm = torch.nn.LayerNorm(32).to(device)
             nt_result = layer_norm(nt)
             for i in range(len(ts)):
-                self.assertEqual(nt_result[i], layer_norm(ts[i].reshape(1, -1, 32).squeeze(0)))
+                self.assertEqual(nt_result[i], layer_norm(
+                    ts[i].reshape(1, -1, 32).squeeze(0)))
 
             layer_norm = torch.nn.LayerNorm(16).to(device)
             tt = utils.gen_float_tensor(1, (3, 23, 16)).to(device)
@@ -929,8 +959,7 @@ class TestFunctional(TestCase):
             attr_mask = sequence_mask(torch.tensor(
                 seq_lens), None, False).to(torch.float).cuda()
 
-            input_batch, input_mask = input_nt.to_tensor_mask(mask_dim=2)
-            input_mask = input_mask.to(torch.int32).cuda()
+            input_batch, _ = input_nt.to_tensor_mask(mask_dim=2)
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             if use_arange:
@@ -972,7 +1001,6 @@ class TestFunctional(TestCase):
                                                               head_size,
                                                               0.5,
                                                               False,
-                                                              input_mask,
                                                               input_nt,
                                                               input_nt,
                                                               input_nt,

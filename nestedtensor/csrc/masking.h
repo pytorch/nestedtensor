@@ -12,6 +12,10 @@ std::tuple<at::Tensor, at::Tensor> to_tensor_mask(
     at::Tensor nt,
     c10::optional<int64_t> mask_dim);
 
+at::Tensor to_mask(
+    at::Tensor nt,
+    c10::optional<int64_t> mask_dim);
+
 c10::optional<at::Tensor> nt_from_tensor_mask(
     at::Tensor tensor,
     at::Tensor mask,
