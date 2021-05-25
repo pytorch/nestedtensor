@@ -40,6 +40,7 @@ def run(bdim, embedding_dim, nhead, min_t, max_t, iters, device):
     # Create MHA with self-attention in mind
     lin = torch.nn.MultiheadAttention(embedding_dim, nhead).to(device).eval()
     nt_time = benchmark_torch_function(iters, lin, nt, nt, nt)
+    import sys; sys.exit(1)
 
     # Created regular padded Tensor
     data = nt.to_padded_tensor(padding=0)
@@ -56,9 +57,9 @@ if torch.cuda.is_available():
     print("CUDA device: ", torch.cuda.get_device_name(0))
     device = torch.device('cuda')
 iters = 10
-for nhead in [2, 4, 8, 16]:
+for nhead in [2, 4, 8]:
     print("")
-    for embed_dim in [1024, 512, 256]:
+    for embed_dim in [128, 256, 512, 1024]:
         print("")
         for min_t, max_t in [(16, 128), (32, 128), (64, 128), (128, 128)]:
             run(256, embed_dim, nhead, min_t, max_t, iters, device)
