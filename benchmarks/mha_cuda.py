@@ -56,7 +56,7 @@ device = torch.device('cpu')
 if torch.cuda.is_available():
     print("CUDA device: ", torch.cuda.get_device_name(0))
     device = torch.device('cuda')
-iters = 10
+iters = 1000
 for nhead in [2, 4, 8]:
     print("")
     for embed_dim in [128, 256, 512, 1024]:
