@@ -79,9 +79,6 @@ def multi_head_attention_forward(query,
     if query is key and key is value and in_proj_weight.is_cuda:
         w_q, w_k, w_v = in_proj_weight.chunk(3)
         b_q, b_k, b_v = in_proj_bias.chunk(3)
-        seq_lens = query.nested_size(1)
-        attr_mask = sequence_mask(torch.tensor(
-            seq_lens), None, False).to(torch.float).cuda()
         return torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                  head_dim,
                                                  0.5,
@@ -97,8 +94,7 @@ def multi_head_attention_forward(query,
                                                  b_v.contiguous(),
                                                  scaling,
                                                  out_proj_weight,
-                                                 in_proj_bias,
-                                                 attr_mask), None
+                                                 in_proj_bias), None
 
     return nestedtensor.nested.nested._wrap_result(
         torch.ops.nestedtensor.min_mha(num_heads,

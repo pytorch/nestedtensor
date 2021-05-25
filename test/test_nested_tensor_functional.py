@@ -923,19 +923,6 @@ class TestFunctional(TestCase):
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_effective_transformer_mha(self):
-        def sequence_mask(lengths, max_len=None, is_2d=True):
-            batch_size = lengths.numel()
-            max_len = max_len or lengths.max()
-            mask = (torch.arange(0, max_len, device=lengths.device)
-                    .type_as(lengths)
-                    .repeat(batch_size, 1)
-                    .lt(lengths.unsqueeze(1)))
-            if is_2d:
-                return mask
-            else:
-                mask = mask.view(-1, 1, 1, max_len)
-                m2 = mask.transpose(2, 3)
-                return mask * m2
 
         def test(num_heads, batch_size, seq_len_, head_size, embedding_dim,
                  use_arange=False):
@@ -956,8 +943,6 @@ class TestFunctional(TestCase):
                     inputs.append(torch.randn(i, embedding_dim))
             input_nt = nestedtensor.nested_tensor(
                 inputs, device=torch.device('cuda'), dtype=torch.float)
-            attr_mask = sequence_mask(torch.tensor(
-                seq_lens), None, False).to(torch.float).cuda()
 
             input_batch, _ = input_nt.to_tensor_mask(mask_dim=2)
 
@@ -1012,8 +997,7 @@ class TestFunctional(TestCase):
                                                               attr_bias_V,
                                                               scaling,
                                                               out_proj_weight,
-                                                              in_proj_bias,
-                                                              attr_mask)
+                                                              in_proj_bias)
 
             torch.cuda.synchronize()
             t1 = time.time()

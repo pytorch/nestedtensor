@@ -18,9 +18,9 @@ def benchmark_torch_function(iters, f, *args):
     if torch.cuda.is_available():
         end_event.record()
         torch.cuda.synchronize()
-        return start_event.elapsed_time(end_event)
+        return start_event.elapsed_time(end_event) * 1e3
     else:
-        return (time.time() - t0) * 1e3
+        return (time.time() - t0) * 1e6
 
 
 def run(bdim, embedding_dim, nhead, min_t, max_t, iters, device):
@@ -40,7 +40,7 @@ def run(bdim, embedding_dim, nhead, min_t, max_t, iters, device):
     # Create MHA with self-attention in mind
     lin = torch.nn.MultiheadAttention(embedding_dim, nhead).to(device).eval()
     nt_time = benchmark_torch_function(iters, lin, nt, nt, nt)
-    import sys; sys.exit(1)
+    # import sys; sys.exit(1)
 
     # Created regular padded Tensor
     data = nt.to_padded_tensor(padding=0)
@@ -49,14 +49,14 @@ def run(bdim, embedding_dim, nhead, min_t, max_t, iters, device):
     t_time = benchmark_torch_function(iters, lin, data, data, data)
 
     print(f"batch size: {bdim:4.0f}, embedding dim: {embedding_dim}, nhead: {nhead}, T mean:{lengths_mean:5.0f}, T std: {lengths_std:4.0f}", end='')
-    print(f", padding: {percentage_padded:3.0f}%, NT: {nt_time/iters:4.0f}ms, T: {t_time/iters:4.0f}ms, Speedup: {t_time/nt_time:3.2f}x")
+    print(f", padding: {percentage_padded:3.0f}%, NT: {nt_time/iters:4.0f}us, T: {t_time/iters:4.0f}us, Speedup: {t_time/nt_time:3.2f}x")
 
 
 device = torch.device('cpu')
 if torch.cuda.is_available():
     print("CUDA device: ", torch.cuda.get_device_name(0))
     device = torch.device('cuda')
-iters = 1000
+iters = 10
 for nhead in [2, 4, 8]:
     print("")
     for embed_dim in [128, 256, 512, 1024]:
