@@ -72,7 +72,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _storage;
   }
   int64_t nested_dim() const {
-    return get_structure().height();
+    return _storage->nested_size().height();
   }
   bool is_pinned() const {
     return _storage->is_pinned();

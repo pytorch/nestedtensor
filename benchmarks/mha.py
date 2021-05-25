@@ -53,7 +53,7 @@ NHEAD = 8
 MODEL = torch.nn.MultiheadAttention(NDIM, NHEAD).to(DEVICE).eval()
 
 
-def run_benchmark(bsz, mean_i, mean_j, var, autograd, writer):
+def run_benchmark(bsz, mean_i, mean_j, var, writer):
     RAND_INTS = [(int(random.gauss(mean_j, var)), int(
         random.gauss(mean_i, var))) for _ in range(bsz)]
     src_ = nestedtensor.nested_tensor(
@@ -70,13 +70,8 @@ def run_benchmark(bsz, mean_i, mean_j, var, autograd, writer):
         src, mask = detr_nt_src.decompose()
         src = src.flatten(2).permute(2, 0, 1).contiguous()
         mask = mask.flatten(1).contiguous()
-        if autograd:
-            src.requires_grad_()
 
         def te():
-            if autograd:
-                MODEL(src, src, src, key_padding_mask=mask,
-                      need_weights=False)[0].sum()  # .backward()
             MODEL(src, src, src, key_padding_mask=mask,
                   need_weights=False)
 
@@ -84,25 +79,22 @@ def run_benchmark(bsz, mean_i, mean_j, var, autograd, writer):
 
     def gen_nt_mha(src):
         src = nestedtensor.nested_tensor([t.flatten(1).permute(
-            1, 0) for t in src], device=DEVICE, dtype=torch.float, requires_grad=False)
+            1, 0) for t in src], device=DEVICE, dtype=torch.float)
 
         def nt():
-            if autograd:
-                MODEL(src, src, src, need_weights=False)[
-                    0].sum()  # .backward()
             MODEL(src, src, src, need_weights=False)
 
         return nt
 
     result_t = {**utils.benchmark_fn(gen_t_loop_mha(src), 5.0, cuda=True), "bsz": bsz,
-                "sparsity": sparsity, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
+                "sparsity": sparsity, "var": var, "mean_i": mean_i, "mean_j": mean_j}
     result_t["numel"] = sum([x.numel() for x in src_])
     result_t["numel_div_avg_us"] = result_t["numel"] / result_t["avg_us"]
     result_t["avg_ns_div_numel"] = result_t["avg_us"] / \
         result_t["numel"] * 1000
     writer.writerow(result_t)
     result_nt = {**utils.benchmark_fn(gen_nt_mha(src), 5.0, cuda=True),
-                 "bsz": bsz, "sparsity": 0.0, "autograd": autograd, "var": var, "mean_i": mean_i, "mean_j": mean_j}
+                 "bsz": bsz, "sparsity": 0.0, "var": var, "mean_i": mean_i, "mean_j": mean_j}
     result_nt["numel"] = sum([x.numel() for x in src_])
     result_nt["numel_div_avg_us"] = result_nt["numel"] / result_nt["avg_us"]
     result_nt["avg_ns_div_numel"] = result_nt["avg_us"] / \
@@ -115,10 +107,9 @@ if __name__ == "__main__":
     torch.manual_seed(1011)
     writer = csv.DictWriter(sys.stdout, fieldnames=[
                             "name", "avg_us", "std_us", "runs", "bsz", "sparsity",
-                            "autograd", "var", "mean_i", "mean_j", "numel", "numel_div_avg_us",
+                            "var", "mean_i", "mean_j", "numel", "numel_div_avg_us",
                             "avg_ns_div_numel"])
     writer.writeheader()
     for var in [float(i) / 10 for i in range(0, 100, 50)]:
-        for autograd in [False]:
-            for batch_size in [2, 8, 16]:
-                run_benchmark(batch_size, 30, 30, var, autograd, writer)
+        for batch_size in [2, 8, 16]:
+            run_benchmark(batch_size, 30, 30, var, writer)
