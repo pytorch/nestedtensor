@@ -50,7 +50,11 @@ at::Tensor bt_min_mha(
   // auto start = std::chrono::system_clock::now();
   auto options =
       torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
+  auto t1 = std::chrono::high_resolution_clock::now();
   at::Tensor input_mask = to_mask(query, 2);
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "t2 - t1: " << std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000 << "ms";
+  std::cout << std::endl;
   input_mask = input_mask.to(options);
   int64_t batch_size = input_mask.size(0);
   int64_t seq_len = input_mask.size(1);

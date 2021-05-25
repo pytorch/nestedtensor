@@ -1,7 +1,5 @@
-from nestedtensor import torch
+import torch
 import time
-import random
-import pprint
 
 import cProfile
 import pstats
@@ -18,7 +16,8 @@ def gen_tensor():
     # return torch.tensor([globals()['SEED']])
     return torch.rand(EMBED_DIM)
 
-def benchmark_fn(fn, run_time = 5.0, use_cprofile=False, warmup=1.0, cuda=False):
+
+def benchmark_fn(fn, run_time=5.0, use_cprofile=False, warmup=1.0, cuda=False):
     times = []
     t = 0.0
     pr = cProfile.Profile()
