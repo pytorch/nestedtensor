@@ -61,42 +61,13 @@ at::Tensor bt_min_mha(
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
+
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
   int word_num = batch_size * seq_len;
-
-  Tensor int_buffer = torch::zeros({word_num +
-      word_num + word_num}, options);
-  Tensor float_buffer = torch::zeros({
-      3 * batch_size * head_num * seq_len 
-      * size_per_head}, float_options); 
-
-  // Tensor prefix_sum = torch::zeros({word_num}, options);
-  // Tensor batch_idx = torch::zeros({word_num}, options);
-  // Tensor word_idx = torch::zeros({word_num}, options);
-  Tensor prefix_sum = int_buffer.narrow(0, 0, word_num);
-  Tensor batch_idx = int_buffer.narrow(0, word_num, word_num);
-  Tensor word_idx = int_buffer.narrow(0, 2 * word_num, word_num);
-
-  // at::Tensor query_buf = torch::zeros(
-  //     {batch_size, head_num, seq_len, size_per_head}, float_options);
-  // at::Tensor key_buf = torch::zeros(
-  //     {batch_size, head_num, seq_len, size_per_head}, float_options);
-  // at::Tensor val_buf = torch::zeros(
-  //     {batch_size, head_num, seq_len, size_per_head}, float_options);
-
-  at::Tensor query_buf = float_buffer.narrow(0, 0, input_tensor_size);
-  at::Tensor key_buf = float_buffer.narrow(0, input_tensor_size, input_tensor_size);
-  at::Tensor val_buf = float_buffer.narrow(0, 2 * input_tensor_size, input_tensor_size);
-  query_buf = query_buf.reshape({batch_size, head_num, seq_len, size_per_head});
-  key_buf = key_buf.reshape({batch_size, head_num, seq_len, size_per_head});
-  val_buf = val_buf.reshape({batch_size, head_num, seq_len, size_per_head});
-  // torch::zeros(
-  //     {batch_size, head_num, seq_len, size_per_head}, float_options);
-  // at::Tensor key_buf = torch::zeros(
-  //     {batch_size, head_num, seq_len, size_per_head}, float_options);
-  // at::Tensor val_buf = torch::zeros(
-  //     {batch_size, head_num, seq_len, size_per_head}, float_options);
+  Tensor prefix_sum = torch::zeros({word_num}, options);
+  Tensor batch_idx = torch::zeros({word_num}, options);
+  Tensor word_idx = torch::zeros({word_num}, options);
 
   int* prefix_sum_ptr = prefix_sum.data_ptr<int>();
   int* batch_idx_ptr = batch_idx.data_ptr<int>();
@@ -140,6 +111,12 @@ at::Tensor bt_min_mha(
     valid_word_num++;
   }
 
+  at::Tensor query_buf = torch::zeros(
+      {batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor key_buf = torch::zeros(
+      {batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor val_buf = torch::zeros(
+      {batch_size, head_num, seq_len, size_per_head}, float_options);
   nteffectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
       q_buf.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
