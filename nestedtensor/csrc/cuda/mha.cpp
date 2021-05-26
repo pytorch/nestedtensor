@@ -19,18 +19,6 @@ using namespace at;
 namespace torch {
 namespace nested_tensor {
 
-at::Tensor _sequence_mask(at::Tensor lengths) {
-    int64_t batch_size = lengths.numel();
-    int64_t max_len = lengths.max().item<int64_t>();
-    at::Tensor mask = torch::arange(0, max_len, torch::kFloat);
-    mask = mask.repeat({batch_size, 1});
-    mask = mask.lt(lengths.unsqueeze(1));
-    mask = mask.to(torch::kCUDA);
-    mask = mask.view({-1, 1, 1, max_len});
-    at::Tensor m2 = mask.transpose(2, 3);
-    return mask * m2;
-}
-
 at::Tensor bt_min_mha(
     int64_t num_heads,
     int64_t head_dim,
@@ -86,9 +74,8 @@ at::Tensor bt_min_mha(
   TORCH_CHECK(query_esize.height() == 1, "Query nested dim isn't 1.");
   auto query_esize_sizes = query_esize.sizes();
 
-  at::Tensor attr_mask = _sequence_mask(
-      at::native::select(query_esize_sizes, 1, 0).contiguous());
-  attr_mask = attr_mask.to(float_options);
+  at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
+  attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
   nteffectivetransformer::exclusiveScan_kernelLauncher(
       prefix_sum_ptr,
