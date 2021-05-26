@@ -1003,6 +1003,7 @@ class TestFunctional(TestCase):
             not_input_mask = torch.logical_not(input_mask)
             torch.cuda.synchronize()
             t0 = time.time()
+            # print(input_batch.size())
             for _ in range(5):
                 attn_output, _ = mha(
                     input_batch,
