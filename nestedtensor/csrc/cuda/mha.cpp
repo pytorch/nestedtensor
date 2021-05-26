@@ -107,39 +107,12 @@ at::Tensor bt_min_mha(
       (int32_t)(embedding_dim),
       defaultStream);
 
-  // std::cout << "input_mask: " << input_mask << std::endl;
-  // std::cout << "prefix_sum: " << prefix_sum << std::endl;
-  // std::cout << "batch_idx: " << batch_idx << std::endl;
-  // std::cout << "word_idx: " << word_idx << std::endl;
-
-  // std::cout << "attr_kernel.t().sizes(): " << attr_kernel.t().sizes() << std::endl;
-  // std::cout << "attr_bias.sizes(): " << attr_bias.sizes() << std::endl;
-
-  // at::Tensor packed = at::addmm(attr_bias, query, attr_kernel.t());
-  // at::Tensor packed_buf = get_buffer(packed);
-  // std::cout << "packed_buf.sizes(): " << packed_buf.sizes() << std::endl;
-  // std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
-  // at::Tensor q_buf = packed_chunks[0].contiguous();
-  // at::Tensor k_buf = packed_chunks[1].contiguous();
-  // at::Tensor v_buf = packed_chunks[2].contiguous();
-
-
-  std::vector<at::Tensor> bias_chunks = attr_bias.chunk(3);
-  at::Tensor attr_bias_Q = bias_chunks[0];
-  at::Tensor attr_bias_K = bias_chunks[1];
-  at::Tensor attr_bias_V = bias_chunks[2];
-
-  std::vector<at::Tensor> attr_kernel_chunks = attr_kernel.chunk(3);
-  at::Tensor attr_kernel_Q = attr_kernel_chunks[0];
-  at::Tensor attr_kernel_K = attr_kernel_chunks[1];
-  at::Tensor attr_kernel_V = attr_kernel_chunks[2];
-
-  at::Tensor q = at::addmm(attr_bias_Q, query, attr_kernel_Q.t());
-  at::Tensor k = at::addmm(attr_bias_K, key, attr_kernel_K.t());
-  at::Tensor v = at::addmm(attr_bias_V, value, attr_kernel_V.t());
-  at::Tensor q_buf = get_buffer(q);
-  at::Tensor k_buf = get_buffer(k);
-  at::Tensor v_buf = get_buffer(v);
+  at::Tensor packed = at::matmul(query, attr_kernel.t());
+  at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
+  std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
+  at::Tensor q_buf = packed_chunks[0].contiguous().reshape({-1});
+  at::Tensor k_buf = packed_chunks[1].contiguous().reshape({-1});
+  at::Tensor v_buf = packed_chunks[2].contiguous().reshape({-1});
 
   int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
   int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
@@ -155,6 +128,11 @@ at::Tensor bt_min_mha(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
   at::Tensor attr_out =
       torch::zeros({valid_word_num, embedding_dim}, float_options);
+
+  std::vector<at::Tensor> bias_chunks = attr_bias.chunk(3);
+  at::Tensor attr_bias_Q = bias_chunks[0];
+  at::Tensor attr_bias_K = bias_chunks[1];
+  at::Tensor attr_bias_V = bias_chunks[2];
 
   nteffectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
       q_buf.data_ptr<float>(),

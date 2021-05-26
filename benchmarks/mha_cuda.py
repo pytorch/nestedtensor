@@ -40,7 +40,7 @@ def run(bdim, embedding_dim, nhead, min_t, max_t, iters, device):
     # Create MHA with self-attention in mind
     lin = torch.nn.MultiheadAttention(embedding_dim, nhead).to(device).eval()
     nt_time = benchmark_torch_function(iters, lin, nt, nt, nt)
-    import sys; sys.exit(1)
+    # import sys; sys.exit(1)
 
     # Created regular padded Tensor
     data = nt.to_padded_tensor(padding=0)
