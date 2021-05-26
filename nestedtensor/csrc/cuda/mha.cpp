@@ -122,6 +122,9 @@ at::Tensor bt_min_mha(
   query_buf = query_buf.reshape({batch_size, head_num, seq_len, size_per_head});
   key_buf = key_buf.reshape({batch_size, head_num, seq_len, size_per_head});
   val_buf = val_buf.reshape({batch_size, head_num, seq_len, size_per_head});
+  query_buf = query_buf.to(float_options);
+  key_buf = key_buf.to(float_options);
+  val_buf = val_buf.to(float_options);
 
   int valid_word_num = get_numel(query) / embedding_dim;
 

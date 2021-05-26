@@ -1026,7 +1026,6 @@ class TestFunctional(TestCase):
         # test(1, 4, 3, 2, 2, use_arange=True)
         test(2, 1, 2, 1, 2)
         test(1, 3, 5, 4, 4)
-        return
         test(2, 3, 5, 2, 4)
         test(2, 1, 2, 2, 4)
         test(2, 1, 2, 2, 4)
