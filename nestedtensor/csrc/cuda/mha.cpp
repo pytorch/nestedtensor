@@ -97,44 +97,33 @@ at::Tensor bt_min_mha(
   at::Tensor packed = at::matmul(query, attr_kernel.t());
   at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
   std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
-  at::Tensor q_buf = packed_chunks[0].contiguous().reshape({-1});
-  at::Tensor k_buf = packed_chunks[1].contiguous().reshape({-1});
-  at::Tensor v_buf = packed_chunks[2].contiguous().reshape({-1});
-
-  int valid_word_num = get_numel(query) / embedding_dim;
-
-  at::Tensor query_buf = torch::zeros(
-      {batch_size, head_num, seq_len, size_per_head}, float_options);
-  at::Tensor key_buf = torch::zeros(
-      {batch_size, head_num, seq_len, size_per_head}, float_options);
-  at::Tensor val_buf = torch::zeros(
-      {batch_size, head_num, seq_len, size_per_head}, float_options);
-  at::Tensor attr_out =
-      torch::zeros({valid_word_num, embedding_dim}, float_options);
+  at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
+  at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
+  at::Tensor v_buf_ = packed_chunks[2].contiguous().reshape({-1});
+  at::Tensor q = wrap_buffer(std::move(q_buf_), get_efficient_nested_size(query),
+      get_efficient_nested_stride(query));
+  at::Tensor k = wrap_buffer(std::move(k_buf_), get_efficient_nested_size(query),
+      get_efficient_nested_stride(query));
+  at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query),
+      get_efficient_nested_stride(query));
 
   std::vector<at::Tensor> bias_chunks = attr_bias.chunk(3);
   at::Tensor attr_bias_Q = bias_chunks[0];
   at::Tensor attr_bias_K = bias_chunks[1];
   at::Tensor attr_bias_V = bias_chunks[2];
+  
+  q = q + attr_bias_Q;
+  k = k + attr_bias_K;
+  v = v + attr_bias_V;
 
-  nteffectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
-      q_buf.data_ptr<float>(),
-      attr_bias_Q.data_ptr<float>(),
-      k_buf.data_ptr<float>(),
-      attr_bias_K.data_ptr<float>(),
-      v_buf.data_ptr<float>(),
-      attr_bias_V.data_ptr<float>(),
-      query_buf.data_ptr<float>(),
-      key_buf.data_ptr<float>(),
-      val_buf.data_ptr<float>(),
-      valid_word_num,
-      batch_size,
-      seq_len,
-      head_num,
-      size_per_head,
-      batch_idx_ptr,
-      word_idx_ptr,
-      defaultStream);
+  at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
+  at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
+  at::Tensor val_buf = to_padded_tensor(v, 0).contiguous();
+  query_buf = query_buf.reshape({batch_size, head_num, seq_len, size_per_head});
+  key_buf = key_buf.reshape({batch_size, head_num, seq_len, size_per_head});
+  val_buf = val_buf.reshape({batch_size, head_num, seq_len, size_per_head});
+
+  int valid_word_num = get_numel(query) / embedding_dim;
 
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
@@ -149,6 +138,7 @@ at::Tensor bt_min_mha(
       defaultStream);
 
   auto attn_output = at::matmul(attn_output_weights, val_buf);
+  at::Tensor attr_out = torch::zeros({valid_word_num, embedding_dim}, float_options);
 
   nteffectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
       attn_output.data_ptr<float>(),
