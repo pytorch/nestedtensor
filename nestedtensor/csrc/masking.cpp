@@ -79,7 +79,20 @@ std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<int64_t> get_max_size(Tensor nt) {
+std::vector<int64_t> get_max_size(const Tensor& nt) {
+  if (get_nested_dim(nt) == 1) {
+    auto nt_opt_sizes = get_opt_sizes(nt);
+    if (nt_opt_sizes.size() > 0 && *nt_opt_sizes[0] > 0) {
+      auto esize = get_efficient_nested_size(nt);
+      auto sizes = esize.sizes();
+      auto max_sizes = std::get<0>(sizes.max(0));
+      std::vector<int64_t> result;
+      for (int64_t i = 0; i < max_sizes.size(0); i++) {
+        result.push_back(max_sizes[i].item<int64_t>());
+      }
+      return result;
+    }
+  }
   return _get_max_size(get_nested_size(nt));
 }
 
@@ -203,7 +216,6 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_opt_size[2] && nt_buffer.is_cuda()) {
-      std::cout << "Calling efficient to_tensor_mask" << std::endl;
       Tensor nt_sizes_ =
           get_efficient_nested_size(nt).sizes().to(torch::kInt32);
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor must be of nested_dim 2.")
@@ -256,6 +268,127 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
   at::Tensor res_mask;
   std::tie(res_tensor, res_mask) = pad_nt(nt, max_size);
   return merge_tensor_mask(res_tensor, res_mask, mask_dim);
+}
+
+Tensor merge_mask(
+    Tensor mask,
+    c10::optional<int64_t> mask_dim) {
+  if (mask_dim && get_dim(mask) == (*mask_dim)) {
+    return  mask;
+  }
+
+  if (get_dim(mask) == 0) {
+    return mask;
+  }
+
+  int64_t last_size = mask.size(-1);
+  Tensor collapsed_mask = mask.sum(-1);
+  Tensor is_last_size = (collapsed_mask == last_size);
+  Tensor is_zero = (collapsed_mask == 0);
+  int64_t is_last_size_sum = is_last_size.sum().item<int64_t>();
+  int64_t is_zero_sum = is_zero.sum().item<int64_t>();
+  if ((is_last_size_sum + is_zero_sum) == get_numel(collapsed_mask)) {
+    collapsed_mask = collapsed_mask.to(torch::kBool);
+    return merge_mask(collapsed_mask, mask_dim);
+  }
+
+  if (mask_dim && mask_dim != get_dim(mask)) {
+    throw std::runtime_error(
+        "Mask dimension is too small to represent data tensor.");
+  }
+  // This is expected to be a no-op, except in rare cases.
+  mask = mask.contiguous();
+  return mask;
+}
+
+Tensor _create_nt_mask(std::vector<int64_t> sizes, std::vector<int64_t> shape) {
+  int64_t numel = 1;
+  for (size_t i = 0; i < sizes.size(); i++) {
+    numel = numel * sizes[i];
+  }
+  TORCH_CHECK(numel > 0, "Empty tensors are not yet supported.");
+  // Dont pad in case of a scalar
+  if (sizes.size() == 0) {
+    return torch::tensor(true);
+  }
+  auto options = torch::TensorOptions().dtype(torch::kByte);
+  Tensor mask = pad_tensor_to_shape(
+      torch::full(
+          IntArrayRef(sizes),
+          true,
+          options),
+      shape);
+  return mask;
+}
+
+Tensor _create_nt_mask(SizeNode nt_size, std::vector<int64_t> shape) {
+  if (nt_size.degree() == 0) {
+    return _create_nt_mask(nt_size.payload(), shape);
+  }
+
+  std::vector<Tensor> res_mask;
+  if (nt_size.degree() == 0) {
+    return torch::tensor({false}, torch::kByte);
+  } else {
+    for (auto child : nt_size.unbind()) {
+      Tensor mask = _create_nt_mask(child, shape);
+      res_mask.push_back(mask);
+    }
+  }
+
+  return at::stack(res_mask);
+}
+
+Tensor _create_nt_mask(EfficientSizeNode nt_size, std::vector<int64_t> shape) {
+  if (nt_size.height() == 1) {
+    std::vector<at::Tensor> tmp_masks;
+    auto esizes = nt_size.sizes();
+    int64_t* esizes_ptr = esizes.data_ptr<int64_t>();
+    for(int64_t i = 0; i < esizes.size(0); i++) {
+      std::vector<int64_t> tmp_sizes;
+      for(size_t j = 0; j < shape.size(); j++) {
+        tmp_sizes.push_back(esizes_ptr[i * esizes.stride(0) + j]);
+      }
+      tmp_masks.push_back(_create_nt_mask(tmp_sizes, shape));
+    }
+    return at::stack(tmp_masks);
+  }
+  return _create_nt_mask(nt_size.to_size_node(), shape);
+}
+
+Tensor to_mask(
+    Tensor nt,
+    c10::optional<int64_t> mask_dim) {
+  TORCH_CHECK(
+      !mask_dim || *mask_dim <= get_dim(nt),
+      "Requested mask dimension ",
+      *mask_dim,
+      " is bigger than dimension ",
+      get_dim(nt),
+      " of given NestedTensor.");
+
+
+  auto opt_sizes = get_opt_sizes(nt);
+  if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
+    Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true)
+                                                     : torch::tensor({true});
+    return result_mask;
+  }
+
+  std::vector<int64_t> max_size;
+  if (get_nested_dim(nt) == 1 &&
+      get_dim(nt) > 1 &&
+      mask_dim &&
+      *mask_dim > 1) {
+    auto tmp_max_size = get_max_size(nt);
+    for (int64_t i = 1; i < *mask_dim; i++) {
+      max_size.push_back(tmp_max_size[i - 1]);
+    }
+    return _create_nt_mask(get_efficient_nested_size(nt), max_size);
+  }
+  max_size = get_max_size(nt);
+  at::Tensor res_mask = _create_nt_mask(get_efficient_nested_size(nt), max_size);
+  return merge_mask(res_mask, mask_dim);
 }
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
@@ -314,6 +447,9 @@ TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
 
   m.def("to_tensor_mask(Tensor nt, int? mask_dim) -> (Tensor, Tensor)");
   m.impl("to_tensor_mask", NestedTensorKey, to_tensor_mask);
+
+  m.def("to_mask(Tensor nt, int? mask_dim) -> Tensor");
+  m.impl("to_mask", NestedTensorKey, to_mask);
 
   m.def("to_padded_tensor(Tensor nt, float padding) -> Tensor");
   m.impl("to_padded_tensor", NestedTensorKey, to_padded_tensor);

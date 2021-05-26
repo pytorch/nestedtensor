@@ -72,7 +72,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _storage;
   }
   int64_t nested_dim() const {
-    return get_structure().height();
+    return _storage->nested_size().height();
   }
   bool is_pinned() const {
     return _storage->is_pinned();
@@ -173,13 +173,13 @@ inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
   return get_nested_tensor_impl(tensor)->opt_sizes();
 }
 
-inline const EfficientSizeNode get_efficient_nested_size(at::Tensor tensor) {
+inline const EfficientSizeNode& get_efficient_nested_size(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->get_storage()->nested_size();
 }
 
-inline const EfficientSizeNode get_efficient_nested_stride(at::Tensor tensor) {
+inline const EfficientSizeNode& get_efficient_nested_stride(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->get_storage()->nested_stride();
