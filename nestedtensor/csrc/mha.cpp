@@ -53,7 +53,7 @@ at::Tensor min_mha(
   k = k + at::slice(*in_proj_bias, 0, edim, 2 * edim).contiguous();
   v = v + at::slice(*in_proj_bias, 0, 2 * edim).contiguous();
 
-  q = q * scaling;
+  q = q * torch::tensor(scaling);
 
   q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
   k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
