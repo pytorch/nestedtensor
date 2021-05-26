@@ -962,26 +962,12 @@ class TestFunctional(TestCase):
                     out_proj_weight_test)
             out_proj_weight = mha.out_proj.weight.clone().cuda()
 
-            attr_kernel_Q = in_proj_weight[:embedding_dim, :].contiguous()
-            attr_kernel_K = in_proj_weight[embedding_dim:2 *
-                                           embedding_dim, :].contiguous()
-            attr_kernel_V = in_proj_weight[2 *
-                                           embedding_dim:, :].contiguous()
-
-            attr_bias_Q = in_proj_bias[:embedding_dim].contiguous()
-            attr_bias_K = in_proj_bias[embedding_dim:2 *
-                                       embedding_dim].contiguous()
-            attr_bias_V = in_proj_bias[2*embedding_dim:].contiguous()
-
             import time
             torch.cuda.synchronize()
             torch.cuda.synchronize()
             t0 = time.time()
             scaling = float(head_size ** -0.5)
             for _ in range(5):
-                # print("input_nt")
-                # print(input_nt)
-                # print("---")
                 result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                               head_size,
                                                               0.5,
@@ -989,12 +975,8 @@ class TestFunctional(TestCase):
                                                               input_nt,
                                                               input_nt,
                                                               input_nt,
-                                                              attr_kernel_Q,
-                                                              attr_kernel_K,
-                                                              attr_kernel_V,
-                                                              attr_bias_Q,
-                                                              attr_bias_K,
-                                                              attr_bias_V,
+                                                              in_proj_weight,
+                                                              in_proj_bias,
                                                               scaling,
                                                               out_proj_weight,
                                                               in_proj_bias)
