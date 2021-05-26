@@ -944,7 +944,7 @@ class TestFunctional(TestCase):
             input_nt = nestedtensor.nested_tensor(
                 inputs, device=torch.device('cuda'), dtype=torch.float)
 
-            input_batch, _ = input_nt.to_tensor_mask(mask_dim=2)
+            input_batch, input_mask = input_nt.to_tensor_mask(mask_dim=2)
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             if use_arange:
@@ -1017,13 +1017,24 @@ class TestFunctional(TestCase):
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
+            input_batch = input_batch.transpose(0, 1)
+            not_input_mask = torch.logical_not(input_mask)
             torch.cuda.synchronize()
             t0 = time.time()
+            # print(input_batch.size())
             for _ in range(5):
-                attn_output, _ = mha(input_batch, input_batch, input_batch)
+                attn_output, _ = mha(
+                    input_batch,
+                    input_batch,
+                    input_batch,
+                    key_padding_mask=not_input_mask)
+
 
             torch.cuda.synchronize()
             t1 = time.time()
+            attn_output = attn_output.transpose(0, 1)
+            attn_output = attn_output * torch.logical_not(not_input_mask.unsqueeze(-1))
+            self.assertEqual(result_nt.to_padded_tensor(padding=0), attn_output)
             c = t1 - t0
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 
