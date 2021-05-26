@@ -180,7 +180,6 @@ at::Tensor bt_min_mha(
       defaultStream);
 
   // TODO: Bias is variably sized, need to add support for that.
-  // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());
   at::Tensor result = at::matmul(attr_out, out_proj_weight.t());
   result = result.reshape({-1});
   return wrap_buffer(
