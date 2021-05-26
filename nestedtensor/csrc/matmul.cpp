@@ -61,20 +61,20 @@ Tensor NestedTensor_addmm(
       if (get_dim(bias) == 1 && get_dim(input) == 3 && get_dim(weight) == 2) {
         auto input_opt_sizes = get_opt_sizes(input);
         if (input_opt_sizes[2]) {
-          if (*input_opt_sizes[2] == weight.size(1)) {
+          if (*input_opt_sizes[2] == weight.size(0)) {
             Tensor input_buffer = get_buffer(input);
             Tensor result_buffer =
                 at::addmm(
                     bias,
-                    input_buffer.reshape({-1, weight.size(1)}),
+                    input_buffer.reshape({-1, weight.size(0)}),
                     weight,
                     alpha,
                     beta)
                     .reshape({-1});
-            int64_t weight_size_1 = weight.size(1);
+            int64_t weight_size_0 = weight.size(0);
             EfficientSizeNode result_nested_size = map_efficient_size(
-                [weight_size_1](int64_t* data_ptr, int64_t size) {
-                  data_ptr[1] = weight_size_1;
+                [weight_size_0](int64_t* data_ptr, int64_t size) {
+                  data_ptr[1] = weight_size_0;
                 },
                 get_efficient_nested_size(input));
             EfficientSizeNode input_nested_stride =

@@ -39,12 +39,8 @@ at::Tensor bt_min_mha(
     at::Tensor query,
     at::Tensor key,
     at::Tensor value,
-    at::Tensor attr_kernel_Q,
-    at::Tensor attr_kernel_K,
-    at::Tensor attr_kernel_V,
-    at::Tensor attr_bias_Q,
-    at::Tensor attr_bias_K,
-    at::Tensor attr_bias_V,
+    at::Tensor attr_kernel,
+    at::Tensor attr_bias,
     double scaling,
     at::Tensor out_proj_weight,
     at::Tensor out_proj_bias) {
@@ -116,10 +112,31 @@ at::Tensor bt_min_mha(
   // std::cout << "batch_idx: " << batch_idx << std::endl;
   // std::cout << "word_idx: " << word_idx << std::endl;
 
-  at::Tensor q, k, v;
-  q = at::addmm(attr_bias_Q, query, attr_kernel_Q.t());
-  k = at::addmm(attr_bias_K, key, attr_kernel_K.t());
-  v = at::addmm(attr_bias_V, value, attr_kernel_V.t());
+  // std::cout << "attr_kernel.t().sizes(): " << attr_kernel.t().sizes() << std::endl;
+  // std::cout << "attr_bias.sizes(): " << attr_bias.sizes() << std::endl;
+
+  // at::Tensor packed = at::addmm(attr_bias, query, attr_kernel.t());
+  // at::Tensor packed_buf = get_buffer(packed);
+  // std::cout << "packed_buf.sizes(): " << packed_buf.sizes() << std::endl;
+  // std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
+  // at::Tensor q_buf = packed_chunks[0].contiguous();
+  // at::Tensor k_buf = packed_chunks[1].contiguous();
+  // at::Tensor v_buf = packed_chunks[2].contiguous();
+
+
+  std::vector<at::Tensor> bias_chunks = attr_bias.chunk(3);
+  at::Tensor attr_bias_Q = bias_chunks[0];
+  at::Tensor attr_bias_K = bias_chunks[1];
+  at::Tensor attr_bias_V = bias_chunks[2];
+
+  std::vector<at::Tensor> attr_kernel_chunks = attr_kernel.chunk(3);
+  at::Tensor attr_kernel_Q = attr_kernel_chunks[0];
+  at::Tensor attr_kernel_K = attr_kernel_chunks[1];
+  at::Tensor attr_kernel_V = attr_kernel_chunks[2];
+
+  at::Tensor q = at::addmm(attr_bias_Q, query, attr_kernel_Q.t());
+  at::Tensor k = at::addmm(attr_bias_K, key, attr_kernel_K.t());
+  at::Tensor v = at::addmm(attr_bias_V, value, attr_kernel_V.t());
   at::Tensor q_buf = get_buffer(q);
   at::Tensor k_buf = get_buffer(k);
   at::Tensor v_buf = get_buffer(v);
@@ -136,6 +153,9 @@ at::Tensor bt_min_mha(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
   at::Tensor val_buf = torch::zeros(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor attr_out =
+      torch::zeros({valid_word_num, embedding_dim}, float_options);
+
   nteffectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
       q_buf.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
@@ -169,8 +189,6 @@ at::Tensor bt_min_mha(
 
   auto attn_output = at::matmul(attn_output_weights, val_buf);
 
-  at::Tensor attr_out =
-      torch::zeros({valid_word_num, embedding_dim}, float_options);
   nteffectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
       attn_output.data_ptr<float>(),
       attr_out.data_ptr<float>(),
@@ -195,7 +213,7 @@ at::Tensor bt_min_mha(
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
-      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor attr_kernel_Q, Tensor attr_kernel_K, Tensor attr_kernel_V, Tensor attr_bias_Q, Tensor attr_bias_K, Tensor attr_bias_V, float scaling, Tensor out_proj_weight, Tensor out_proj_bias) -> Tensor");
+      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor attr_kernel, Tensor attr_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias) -> Tensor");
   m.impl("bt_min_mha", NestedTensorKey, &bt_min_mha);
 }
 
