@@ -114,11 +114,7 @@ at::Tensor bt_min_mha(
   at::Tensor k_buf = packed_chunks[1].contiguous().reshape({-1});
   at::Tensor v_buf = packed_chunks[2].contiguous().reshape({-1});
 
-  int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
-  int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
-  if (last_mask == 1) {
-    valid_word_num++;
-  }
+  int valid_word_num = get_numel(query) / embedding_dim;
 
   at::Tensor query_buf = torch::zeros(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
