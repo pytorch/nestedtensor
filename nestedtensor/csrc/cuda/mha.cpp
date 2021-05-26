@@ -19,6 +19,18 @@ using namespace at;
 namespace torch {
 namespace nested_tensor {
 
+at::Tensor _sequence_mask(at::Tensor lengths) {
+    int64_t batch_size = lengths.numel();
+    int64_t max_len = lengths.max().item<int64_t>();
+    at::Tensor mask = torch::arange(0, max_len, torch::kFloat);
+    mask = mask.repeat({batch_size, 1});
+    mask = mask.lt(lengths.unsqueeze(1));
+    mask = mask.to(torch::kCUDA);
+    mask = mask.view({-1, 1, 1, max_len});
+    at::Tensor m2 = mask.transpose(2, 3);
+    return mask * m2;
+}
+
 at::Tensor bt_min_mha(
     int64_t num_heads,
     int64_t head_dim,
@@ -27,16 +39,11 @@ at::Tensor bt_min_mha(
     at::Tensor query,
     at::Tensor key,
     at::Tensor value,
-    at::Tensor attr_kernel_Q,
-    at::Tensor attr_kernel_K,
-    at::Tensor attr_kernel_V,
-    at::Tensor attr_bias_Q,
-    at::Tensor attr_bias_K,
-    at::Tensor attr_bias_V,
+    at::Tensor attr_kernel,
+    at::Tensor attr_bias,
     double scaling,
     at::Tensor out_proj_weight,
-    at::Tensor out_proj_bias,
-    at::Tensor attr_mask) {
+    at::Tensor out_proj_bias) {
   // TODO: Assert that max seq_len is 1024!
   TORCH_CHECK(get_dim(query) == 3, "query needs to be 3 dim.");
   TORCH_CHECK(get_dim(key) == 3, "key needs to be 3 dim.");
@@ -75,6 +82,14 @@ at::Tensor bt_min_mha(
 
   at::Tensor tmp = get_buffer(query);
 
+  auto query_esize = get_efficient_nested_size(query);
+  TORCH_CHECK(query_esize.height() == 1, "Query nested dim isn't 1.");
+  auto query_esize_sizes = query_esize.sizes();
+
+  at::Tensor attr_mask = _sequence_mask(
+      at::native::select(query_esize_sizes, 1, 0).contiguous());
+  attr_mask = attr_mask.to(float_options);
+
   nteffectivetransformer::exclusiveScan_kernelLauncher(
       prefix_sum_ptr,
       input_mask.data_ptr<int>(),
@@ -92,24 +107,14 @@ at::Tensor bt_min_mha(
       (int32_t)(embedding_dim),
       defaultStream);
 
-  // std::cout << "input_mask: " << input_mask << std::endl;
-  // std::cout << "prefix_sum: " << prefix_sum << std::endl;
-  // std::cout << "batch_idx: " << batch_idx << std::endl;
-  // std::cout << "word_idx: " << word_idx << std::endl;
+  at::Tensor packed = at::matmul(query, attr_kernel.t());
+  at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
+  std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
+  at::Tensor q_buf = packed_chunks[0].contiguous().reshape({-1});
+  at::Tensor k_buf = packed_chunks[1].contiguous().reshape({-1});
+  at::Tensor v_buf = packed_chunks[2].contiguous().reshape({-1});
 
-  at::Tensor q, k, v;
-  q = at::addmm(attr_bias_Q, query, attr_kernel_Q.t());
-  k = at::addmm(attr_bias_K, key, attr_kernel_K.t());
-  v = at::addmm(attr_bias_V, value, attr_kernel_V.t());
-  at::Tensor q_buf = get_buffer(q);
-  at::Tensor k_buf = get_buffer(k);
-  at::Tensor v_buf = get_buffer(v);
-
-  int valid_word_num = prefix_sum.reshape({-1})[word_num - 1].item<int>();
-  int last_mask = input_mask.reshape({-1})[word_num - 1].item<int>();
-  if (last_mask == 1) {
-    valid_word_num++;
-  }
+  int valid_word_num = get_numel(query) / embedding_dim;
 
   at::Tensor query_buf = torch::zeros(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
@@ -117,6 +122,14 @@ at::Tensor bt_min_mha(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
   at::Tensor val_buf = torch::zeros(
       {batch_size, head_num, seq_len, size_per_head}, float_options);
+  at::Tensor attr_out =
+      torch::zeros({valid_word_num, embedding_dim}, float_options);
+
+  std::vector<at::Tensor> bias_chunks = attr_bias.chunk(3);
+  at::Tensor attr_bias_Q = bias_chunks[0];
+  at::Tensor attr_bias_K = bias_chunks[1];
+  at::Tensor attr_bias_V = bias_chunks[2];
+
   nteffectivetransformer::cuda::add_QKV_bias_padding_kernelLauncher<float>(
       q_buf.data_ptr<float>(),
       attr_bias_Q.data_ptr<float>(),
@@ -150,8 +163,6 @@ at::Tensor bt_min_mha(
 
   auto attn_output = at::matmul(attn_output_weights, val_buf);
 
-  at::Tensor attr_out =
-      torch::zeros({valid_word_num, embedding_dim}, float_options);
   nteffectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
       attn_output.data_ptr<float>(),
       attr_out.data_ptr<float>(),
@@ -165,7 +176,6 @@ at::Tensor bt_min_mha(
       defaultStream);
 
   // TODO: Bias is variably sized, need to add support for that.
-  // result = at::addmm(out_proj_bias, attr_out, out_proj_weight.t());
   at::Tensor result = at::matmul(attr_out, out_proj_weight.t());
   result = result.reshape({-1});
   return wrap_buffer(
@@ -176,7 +186,7 @@ at::Tensor bt_min_mha(
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
   m.def(
-      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor attr_kernel_Q, Tensor attr_kernel_K, Tensor attr_kernel_V, Tensor attr_bias_Q, Tensor attr_bias_K, Tensor attr_bias_V, float scaling, Tensor out_proj_weight, Tensor out_proj_bias, Tensor attr_mask) -> Tensor");
+      "bt_min_mha(int num_heads, int head_dim, float dropout_p, bool training, Tensor query, Tensor key, Tensor value, Tensor attr_kernel, Tensor attr_bias, float scaling, Tensor out_proj_weight, Tensor out_proj_bias) -> Tensor");
   m.impl("bt_min_mha", NestedTensorKey, &bt_min_mha);
 }
 

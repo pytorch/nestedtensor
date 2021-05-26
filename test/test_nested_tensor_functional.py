@@ -923,19 +923,6 @@ class TestFunctional(TestCase):
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_effective_transformer_mha(self):
-        def sequence_mask(lengths, max_len=None, is_2d=True):
-            batch_size = lengths.numel()
-            max_len = max_len or lengths.max()
-            mask = (torch.arange(0, max_len, device=lengths.device)
-                    .type_as(lengths)
-                    .repeat(batch_size, 1)
-                    .lt(lengths.unsqueeze(1)))
-            if is_2d:
-                return mask
-            else:
-                mask = mask.view(-1, 1, 1, max_len)
-                m2 = mask.transpose(2, 3)
-                return mask * m2
 
         def test(num_heads, batch_size, seq_len_, head_size, embedding_dim,
                  use_arange=False):
@@ -956,10 +943,8 @@ class TestFunctional(TestCase):
                     inputs.append(torch.randn(i, embedding_dim))
             input_nt = nestedtensor.nested_tensor(
                 inputs, device=torch.device('cuda'), dtype=torch.float)
-            attr_mask = sequence_mask(torch.tensor(
-                seq_lens), None, False).to(torch.float).cuda()
 
-            input_batch, _ = input_nt.to_tensor_mask(mask_dim=2)
+            input_batch, input_mask = input_nt.to_tensor_mask(mask_dim=2)
 
             mha = torch.nn.MultiheadAttention(embedding_dim, num_heads)
             if use_arange:
@@ -977,26 +962,12 @@ class TestFunctional(TestCase):
                     out_proj_weight_test)
             out_proj_weight = mha.out_proj.weight.clone().cuda()
 
-            attr_kernel_Q = in_proj_weight[:embedding_dim, :].contiguous()
-            attr_kernel_K = in_proj_weight[embedding_dim:2 *
-                                           embedding_dim, :].contiguous()
-            attr_kernel_V = in_proj_weight[2 *
-                                           embedding_dim:, :].contiguous()
-
-            attr_bias_Q = in_proj_bias[:embedding_dim].contiguous()
-            attr_bias_K = in_proj_bias[embedding_dim:2 *
-                                       embedding_dim].contiguous()
-            attr_bias_V = in_proj_bias[2*embedding_dim:].contiguous()
-
             import time
             torch.cuda.synchronize()
             torch.cuda.synchronize()
             t0 = time.time()
             scaling = float(head_size ** -0.5)
             for _ in range(5):
-                # print("input_nt")
-                # print(input_nt)
-                # print("---")
                 result_nt = torch.ops.nestedtensor.bt_min_mha(num_heads,
                                                               head_size,
                                                               0.5,
@@ -1004,16 +975,11 @@ class TestFunctional(TestCase):
                                                               input_nt,
                                                               input_nt,
                                                               input_nt,
-                                                              attr_kernel_Q,
-                                                              attr_kernel_K,
-                                                              attr_kernel_V,
-                                                              attr_bias_Q,
-                                                              attr_bias_K,
-                                                              attr_bias_V,
+                                                              in_proj_weight,
+                                                              in_proj_bias,
                                                               scaling,
                                                               out_proj_weight,
-                                                              in_proj_bias,
-                                                              attr_mask)
+                                                              in_proj_bias)
 
             torch.cuda.synchronize()
             t1 = time.time()
@@ -1033,13 +999,24 @@ class TestFunctional(TestCase):
             self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
+            input_batch = input_batch.transpose(0, 1)
+            not_input_mask = torch.logical_not(input_mask)
             torch.cuda.synchronize()
             t0 = time.time()
+            # print(input_batch.size())
             for _ in range(5):
-                attn_output, _ = mha(input_batch, input_batch, input_batch)
+                attn_output, _ = mha(
+                    input_batch,
+                    input_batch,
+                    input_batch,
+                    key_padding_mask=not_input_mask)
+
 
             torch.cuda.synchronize()
             t1 = time.time()
+            attn_output = attn_output.transpose(0, 1)
+            attn_output = attn_output * torch.logical_not(not_input_mask.unsqueeze(-1))
+            self.assertEqual(result_nt.to_padded_tensor(padding=0), attn_output)
             c = t1 - t0
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a)
 

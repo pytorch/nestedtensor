@@ -16,28 +16,6 @@ inline at::Tensor stack_sizes(SizeNode size_node) {
   }
   return at::stack(flattened);
 }
-inline std::vector<c10::optional<int64_t>> construct_efficient_size(
-    SizeNode size_node,
-    at::Tensor sizes) {
-  std::vector<c10::optional<int64_t>> result = construct_size(size_node);
-  size_t nested_dim = result.size();
-  if (sizes.dim() > 0) {
-    int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
-    result.resize(nested_dim + sizes.size(1));
-    for (int64_t i = 0; i < sizes.size(1); i++) {
-      result[nested_dim + i] = sizes_ptr[i];
-    }
-    for (int64_t j = 0; j < sizes.size(1); j++) {
-      for (int64_t i = 0; i < sizes.size(0); i++) {
-        if (result[nested_dim + j] &&
-            (result[nested_dim + j] != sizes_ptr[i * sizes.size(1) + j])) {
-          result[nested_dim + j] = c10::nullopt;
-        }
-      }
-    }
-  }
-  return result;
-}
 
 inline void _efficient_serialize(
     const SizeNode& nested_node,
@@ -57,7 +35,7 @@ inline std::vector<int64_t> efficient_serialize(const SizeNode& nested_node) {
 }
 
 inline std::tuple<size_t, SizeNode> _efficient_deserialize(
-    std::vector<int64_t> out,
+    const std::vector<int64_t>& out,
     size_t index,
     int64_t height) {
   if (height == 0) {
@@ -76,10 +54,39 @@ inline std::tuple<size_t, SizeNode> _efficient_deserialize(
 }
 
 inline SizeNode efficient_deserialize(
-    std::vector<int64_t> out,
+    const std::vector<int64_t>& out,
     int64_t height) {
   auto tmp = _efficient_deserialize(out, 0, height);
   return std::get<1>(tmp);
+}
+
+inline std::vector<c10::optional<int64_t>> construct_efficient_size(
+    const std::vector<int64_t>& out,
+    int64_t height,
+    const at::Tensor& sizes) {
+  std::vector<c10::optional<int64_t>> result;
+  if (out.size() == 1) {
+    result.push_back(out[0]);
+  } else {
+    result = construct_size(impl::efficient_deserialize(out, height));
+  }
+  size_t nested_dim = result.size();
+  if (sizes.dim() > 0) {
+    int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
+    result.resize(nested_dim + sizes.size(1));
+    for (int64_t i = 0; i < sizes.size(1); i++) {
+      result[nested_dim + i] = sizes_ptr[i];
+    }
+    for (int64_t j = 0; j < sizes.size(1); j++) {
+      for (int64_t i = 0; i < sizes.size(0); i++) {
+        if (result[nested_dim + j] &&
+            (result[nested_dim + j] != sizes_ptr[i * sizes.size(1) + j])) {
+          result[nested_dim + j] = c10::nullopt;
+        }
+      }
+    }
+  }
+  return result;
 }
 
 } // namespace impl
@@ -88,13 +95,19 @@ struct EfficientSizeNode {
   explicit EfficientSizeNode(const SizeNode& size_node)
       : _height(size_node.height()),
         _structure(impl::efficient_serialize(size_node)),
-        _sizes(impl::stack_sizes(size_node)) {}
+        _sizes(impl::stack_sizes(size_node)),
+        _opt_sizes(impl::construct_efficient_size(_structure, _height, _sizes))
+  {}
 
   explicit EfficientSizeNode(
       int64_t height,
       const std::vector<int64_t>& structure,
       const at::Tensor& sizes)
-      : _height(height), _structure(structure), _sizes(sizes) {}
+      : _height(height),
+        _structure(structure), 
+        _sizes(sizes),
+        _opt_sizes(impl::construct_efficient_size(_structure, _height, _sizes))
+  {}
 
   SizeNode to_size_node() const {
     std::vector<std::vector<int64_t>> _tmp_sizes;
@@ -117,9 +130,8 @@ struct EfficientSizeNode {
   int64_t dim() const {
     return _sizes.dim() > 0 ? _height + _sizes.size(1) : _height;
   }
-  const std::vector<c10::optional<int64_t>> opt_sizes() const {
-    return impl::construct_efficient_size(
-        impl::efficient_deserialize(_structure, _height), _sizes);
+  const std::vector<c10::optional<int64_t>>& opt_sizes() const {
+    return _opt_sizes;
   }
   const at::Tensor& sizes() const {
     return _sizes;
@@ -154,6 +166,8 @@ struct EfficientSizeNode {
   int64_t _height;
   std::vector<int64_t> _structure;
   const at::Tensor _sizes;
+  bool _opt_sizes_set = false;
+  const std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
 inline bool efficient_size_structure_matches(
