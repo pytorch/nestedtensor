@@ -453,7 +453,6 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     }
   }
 #endif
-  std::cout << "calling inefficient padded_tensor" << std::endl;
   at::Tensor tensor;
   at::Tensor mask;
   std::tie(tensor, mask) = to_tensor_mask(nt, get_dim(nt));

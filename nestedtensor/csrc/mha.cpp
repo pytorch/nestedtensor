@@ -52,8 +52,6 @@ at::Tensor min_mha(
   q = q + at::slice(*in_proj_bias, 0, 0, edim).contiguous();
   k = k + at::slice(*in_proj_bias, 0, edim, 2 * edim).contiguous();
   v = v + at::slice(*in_proj_bias, 0, 2 * edim).contiguous();
-  // q = NestedTensor_contiguous(q);
-  // std::cout << "1q: " << get_buffer(q) << std::endl;
 
   q = q * torch::tensor(scaling);
 
@@ -65,7 +63,6 @@ at::Tensor min_mha(
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
   auto attn_output = at::matmul(attn_output_weights, v);
   attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
-  // map([](at::Tensor t) { std::cout << "t0: " << t << std::endl; return t; }, get_nested_tensor_structure(attn_output));
   attn_output = at::matmul(attn_output, out_proj_weight.t());
   attn_output = attn_output + out_proj_bias;
   return attn_output;

@@ -43,7 +43,6 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
       }
     }
   }
-  std::cout << "Calling inefficient matmul" << std::endl;
   return map_nested_tensor(
       [](at::Tensor self, at::Tensor other) { return at::matmul(self, other); },
       self,
