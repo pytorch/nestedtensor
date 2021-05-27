@@ -60,9 +60,6 @@ at::Tensor bt_min_mha(
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
-  at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
-  attr_mask = attr_mask * attr_mask.transpose(2, 3);
-
   at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
   at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
 
@@ -83,6 +80,9 @@ at::Tensor bt_min_mha(
 
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
+
+  at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
+  attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
   nteffectivetransformer::cuda::softmax_kernel_kernelLauncher<float>(
       attn_output_weights.data_ptr<float>(),
