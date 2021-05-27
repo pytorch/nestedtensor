@@ -80,12 +80,9 @@ at::Tensor bt_min_mha(
   at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
   at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
   at::Tensor val_buf = to_padded_tensor(v, 0).contiguous();
-  query_buf = query_buf.reshape({batch_size, seq_len, head_num, size_per_head});
-  key_buf =     key_buf.reshape({batch_size, seq_len, head_num, size_per_head});
-  val_buf =     val_buf.reshape({batch_size, seq_len, head_num, size_per_head});
-  query_buf = query_buf.transpose(1, 2);
-  key_buf = key_buf.transpose(1, 2);
-  val_buf = val_buf.transpose(1, 2);
+  query_buf = query_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
+  key_buf =     key_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
+  val_buf =     val_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
 
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
