@@ -52,6 +52,8 @@ at::Tensor min_mha(
   q = q + at::slice(*in_proj_bias, 0, 0, edim).contiguous();
   k = k + at::slice(*in_proj_bias, 0, edim, 2 * edim).contiguous();
   v = v + at::slice(*in_proj_bias, 0, 2 * edim).contiguous();
+  // q = NestedTensor_contiguous(q);
+  // std::cout << "1q: " << get_buffer(q) << std::endl;
 
   q = q * torch::tensor(scaling);
 
