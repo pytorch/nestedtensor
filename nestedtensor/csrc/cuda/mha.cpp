@@ -63,9 +63,9 @@ at::Tensor bt_min_mha(
   at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
-  at::Tensor packed = at::matmul(query, attr_kernel.t());
-  packed = packed + attr_bias;
+  at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
   at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
+
   std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
   at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
   at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
