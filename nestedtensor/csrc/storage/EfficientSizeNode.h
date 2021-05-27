@@ -133,6 +133,9 @@ struct EfficientSizeNode {
   const std::vector<c10::optional<int64_t>>& opt_sizes() const {
     return _opt_sizes;
   }
+  void refresh_opt_sizes() {
+    _opt_sizes = impl::construct_efficient_size(_structure, _height, _sizes);
+  }
   const at::Tensor& sizes() const {
     return _sizes;
   }
@@ -167,7 +170,7 @@ struct EfficientSizeNode {
   std::vector<int64_t> _structure;
   const at::Tensor _sizes;
   bool _opt_sizes_set = false;
-  const std::vector<c10::optional<int64_t>> _opt_sizes;
+  std::vector<c10::optional<int64_t>> _opt_sizes;
 };
 
 inline bool efficient_size_structure_matches(
@@ -230,10 +233,12 @@ inline void apply_efficient_size(
   }
   for (int64_t i = 0; i < sizes0.size(0); i++) {
     fn(sizes0_ptr + i * sizes0.size(1),
-       sizes0.size(0),
+       sizes0.size(1),
        sizes1_ptr + i * sizes1.size(1),
-       sizes1.size(0));
+       sizes1.size(1));
   }
+  size_node0.refresh_opt_sizes();
+  size_node1.refresh_opt_sizes();
 }
 
 } // namespace nested_tensor
