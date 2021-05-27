@@ -18,8 +18,18 @@ void add_padding(
     const int inner_size) 
 {
   const int batch_id  = blockIdx.x;
-  for (int i = 0; i < (offsets[batch_id + 1] - offsets[batch_id]) * inner_size; i++) {
-    output[batch_id * output_stride + i] = input[offsets[batch_id] * inner_size + i];
+  const int grain_size = blockDim.x;
+  const int tid = threadIdx.x;
+  const int range = (offsets[batch_id + 1] - offsets[batch_id]) * inner_size;
+  const int num_chunks = range / grain_size;
+  for (int id = 0; id < num_chunks; id++) {
+    output[batch_id * output_stride + id * grain_size + tid]
+      = input[offsets[batch_id] * inner_size + id * grain_size + tid];
+  }
+  const int leftover = num_chunks * grain_size;
+  if (leftover + tid < range) {
+    output[batch_id * output_stride + leftover + tid]
+      = input[offsets[batch_id] * inner_size + leftover + tid];
   }
 }
 
@@ -36,7 +46,7 @@ void add_padding_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  add_padding<float><<<grid, 1, 0, stream>>>(
+  add_padding<float><<<grid, 1024, 0, stream>>>(
       input,
       output,
       offsets,
