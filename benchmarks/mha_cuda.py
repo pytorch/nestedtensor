@@ -59,7 +59,6 @@ def run(bdim, embedding_dim, nhead, min_t, max_t, iters, device):
 
     # Time NT version
     nt_time = benchmark_torch_function(iters, mha, nt, nt, nt, need_weights=False)
-    import sys; sys.exit(1)
 
     # Amount of storage used for padding only
     percentage_padded = 100 * (data.numel() - nt.numel()) / data.numel()
@@ -78,7 +77,7 @@ if torch.cuda.is_available():
 iters = 10
 for nhead in [2, 4, 8]:
     print("")
-    for embed_dim in [128, 1024, 512, 256, 128]:
+    for embed_dim in [1024, 512, 256, 128]:
         print("")
         for min_t, max_t in [(16, 128), (32, 128), (64, 128), (128, 128)]:
             run(256, embed_dim, nhead, min_t, max_t, iters, device)

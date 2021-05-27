@@ -60,13 +60,6 @@ at::Tensor bt_min_mha(
   int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
   int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
   int word_num = batch_size * seq_len;
-  Tensor prefix_sum = torch::zeros({word_num}, options);
-  Tensor batch_idx = torch::zeros({word_num}, options);
-  Tensor word_idx = torch::zeros({word_num}, options);
-
-  int* prefix_sum_ptr = prefix_sum.data_ptr<int>();
-  int* batch_idx_ptr = batch_idx.data_ptr<int>();
-  int* word_idx_ptr = word_idx.data_ptr<int>();
 
   at::Tensor tmp = get_buffer(query);
 
@@ -76,23 +69,6 @@ at::Tensor bt_min_mha(
 
   at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
-
-  nteffectivetransformer::exclusiveScan_kernelLauncher(
-      prefix_sum_ptr,
-      input_mask.data_ptr<int>(),
-      input_mask.size(0) * input_mask.size(1),
-      defaultStream);
-
-
-  nteffectivetransformer::compressBertInput_kernelLauncher(
-      input_mask.data_ptr<int>(),
-      prefix_sum_ptr,
-      batch_idx_ptr,
-      word_idx_ptr,
-      (int32_t)(batch_size),
-      (int32_t)(seq_len),
-      (int32_t)(embedding_dim),
-      defaultStream);
 
   at::Tensor packed = at::matmul(query, attr_kernel.t());
   packed = packed + attr_bias;
@@ -135,28 +111,10 @@ at::Tensor bt_min_mha(
       (float)(scaling),
       defaultStream);
 
-  auto attn_output = at::matmul(attn_output_weights, val_buf);
-  at::Tensor attr_out = torch::zeros({valid_word_num, embedding_dim}, float_options);
-
-  nteffectivetransformer::cuda::transpose_rm_padding_kernelLauncher<float>(
-      attn_output.data_ptr<float>(),
-      attr_out.data_ptr<float>(),
-      valid_word_num,
-      batch_size,
-      seq_len,
-      head_num,
-      size_per_head,
-      batch_idx_ptr,
-      word_idx_ptr,
-      defaultStream);
-
-  // TODO: Bias is variably sized, need to add support for that.
-  at::Tensor result = at::matmul(attr_out, out_proj_weight.t());
-  result = result.reshape({-1});
-  return wrap_buffer(
-      std::move(result),
-      get_efficient_nested_size(query),
-      get_efficient_nested_stride(query));
+  auto attn_output = at::matmul(attn_output_weights, val_buf).contiguous();
+  attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
+  at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  return at::matmul(attr_out, out_proj_weight.t());
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {

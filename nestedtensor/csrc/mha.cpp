@@ -65,6 +65,7 @@ at::Tensor min_mha(
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
   auto attn_output = at::matmul(attn_output_weights, v);
   attn_output = attn_output.transpose(1, 2).reshape({-1, -1, edim});
+  // map([](at::Tensor t) { std::cout << "t0: " << t << std::endl; return t; }, get_nested_tensor_structure(attn_output));
   attn_output = at::matmul(attn_output, out_proj_weight.t());
   attn_output = attn_output + out_proj_bias;
   return attn_output;
