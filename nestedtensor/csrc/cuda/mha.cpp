@@ -87,8 +87,6 @@ at::Tensor bt_min_mha(
   key_buf = key_buf.transpose(1, 2);
   val_buf = val_buf.transpose(1, 2);
 
-  int valid_word_num = get_numel(query) / embedding_dim;
-
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
