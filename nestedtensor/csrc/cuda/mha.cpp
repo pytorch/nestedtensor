@@ -61,9 +61,9 @@ at::Tensor bt_min_mha(
   at::cuda::setCurrentCUDAStream(defaultStream);
 
   at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
-  at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
 
   // TODO: Move into implementation of chunk for NestedTensor
+  at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
   std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
   at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
   at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
