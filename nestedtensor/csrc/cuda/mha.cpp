@@ -57,12 +57,6 @@ at::Tensor bt_min_mha(
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
-  int64_t input_tensor_size = batch_size * head_num * seq_len * size_per_head;
-  int64_t attn_tensor_size = batch_size * head_num * seq_len * seq_len;
-  int word_num = batch_size * seq_len;
-
-  at::Tensor tmp = get_buffer(query);
-
   auto query_esize = get_efficient_nested_size(query);
   TORCH_CHECK(query_esize.height() == 1, "Query nested dim isn't 1.");
   auto query_esize_sizes = query_esize.sizes();
