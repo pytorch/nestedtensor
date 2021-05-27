@@ -391,6 +391,37 @@ Tensor to_mask(
   return merge_mask(res_mask, mask_dim);
 }
 
+Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size,
+    EfficientSizeNode target_stride) {
+#ifdef WITH_CUDA
+  if (padded.dim() == 3 && target_size.dim() == 3 && get_is_contiguous(padded)) {
+    auto nt_opt_size = target_size.opt_sizes();
+    if (nt_opt_size[2] && padded.is_cuda()) {
+      Tensor nt_sizes_ = target_size.sizes().to(torch::kInt32);
+      TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor must be of nested_dim 2.")
+      Tensor nt_sizes = at::native::narrow(nt_sizes_, 1, 0, 1);
+      int max_size_1 = nt_sizes.max().item<int>();
+      nt_sizes =
+          at::native::cumsum(nt_sizes, 0).to(torch::kInt32).reshape({-1});
+      nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes});
+      Tensor output = torch::empty({target_size.numel()}, padded.options());
+      nt_sizes = nt_sizes.to(torch::kCUDA);
+      at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<float>(),
+          output.data_ptr<float>(),
+          nt_sizes.data_ptr<int>(),
+          *nt_opt_size[0],
+          padded.stride(0),
+          *nt_opt_size[2],
+          defaultStream);
+      return wrap_buffer(std::move(output), target_size, target_stride);
+    }
+  }
+#endif
+  TORCH_CHECK(false, "from_padded_tensor not implemented for this case.");
+}
+
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
   if (get_dim(nt) == 3 && get_is_contiguous(nt)) {
