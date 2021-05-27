@@ -95,6 +95,7 @@ at::Tensor bt_min_mha(
       defaultStream);
 
   at::Tensor packed = at::matmul(query, attr_kernel.t());
+  packed = packed + attr_bias;
   at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
   std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
   at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
@@ -107,18 +108,7 @@ at::Tensor bt_min_mha(
   at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query),
       get_efficient_nested_stride(query));
 
-  std::vector<at::Tensor> bias_chunks = attr_bias.chunk(3);
-  at::Tensor attr_bias_Q = bias_chunks[0];
-  at::Tensor attr_bias_K = bias_chunks[1];
-  at::Tensor attr_bias_V = bias_chunks[2];
-  
-  q = q + attr_bias_Q;
-  // std::cout << "0q: " << get_buffer(q) << std::endl;
-  k = k + attr_bias_K;
-  v = v + attr_bias_V;
-
   at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
-  // std::cout << "0query_buf: " << query_buf << std::endl;
   at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
   at::Tensor val_buf = to_padded_tensor(v, 0).contiguous();
   query_buf = query_buf.reshape({batch_size, seq_len, head_num, size_per_head});

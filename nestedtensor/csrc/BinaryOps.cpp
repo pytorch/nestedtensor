@@ -31,9 +31,7 @@ Tensor NestedTensor_add_Tensor(
     }
   }
   if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
-    if (!get_is_contiguous(self)) {
-      self = NestedTensor_contiguous(self);
-    }
+    self = NestedTensor_contiguous(self);
     int64_t self_dim = get_dim(self);
     auto self_opt_sizes = get_opt_sizes(self);
     if (self_opt_sizes[self_dim - 1] && other.dim() == 1 &&
