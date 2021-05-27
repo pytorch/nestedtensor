@@ -36,6 +36,9 @@ at::Tensor bt_min_mha(
   TORCH_CHECK(get_dim(query) == 3, "query needs to be 3 dim.");
   TORCH_CHECK(get_dim(key) == 3, "key needs to be 3 dim.");
   TORCH_CHECK(get_dim(value) == 3, "value needs to be 3 dim.");
+  TORCH_CHECK(get_nested_dim(query) == 1, "Query nested dim isn't 1.");
+  TORCH_CHECK(get_nested_dim(key) == 1, "Key nested dim isn't 1.");
+  TORCH_CHECK(get_nested_dim(value) == 1, "Value nested dim isn't 1.");
   // TORCH_CHECK(in_proj_bias, "Input projection bias needs to be defined.");
   // auto opt_sizes = get_opt_sizes(query);
   // if (!opt_sizes[2]) {
@@ -56,10 +59,6 @@ at::Tensor bt_min_mha(
       torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
-
-  auto query_esize = get_efficient_nested_size(query);
-  TORCH_CHECK(query_esize.height() == 1, "Query nested dim isn't 1.");
-  auto query_esize_sizes = query_esize.sizes();
 
   at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
