@@ -70,12 +70,9 @@ at::Tensor bt_min_mha(
   at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
   at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
   at::Tensor v_buf_ = packed_chunks[2].contiguous().reshape({-1});
-  at::Tensor q = wrap_buffer(std::move(q_buf_), get_efficient_nested_size(query),
-      get_efficient_nested_stride(query));
-  at::Tensor k = wrap_buffer(std::move(k_buf_), get_efficient_nested_size(query),
-      get_efficient_nested_stride(query));
-  at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query),
-      get_efficient_nested_stride(query));
+  at::Tensor q = wrap_buffer(std::move(q_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  at::Tensor k = wrap_buffer(std::move(k_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
 
   at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
   at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
