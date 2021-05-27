@@ -86,9 +86,6 @@ at::Tensor bt_min_mha(
   query_buf = query_buf.transpose(1, 2);
   key_buf = key_buf.transpose(1, 2);
   val_buf = val_buf.transpose(1, 2);
-  query_buf = query_buf.to(float_options);
-  key_buf = key_buf.to(float_options);
-  val_buf = val_buf.to(float_options);
 
   int valid_word_num = get_numel(query) / embedding_dim;
 
