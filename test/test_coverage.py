@@ -15,6 +15,7 @@ def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
 
 class TestCoverage(TestCase):
 
+    @unittest.skip("Temporarily disabled due to memory footprint.")
     @torch.inference_mode()
     def test_issues_313(self):
         # Based on https://github.com/pytorch/nestedtensor/issues/313
