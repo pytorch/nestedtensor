@@ -305,6 +305,16 @@ inline Tensor NestedTensor_to_sparse_csr(Tensor tensor) {
       crow_indices, col_indices, values, c10::nullopt, torch::kSparseCsr);
 }
 
+inline at::Tensor new_empty(
+    EfficientSizeNode size_node,
+    at::ScalarType dtype_opt,
+    at::Layout layout_opt,
+    at::Device device_opt,
+    bool pin_memory_opt) {
+  int64_t numel = size_node.numel();
+  at::Tensor empty_data = at::empty({numel}, dtype, layout, device, pin_memory, c10::nullopt /* memory format */);
+}
+
 inline std::ostream& operator<<(
     std::ostream& out,
     const NestedTensorImpl& batch_tensor) {
