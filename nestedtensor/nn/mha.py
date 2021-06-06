@@ -1,11 +1,4 @@
-from torch.nn.init import constant_
-from torch.nn.init import xavier_uniform_
-from torch.nn.init import xavier_normal_
-from torch.nn.parameter import Parameter
-from torch import nn, Tensor
-from torch.nn.modules.module import Module
 import torch
-import torch.nn.functional as F
 import nestedtensor
 
 # NT case query, key, value have nested_dim 1 and are of shape (bsz, tgt_len, embed_dim)
