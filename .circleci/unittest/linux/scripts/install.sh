@@ -36,20 +36,22 @@ else
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}m
 fi
 
-# if [ "${CU_VERSION:-}" == cpu ] ; then
-#     pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
-#     pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev20210427%2Bcpu-${PYVSHORT}-linux_x86_64.whl
-#     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
-# else
-#     pip install https://download.pytorch.org/whl/nightly/cu102/torch-1.9.0.dev20210427%2Bcu102-${PYVSHORT}-linux_x86_64.whl
-#     pip install https://download.pytorch.org/whl/nightly/cu102/torchvision-0.10.0.dev20210427-${PYVSHORT}-linux_x86_64.whl
-#     USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
-# fi
+NIGHTLY_DATE=20210531
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    conda install -y pytorch torchvision torchaudio cpuonly -c pytorch-nightly
+    pip install https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev${NIGHTLY_DATE}%2Bcpu-${PYVSHORT}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cpu/torchvision-0.10.0.dev${NIGHTLY_DATE}%2Bcpu-${PYVSHORT}-linux_x86_64.whl
     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
-    conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-nightly
+    pip install https://download.pytorch.org/whl/nightly/cu102/torch-1.9.0.dev${NIGHTLY_DATE}%2Bcu102-${PYVSHORT}-linux_x86_64.whl
+    pip install https://download.pytorch.org/whl/nightly/cu102/torchvision-0.10.0.dev${NIGHTLY_DATE}-${PYVSHORT}-linux_x86_64.whl
     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
+
+# if [ "${CU_VERSION:-}" == cpu ] ; then
+#     conda install -y pytorch torchvision torchaudio cpuonly -c pytorch-nightly
+#     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
+# else
+#     conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-nightly
+#     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
+# fi
