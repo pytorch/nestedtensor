@@ -199,7 +199,7 @@ TensorNode py_to_nested_tensor(const py::object& py_obj) {
           "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
     }
     const at::Tensor& unpacked = THPVariable_Unpack(obj);
-    return TensorNode(at::Tensor(unpacked));
+    return TensorNode(unpacked.clone());
   }
 }
 
