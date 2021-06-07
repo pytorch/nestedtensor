@@ -53,9 +53,9 @@ NIGHTLY_DATE=20210605
 # fi
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    conda install -y pytorch torchvision torchaudio cpuonly -c pytorch-nightly
+    conda install -y pytorch torchvision cpuonly -c pytorch-nightly
     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
-    conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-nightly
+    conda install -y pytorch torchvision cudatoolkit=10.2 -c pytorch-nightly
     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
