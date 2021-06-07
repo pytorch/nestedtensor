@@ -38,7 +38,7 @@ else
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}m
 fi
 
-NIGHTLY_DATE=20210531
+NIGHTLY_DATE=20210601
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
     pip install -q https://download.pytorch.org/whl/nightly/cpu/torch-1.9.0.dev${NIGHTLY_DATE}%2Bcpu-${PYVSHORT}-linux_x86_64.whl
