@@ -198,8 +198,7 @@ TensorNode py_to_nested_tensor(const py::object& py_obj) {
       throw std::runtime_error(
           "Input nested list entries need to consist entirely of Tensors or NestedTensors.");
     }
-    const at::Tensor& unpacked = THPVariable_Unpack(obj);
-    return TensorNode(unpacked.clone());
+    return TensorNode(THPVariable_Unpack(obj));
   }
 }
 
