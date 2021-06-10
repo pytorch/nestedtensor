@@ -25,7 +25,7 @@ def benchmark_torch_function(iters, f, *args, **kwargs):
         return (time.time() - t0)
 
 @torch.inference_mode()
-def run_benchmark(iters, shapes, model, model_name):
+def run_benchmark(iters, shapes, model, model_name, bsz):
     ts = []
     for s in shapes:
         inp = torch.randn(*s, dtype=torch.half).cuda()
@@ -50,19 +50,21 @@ def run_benchmark(iters, shapes, model, model_name):
 
     shapes_2_array = np.array([s[2] for s in shapes])
     shapes_3_array = np.array([s[3] for s in shapes])
-    print(f"model_name: {model_name.ljust(20)}", end='')
+    print(f"model_name: {model_name.ljust(18)}", end='')
+    print(f" bsz: {bsz}", end='')
     print(f" mean±std shapes[2]: {shapes_2_array.mean():.2f}±{shapes_2_array.std():.2f}", end='')
     print(f" mean±std shapes[3]: {shapes_3_array.mean():.2f}±{shapes_3_array.std():.2f}", end='')
-    print(f" loop_time: {loop_time / iters:.2f}s, nt_times: {nt_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
+    print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
     def _benchmark(model_name):
         model = build_model({"name": model_name})
         model = model.cuda().half().eval()
-        BSZ = 128
+        
         random.seed(123)
         shapes = [(1, 3, random.randint(100, 150), random.randint(100, 150)) for _ in range(BSZ)]
-        run_benchmark(1, shapes, model, model_name)
+        run_benchmark(1, shapes, model, model_name, 128)
+        run_benchmark(1, shapes, model, model_name, 256)
 
     _benchmark("resnext101_32x4d")
     _benchmark("regnet_y_128gf")
