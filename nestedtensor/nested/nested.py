@@ -441,7 +441,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         if func is torch.nn.functional.adaptive_avg_pool2d:
             return _wrap_result(_nn_functional_adaptive_avg_pool2d(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.multi_head_attention_forward:
-            return _wrap_result(nestedtensor.nn.mha.multi_head_attention_forward(*args, **kwargs))
+            return _wrap_result(nestedtensor.nn.multi_head_attention_forward(*args, **kwargs))
         if func is torch.nn.functional.interpolate:
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         # Need a specialized implementation to dodge call to view in nll_loss

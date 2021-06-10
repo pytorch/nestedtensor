@@ -1,2 +1,1 @@
-from .mha import MultiheadAttention
-from .parameter import Parameter as NTParameter
+from .mha import multi_head_attention_forward

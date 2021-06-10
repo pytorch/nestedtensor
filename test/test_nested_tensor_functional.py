@@ -550,7 +550,7 @@ class TestFunctional(TestCase):
         key = torch.randn(2, 1, embed_dim, requires_grad=True)
         value = torch.randn(2, 1, embed_dim, requires_grad=True)
         attn_output, _ = mha(query, key, value)
-        nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
+        nt_mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
         nt_mha.in_proj_weight = mha.in_proj_weight
         nt_mha.in_proj_bias = mha.in_proj_bias
         nt_mha.out_proj.weight = mha.out_proj.weight
@@ -848,9 +848,9 @@ class TestFunctional(TestCase):
             def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                          activation="relu", normalize_before=False):
                 super().__init__()
-                self.self_attn = nestedtensor.nn.MultiheadAttention(
+                self.self_attn = torch.nn.MultiheadAttention(
                     d_model, nhead, dropout=dropout)
-                self.multihead_attn = nestedtensor.nn.MultiheadAttention(
+                self.multihead_attn = torch.nn.MultiheadAttention(
                     d_model, nhead, dropout=dropout)
                 # Implementation of Feedforward model
                 self.linear1 = nn.Linear(d_model, dim_feedforward)
