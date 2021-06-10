@@ -57,15 +57,17 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
-    def _benchmark(model_name):
+    def _benchmark(model_name, bsz):
         model = build_model({"name": model_name})
         model = model.cuda().half().eval()
         
         random.seed(123)
-        shapes = [(1, 3, random.randint(100, 150), random.randint(100, 150)) for _ in range(BSZ)]
-        run_benchmark(1, shapes, model, model_name, 128)
-        run_benchmark(1, shapes, model, model_name, 256)
+        shapes = [(1, 3, random.randint(100, 150), random.randint(100, 150)) for _ in range(bsz)]
+        run_benchmark(1, shapes, model, model_name, bsz)
 
-    _benchmark("resnext101_32x4d")
-    _benchmark("regnet_y_128gf")
-
+    _benchmark("resnext101_32x4d", 64)
+    _benchmark("regnet_y_128gf", 64)
+    _benchmark("resnext101_32x4d", 128)
+    _benchmark("regnet_y_128gf", 128)
+    _benchmark("resnext101_32x4d", 256)
+    _benchmark("regnet_y_128gf", 256)
