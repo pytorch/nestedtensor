@@ -38,6 +38,18 @@ class TestCoverage(TestCase):
         x1 = model(torch.stack(inputs))
         self.assertEqual(torch.stack(x0.unbind()), x1)
 
+    @torch.inference_mode()
+    def test_pytorch_commit_56017(self):
+        # Based on https://github.com/pytorch/nestedtensor/issues/313
+
+        nn.Linear(9, 64)
+        # inputs = [torch.randn(i, 3) for i in [4, 5, 9]]
+        # x0 = ntnt_nograd(inputs)
+        # print(x0)
+        # del inputs
+        # x0 = x0 + x0
+        # print(x0)
+
 
 if __name__ == "__main__":
     unittest.main()

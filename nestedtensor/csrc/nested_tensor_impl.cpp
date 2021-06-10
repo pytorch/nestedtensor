@@ -64,7 +64,7 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }
-  ListStorage* ls = new ListStorage(std::move(result));
+  PackedStorage* ls = new PackedStorage(std::move(result));
   NestedTensorStorage* ls_base = dynamic_cast<NestedTensorStorage*>(ls);
   return at::detail::make_tensor<NestedTensorImpl>(
       std::shared_ptr<NestedTensorStorage>(ls_base));
