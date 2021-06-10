@@ -50,10 +50,10 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
 
     shapes_2_array = np.array([s[2] for s in shapes])
     shapes_3_array = np.array([s[3] for s in shapes])
-    print(f"model_name: {model_name.ljust(18)}", end='')
-    print(f" bsz: {bsz}", end='')
-    print(f" mean±std shapes[2]: {shapes_2_array.mean():.2f}±{shapes_2_array.std():.2f}", end='')
-    print(f" mean±std shapes[3]: {shapes_3_array.mean():.2f}±{shapes_3_array.std():.2f}", end='')
+    print(f"model_name: {model_name.rjust(18)},", end='')
+    print(f" bsz: {bsz},", end='')
+    print(f" mean±std shapes[2]: {shapes_2_array.mean():.2f}±{shapes_2_array.std():.2f},", end='')
+    print(f" mean±std shapes[3]: {shapes_3_array.mean():.2f}±{shapes_3_array.std():.2f},", end='')
     print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
