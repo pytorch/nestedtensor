@@ -23,7 +23,8 @@ def _iter_constructors():
 
 def _test_property(self, fn):
     for constructor in _iter_constructors():
-        num_nested_tensor = 3
+        # TODO: Used to be 3. Currently only supporting nested dim 1.
+        num_nested_tensor = 1
         nested_tensor_lists = [utils.gen_nested_list(i, i, 3)
                                for i in range(1, num_nested_tensor)]
         first_tensors = [utils.get_first_tensor(
@@ -37,7 +38,8 @@ class TestNestedTensor(TestCase):
 
     def test_nested_constructor(self):
         for constructor in _iter_constructors():
-            num_nested_tensor = 3
+            # TODO: Currently only supporting nested dim 1
+            num_nested_tensor = 1
             # TODO: Shouldn't be constructable
             [utils.gen_nested_tensor(i, i, 3, constructor=constructor)
              for i in range(1, num_nested_tensor)]
@@ -160,6 +162,9 @@ class TestNestedTensor(TestCase):
             str(a)
             repr(a)
 
+    @unittest.skip("Currently only supporting nested dim 1.")
+    def test_repr_string_nested(self):
+        for constructor in _iter_constructors():
             a = constructor(
                 [
                     [torch.tensor([[1, 2], [2, 3]]), torch.tensor([[3, 4]])],
@@ -225,6 +230,9 @@ class TestNestedTensor(TestCase):
             self.assertEqual(b[0][0], 1)
             self.assertEqual(b[0][1], 2)
 
+    @unittest.skip("Currently only supporting nested dim 1.")
+    def test_nested_size_nested(self):
+        for constructor in _iter_constructors():
             a = constructor(
                 [[torch.randn(1)], [torch.randn(2), torch.randn(1)]])
             self.assertEqual(a.nested_size()[0][0], torch.Size([1]))
@@ -307,12 +315,17 @@ class TestNestedTensor(TestCase):
             self.assertEqual(a1.dim(), 1)
             a1 = constructor([torch.tensor([1, 2, 3, 4])])
             self.assertEqual(a1.dim(), 2)
+
+    @unittest.skip("Currently only supporting nested dim 1.")
+    def test_dim_nested(self):
+        for constructor in _iter_constructors():
             a1 = constructor([
                 [torch.tensor([1, 2, 3, 4])],
                 [torch.tensor([5, 6, 7, 8]), torch.tensor([9, 0, 0, 0])]
             ])
             self.assertEqual(a1.dim(), 3)
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_nested_dim(self):
         for constructor in _iter_constructors():
             nt = constructor([torch.tensor(3)])
@@ -341,14 +354,15 @@ class TestNestedTensor(TestCase):
                 self.assertTrue(a is not a1)
                 self.assertTrue(b is not b1)
 
-                nt1 = nestedtensor.nested_tensor([[c, d], [e]])
-                nt11, nt12 = unbind_fn(nt1, 0)
-                c1, d1 = unbind_fn(nt11, 0)
-                e1 = unbind_fn(nt12, 0)[0]
+                # Currently only supporting nested dim 1
+                # nt1 = nestedtensor.nested_tensor([[c, d], [e]])
+                # nt11, nt12 = unbind_fn(nt1, 0)
+                # c1, d1 = unbind_fn(nt11, 0)
+                # e1 = unbind_fn(nt12, 0)[0]
 
-                self.assertTrue(c is not c1)
-                self.assertTrue(d is not d1)
-                self.assertTrue(e is not e1)
+                # self.assertTrue(c is not c1)
+                # self.assertTrue(d is not d1)
+                # self.assertTrue(e is not e1)
 
                 nt = nestedtensor.nested_tensor([a, b])
                 a1, b1 = unbind_fn(nt, 0)
@@ -379,6 +393,7 @@ class TestNestedTensor(TestCase):
                   torch.tensor([]),
                   torch.tensor([]),
                   torch.tensor([]))
+
         _test_fn(lambda x, dim: x.unbind(dim))
         _test_fn(lambda x, dim: torch.unbind(x, dim))
 
@@ -422,17 +437,18 @@ class TestNestedTensor(TestCase):
             # TODO: Add more tensors and unbind across more dimensions to create mixing
 
             c = torch.rand(4, 3)
-            nt = nestedtensor.nested_tensor([[a], [b, c]])
-            nt_a, nt_b = unbind_fn(nt, 0)
-            self.assertEqual(nt_a, nestedtensor.nested_tensor(
-                [a]), ignore_contiguity=True)
-            self.assertEqual(nt_b, nestedtensor.nested_tensor(
-                [b, c]), ignore_contiguity=True)
-            result = (
-                nestedtensor.nested_tensor([a, b]),
-                nestedtensor.nested_tensor([c]))
-            for x, y in zip(unbind_fn(nt, 1), result):
-                self.assertEqual(x, y, ignore_contiguity=True)
+            # TODO: Currently only supporting nested dim 1
+            # nt = nestedtensor.nested_tensor([[a], [b, c]])
+            # nt_a, nt_b = unbind_fn(nt, 0)
+            # self.assertEqual(nt_a, nestedtensor.nested_tensor(
+            #     [a]), ignore_contiguity=True)
+            # self.assertEqual(nt_b, nestedtensor.nested_tensor(
+            #     [b, c]), ignore_contiguity=True)
+            # result = (
+            #     nestedtensor.nested_tensor([a, b]),
+            #     nestedtensor.nested_tensor([c]))
+            # for x, y in zip(unbind_fn(nt, 1), result):
+            #     self.assertEqual(x, y, ignore_contiguity=True)
         _test_fn(lambda x, dim: x.unbind(dim))
         _test_fn(lambda x, dim: torch.unbind(x, dim))
 
@@ -447,10 +463,11 @@ class TestNestedTensor(TestCase):
             a = constructor([torch.tensor(1), torch.tensor(2)])
             self.assertEqual(a.size(), (2,))
 
-            a = constructor([[torch.rand(1, 8),
-                              torch.rand(3, 8)],
-                             [torch.rand(7, 8)]])
-            self.assertEqual(a.size(), (2, None, None, 8))
+            # TODO: Currently only supporting nested dim 1
+            # a = constructor([[torch.rand(1, 8),
+            #                   torch.rand(3, 8)],
+            #                  [torch.rand(7, 8)]])
+            # self.assertEqual(a.size(), (2, None, None, 8))
 
             a = constructor([torch.rand(1, 2),
                              torch.rand(1, 8)])
@@ -472,55 +489,67 @@ class TestNestedTensor(TestCase):
             self.assertRaises(IndexError, lambda: a.to_tensor(1))
             self.assertRaises(IndexError, lambda: a.to_tensor(2))
 
-            t_a = torch.randn(2, 3)
-            t_b = torch.randn(2, 3)
-            a = constructor([[t_a, t_b]])
-            result = torch.stack([torch.stack([t_a, t_b])])
-            self.assertEqual(a.to_tensor(), result)
-            self.assertEqual(a.to_tensor(0), result)
+            # Currently only supporting nested dime 1.
+            # t_a = torch.randn(2, 3)
+            # t_b = torch.randn(2, 3)
+            # a = constructor([[t_a, t_b]])
+            # result = torch.stack([torch.stack([t_a, t_b])])
+            # self.assertEqual(a.to_tensor(), result)
+            # self.assertEqual(a.to_tensor(0), result)
+
+            # nested dim 1 change: Was already commented out
             # self.assertEqual(a.to_tensor(1), nestedtensor.as_nested_tensor(
             #     [torch.stack([t_a, t_b])]))
             # self.assertEqual(a.to_tensor(
             #     2), nestedtensor.as_nested_tensor([[t_a, t_b]]))
             # self.assertEqual(a.to_tensor(
             #     3), nestedtensor.as_nested_tensor([[t_a, t_b]]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(3))
-            self.assertRaises(IndexError, lambda: a.to_tensor(4))
 
-            t_c = torch.randn(2, 3)
-            t_d = torch.randn(2, 3)
-            a = constructor([[t_a, t_b], [t_c, t_d]])
-            result = torch.stack(
-                [torch.stack([t_a, t_b]), torch.stack([t_c, t_d])])
-            self.assertEqual(a.to_tensor(), result)
-            self.assertEqual(a.to_tensor(0), result)
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(3))
+            # self.assertRaises(IndexError, lambda: a.to_tensor(4))
+
+            # Currently only supporting nested dime 1.
+            # t_c = torch.randn(2, 3)
+            # t_d = torch.randn(2, 3)
+            # a = constructor([[t_a, t_b], [t_c, t_d]])
+            # result = torch.stack(
+            #     [torch.stack([t_a, t_b]), torch.stack([t_c, t_d])])
+            # self.assertEqual(a.to_tensor(), result)
+            # self.assertEqual(a.to_tensor(0), result)
+
+            # nested dim 1 change: Was already commented out
             # self.assertEqual(a.to_tensor(1), nestedtensor.as_nested_tensor(
             #     [torch.stack([t_a, t_b]), torch.stack([t_c, t_d])]))
             # self.assertEqual(a.to_tensor(2), nestedtensor.as_nested_tensor(
             #     [[t_a, t_b], [t_c, t_d]]))
             # self.assertEqual(a.to_tensor(3), nestedtensor.as_nested_tensor(
             #     [[t_a, t_b], [t_c, t_d]]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(3))
-            self.assertRaises(IndexError, lambda: a.to_tensor(4))
 
-            t_e = torch.randn(3, 2)
-            t_f = torch.randn(3, 2)
-            a = constructor([[t_a, t_b], [t_e, t_f]])
-            self.assertRaises(IndexError, lambda: a.to_tensor(0))
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(3))
+            # self.assertRaises(IndexError, lambda: a.to_tensor(4))
+
+            # Currently only supporting nested dime 1.
+            # t_e = torch.randn(3, 2)
+            # t_f = torch.randn(3, 2)
+            # a = constructor([[t_a, t_b], [t_e, t_f]])
+            # self.assertRaises(IndexError, lambda: a.to_tensor(0))
+
+            # nested dim 1 change: Was already commented out
             # self.assertEqual(a.to_tensor(1), nestedtensor.as_nested_tensor(
             #     [torch.stack([t_a, t_b]), torch.stack([t_e, t_f])]))
             # self.assertEqual(a.to_tensor(2), nestedtensor.as_nested_tensor(
             #     [[t_a, t_b], [t_e, t_f]]))
             # self.assertEqual(a.to_tensor(3), nestedtensor.as_nested_tensor(
             #     [[t_a, t_b], [t_e, t_f]]))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
-            self.assertRaises(RuntimeError, lambda: a.to_tensor(3))
-            self.assertRaises(IndexError, lambda: a.to_tensor(4))
+
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(1))
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(2))
+            # self.assertRaises(RuntimeError, lambda: a.to_tensor(3))
+            # self.assertRaises(IndexError, lambda: a.to_tensor(4))
 
     def test_to_nested_tensor(self):
         for constructor in _iter_constructors():
@@ -546,50 +575,53 @@ class TestNestedTensor(TestCase):
             result = constructor([t_a, t_b])
             self.assertEqual(a.to_nested_tensor(), result)
             self.assertEqual(a.to_nested_tensor(0), result)
-            result = constructor([t_a.unbind(0), t_b.unbind(0)])
-            self.assertEqual(a.to_nested_tensor(1), result)
-            result = constructor(
-                [list(map(lambda x: x.unbind(), t_a.unbind())),
-                 list(map(lambda x: x.unbind(), t_b.unbind()))]
-            )
-            self.assertEqual(a.to_nested_tensor(2), result)
-            self.assertRaises(IndexError, lambda: a.to_nested_tensor(3))
 
-            a = constructor([[t_a, t_b]])
-            result = constructor([[t_a, t_b]])
-            self.assertEqual(a.to_nested_tensor(), result)
-            self.assertEqual(a.to_nested_tensor(0), result)
-            self.assertEqual(a.to_nested_tensor(1), result)
-            result = constructor([[t_a.unbind(0), t_b.unbind(0)]])
-            self.assertEqual(a.to_nested_tensor(2), result)
-            result = constructor([[list(map(lambda x: x.unbind(), t_a.unbind())),
-                                   list(map(lambda x: x.unbind(), t_b.unbind()))]])
-            self.assertEqual(a.to_nested_tensor(3), result)
-            self.assertRaises(IndexError, lambda: a.to_nested_tensor(4))
+            # Currently only supporting nested dime 1.
+            # result = constructor([t_a.unbind(0), t_b.unbind(0)])
+            # self.assertEqual(a.to_nested_tensor(1), result)
+            # result = constructor(
+            #     [list(map(lambda x: x.unbind(), t_a.unbind())),
+            #      list(map(lambda x: x.unbind(), t_b.unbind()))]
+            # )
+            # self.assertEqual(a.to_nested_tensor(2), result)
+            # self.assertRaises(IndexError, lambda: a.to_nested_tensor(3))
 
-            t_c = torch.randn(2, 4)
-            a = constructor([[t_a, t_b], [t_c]])
-            result = constructor([[t_a, t_b], [t_c]])
-            self.assertEqual(a.to_nested_tensor(), result)
-            self.assertEqual(a.to_nested_tensor(0), result)
-            self.assertEqual(a.to_nested_tensor(1), result)
-            result = constructor(
-                [[t_a.unbind(), t_b.unbind()], [t_c.unbind()]])
-            self.assertEqual(a.to_nested_tensor(2), result)
-            result = constructor([[list(map(lambda x: x.unbind(), t_a.unbind())),
-                                   list(map(lambda x: x.unbind(), t_b.unbind()))],
-                                  [list(map(lambda x: x.unbind(), t_c.unbind()))]])
-            self.assertEqual(a.to_nested_tensor(3), result)
-            self.assertRaises(IndexError, lambda: a.to_nested_tensor(4))
+            # Currently only supporting nested dime 1.
+            # a = constructor([[t_a, t_b]])
+            # result = constructor([[t_a, t_b]])
+            # self.assertEqual(a.to_nested_tensor(), result)
+            # self.assertEqual(a.to_nested_tensor(0), result)
+            # self.assertEqual(a.to_nested_tensor(1), result)
+            # result = constructor([[t_a.unbind(0), t_b.unbind(0)]])
+            # self.assertEqual(a.to_nested_tensor(2), result)
+            # result = constructor([[list(map(lambda x: x.unbind(), t_a.unbind())),
+            #                        list(map(lambda x: x.unbind(), t_b.unbind()))]])
+            # self.assertEqual(a.to_nested_tensor(3), result)
+            # self.assertRaises(IndexError, lambda: a.to_nested_tensor(4))
 
-            t = torch.randn(2, 3)
-            self.assertEqual(t, nestedtensor.to_nested_tensor(t, 0))
-            self.assertEqual(ntnt_nograd(t.unbind()),
-                             nestedtensor.to_nested_tensor(t, 1))
-            self.assertEqual(ntnt_nograd(
-                [ti.unbind() for ti in t.unbind()]), nestedtensor.to_nested_tensor(t, 2))
-            self.assertRaises(
-                IndexError, lambda: nestedtensor.to_nested_tensor(t, 3))
+            # t_c = torch.randn(2, 4)
+            # a = constructor([[t_a, t_b], [t_c]])
+            # result = constructor([[t_a, t_b], [t_c]])
+            # self.assertEqual(a.to_nested_tensor(), result)
+            # self.assertEqual(a.to_nested_tensor(0), result)
+            # self.assertEqual(a.to_nested_tensor(1), result)
+            # result = constructor(
+            #     [[t_a.unbind(), t_b.unbind()], [t_c.unbind()]])
+            # self.assertEqual(a.to_nested_tensor(2), result)
+            # result = constructor([[list(map(lambda x: x.unbind(), t_a.unbind())),
+            #                        list(map(lambda x: x.unbind(), t_b.unbind()))],
+            #                       [list(map(lambda x: x.unbind(), t_c.unbind()))]])
+            # self.assertEqual(a.to_nested_tensor(3), result)
+            # self.assertRaises(IndexError, lambda: a.to_nested_tensor(4))
+
+            # t = torch.randn(2, 3)
+            # self.assertEqual(t, nestedtensor.to_nested_tensor(t, 0))
+            # self.assertEqual(ntnt_nograd(t.unbind()),
+            #                  nestedtensor.to_nested_tensor(t, 1))
+            # self.assertEqual(ntnt_nograd(
+            #     [ti.unbind() for ti in t.unbind()]), nestedtensor.to_nested_tensor(t, 2))
+            # self.assertRaises(
+            #     IndexError, lambda: nestedtensor.to_nested_tensor(t, 3))
 
     def test_to(self):
         tensors = [torch.randn(1, 8),
@@ -649,6 +681,7 @@ class TestNestedTensor(TestCase):
         self.assertFalse(a5.is_pinned())
         self.assertFalse(a6.is_pinned())
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_getitem(self):
         a, b, c = torch.randn(3, 4), torch.randn(4, 3), torch.randn(1, 3)
         nt = ntnt_nograd([[a, b], [c]])
@@ -700,8 +733,9 @@ class TestNestedTensor(TestCase):
 
         nt0 = ntnt_nograd([a, b])
         nt1 = ntnt_nograd([c])
-        self.assertEqual(torch.stack(
-            [nt0, nt1], dim=0), ntnt_nograd([[a, b], [c]]))
+        # Currently only supporting nested dime 1.
+        # self.assertEqual(torch.stack(
+        #     [nt0, nt1], dim=0), ntnt_nograd([[a, b], [c]]))
         self.assertEqual(torch.stack(
             [nt0, nt1], dim=1),
             ntnt_nograd([torch.stack([a, c]), b.reshape(1, 3, 4)]))
@@ -757,7 +791,9 @@ class TestNestedTensor(TestCase):
 
 
 class TestContiguous(TestCase):
-    def test_contiguous(self):
+
+    @unittest.skip("Nested dim currently restricted to 1.")
+    def test_contiguous_nested(self):
         for _ in range(1, 10):
             # data = gen_nested_list(1, 2, 3, size_low=1, size_high=3)
             data = [[torch.rand(1, 2), torch.rand(3, 4)], [torch.rand(5, 6)]]
@@ -769,6 +805,7 @@ class TestContiguous(TestCase):
         nt.cos_()
         nt.cos()
 
+    def test_contiguous(self):
         a = nestedtensor.as_nested_tensor([torch.tensor([1, 2]),
                                            torch.tensor([3, 4]),
                                            torch.tensor([5, 6]),

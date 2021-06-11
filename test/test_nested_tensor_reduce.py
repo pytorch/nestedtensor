@@ -24,41 +24,44 @@ def _flatten_nt(nt):
 class TestReduce(TestCase):
 
     def _test_reduce_dim(self, fn, associative=True, test_keep_dim=True, test_multi_dim=True):
-        t0 = torch.arange(9).float().reshape(3, 3)
-        t1 = torch.arange(6).float().reshape(2, 3)
-        t2 = torch.arange(9).float().reshape(3, 3)
-        ts = [[t0, t1], [t2, t1]]
-        nt = ntnt(ts)
-        if associative and test_multi_dim:
-            t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0)
-            t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0)
-            t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0)
-            t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0)
-            self.assertEqual(ntnt([t01, t21]), fn(nt, (1, 2)))
-            self.assertEqual(ntnt([t02, t11]), fn(nt, (0, 2)))
+        pass
+        # Currently only supporting nested dim 1.
+        # t0 = torch.arange(9).float().reshape(3, 3)
+        # t1 = torch.arange(6).float().reshape(2, 3)
+        # t2 = torch.arange(9).float().reshape(3, 3)
+        # ts = [[t0, t1], [t2, t1]]
+        # nt = ntnt(ts)
+        # if associative and test_multi_dim:
+        #     t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0)
+        #     t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0)
+        #     t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0)
+        #     t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0)
+        #     self.assertEqual(ntnt([t01, t21]), fn(nt, (1, 2)))
+        #     self.assertEqual(ntnt([t02, t11]), fn(nt, (0, 2)))
 
-            if test_keep_dim:
-                t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0, True)
-                t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0, True)
-                t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0, True)
-                t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0, True)
-                self.assertEqual(ntnt([[t01, t21]]), fn(nt, (1, 2), True))
-                self.assertEqual(ntnt([[t02, t11]]), fn(nt, (0, 2), True))
+        #     if test_keep_dim:
+        #         t01 = fn(torch.stack([fn(t0, 0), fn(t1, 0)]), 0, True)
+        #         t21 = fn(torch.stack([fn(t2, 0), fn(t1, 0)]), 0, True)
+        #         t02 = fn(torch.stack([fn(t0, 0), fn(t2, 0)]), 0, True)
+        #         t11 = fn(torch.stack([fn(t1, 0), fn(t1, 0)]), 0, True)
+        #         self.assertEqual(ntnt([[t01, t21]]), fn(nt, (1, 2), True))
+        #         self.assertEqual(ntnt([[t02, t11]]), fn(nt, (0, 2), True))
 
-        ts = [[t0, t1], [t2]]
-        nt = ntnt(ts)
-        self.assertRaises(RuntimeError, lambda: fn(nt, 0))
-        self.assertRaises(RuntimeError, lambda: fn(nt, 1))
-        self.assertEqual(ntnt([[fn(t0, 0), fn(t1, 0)],
-                               [fn(t2, 0)]]), fn(nt, 2))
-        self.assertEqual(ntnt([[fn(t0, 1), fn(t1, 1)],
-                               [fn(t2, 1)]]), fn(nt, 3))
-        if test_keep_dim:
-            self.assertEqual(ntnt([[fn(t0, 0, True), fn(t1, 0, True)],
-                                   [fn(t2, 0, True)]]), fn(nt, 2, True))
-            self.assertEqual(ntnt([[fn(t0, 1, True), fn(t1, 1, True)],
-                                   [fn(t2, 1, True)]]), fn(nt, 3, True))
-        self.assertRaises(IndexError, lambda: fn(nt, 4))
+        # Currently only supporting nested dim 1.
+        # ts = [[t0, t1], [t2]]
+        # nt = ntnt(ts)
+        # self.assertRaises(RuntimeError, lambda: fn(nt, 0))
+        # self.assertRaises(RuntimeError, lambda: fn(nt, 1))
+        # self.assertEqual(ntnt([[fn(t0, 0), fn(t1, 0)],
+        #                        [fn(t2, 0)]]), fn(nt, 2))
+        # self.assertEqual(ntnt([[fn(t0, 1), fn(t1, 1)],
+        #                        [fn(t2, 1)]]), fn(nt, 3))
+        # if test_keep_dim:
+        #     self.assertEqual(ntnt([[fn(t0, 0, True), fn(t1, 0, True)],
+        #                            [fn(t2, 0, True)]]), fn(nt, 2, True))
+        #     self.assertEqual(ntnt([[fn(t0, 1, True), fn(t1, 1, True)],
+        #                            [fn(t2, 1, True)]]), fn(nt, 3, True))
+        # self.assertRaises(IndexError, lambda: fn(nt, 4))
 
     def test_cumsum(self):
         self._test_reduce_dim(torch.cumsum, False, False)
@@ -103,14 +106,15 @@ class TestReduce(TestCase):
         test([t0, t1, t2])
         t0, t1, t2, t3, t4 = gen_ts()
         test([t0, t1, t2, t3])
-        t0, t1, t2, t3, t4 = gen_ts()
-        test([[t0], [t1, t2]])
-        t0, t1, t2, t3, t4 = gen_ts()
-        test([[t0, t1], [t2]])
-        t0, t1, t2, t3, t4 = gen_ts()
-        test([[t0, t1], [t2, t3]])
-        t0, t1, t2, t3, t4 = gen_ts()
-        test([[t0, t1], [t2, t3], [t4]])
+        # Currently only supporting nested dim 1.
+        # t0, t1, t2, t3, t4 = gen_ts()
+        # test([[t0], [t1, t2]])
+        # t0, t1, t2, t3, t4 = gen_ts()
+        # test([[t0, t1], [t2]])
+        # t0, t1, t2, t3, t4 = gen_ts()
+        # test([[t0, t1], [t2, t3]])
+        # t0, t1, t2, t3, t4 = gen_ts()
+        # test([[t0, t1], [t2, t3], [t4]])
 
     def test_sum_all(self):
         # self._test_allreduce(lambda x: x.sum(), True)
@@ -186,23 +190,24 @@ class TestReduce(TestCase):
         self.assertRaisesRegex(
             RuntimeError, "Can only reduce across nested dimensions of Tensor compliant shapes.", lambda: torch.var(nt, 0))
 
-        nt = ntnt([[t0, t1], [t2, t3]])
-        self.assertRaisesRegex(
-            RuntimeError, "Can only reduce across nested dimension 0.", lambda: torch.var(nt, 1))
-        self.assertRaisesRegex(
-            RuntimeError, "Can only reduce across nested dimensions if given nested tensor is of nested dimension 1.", lambda: torch.var(nt, 0))
-        t0_var0 = torch.var(t0, 0)
-        t1_var0 = torch.var(t1, 0)
-        t2_var0 = torch.var(t2, 0)
-        t3_var0 = torch.var(t3, 0)
-        self.assertEqual(
-            ntnt([[t0_var0, t1_var0], [t2_var0, t3_var0]]), torch.var(nt, 2))
-        t0_var1 = torch.var(t0, 1)
-        t1_var1 = torch.var(t1, 1)
-        t2_var1 = torch.var(t2, 1)
-        t3_var1 = torch.var(t3, 1)
-        self.assertEqual(
-            ntnt([[t0_var1, t1_var1], [t2_var1, t3_var1]]), torch.var(nt, 3))
+        # Currently only supporting nested dim 1.
+        # nt = ntnt([[t0, t1], [t2, t3]])
+        # self.assertRaisesRegex(
+        #     RuntimeError, "Can only reduce across nested dimension 0.", lambda: torch.var(nt, 1))
+        # self.assertRaisesRegex(
+        #     RuntimeError, "Can only reduce across nested dimensions if given nested tensor is of nested dimension 1.", lambda: torch.var(nt, 0))
+        # t0_var0 = torch.var(t0, 0)
+        # t1_var0 = torch.var(t1, 0)
+        # t2_var0 = torch.var(t2, 0)
+        # t3_var0 = torch.var(t3, 0)
+        # self.assertEqual(
+        #     ntnt([[t0_var0, t1_var0], [t2_var0, t3_var0]]), torch.var(nt, 2))
+        # t0_var1 = torch.var(t0, 1)
+        # t1_var1 = torch.var(t1, 1)
+        # t2_var1 = torch.var(t2, 1)
+        # t3_var1 = torch.var(t3, 1)
+        # self.assertEqual(
+        #     ntnt([[t0_var1, t1_var1], [t2_var1, t3_var1]]), torch.var(nt, 3))
 
     @unittest.skip("Not implemented - needed for autograd.")
     def test_sum_to_size(self):
