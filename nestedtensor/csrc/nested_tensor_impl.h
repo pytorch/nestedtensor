@@ -72,7 +72,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _storage;
   }
   int64_t nested_dim() const {
-    return 1;
+    return _storage->nested_size().height();
   }
   bool is_pinned() const {
     return _storage->is_pinned();
@@ -236,7 +236,7 @@ inline int64_t get_is_cuda(
 inline int64_t get_nested_dim(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
-  return 1;
+  return get_nested_tensor_impl(tensor)->nested_dim();
 }
 
 at::Tensor wrap_tensor_node(NestedTensorImpl);

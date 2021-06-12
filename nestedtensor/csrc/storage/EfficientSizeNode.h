@@ -172,8 +172,6 @@ struct EfficientSizeNode {
 inline bool efficient_size_structure_matches(
     EfficientSizeNode& size_node0,
     EfficientSizeNode& size_node1) {
-  std::cout << "size_node0.structure(): " << size_node0.structure() << std::endl;
-  std::cout << "size_node1.structure(): " << size_node1.structure() << std::endl;
   return size_node0.structure() == size_node1.structure();
 }
 
@@ -185,8 +183,6 @@ inline bool efficient_size_matches(
   }
   at::Tensor sizes0 = size_node0.sizes();
   at::Tensor sizes1 = size_node1.sizes();
-  std::cout << "sizes0: " << sizes0 << std::endl;
-  std::cout << "sizes1: " << sizes1 << std::endl;
   return at::equal(sizes0, sizes1);
 }
 
@@ -214,8 +210,8 @@ inline void apply_efficient_size(
   int64_t structure0 = size_node0.structure();
   int64_t structure1 = size_node1.structure();
   TORCH_CHECK(
-      efficient_size_matches(size_node0, size_node1),
-      "Length doesn't match.");
+      efficient_size_structure_matches(size_node0, size_node1),
+      "apply_efficient_size: Length doesn't match.");
   for (int64_t i = 0; i < sizes0.size(0); i++) {
     fn(sizes0_ptr + i * sizes0.size(1),
        sizes0.size(1),
