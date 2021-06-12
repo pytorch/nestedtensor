@@ -5,6 +5,7 @@ import random
 import nestedtensor
 from classy_vision.models import build_model
 
+
 @torch.inference_mode()
 def benchmark_torch_function(iters, f, *args, **kwargs):
     f(*args, **kwargs)
@@ -24,6 +25,7 @@ def benchmark_torch_function(iters, f, *args, **kwargs):
     else:
         return (time.time() - t0)
 
+
 @torch.inference_mode()
 def run_benchmark(iters, shapes, model, model_name, bsz):
     ts = []
@@ -38,10 +40,9 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
             model_outputs.append(model(inp))
         return model_outputs
 
-    
     # Test
-    model_outputs = _loop()
     outputs_nt = model(ts_nt)
+    model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
         assert torch.allclose(mo.squeeze(0), ntmo, rtol=1e-4, atol=1e-5)
 
