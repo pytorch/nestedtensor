@@ -35,13 +35,13 @@ inline std::vector<int64_t> efficient_serialize(const SizeNode& nested_node) {
 }
 
 inline std::tuple<size_t, SizeNode> _efficient_deserialize(
-    const std::vector<int64_t>& out,
+    int64_t out,
     size_t index,
     int64_t height) {
   if (height == 0) {
     return std::make_tuple(index, SizeNode(std::vector<int64_t>()));
   } else {
-    int64_t degree = out[index];
+    int64_t degree = out;
     index++;
     std::vector<SizeNode> children;
     for (int64_t i = 0; i < degree; i++) {
@@ -54,22 +54,18 @@ inline std::tuple<size_t, SizeNode> _efficient_deserialize(
 }
 
 inline SizeNode efficient_deserialize(
-    const std::vector<int64_t>& out,
+    int64_t out,
     int64_t height) {
   auto tmp = _efficient_deserialize(out, 0, height);
   return std::get<1>(tmp);
 }
 
 inline std::vector<c10::optional<int64_t>> construct_efficient_size(
-    const std::vector<int64_t>& out,
+    int64_t out,
     int64_t height,
     const at::Tensor& sizes) {
   std::vector<c10::optional<int64_t>> result;
-  if (out.size() == 1) {
-    result.push_back(out[0]);
-  } else {
-    result = construct_size(impl::efficient_deserialize(out, height));
-  }
+  result.push_back(out);
   size_t nested_dim = result.size();
   if (sizes.dim() > 0) {
     int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
@@ -94,14 +90,14 @@ inline std::vector<c10::optional<int64_t>> construct_efficient_size(
 struct EfficientSizeNode {
   explicit EfficientSizeNode(const SizeNode& size_node)
       : _height(size_node.height()),
-        _structure(impl::efficient_serialize(size_node)),
+        _structure(size_node.degree()),
         _sizes(impl::stack_sizes(size_node)),
         _opt_sizes(impl::construct_efficient_size(_structure, _height, _sizes))
   {}
 
   explicit EfficientSizeNode(
       int64_t height,
-      const std::vector<int64_t>& structure,
+      int64_t structure,
       const at::Tensor& sizes)
       : _height(height),
         _structure(structure), 
@@ -139,15 +135,15 @@ struct EfficientSizeNode {
   const at::Tensor& sizes() const {
     return _sizes;
   }
-  const std::vector<int64_t>& structure() const {
+  const int64_t structure() const {
     return _structure;
   }
   EfficientSizeNode clone() const {
     return EfficientSizeNode(_height, _structure, _sizes.clone());
   }
   int64_t numel() const {
-    if (_sizes.dim() == 0 && _structure.size() > 0) {
-      return _structure[0];
+    if (_sizes.dim() == 0 && _structure > 0) {
+      return _structure;
     }
     if (_sizes.dim() > 0) {
       if (_sizes.numel() == 0) {
@@ -167,7 +163,7 @@ struct EfficientSizeNode {
 
  private:
   int64_t _height;
-  std::vector<int64_t> _structure;
+  int64_t _structure;
   const at::Tensor _sizes;
   bool _opt_sizes_set = false;
   std::vector<c10::optional<int64_t>> _opt_sizes;
@@ -176,17 +172,7 @@ struct EfficientSizeNode {
 inline bool efficient_size_structure_matches(
     EfficientSizeNode& size_node0,
     EfficientSizeNode& size_node1) {
-  const std::vector<int64_t>& structure0 = size_node0.structure();
-  const std::vector<int64_t>& structure1 = size_node1.structure();
-  if (structure0.size() != structure1.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < structure0.size(); i++) {
-    if (structure0[i] != structure1[i]) {
-      return false;
-    }
-  }
-  return true;
+  return size_node0.structure() == size_node1.structure();
 }
 
 inline bool efficient_size_matches(
@@ -221,16 +207,11 @@ inline void apply_efficient_size(
   at::Tensor sizes1 = size_node1.sizes();
   int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
   int64_t* sizes1_ptr = sizes1.data_ptr<int64_t>();
-  const std::vector<int64_t>& structure0 = size_node0.structure();
-  const std::vector<int64_t>& structure1 = size_node1.structure();
+  int64_t structure0 = size_node0.structure();
+  int64_t structure1 = size_node1.structure();
   TORCH_CHECK(
-      structure0.size() == structure1.size(),
-      "Tree structure doesn't match. Size.");
-  for (size_t i = 0; i < structure0.size(); i++) {
-    TORCH_CHECK(
-        structure0[i] == structure1[i],
-        "Tree structure doesn't match. Values.");
-  }
+      efficient_size_structure_matches(size_node0, size_node1),
+      "apply_efficient_size: Length doesn't match.");
   for (int64_t i = 0; i < sizes0.size(0); i++) {
     fn(sizes0_ptr + i * sizes0.size(1),
        sizes0.size(1),
