@@ -1055,6 +1055,16 @@ class TestFunctional(TestCase):
         test(4,  256, 50, 256, 1024)
         test(16, 256, 50, 64, 1024)
 
+    @torch.inference_mode()
+    def test_relu(self):
+        nt = ntnt_nograd([torch.randn(2, 3), torch.randn(3, 2)])
+        n1 = torch.nn.ReLU(inplace=False)
+        out1 = n1(nt)
+        n2 = torch.nn.ReLU(inplace=True)
+        out2 = n2(nt)
+        self.assertEqual(out1, out2)
+        self.assertEqual(out1, nt)
+
 
 if __name__ == "__main__":
     unittest.main()

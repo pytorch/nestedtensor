@@ -78,7 +78,7 @@ struct EfficientSizeNode {
     for (int64_t i = 0; i < _structure; i++) {
       _tmp_size_nodes.push_back(SizeNode(std::move(_tmp_sizes[i])));
     }
-    return SizeNode(std::move(_tmp_sizes_nodes));
+    return SizeNode(std::move(_tmp_size_nodes));
   }
   int64_t height() const {
     return _height;

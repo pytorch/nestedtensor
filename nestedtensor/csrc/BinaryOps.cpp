@@ -10,6 +10,8 @@ Tensor NestedTensor_add_Tensor(
     const Scalar& alpha) {
   Tensor self = self_;
   Tensor other = other_;
+  std::cout << "add self: " << is_nested_tensor_impl(self) << std::endl;
+  std::cout << "add other: " << is_nested_tensor_impl(other) << std::endl;
   if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
     EfficientSizeNode self_efficient_nested_size =
         get_efficient_nested_size(self);
@@ -48,7 +50,10 @@ Tensor NestedTensor_add_Tensor(
   }
   std::tie(self, other) = _expand_other_as(self_, other_);
   return map_nested_tensor(
-      [&alpha](Tensor s, Tensor o) { return at::add(s, o, alpha); },
+      [&alpha](Tensor s, Tensor o) { 
+      std::cout << "s.sizes(): " << s.sizes() << std::endl;
+      std::cout << "o.sizes(): " << o.sizes() << std::endl;
+      return at::add(s, o, alpha); },
       self,
       other);
 }
@@ -60,8 +65,12 @@ Tensor& NestedTensor_add__Tensor(
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
+  std::cout << "add_ self: " << is_nested_tensor_impl(self) << std::endl;
+  std::cout << "add_ other: " << is_nested_tensor_impl(other) << std::endl;
   apply_nested_tensor(
       [&alpha](Tensor& tensor, const Tensor other) {
+      std::cout << "tensr.sizes(): " << tensor.sizes() << std::endl;
+      std::cout << "other.sizes(): " << other.sizes() << std::endl;
         tensor.add_(other, alpha);
         return tensor;
       },
