@@ -107,6 +107,23 @@ at::Tensor wrap_buffer(
       std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
+at::Tensor wrap_buffer(
+    at::Tensor&& buffer,
+    EfficientSizeNode efficient_nested_size) {
+  TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
+  TORCH_CHECK(
+      efficient_nested_size.height() > 0,
+      "Internal error: expected nested_size of non-zero height.");
+  TORCH_CHECK(
+      efficient_nested_stride.height() > 0,
+      "Internal error: expected nested_size of non-zero height.");
+  PackedStorage* ps = new PackedStorage(
+      std::move(buffer), efficient_nested_size);
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
+}
+
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   if (get_is_contiguous(self, memory_format)) {
     return self;

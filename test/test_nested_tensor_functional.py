@@ -48,12 +48,47 @@ class TestFunctional(TestCase):
 
     @torch.inference_mode()
     def test_conv2d(self):
-        nt = ntnt_nograd(
-            [torch.rand(3, 35, 56), torch.rand(
-                3, 43, 23), torch.rand(3, 24, 52)]
-        )
-        weight = torch.randn(5, 5).repeat(3, 3, 1, 1)
-        torch.conv2d(nt, weight)
+        def _test(ts, weight):
+            nt = ntnt_nograd(ts)
+            print("nt")
+            print(nt)
+            nt_out = torch.conv2d(nt, weight)
+            print("nt_out")
+            print(nt_out)
+            for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
+                t_out = torch.conv2d(t.unsqueeze(0), weight).squeeze(0)
+                print("t_out")
+                print(t_out)
+                print(t_out.size())
+                print("t")
+                print(t)
+                print(t.size())
+
+                inp_unf = torch.nn.functional.unfold(t.unsqueeze(0), (weight.size(2), weight.size(3)))
+                print("inp_unf.transpose(1, 2)")
+                print(inp_unf.transpose(1, 2))
+                print(inp_unf.transpose(1, 2).size())
+                weight_view = weight.view(weight.size(0), -1)
+                weight_view = weight_view.t()
+                print("weight_view")
+                print(weight_view)
+                print(weight_view.size())
+                out_unf = inp_unf.transpose(1, 2).matmul(weight_view).transpose(1, 2)
+                # print("out_unf")
+                # print(out_unf)
+                # print(out_unf.size())
+                # print(t_out.size())
+                # print(t.size())
+                out = torch.nn.functional.fold(out_unf, (t.size(1), t.size(2)), (1, 1))
+                # print(out)
+                # print(t_out)
+                self.assertEqual(t_out, nt_out_i)
+                self.assertEqual(out.squeeze(0), t_out)
+        ts = [torch.arange(1*2*3).reshape(1, 2, 3).float(),
+              torch.arange(1*3*2).reshape(1, 3, 2).float(),
+              torch.arange(1*2*2).reshape(1, 2, 2).float()]
+        weight = torch.arange(5*1*1*1).reshape(5, 1, 1, 1).float()
+        _test(ts, weight)
 
     def test_contiguousity(self):
         initial_t = torch.rand(2, 5, 10, 15)

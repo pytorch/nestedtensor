@@ -125,6 +125,29 @@ struct PackedStorage : public NestedTensorStorage {
 
   explicit PackedStorage(
       at::Tensor&& buffer,
+      EfficientSizeNode nested_size)
+      : _buffer(buffer),
+        _nested_size(nested_size),
+        _nested_stride(([](EfficientSizeNode nested_size) {
+
+            })(_nested_size)),
+        _data_type(buffer.dtype()),
+        _device(buffer.device()),
+        _is_pinned(buffer.is_pinned()),
+        _is_contiguous(impl::storage_is_contiguous(
+            _buffer,
+            _nested_size,
+            _nested_stride)) {
+    TORCH_CHECK(
+        _nested_size.height(),
+        "PackedStorage must be given NestedSize of at least height 1.");
+    TORCH_CHECK(
+        _nested_stride.height(),
+        "PackedStorage must be given NestedStride of at least height 1.");
+  }
+
+  explicit PackedStorage(
+      at::Tensor&& buffer,
       SizeNode nested_size,
       SizeNode nested_stride)
       : PackedStorage(
