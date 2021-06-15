@@ -1,7 +1,7 @@
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 #include <cmath>
-#include <nestedtensor/csrc/cuda/attention.h>
+#include <nestedtensor/csrc/cuda/add.h>
 #include <stdio.h>
 
 namespace nested_tensor {
@@ -9,37 +9,35 @@ namespace cuda {
 
 __global__
 void add_scalars(
-    const __half* input,
-    const __half* scalars,
-    __half* output,
+    c10::Half* input,
+    c10::Half* scalars,
+    c10::Half* output,
     const int input_outer_stride,
     const int* offsets)
 {
   const int batch_id  = blockIdx.x;
   const int scalars_id  = batch_id / input_outer_stride;
-  // const int grain_size = blockDim.x;
+  const int grain_size = blockDim.x;
   const int tid = threadIdx.x;
   const int range = (offsets[batch_id + 1] - offsets[batch_id]);
-  // const int num_chunks = range / grain_size;
-  // printf("scalars_id: %d\n", scalars_id);
-  // // printf("batch_id: %d , input_outer_stride: %d , scalars_id: %d\n",
-  // //     batch_id, input_outer_stride, scalars_id);
-  for (int id = offsets[batch_id]; id < offsets[batch_id + 1]; id++) {
-    // printf("id: %d , tid: %d\n", id, tid);
-    output[id] = __hadd(input[id], scalars[scalars_id]);
+  const int num_chunks = range / grain_size;
+  for (int id = 0; id < num_chunks; id++) {
+    output[offsets[batch_id] + id * grain_size + tid] =
+      // __hadd(input[offsets[batch_id] + id * grain_size + tid], scalars[scalars_id]);
+      input[offsets[batch_id] + id * grain_size + tid] + scalars[scalars_id];
   }
-  // const int leftover = num_chunks * grain_size;
-  // if (leftover + tid < range) {
-  //   output[offsets[batch_id] + leftover + tid]
-  //     = input[offsets[batch_id] + leftover + tid];
-  //     // = __hadd(input[offsets[batch_id] + leftover + tid], scalars[scalars_id]);
-  // }
+  const int leftover = num_chunks * grain_size;
+  if (leftover + tid < range) {
+    output[offsets[batch_id] + leftover + tid] =
+      // __hadd(input[offsets[batch_id] + leftover + tid], scalars[scalars_id]);
+      input[offsets[batch_id] + leftover + tid] + scalars[scalars_id];
+  }
 }
 
 void add_scalar_kernelLauncher(
-    __half* input, // [batch_size x offsets[-1]]
-    __half* scalars, // [batch_size]
-    __half* output, // [batch_size x offsets[-1]]
+    c10::Half* input, // [batch_size x offsets[-1]]
+    c10::Half* scalars, // [batch_size]
+    c10::Half* output, // [batch_size x offsets[-1]]
     const int batch_size,
     const int input_outer_stride,
     const int* offsets /* [batch_size] */,
@@ -49,7 +47,7 @@ void add_scalar_kernelLauncher(
   grid.x = batch_size;
   // printf("batch_size: %d\n", batch_size);
 
-  add_scalars<<<grid, 1, 0, stream>>>(
+  add_scalars<<<grid, 16, 0, stream>>>(
       input,
       scalars,
       output,
@@ -59,25 +57,35 @@ void add_scalar_kernelLauncher(
 
 __global__
 void mul_scalars(
-    const __half* input,
-    const __half* scalars,
-    __half* output,
+    c10::Half* input,
+    c10::Half* scalars,
+    c10::Half* output,
     const int input_outer_stride,
     const int* offsets)
 {
   const int batch_id  = blockIdx.x;
   const int scalars_id  = batch_id / input_outer_stride;
+  const int grain_size = blockDim.x;
   const int tid = threadIdx.x;
   const int range = (offsets[batch_id + 1] - offsets[batch_id]);
-  for (int id = offsets[batch_id]; id < offsets[batch_id + 1]; id++) {
-    output[id] = __hmul(input[id], scalars[scalars_id]);
+  const int num_chunks = range / grain_size;
+  for (int id = 0; id < num_chunks; id++) {
+    output[offsets[batch_id] + id * grain_size + tid] =
+      // __hmul(input[offsets[batch_id] + id * grain_size + tid], scalars[scalars_id]);
+      input[offsets[batch_id] + id * grain_size + tid] * scalars[scalars_id];
+  }
+  const int leftover = num_chunks * grain_size;
+  if (leftover + tid < range) {
+    output[offsets[batch_id] + leftover + tid] =
+      // __hmul(input[offsets[batch_id] + leftover + tid], scalars[scalars_id]);
+      input[offsets[batch_id] + leftover + tid] * scalars[scalars_id];
   }
 }
 
 void mul_scalar_kernelLauncher(
-    __half* input, // [batch_size x offsets[-1]]
-    __half* scalars, // [batch_size]
-    __half* output, // [batch_size x offsets[-1]]
+    c10::Half* input, // [batch_size x offsets[-1]]
+    c10::Half* scalars, // [batch_size]
+    c10::Half* output, // [batch_size x offsets[-1]]
     const int batch_size,
     const int input_outer_stride,
     const int* offsets /* [batch_size] */,
@@ -86,7 +94,52 @@ void mul_scalar_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  mul_scalars<<<grid, 1, 0, stream>>>(
+  mul_scalars<<<grid, 16, 0, stream>>>(
+      input,
+      scalars,
+      output,
+      input_outer_stride,
+      offsets);
+}
+
+__global__
+void sub_scalars(
+    c10::Half* input,
+    c10::Half* scalars,
+    c10::Half* output,
+    const int input_outer_stride,
+    const int* offsets)
+{
+  const int batch_id  = blockIdx.x;
+  const int scalars_id  = batch_id / input_outer_stride;
+  const int grain_size = blockDim.x;
+  const int tid = threadIdx.x;
+  const int range = (offsets[batch_id + 1] - offsets[batch_id]);
+  const int num_chunks = range / grain_size;
+  for (int id = 0; id < num_chunks; id++) {
+    output[offsets[batch_id] + id * grain_size + tid] =
+      input[offsets[batch_id] + id * grain_size + tid] - scalars[scalars_id];
+  }
+  const int leftover = num_chunks * grain_size;
+  if (leftover + tid < range) {
+    output[offsets[batch_id] + leftover + tid] =
+      input[offsets[batch_id] + leftover + tid] - scalars[scalars_id];
+  }
+}
+
+void sub_scalar_kernelLauncher(
+    c10::Half* input, // [batch_size x offsets[-1]]
+    c10::Half* scalars, // [batch_size]
+    c10::Half* output, // [batch_size x offsets[-1]]
+    const int batch_size,
+    const int input_outer_stride,
+    const int* offsets /* [batch_size] */,
+    const cudaStream_t stream)
+{
+  dim3 grid;
+  grid.x = batch_size;
+
+  sub_scalars<<<grid, 16, 0, stream>>>(
       input,
       scalars,
       output,
