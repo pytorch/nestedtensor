@@ -1,6 +1,7 @@
 #pragma once
 #include <nestedtensor/csrc/storage/EfficientSizeNode.h>
 #include <nestedtensor/csrc/storage/StorageBase.h>
+#include <nestedtensor/csrc/utils/nested_node.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -128,9 +129,7 @@ struct PackedStorage : public NestedTensorStorage {
       EfficientSizeNode nested_size)
       : _buffer(buffer),
         _nested_size(nested_size),
-        _nested_stride(([](EfficientSizeNode nested_size) {
-
-            })(_nested_size)),
+        _nested_stride(_nested_size),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
         _is_pinned(buffer.is_pinned()),
@@ -138,6 +137,7 @@ struct PackedStorage : public NestedTensorStorage {
             _buffer,
             _nested_size,
             _nested_stride)) {
+    TORCH_CHECK(false, "This constructor is broken.");
     TORCH_CHECK(
         _nested_size.height(),
         "PackedStorage must be given NestedSize of at least height 1.");

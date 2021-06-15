@@ -114,9 +114,6 @@ at::Tensor wrap_buffer(
   TORCH_CHECK(
       efficient_nested_size.height() > 0,
       "Internal error: expected nested_size of non-zero height.");
-  TORCH_CHECK(
-      efficient_nested_stride.height() > 0,
-      "Internal error: expected nested_size of non-zero height.");
   PackedStorage* ps = new PackedStorage(
       std::move(buffer), efficient_nested_size);
   NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
