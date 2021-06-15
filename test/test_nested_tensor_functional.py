@@ -17,8 +17,8 @@ def _iter_constructors():
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device)
+def ntnt_nograd(x, device=None, dtype=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device, dtype=dtype)
 
 
 class TestFunctional(TestCase):
@@ -31,6 +31,20 @@ class TestFunctional(TestCase):
         nestedtensor.nested_tensor(
             [torch.rand(1, 4), torch.rand(1, 4), torch.rand(4, 4)]
         )
+
+    @torch.inference_mode()
+    def test_add(self):
+        nt = ntnt_nograd([torch.randn(4, 2, 5), torch.randn(4, 3, 5)],
+                device=torch.device('cuda'), dtype=torch.half)
+        o = torch.randn(1, 4, 1, 1)
+        print("o")
+        print(o)
+        o = o.cuda().half()
+        print("nt")
+        print(nt)
+        res = nt + o
+        print("res")
+        print(res)
 
     @torch.inference_mode()
     def test_conv2d(self):
