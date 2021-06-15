@@ -18,11 +18,16 @@ Tensor NestedTensor_conv2d(
     int64_t groups) {
   Tensor input = input_;
   if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(weight)) {
+    // std::cout << "weight.sizes(): " << weight.sizes() << std::endl;
+    // std::cout << "stride: " << stride << std::endl;
+    // std::cout << "padding: " << padding << std::endl;
+    // std::cout << "dilation: " << dilation << std::endl;
+    // std::cout << "groups: " << groups << std::endl;
     if (get_dim(input) == 4 && !bias && weight.size(2) == 1 && weight.size(3) == 1 &&
         stride[0] == 1 && stride[1] == 1 &&
         padding[0] == 0 && padding[1] == 0 &&
         dilation[0] == 1 && dilation[1] == 1 &&
-        weight.size(0) == weight.size(1) &&
+        // weight.size(0) == weight.size(1) &&
         groups == 1
       ) {
       input = NestedTensor_contiguous(input);
@@ -41,6 +46,7 @@ Tensor NestedTensor_conv2d(
         result_splits.push_back(result_split_i.reshape(-1));
       }
       at::Tensor result_buffer = at::cat(result_splits);
+      // std::cout << "calling packed conv2d" << std::endl;
       return wrap_buffer(std::move(result_buffer), get_efficient_nested_size(input),
           get_efficient_nested_stride(input));
     }

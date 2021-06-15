@@ -24,7 +24,7 @@ def benchmark_torch_function(iters, f, *args):
 
 
 # def run(bdim, embedding_dim, out_dim, min_t, max_t, iters, device):
-def run(bdim, min_t, max_t, iters, device):
+def run(bdim, nchannel, min_t, max_t, iters, device):
     import random
     random.seed(1010)
 
@@ -33,11 +33,11 @@ def run(bdim, min_t, max_t, iters, device):
     lengths2 = [random.randint(min_t, max_t) for _ in range(bdim)]
 
     # List of sentence embeddings
-    tensors = [torch.rand(3, l1, l2).to(device=device, dtype=torch.float) for (l1, l2) in zip(lengths1, lengths2)]
+    tensors = [torch.rand(nchannel, l1, l2).to(device=device, dtype=torch.float) for (l1, l2) in zip(lengths1, lengths2)]
     # Create packed NestedTensor
     nt = nestedtensor.nested_tensor(tensors, device=device, dtype=torch.float)
 
-    lin = torch.nn.Conv2d(3, 3, (1, 1)).to(device)
+    lin = torch.nn.Conv2d(nchannel, nchannel, (1, 1), bias=False).to(device)
 
     def _loop(tensors):
         result = []
@@ -45,12 +45,11 @@ def run(bdim, min_t, max_t, iters, device):
             result.append(lin(t.unsqueeze(0)).squeeze(0))
         return result
 
-    # Projects embeddings into another space
     nt_time = benchmark_torch_function(iters, lin, nt)
     t_time = benchmark_torch_function(iters, _loop, tensors)
 
     # print(f"batch size: {bdim:4.0f}, embedding dim: {embedding_dim}, out_dim: {out_dim}, T mean:{lengths_mean:5.0f}, T std: {lengths_std:4.0f}", end='')
-    print(f"batch size: {bdim:4.0f}", end='')
+    print(f"batch size: {bdim:4.0f}, nchannel: {nchannel:4.0f}", end='')
     # print(f", padding: {percentage_padded:3.0f}%, NT: {nt_time/iters:4.0f}ms, T: {t_time/iters:4.0f}ms, Speedup: {t_time/nt_time:3.2f}x")
     print(f", NT: {nt_time/iters:4.0f}ms, T: {t_time/iters:4.0f}ms, Speedup: {t_time/nt_time:3.2f}x")
 
@@ -58,5 +57,7 @@ def run(bdim, min_t, max_t, iters, device):
 if torch.cuda.is_available():
     print("CUDA device: ", torch.cuda.get_device_name(0))
 iters = 10
-for min_t, max_t in [(16, 128), (32, 128), (64, 128), (128, 128)]:
-    run(256, min_t, max_t, iters, torch.device('cuda'))
+for nchannel in [3, 128, 256, 512]:
+    for min_t, max_t in [(16, 128), (32, 128), (64, 128), (128, 128)]:
+        run(256, nchannel, min_t, max_t, iters, torch.device('cuda'))
+        break
