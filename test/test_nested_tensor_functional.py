@@ -53,6 +53,8 @@ class TestFunctional(TestCase):
             nt_out = torch.conv2d(nt, weight)
             for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
                 t_out = torch.conv2d(t.unsqueeze(0), weight).squeeze(0)
+                print("t_out")
+                print(t_out)
                 self.assertEqual(t_out, nt_out_i)
         ts = [torch.arange(3*2*3).reshape(3, 2, 3).float(),
               torch.arange(3*3*2).reshape(3, 3, 2).float(),

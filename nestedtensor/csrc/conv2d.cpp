@@ -18,39 +18,33 @@ Tensor NestedTensor_conv2d(
     int64_t groups) {
   Tensor input = input_;
   if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(weight)) {
+    if (get_dim(input) == 4 && !bias && weight.size(2) == 1 && weight.size(3) == 1 &&
+        stride[0] == 1 && stride[1] == 1 &&
+        padding[0] == 0 && padding[1] == 0 &&
+        dilation[0] == 1 && dilation[1] == 1 &&
+        groups == 1
+      ) {
+      input = input.transpose(1, 3);
+      input = NestedTensor_contiguous(input);
+      at::Tensor input_buffer = get_buffer(input);
+      input_buffer = input_buffer.reshape({-1, weight.size(1)});
+      at::Tensor result_buffer = at::matmul(input_buffer, 
+          weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
+      at::Tensor result = wrap_buffer(result_buffer.reshape(-1),
+          map([&weight](std::vector<int64_t> size) {
+          size[2] = weight.size(0);
+          return size;
+          }, get_nested_size(input)));
+      result = result.transpose(1, 3);
+      result = NestedTensor_contiguous(result);
+      return result;
+    }
+  }
     // std::cout << "weight.sizes(): " << weight.sizes() << std::endl;
     // std::cout << "stride: " << stride << std::endl;
     // std::cout << "padding: " << padding << std::endl;
     // std::cout << "dilation: " << dilation << std::endl;
     // std::cout << "groups: " << groups << std::endl;
-    if (get_dim(input) == 4 && !bias && weight.size(2) == 1 && weight.size(3) == 1 &&
-        stride[0] == 1 && stride[1] == 1 &&
-        padding[0] == 0 && padding[1] == 0 &&
-        dilation[0] == 1 && dilation[1] == 1 &&
-        // weight.size(0) == weight.size(1) &&
-        groups == 1
-      ) {
-      input = NestedTensor_contiguous(input);
-      auto unbound_input = at::unbind(input, 0);
-      std::vector<at::Tensor> unfolded_input;
-      std::vector<at::Tensor> result_splits;
-      at::Tensor weight_view = weight.view({weight.size(0), -1});
-      weight_view = weight_view.transpose(0, 1);
-      for(size_t i = 0; i < unbound_input.size(); i++) {
-        at::Tensor unfolded_split_i =  torch::im2col(unbound_input[i].unsqueeze(0),
-                                                  {weight.size(2), weight.size(3)},
-                                                  {1, 1}, {0, 0}, {1, 1});
-        unfolded_split_i = unfolded_split_i.transpose(1, 2);
-        unfolded_input.push_back(unfolded_split_i);
-        at::Tensor result_split_i = at::matmul(unfolded_split_i, weight_view).transpose(1, 2);
-        result_splits.push_back(result_split_i.reshape(-1));
-      }
-      at::Tensor result_buffer = at::cat(result_splits);
-      // std::cout << "calling packed conv2d" << std::endl;
-      return wrap_buffer(std::move(result_buffer), get_efficient_nested_size(input),
-          get_efficient_nested_stride(input));
-    }
-  }
   if (bias) {
       return map_nested_tensor(
           [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
