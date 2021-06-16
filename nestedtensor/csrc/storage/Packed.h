@@ -64,15 +64,19 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
 }
 
 inline at::Tensor pack(const TensorNode& structure) {
-  TensorNode flat_structure =
-      map([](at::Tensor tensor) { return tensor.reshape({-1}); }, structure);
-  auto nested_size =
-      map([](at::Tensor tensor) { return tensor.sizes().vec(); }, structure);
-  auto tensors = flatten(flat_structure);
-  if (tensors.size() == 0) {
-    return std::get<1>(impl::build_structure(at::ones({0}), nested_size));
+  TORCH_CHECK(structure.height() == 1, "Expected structure of height 1, got ", structure.height(), " instead.");
+  std::vector<at::Tensor> tensors;
+  tensors.reserve(structure.degree());
+  std::vector<SizeNode> sizes;
+  sizes.reserve(structure.degree());
+  for (const auto& child : structure.unbind()) {
+    tensors.push_back(child.payload().reshape({-1}));
+    sizes.push_back(SizeNode(child.payload().sizes().vec()));
   }
-  return std::get<1>(impl::build_structure(at::cat(tensors, 0), nested_size));
+  if (tensors.size() == 0) {
+    return std::get<1>(impl::build_structure(at::ones({0}), SizeNode(std::move(sizes))));
+  }
+  return std::get<1>(impl::build_structure(at::cat(tensors, 0), SizeNode(std::move(sizes))));
 }
 
 inline bool storage_is_contiguous(
