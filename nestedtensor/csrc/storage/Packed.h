@@ -167,18 +167,14 @@ struct PackedStorage : public NestedTensorStorage {
   explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size)
       : PackedStorage(
             std::move(buffer),
-            nested_size,
-            map(
-                [](std::vector<int64_t> sizes) {
-                  return torch::nested_tensor::impl::_cont_stride(sizes);
-                },
-                nested_size)) {}
+            EfficientSizeNode(nested_size)) {}
 
   explicit PackedStorage(TensorNode structure)
       : PackedStorage(
             impl::pack(structure),
-            map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-                structure)) {}
+            EfficientSizeNode(
+              map([](at::Tensor tensor) { return tensor.sizes().vec(); },
+                structure))) {}
 
   int64_t dim() const override {
     return _nested_size.dim();

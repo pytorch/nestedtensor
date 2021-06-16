@@ -36,10 +36,6 @@ Tensor NestedTensor_conv2d(
           }, get_efficient_nested_size(input));
       at::Tensor result = wrap_buffer(result_buffer.reshape(-1),
           new_sizes);
-          // map([&weight](std::vector<int64_t> size) {
-          // size[2] = weight.size(0);
-          // return size;
-          // }, get_nested_size(input)));
       result = result.transpose(1, 3);
       result = NestedTensor_contiguous(result);
       return result;

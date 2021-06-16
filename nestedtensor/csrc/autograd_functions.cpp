@@ -127,9 +127,7 @@ Tensor NestedTensor_batch_norm(
 
 
   mean = *running_mean;
-  invstd = 1 / at::sqrt(*running_var + eps);
-  // mean = mean.to(torch::kHalf);
-  // invstd = invstd.to(torch::kHalf);
+  // invstd = 1 / at::sqrt(*running_var + eps);
 
 
   // Custom CUDA Half implementation.
@@ -137,6 +135,7 @@ Tensor NestedTensor_batch_norm(
   invstd = invstd.contiguous();
   Tensor bias_cont = (*bias).contiguous();
   Tensor weight_cont = (*weight).contiguous();
+  Tensor running_var_cont = (*running_var).contiguous();
 
   Tensor output = input;
   output = NestedTensor_contiguous(output);
@@ -150,21 +149,27 @@ Tensor NestedTensor_batch_norm(
   Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
   Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1);
   Tensor nt_sizes_all = nt_sizes_1 * nt_sizes_2;
+  int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
   std::vector<int> numbers;
+  numbers.reserve(1 + (nt_sizes_all.size(0) * *self_opt_sizes[1]));
+  numbers.push_back(0);
+  int64_t index = 1;
   for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
     for (int64_t j = 0; j < *self_opt_sizes[1]; j++) {
-      numbers.push_back(nt_sizes_all[i].item<int>());
+      // numbers.push_back(nt_sizes_all_ptr[i]);
+      numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
+      index++;
     }
   }
   at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-  Tensor nt_sizes_cumsum =
-      at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
-  TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
-  Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
-  nt_sizes = nt_sizes.to(torch::kCUDA);
+  // Tensor nt_sizes_cumsum =
+  //     at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
+  // TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
+  // Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
+  Tensor nt_sizes = numbers_t.to(torch::kCUDA);
 
   c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
-  c10::Half* invstd_ptr = invstd.data_ptr<c10::Half>();
+  c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
   c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
   c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
 
@@ -172,7 +177,9 @@ Tensor NestedTensor_batch_norm(
   nested_tensor::cuda::batchnorm_inference_kernelLauncher(
       input_buffer.data_ptr<c10::Half>(),
       mean_ptr,
-      invstd_ptr,
+      // invstd_ptr,
+      running_var_ptr,
+      c10::Half((float)(eps)),
       weight_ptr,
       bias_ptr,
       output_buffer.data_ptr<c10::Half>(),

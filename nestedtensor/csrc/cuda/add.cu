@@ -47,7 +47,7 @@ void add_scalar_kernelLauncher(
   grid.x = batch_size;
   // printf("batch_size: %d\n", batch_size);
 
-  add_scalars<<<grid, 16, 0, stream>>>(
+  add_scalars<<<grid, 256, 0, stream>>>(
       input,
       scalars,
       output,
@@ -94,7 +94,7 @@ void mul_scalar_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  mul_scalars<<<grid, 16, 0, stream>>>(
+  mul_scalars<<<grid, 256, 0, stream>>>(
       input,
       scalars,
       output,
@@ -139,7 +139,7 @@ void sub_scalar_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  sub_scalars<<<grid, 16, 0, stream>>>(
+  sub_scalars<<<grid, 256, 0, stream>>>(
       input,
       scalars,
       output,
@@ -151,7 +151,9 @@ __global__
 void batchnorm_inference(
     c10::Half* input,
     c10::Half* mean,
-    c10::Half* invstd,
+    // c10::Half* invstd,
+    c10::Half* running_var,
+    c10::Half eps,
     c10::Half* weight,
     c10::Half* bias,
     c10::Half* output,
@@ -164,19 +166,21 @@ void batchnorm_inference(
   const int tid = threadIdx.x;
   const int range = (offsets[batch_id + 1] - offsets[batch_id]);
   const int num_chunks = range / grain_size;
+  // c10::Half value = invstd[scalars_id] * weight[scalars_id];
+  c10::Half value = running_var[scalars_id] + eps;
+  value = hrsqrt(value);
+  value = value * weight[scalars_id];
   for (int id = 0; id < num_chunks; id++) {
     output[offsets[batch_id] + id * grain_size + tid] =
-      ((((input[offsets[batch_id] + id * grain_size + tid] - mean[scalars_id])
-       * invstd[scalars_id])
-       * weight[scalars_id])
+      (((input[offsets[batch_id] + id * grain_size + tid] - mean[scalars_id])
+       * value)
        + bias[scalars_id]);
   }
   const int leftover = num_chunks * grain_size;
   if (leftover + tid < range) {
     output[offsets[batch_id] + leftover + tid] =
-      ((((input[offsets[batch_id] + leftover + tid] - mean[scalars_id])
-       * invstd[scalars_id])
-       * weight[scalars_id])
+      (((input[offsets[batch_id] + leftover + tid] - mean[scalars_id])
+       * value)
        + bias[scalars_id]);
   }
 }
@@ -184,7 +188,9 @@ void batchnorm_inference(
 void batchnorm_inference_kernelLauncher(
     c10::Half* input, // [batch_size x offsets[-1]]
     c10::Half* mean, // [batch_size]
-    c10::Half* invstd, // [batch_size]
+    // c10::Half* invstd, // [batch_size]
+    c10::Half* running_var,
+    c10::Half eps,
     c10::Half* weight, // [batch_size]
     c10::Half* bias, // [batch_size]
     c10::Half* output, // [batch_size x offsets[-1]]
@@ -196,10 +202,12 @@ void batchnorm_inference_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  batchnorm_inference<<<grid, 16, 0, stream>>>(
+  batchnorm_inference<<<grid, 256, 0, stream>>>(
       input,
       mean,
-      invstd,
+      // invstd,
+      running_var,
+      eps,
       weight,
       bias,
       output,

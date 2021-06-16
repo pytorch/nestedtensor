@@ -37,7 +37,9 @@ void sub_scalar_kernelLauncher(
 void batchnorm_inference_kernelLauncher(
     c10::Half* input,
     c10::Half* mean,
-    c10::Half* invstd,
+    // c10::Half* invstd,
+    c10::Half* running_var,
+    c10::Half eps,
     c10::Half* weight,
     c10::Half* bias,
     c10::Half* output,
