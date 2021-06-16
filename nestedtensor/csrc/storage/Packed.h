@@ -10,15 +10,13 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
     const at::Tensor& buffer,
     const EfficientSizeNode& nested_size_,
     const EfficientSizeNode& nested_stride_) {
-  SizeNode nested_size = nested_size_.to_size_node();
-  SizeNode nested_stride = nested_stride_.to_size_node();
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
-  std::vector<int64_t> split_sizes = flatten(
-      map([](std::vector<int64_t> a,
-             std::vector<int64_t> b) { return num_memory(a, b); },
-          nested_size,
-          nested_stride));
+  std::vector<int64_t> split_sizes;
+  split_sizes.reserve(nested_size_.degree());
+  map_efficient_size([&split_sizes] (int64_t* sizes_ptr0, int64_t* sizes_ptr1, int64_t size) {
+      split_sizes.push_back(num_memory(sizes_ptr0, sizes_ptr1, size));
+      }, nested_size_, nested_stride_);
   std::vector<int64_t> nonzero_split_sizes;
   for (size_t i = 0; i < split_sizes.size(); i++) {
     if (split_sizes[i] > 0) {
@@ -40,6 +38,8 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
       buffers.push_back(at::empty({}, buffer.options()));
     }
   }
+  SizeNode nested_size = nested_size_.to_size_node();
+  SizeNode nested_stride = nested_stride_.to_size_node();
   TensorNode tmp = unflatten(nested_size, std::move(buffers));
   TensorNode result = map(
       [](at::Tensor buffer,
@@ -73,16 +73,13 @@ inline at::Tensor pack(const TensorNode& structure) {
   TORCH_CHECK(structure.height() == 1, "Expected structure of height 1, got ", structure.height(), " instead.");
   std::vector<at::Tensor> tensors;
   tensors.reserve(structure.degree());
-  std::vector<SizeNode> sizes;
-  sizes.reserve(structure.degree());
   for (const auto& child : structure.unbind()) {
     tensors.push_back(child.payload().reshape({-1}));
-    sizes.push_back(SizeNode(child.payload().sizes().vec()));
   }
   if (tensors.size() == 0) {
-    return std::get<1>(impl::build_structure(at::ones({0}), EfficientSizeNode(SizeNode(std::move(sizes)))));
+    return at::ones({0});
   }
-  return std::get<1>(impl::build_structure(at::cat(tensors, 0), EfficientSizeNode(SizeNode(std::move(sizes)))));
+  return at::cat(tensors, 0);
 }
 
 inline bool storage_is_contiguous(

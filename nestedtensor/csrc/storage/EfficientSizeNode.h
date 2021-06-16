@@ -83,6 +83,12 @@ struct EfficientSizeNode {
   int64_t height() const {
     return _height;
   }
+  int64_t degree() const {
+    if (_sizes.dim() == 0) {
+      return 0;
+    }
+    return _sizes.size(0);
+  }
   int64_t dim() const {
     return _sizes.dim() > 0 ? _height + _sizes.size(1) : _height;
   }
@@ -130,8 +136,8 @@ struct EfficientSizeNode {
 };
 
 inline bool efficient_size_structure_matches(
-    EfficientSizeNode& size_node0,
-    EfficientSizeNode& size_node1) {
+    const EfficientSizeNode& size_node0,
+    const EfficientSizeNode& size_node1) {
   return size_node0.structure() == size_node1.structure();
 }
 
@@ -159,6 +165,30 @@ inline EfficientSizeNode map_efficient_size(
     fn(sizes_ptr + i * sizes.size(1), sizes.size(1));
   }
   return EfficientSizeNode(size_node.height(), size_node.structure(), sizes);
+}
+
+template <class F>
+inline EfficientSizeNode map_efficient_size(
+    F&& fn,
+    const EfficientSizeNode& size_node0,
+    const EfficientSizeNode& size_node1) {
+  TORCH_CHECK(
+      efficient_size_structure_matches(size_node0, size_node1),
+      "map_efficient_size: Length doesn't match.");
+  at::Tensor sizes0 = size_node0.sizes().clone();
+  at::Tensor sizes1 = size_node1.sizes().clone();
+  TORCH_CHECK(sizes0.dim() == sizes1.dim(), "Sizes need to match in dim.");
+  if (sizes0.dim() == 0) {
+    return EfficientSizeNode(size_node0.height(), size_node0.structure(), sizes0);
+  }
+  TORCH_CHECK(sizes0.size(0) == sizes1.size(0), "Sizes need to match in size(0).");
+  TORCH_CHECK(sizes0.size(1) == sizes1.size(1), "Sizes need to match in size(1).");
+  int64_t* sizes_ptr0 = sizes0.data_ptr<int64_t>();
+  int64_t* sizes_ptr1 = sizes1.data_ptr<int64_t>();
+  for (int64_t i = 0; i < sizes0.size(0); i++) {
+    fn(sizes_ptr0 + i * sizes0.size(1), sizes_ptr1 + i * sizes1.size(1), sizes0.size(1));
+  }
+  return EfficientSizeNode(size_node0.height(), size_node0.structure(), sizes0);
 }
 
 template <class F>

@@ -34,5 +34,17 @@ void sub_scalar_kernelLauncher(
     const int* offsets,
     const cudaStream_t stream);
 
+void batchnorm_inference_kernelLauncher(
+    c10::Half* input,
+    c10::Half* mean,
+    c10::Half* invstd,
+    c10::Half* weight,
+    c10::Half* bias,
+    c10::Half* output,
+    const int batch_size,
+    const int input_outer_stride,
+    const int* offsets,
+    const cudaStream_t stream);
+
 }
 }

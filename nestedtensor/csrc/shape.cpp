@@ -66,16 +66,36 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   if (dim0 == dim1) {
     return self;
   }
-  int64_t nested_dim = self_data->nested_dim();
+  int64_t nested_dim = get_nested_dim(self);
+  TORCH_CHECK(nested_dim == 1, "transpose expected nested dim 1.");
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  // TODO: Potential use for packed transpose, but requires custom backward.
-  return map_nested_tensor(
-      [dim0, dim1, nested_dim](const at::Tensor t) {
-        return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
+  EfficientSizeNode ef_sizes = get_efficient_nested_size(self);
+  EfficientSizeNode ef_strides = get_efficient_nested_stride(self);
+  auto new_ef_sizes = map_efficient_size(
+      [dim0, dim1, nested_dim](int64_t* size_ptr, int64_t size) {
+      int64_t tmp = size_ptr[dim0 - nested_dim];
+      size_ptr[dim0 - nested_dim] = size_ptr[dim1 - nested_dim];
+      size_ptr[dim1 - nested_dim] = tmp;
       },
-      self);
+      ef_sizes);
+  auto new_ef_strides = map_efficient_size(
+      [dim0, dim1, nested_dim](int64_t* size_ptr, int64_t size) {
+      int64_t tmp = size_ptr[dim0 - nested_dim];
+      size_ptr[dim0 - nested_dim] = size_ptr[dim1 - nested_dim];
+      size_ptr[dim1 - nested_dim] = tmp;
+      },
+      ef_strides);
+  return wrap_buffer(get_buffer(self),
+      new_ef_sizes,
+      new_ef_strides);
+  // // TODO: Potential use for packed transpose, but requires custom backward.
+  // return map_nested_tensor(
+  //     [dim0, dim1, nested_dim](const at::Tensor t) {
+  //       return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
+  //     },
+  //     self);
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
