@@ -27,7 +27,9 @@ Tensor NestedTensor_relu(const Tensor& self) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu" << std::endl;
 #endif
-    return wrap_buffer(at::relu(get_buffer(self)), impl->nested_size());
+    return wrap_buffer(at::relu(get_buffer(self)),
+        get_efficient_nested_size(self),
+        get_efficient_nested_stride(self));
   }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::relu(tensor); }, self);

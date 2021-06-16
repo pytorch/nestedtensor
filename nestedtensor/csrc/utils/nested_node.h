@@ -383,15 +383,6 @@ inline std::vector<int64_t> _cont_stride(int64_t* size_ptr, int64_t size) {
   return _cont_stride(size_vector);
 }
 
-inline std::vector<int64_t> _cont_stride(at::Tensor size) {
-  TORCH_CHECK(size.dim() == 1, "Expected size to be Tensor of dim 1.");
-  TORCH_CHECK(false, "This overload is broken.")
-  std::vector<int64_t> result;
-  return result;
-  // std::vector<int64_t> vector_size(size.data_ptr<int64_t>(), size.numel());
-  // return _cont_stride(vector_size);
-}
-
 inline bool _is_cont_stride(int64_t* size, int64_t* stride, size_t length) {
   int64_t p = 1;
   size_t p_i = length;

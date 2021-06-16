@@ -106,6 +106,18 @@ inline bool storage_is_contiguous(
   }
   return true;
 }
+
+inline EfficientSizeNode _cont_stride(EfficientSizeNode nested_size) {
+  auto nested_stride = map_efficient_size(
+      [](int64_t* size_ptr, int64_t size) {
+        auto cont_stride = _cont_stride(size_ptr, size);
+        for (int64_t i = 0; i < size; i++) {
+          size_ptr[i] = cont_stride[i];
+        }
+      }, nested_size);
+  return nested_stride;
+}
+
 } // namespace impl
 
 struct PackedStorage : public NestedTensorStorage {
@@ -134,24 +146,9 @@ struct PackedStorage : public NestedTensorStorage {
   explicit PackedStorage(
       at::Tensor&& buffer,
       EfficientSizeNode nested_size)
-      : _buffer(buffer),
-        _nested_size(nested_size),
-        _nested_stride(_nested_size),
-        _data_type(buffer.dtype()),
-        _device(buffer.device()),
-        _is_pinned(buffer.is_pinned()),
-        _is_contiguous(impl::storage_is_contiguous(
-            _buffer,
-            _nested_size,
-            _nested_stride)) {
-    TORCH_CHECK(false, "This constructor is broken.");
-    TORCH_CHECK(
-        _nested_size.height(),
-        "PackedStorage must be given NestedSize of at least height 1.");
-    TORCH_CHECK(
-        _nested_stride.height(),
-        "PackedStorage must be given NestedStride of at least height 1.");
-  }
+      : PackedStorage(std::move(buffer),
+                      nested_size,
+                      impl::_cont_stride(nested_size)) {}
 
   explicit PackedStorage(
       at::Tensor&& buffer,
