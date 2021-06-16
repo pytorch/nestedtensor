@@ -151,9 +151,12 @@ inline EfficientSizeNode map_efficient_size(
     F&& fn,
     const EfficientSizeNode& size_node) {
   at::Tensor sizes = size_node.sizes().clone();
+  if (sizes.dim() == 0) {
+    return EfficientSizeNode(size_node.height(), size_node.structure(), sizes);
+  }
   int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
   for (int64_t i = 0; i < sizes.size(0); i++) {
-    fn(sizes_ptr + i * sizes.size(1), sizes.size(0));
+    fn(sizes_ptr + i * sizes.size(1), sizes.size(1));
   }
   return EfficientSizeNode(size_node.height(), size_node.structure(), sizes);
 }

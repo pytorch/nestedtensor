@@ -8,8 +8,10 @@ namespace nested_tensor {
 namespace impl {
 inline std::tuple<TensorNode, at::Tensor> build_structure(
     const at::Tensor& buffer,
-    const SizeNode& nested_size,
-    const SizeNode& nested_stride) {
+    const EfficientSizeNode& nested_size_,
+    const EfficientSizeNode& nested_stride_) {
+  SizeNode nested_size = nested_size_.to_size_node();
+  SizeNode nested_stride = nested_stride_.to_size_node();
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
   std::vector<int64_t> split_sizes = flatten(
@@ -54,12 +56,16 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
 
 inline std::tuple<TensorNode, at::Tensor> build_structure(
     const at::Tensor& buffer,
-    const SizeNode& nested_size) {
+    const EfficientSizeNode& nested_size) {
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
-  SizeNode nested_stride =
-      map([](std::vector<int64_t> size) { return _cont_stride(size); },
-          nested_size);
+  EfficientSizeNode nested_stride = map_efficient_size(
+      [](int64_t* size_ptr, int64_t size) {
+        auto cont_stride = _cont_stride(size_ptr, size);
+        for (int64_t i = 0; i < size; i++) {
+          size_ptr[i] = cont_stride[i];
+        }
+      }, nested_size);
   return build_structure(buffer, nested_size, nested_stride);
 }
 
@@ -74,9 +80,9 @@ inline at::Tensor pack(const TensorNode& structure) {
     sizes.push_back(SizeNode(child.payload().sizes().vec()));
   }
   if (tensors.size() == 0) {
-    return std::get<1>(impl::build_structure(at::ones({0}), SizeNode(std::move(sizes))));
+    return std::get<1>(impl::build_structure(at::ones({0}), EfficientSizeNode(SizeNode(std::move(sizes)))));
   }
-  return std::get<1>(impl::build_structure(at::cat(tensors, 0), SizeNode(std::move(sizes))));
+  return std::get<1>(impl::build_structure(at::cat(tensors, 0), EfficientSizeNode(SizeNode(std::move(sizes)))));
 }
 
 inline bool storage_is_contiguous(
@@ -181,8 +187,8 @@ struct PackedStorage : public NestedTensorStorage {
   TensorNode get_structure() const override {
     return std::get<0>(impl::build_structure(
         _buffer.reshape({-1}),
-        _nested_size.to_size_node(),
-        _nested_stride.to_size_node()));
+        _nested_size,
+        _nested_stride));
   }
   at::Tensor& get_buffer() {
     return _buffer;
