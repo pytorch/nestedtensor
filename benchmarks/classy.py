@@ -63,7 +63,7 @@ if __name__ == "__main__":
         model = build_model({"name": model_name})
         model = model.cuda().half().eval()
         random.seed(123)
-        shapes = [(1, 3, random.randint(100, 150), random.randint(100, 150)) for _ in range(bsz)]
+        shapes = [(1, 3, random.randint(100, 600), random.randint(100, 600)) for _ in range(bsz)]
         run_benchmark(1, shapes, model, model_name, bsz)
 
     _benchmark("resnext101_32x4d", 64)
