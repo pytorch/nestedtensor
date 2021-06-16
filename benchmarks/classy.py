@@ -42,12 +42,10 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
 
     # Test
     outputs_nt = model(ts_nt)
-    import sys; sys.exit(1)
     model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
-        pass
         # Using float16 tolerances from torch/testing/_core.yp
-        # assert torch.allclose(mo.squeeze(0), ntmo, rtol=1e-3, atol=1e-3)
+        assert torch.allclose(mo.squeeze(0), ntmo, rtol=1e-3, atol=1e-3)
 
     loop_time = benchmark_torch_function(iters, _loop)
     nt_time = benchmark_torch_function(iters, lambda: model(ts_nt))
@@ -64,7 +62,6 @@ if __name__ == "__main__":
     def _benchmark(model_name, bsz):
         model = build_model({"name": model_name})
         model = model.cuda().half().eval()
-        
         random.seed(123)
         shapes = [(1, 3, random.randint(100, 150), random.randint(100, 150)) for _ in range(bsz)]
         run_benchmark(1, shapes, model, model_name, bsz)

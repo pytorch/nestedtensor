@@ -151,7 +151,7 @@ template <class F, class... B>
 static inline NestedNode<
     typename c10::guts::infer_function_traits<F>::type::return_type>
 map(F&& fn, const NestedNode<B>&... nested_node) {
-  std::cout << "map fn: " << typeid(fn).name() << std::endl;
+  // std::cout << "map fn: " << typeid(fn).name() << std::endl;
   return _map<
       F,
       typename c10::guts::infer_function_traits<F>::type::return_type,
@@ -355,7 +355,7 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
 // TODO: Add check that lambda returns void
 template <class F, class... A>
 static inline void apply(F&& fn, NestedNode<A>... nested_node) {
-  std::cout << "apply fn: " << typeid(fn).name() << std::endl;
+  // std::cout << "apply fn: " << typeid(fn).name() << std::endl;
   _apply<
       F,
       c10::guts::typelist::map_t<
