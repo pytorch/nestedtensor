@@ -42,7 +42,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
 
     # Test
     outputs_nt = model(ts_nt)
-    import sys; sys.exit(1)
+    # import sys; sys.exit(1)
     model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
         # Using float16 tolerances from torch/testing/_core.yp
@@ -70,6 +70,6 @@ if __name__ == "__main__":
     _benchmark("resnext101_32x4d", 64)
     _benchmark("resnext101_32x4d", 128)
     _benchmark("resnext101_32x4d", 256)
-    _benchmark("regnet_y_128gf", 64)
-    _benchmark("regnet_y_128gf", 128)
-    _benchmark("regnet_y_128gf", 256)
+    # _benchmark("regnet_y_128gf", 64)
+    # _benchmark("regnet_y_128gf", 128)
+    # _benchmark("regnet_y_128gf", 256)

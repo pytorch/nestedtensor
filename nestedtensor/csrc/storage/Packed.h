@@ -6,6 +6,18 @@
 namespace torch {
 namespace nested_tensor {
 namespace impl {
+
+inline EfficientSizeNode _cont_stride(const EfficientSizeNode& nested_size) {
+  auto nested_stride = map_efficient_size(
+      [](int64_t* size_ptr, int64_t size) {
+        auto cont_stride = _cont_stride(size_ptr, size);
+        for (int64_t i = 0; i < size; i++) {
+          size_ptr[i] = cont_stride[i];
+        }
+      }, nested_size);
+  return nested_stride;
+}
+
 inline std::tuple<TensorNode, at::Tensor> build_structure(
     const at::Tensor& buffer,
     const EfficientSizeNode& nested_size_,
@@ -38,20 +50,30 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
       buffers.push_back(at::empty({}, buffer.options()));
     }
   }
-  SizeNode nested_size = nested_size_.to_size_node();
-  SizeNode nested_stride = nested_stride_.to_size_node();
-  TensorNode tmp = unflatten(nested_size, std::move(buffers));
-  TensorNode result = map(
-      [](at::Tensor buffer,
-         std::vector<int64_t> size,
-         std::vector<int64_t> stride) {
-        return at::as_strided(
-            buffer, c10::IntArrayRef(size), c10::IntArrayRef(stride));
-      },
-      tmp,
-      nested_size,
-      nested_stride);
-  return std::make_tuple(result, buffer);
+  std::vector<TensorNode> result_tensors;
+  index = 0;
+  map_efficient_size([&buffers, &result_tensors, &index](
+        int64_t* size_ptr, int64_t* stride_ptr, int64_t size) {
+      std::vector<int64_t> sizes(size_ptr, size_ptr + size);
+      std::vector<int64_t> strides(stride_ptr, stride_ptr + size);
+      result_tensors.push_back(TensorNode(at::as_strided(
+            buffers[index], c10::IntArrayRef(sizes), c10::IntArrayRef(strides))));
+      index++;
+      }, nested_size_, nested_stride_);
+  // SizeNode nested_size = nested_size_.to_size_node();
+  // SizeNode nested_stride = nested_stride_.to_size_node();
+  // TensorNode tmp = unflatten(nested_size, std::move(buffers));
+  // TensorNode result = map(
+  //     [](at::Tensor buffer,
+  //        std::vector<int64_t> size,
+  //        std::vector<int64_t> stride) {
+  //       return at::as_strided(
+  //           buffer, c10::IntArrayRef(size), c10::IntArrayRef(stride));
+  //     },
+  //     tmp,
+  //     nested_size,
+  //     nested_stride);
+  return std::make_tuple(TensorNode(std::move(result_tensors)), buffer);
 }
 
 inline std::tuple<TensorNode, at::Tensor> build_structure(
@@ -99,17 +121,6 @@ inline bool storage_is_contiguous(
     }
   }
   return true;
-}
-
-inline EfficientSizeNode _cont_stride(EfficientSizeNode nested_size) {
-  auto nested_stride = map_efficient_size(
-      [](int64_t* size_ptr, int64_t size) {
-        auto cont_stride = _cont_stride(size_ptr, size);
-        for (int64_t i = 0; i < size; i++) {
-          size_ptr[i] = cont_stride[i];
-        }
-      }, nested_size);
-  return nested_stride;
 }
 
 } // namespace impl
