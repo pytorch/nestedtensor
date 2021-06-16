@@ -59,13 +59,7 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
     const EfficientSizeNode& nested_size) {
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
-  EfficientSizeNode nested_stride = map_efficient_size(
-      [](int64_t* size_ptr, int64_t size) {
-        auto cont_stride = _cont_stride(size_ptr, size);
-        for (int64_t i = 0; i < size; i++) {
-          size_ptr[i] = cont_stride[i];
-        }
-      }, nested_size);
+  EfficientSizeNode nested_stride = _cont_stride(nested_size);
   return build_structure(buffer, nested_size, nested_stride);
 }
 
