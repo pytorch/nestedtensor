@@ -87,15 +87,29 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
 
 inline at::Tensor pack(const TensorNode& structure) {
   TORCH_CHECK(structure.height() == 1, "Expected structure of height 1, got ", structure.height(), " instead.");
-  std::vector<at::Tensor> tensors;
-  tensors.reserve(structure.degree());
-  for (const auto& child : structure.unbind()) {
-    tensors.push_back(child.payload().reshape({-1}));
-  }
-  if (tensors.size() == 0) {
+  if (structure.degree() == 0) {
     return at::ones({0});
   }
-  return at::cat(tensors, 0);
+  auto tensor_nodes = structure.unbind();
+  std::vector<at::Tensor> tensors;
+  tensors.resize(structure.degree());
+  int64_t full_numel = 0;
+  for (size_t i = 0; i < tensors.size(); i++) {
+    tensors[i] = tensor_nodes[i].payload();
+    full_numel = full_numel + tensors[i].numel();
+  }
+  at::Tensor result_buffer = empty({full_numel}, tensors[0].options());
+  int64_t index = 0;
+  for (size_t i = 0; i < tensors.size(); i++) {
+    at::Tensor narrowed_result_buffer = 
+      result_buffer.narrow(0, index, tensors[i].numel());
+    narrowed_result_buffer = narrowed_result_buffer.reshape(tensors[i].sizes());
+    // std::cout << "narrowed_result_buffer.sizes(): " << narrowed_result_buffer.sizes() << std::endl;
+    // std::cout << "tensors[i].sizes(): " << tensors[i].sizes() << std::endl;
+    narrowed_result_buffer.copy_(tensors[i], true);
+    index = index + tensors[i].numel();
+  }
+  return result_buffer;
 }
 
 inline bool storage_is_contiguous(
