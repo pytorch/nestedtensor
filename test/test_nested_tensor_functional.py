@@ -17,8 +17,8 @@ def _iter_constructors():
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device)
+def ntnt_nograd(x, device=None, dtype=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device, dtype=dtype)
 
 
 class TestFunctional(TestCase):
@@ -33,13 +33,35 @@ class TestFunctional(TestCase):
         )
 
     @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_add(self):
+        nt = ntnt_nograd([torch.randn(4, 2, 5), torch.randn(4, 3, 5)],
+                device=torch.device('cuda'), dtype=torch.half)
+        o = torch.randn(1, 4, 1, 1)
+        print("o")
+        print(o)
+        o = o.cuda().half()
+        print("nt")
+        print(nt)
+        res = nt + o
+        print("res")
+        print(res)
+
+    @torch.inference_mode()
     def test_conv2d(self):
-        nt = ntnt_nograd(
-            [torch.rand(3, 35, 56), torch.rand(
-                3, 43, 23), torch.rand(3, 24, 52)]
-        )
-        weight = torch.randn(5, 5).repeat(3, 3, 1, 1)
-        torch.conv2d(nt, weight)
+        def _test(ts, weight):
+            nt = ntnt_nograd(ts)
+            nt_out = torch.conv2d(nt, weight)
+            for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
+                t_out = torch.conv2d(t.unsqueeze(0), weight).squeeze(0)
+                print("t_out")
+                print(t_out)
+                self.assertEqual(t_out, nt_out_i)
+        ts = [torch.arange(3*2*3).reshape(3, 2, 3).float(),
+              torch.arange(3*3*2).reshape(3, 3, 2).float(),
+              torch.arange(3*2*2).reshape(3, 2, 2).float()]
+        weight = torch.arange(3*3*1*1).reshape(3, 3, 1, 1).float()
+        _test(ts, weight)
 
     def test_contiguousity(self):
         initial_t = torch.rand(2, 5, 10, 15)
@@ -339,42 +361,46 @@ class TestFunctional(TestCase):
             nt1.copy_(nt2)
             self.assertEqual(nt1, nt2)
 
-            nt1 = constructor(
-                [[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
-            nt2 = constructor(
-                [[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
-            nt1.copy_(nt2)
-            self.assertEqual(nt1, nt2)
+            # Currently only supporting nested dim 1.
+            # nt1 = constructor(
+            #     [[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
+            # nt2 = constructor(
+            #     [[torch.randn(1, 2, 3), torch.randn(2, 1, 3)], [torch.randn(3, 2, 1)]])
+            # nt1.copy_(nt2)
+            # self.assertEqual(nt1, nt2)
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_unsqueeze(self):
         for constructor in _iter_constructors():
             t = torch.randn(2, 3)
 
-            nt = constructor([[t.reshape(2, 3)]])
-            self.assertEqual(nt.unsqueeze(
-                0), constructor([[[t.reshape(2, 3)]]]))
-            self.assertEqual(nt.unsqueeze(
-                1), constructor([[[t.reshape(2, 3)]]]))
-            self.assertEqual(nt.unsqueeze(
-                2), constructor([[t.reshape(1, 2, 3)]]))
-            self.assertEqual(nt.unsqueeze(
-                3), constructor([[t.reshape(2, 1, 3)]]))
-            self.assertEqual(nt.unsqueeze(
-                4), constructor([[t.reshape(2, 3, 1)]]))
+            # Currently only supporting nested dim 1.
+            # nt = constructor([[t.reshape(2, 3)]])
+            # self.assertEqual(nt.unsqueeze(
+            #     0), constructor([[[t.reshape(2, 3)]]]))
+            # self.assertEqual(nt.unsqueeze(
+            #     1), constructor([[[t.reshape(2, 3)]]]))
+            # self.assertEqual(nt.unsqueeze(
+            #     2), constructor([[t.reshape(1, 2, 3)]]))
+            # self.assertEqual(nt.unsqueeze(
+            #     3), constructor([[t.reshape(2, 1, 3)]]))
+            # self.assertEqual(nt.unsqueeze(
+            #     4), constructor([[t.reshape(2, 3, 1)]]))
 
-            t0 = t.reshape(3, 2)
-            t1 = t
-            t2 = torch.randn(4, 5)
-            nt = constructor([[t0, t1], [t2]])
-            self.assertEqual(nt.unsqueeze(0), constructor([[[t0, t1], [t2]]]))
-            self.assertEqual(nt.unsqueeze(
-                1), constructor([[[t0, t1]], [[t2]]]))
-            self.assertEqual(nt.unsqueeze(2), constructor(
-                [[t0.reshape(1, 3, 2), t1.reshape(1, 2, 3)], [t2.reshape(1, 4, 5)]]))
-            self.assertEqual(nt.unsqueeze(3), constructor(
-                [[t0.reshape(3, 1, 2), t1.reshape(2, 1, 3)], [t2.reshape(4, 1, 5)]]))
-            self.assertEqual(nt.unsqueeze(4), constructor(
-                [[t0.reshape(3, 2, 1), t1.reshape(2, 3, 1)], [t2.reshape(4, 5, 1)]]))
+            # Currently only supporting nested dim 1.
+            # t0 = t.reshape(3, 2)
+            # t1 = t
+            # t2 = torch.randn(4, 5)
+            # nt = constructor([[t0, t1], [t2]])
+            # self.assertEqual(nt.unsqueeze(0), constructor([[[t0, t1], [t2]]]))
+            # self.assertEqual(nt.unsqueeze(
+            #     1), constructor([[[t0, t1]], [[t2]]]))
+            # self.assertEqual(nt.unsqueeze(2), constructor(
+            #     [[t0.reshape(1, 3, 2), t1.reshape(1, 2, 3)], [t2.reshape(1, 4, 5)]]))
+            # self.assertEqual(nt.unsqueeze(3), constructor(
+            #     [[t0.reshape(3, 1, 2), t1.reshape(2, 1, 3)], [t2.reshape(4, 1, 5)]]))
+            # self.assertEqual(nt.unsqueeze(4), constructor(
+            #     [[t0.reshape(3, 2, 1), t1.reshape(2, 3, 1)], [t2.reshape(4, 5, 1)]]))
 
             t = torch.randn(2, 3)
             nt = constructor([t])
@@ -399,13 +425,15 @@ class TestFunctional(TestCase):
             result1 = torch.matmul(a, t22)
             self.assertEqual(result[1], result1[0])
             self.assertEqual(result[1], result1[1])
-            c = constructor([[t21, t22], [t22, t21]])
-            result2 = torch.matmul(c, t1)
-            self.assertEqual(result2[0][0], torch.matmul(t21, t1))
-            self.assertEqual(result2[0][1], torch.matmul(t22, t1))
-            self.assertEqual(result2[1][0], torch.matmul(t22, t1))
-            self.assertEqual(result2[1][1], torch.matmul(t21, t1))
+            # Currently only supporting nested dim 1.
+            # c = constructor([[t21, t22], [t22, t21]])
+            # result2 = torch.matmul(c, t1)
+            # self.assertEqual(result2[0][0], torch.matmul(t21, t1))
+            # self.assertEqual(result2[0][1], torch.matmul(t22, t1))
+            # self.assertEqual(result2[1][0], torch.matmul(t22, t1))
+            # self.assertEqual(result2[1][1], torch.matmul(t21, t1))
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_transpose(self):
         t0 = torch.randn(3, 3, 4)
         t1 = torch.randn(2, 4, 3)
@@ -427,6 +455,7 @@ class TestFunctional(TestCase):
             list(map(lambda x: x.unbind(), t_t.unbind())))
         self.assertEqual(t_t, nt_t.to_tensor())
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_flatten(self):
         t0 = torch.randn(3, 3, 4)
         t1 = torch.randn(2, 4, 3)
@@ -458,8 +487,8 @@ class TestFunctional(TestCase):
         map(self.assertEqual, zip(ts[0].unbind(), ts_r[0].unbind()))
         map(self.assertEqual, zip(ts[1].unbind(), ts_r[1].unbind()))
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_reshape(self):
-
         t0 = torch.randn(3, 3)
         t1 = torch.randn(2, 3)
         t2 = torch.randn(3, 3)
@@ -513,11 +542,13 @@ class TestFunctional(TestCase):
         for i in range(nt.dim() - nt.nested_dim()):
             _map_fn(i, fn(nt, i + nt.nested_dim()))
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_softmax_1(self):
         ts = [[], []]
         nt = ntnt_nograd(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_softmax_2(self):
         t0 = torch.randn(3)
         t1 = torch.randn(2)
@@ -526,6 +557,7 @@ class TestFunctional(TestCase):
         nt = ntnt_nograd(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_softmax_3(self):
         t0 = torch.randn(3, 2, 1)
         t1 = torch.randn(2, 3, 1)
@@ -534,6 +566,7 @@ class TestFunctional(TestCase):
         nt = ntnt_nograd(ts)
         self._test_softmax(ts, nt)
 
+    @unittest.skip("Currently only supporting nested dim 1.")
     def test_softmax_4(self):
         ts = torch.randn(6, 4, 3, 2, 5)
         ts = list(map(lambda x: x.unbind(), ts.unbind()))
@@ -550,7 +583,7 @@ class TestFunctional(TestCase):
         key = torch.randn(2, 1, embed_dim, requires_grad=True)
         value = torch.randn(2, 1, embed_dim, requires_grad=True)
         attn_output, _ = mha(query, key, value)
-        nt_mha = nestedtensor.nn.MultiheadAttention(embed_dim, num_heads)
+        nt_mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
         nt_mha.in_proj_weight = mha.in_proj_weight
         nt_mha.in_proj_bias = mha.in_proj_bias
         nt_mha.out_proj.weight = mha.out_proj.weight
@@ -617,11 +650,12 @@ class TestFunctional(TestCase):
         t = torch.randn(2, 3)
         result = ntnt_nograd([t])
 
-        nt = ntnt_nograd([[t.reshape(1, 2, 1, 3)]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
+        # Currently only supporting nested dim 1.
+        # nt = ntnt_nograd([[t.reshape(1, 2, 1, 3)]])
+        # # self.assertEqual(nt.squeeze(), result)
+        # self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        # nt.squeeze_()
+        # self.assertEqual(nt, result)
 
         nt = ntnt_nograd([t.reshape(2, 3)])
         # self.assertEqual(nt.squeeze(), result)
@@ -629,11 +663,12 @@ class TestFunctional(TestCase):
         nt.squeeze_()
         self.assertEqual(nt, result)
 
-        nt = ntnt_nograd([[t.reshape(2, 3)]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
+        # Currently only supporting nested dim 1.
+        # nt = ntnt_nograd([[t.reshape(2, 3)]])
+        # # self.assertEqual(nt.squeeze(), result)
+        # self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        # nt.squeeze_()
+        # self.assertEqual(nt, result)
 
         nt = ntnt_nograd([t.reshape(1, 2, 3)])
         # self.assertEqual(nt.squeeze(), result)
@@ -647,11 +682,12 @@ class TestFunctional(TestCase):
         nt.squeeze_()
         self.assertEqual(nt, result)
 
-        nt = ntnt_nograd([[[t.reshape(1, 2, 3)]]])
-        # self.assertEqual(nt.squeeze(), result)
-        self.assertRaises(RuntimeError, lambda: nt.squeeze())
-        nt.squeeze_()
-        self.assertEqual(nt, result)
+        # Currently only supporting nested dim 1.
+        # nt = ntnt_nograd([[[t.reshape(1, 2, 3)]]])
+        # # self.assertEqual(nt.squeeze(), result)
+        # self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        # nt.squeeze_()
+        # self.assertEqual(nt, result)
 
         # result = ntnt([t])
         # nt = ntnt([t.reshape(1, 2, 3)])
@@ -787,14 +823,15 @@ class TestFunctional(TestCase):
     @torch.inference_mode()
     def test_layer_norm(self):
         def _test(device):
-            layer_norm = torch.nn.LayerNorm((0,)).to(device)
-            t0 = torch.randn(3)
-            t1 = torch.randn(2)
-            t2 = torch.randn(3)
-            ts = [[t0, t1], [t2]]
-            nt = ntnt_nograd(ts, device=device)
-            self.assertRaisesRegex(RuntimeError,
-                                   "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
+            # Currently only supporting nested dim 1.
+            # layer_norm = torch.nn.LayerNorm((0,)).to(device)
+            # t0 = torch.randn(3)
+            # t1 = torch.randn(2)
+            # t2 = torch.randn(3)
+            # ts = [[t0, t1], [t2]]
+            # nt = ntnt_nograd(ts, device=device)
+            # self.assertRaisesRegex(RuntimeError,
+            #                        "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
             t0 = utils.gen_float_tensor(1, (2, 32)).to(device)
             t1 = utils.gen_float_tensor(2, (2, 32)).to(device)
@@ -815,28 +852,30 @@ class TestFunctional(TestCase):
             t0 = utils.gen_float_tensor(1, (3, 16)).to(device)
             t1 = utils.gen_float_tensor(2, (2, 16)).to(device)
             t2 = utils.gen_float_tensor(3, (3, 16)).to(device)
-            ts = [[t0, t1], [t2]]
-            result = ntnt_nograd(ts, device=device)
-            layer_norm(ts[0][0])
-            map(self.assertEqual, tuple(
-                map(lambda x: layer_norm(x), ts[0])), result[0])
-            map(self.assertEqual, tuple(
-                map(lambda x: layer_norm(x), ts[1])), result[1])
 
-            layer_norm = torch.nn.LayerNorm(3).to(device)
-            t0 = torch.randn(3, 3, 4)
-            t1 = torch.randn(2, 3, 4)
-            t2 = torch.randn(3, 3, 4)
-            ts = [[t0, t1], [t2]]
-            nt = ntnt_nograd(ts, device=device)
-            self.assertRaisesRegex(RuntimeError,
-                                   "Normalized shape \[3\] does not match the size of the last dimension \(4\) of input.",
-                                   lambda: layer_norm(nt))
+            # Currently only supporting nested dim 1.
+            # ts = [[t0, t1], [t2]]
+            # result = ntnt_nograd(ts, device=device)
+            # layer_norm(ts[0][0])
+            # map(self.assertEqual, tuple(
+            #     map(lambda x: layer_norm(x), ts[0])), result[0])
+            # map(self.assertEqual, tuple(
+            #     map(lambda x: layer_norm(x), ts[1])), result[1])
 
-            layer_norm = torch.nn.LayerNorm((3, 2, 4)).to(device)
-            self.assertRaisesRegex(RuntimeError,
-                                   "Currently only singleton tuples of integers supported for layer_norm.",
-                                   lambda: layer_norm(nt))
+            # layer_norm = torch.nn.LayerNorm(3).to(device)
+            # t0 = torch.randn(3, 3, 4)
+            # t1 = torch.randn(2, 3, 4)
+            # t2 = torch.randn(3, 3, 4)
+            # ts = [[t0, t1], [t2]]
+            # nt = ntnt_nograd(ts, device=device)
+            # self.assertRaisesRegex(RuntimeError,
+            #                        "Normalized shape \[3\] does not match the size of the last dimension \(4\) of input.",
+            #                        lambda: layer_norm(nt))
+
+            # layer_norm = torch.nn.LayerNorm((3, 2, 4)).to(device)
+            # self.assertRaisesRegex(RuntimeError,
+            #                        "Currently only singleton tuples of integers supported for layer_norm.",
+            #                        lambda: layer_norm(nt))
         _test(torch.device('cpu'))
         if torch.cuda.is_available():
             _test(torch.device('cuda'))
@@ -848,9 +887,9 @@ class TestFunctional(TestCase):
             def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                          activation="relu", normalize_before=False):
                 super().__init__()
-                self.self_attn = nestedtensor.nn.MultiheadAttention(
+                self.self_attn = torch.nn.MultiheadAttention(
                     d_model, nhead, dropout=dropout)
-                self.multihead_attn = nestedtensor.nn.MultiheadAttention(
+                self.multihead_attn = torch.nn.MultiheadAttention(
                     d_model, nhead, dropout=dropout)
                 # Implementation of Feedforward model
                 self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -1037,6 +1076,16 @@ class TestFunctional(TestCase):
         test(16, 256, 50, 16, 256)
         test(4,  256, 50, 256, 1024)
         test(16, 256, 50, 64, 1024)
+
+    @torch.inference_mode()
+    def test_relu(self):
+        nt = ntnt_nograd([torch.randn(2, 3), torch.randn(3, 2)])
+        n1 = torch.nn.ReLU(inplace=False)
+        out1 = n1(nt)
+        n2 = torch.nn.ReLU(inplace=True)
+        out2 = n2(nt)
+        self.assertEqual(out1, out2)
+        self.assertEqual(out1, nt)
 
 
 if __name__ == "__main__":

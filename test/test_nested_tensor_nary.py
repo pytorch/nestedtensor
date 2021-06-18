@@ -245,7 +245,8 @@ def _gen_test_binary_method(func):
 
 TestUnary = type('TestUnary', (DynamicClassBase,), {})
 for func__ in get_unary_functions():
-    for nested_dim in range(1, 5):
+    # TODO: Currently only supporting nested dim 1.
+    for nested_dim in [1]:
         avail_devices = [torch.device('cpu')]
         if torch.cuda.is_available():
             avail_devices += [torch.device('cuda')]
