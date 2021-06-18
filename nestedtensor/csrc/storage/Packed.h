@@ -60,19 +60,6 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
             buffers[index], c10::IntArrayRef(sizes), c10::IntArrayRef(strides))));
       index++;
       }, nested_size_, nested_stride_);
-  // SizeNode nested_size = nested_size_.to_size_node();
-  // SizeNode nested_stride = nested_stride_.to_size_node();
-  // TensorNode tmp = unflatten(nested_size, std::move(buffers));
-  // TensorNode result = map(
-  //     [](at::Tensor buffer,
-  //        std::vector<int64_t> size,
-  //        std::vector<int64_t> stride) {
-  //       return at::as_strided(
-  //           buffer, c10::IntArrayRef(size), c10::IntArrayRef(stride));
-  //     },
-  //     tmp,
-  //     nested_size,
-  //     nested_stride);
   return std::make_tuple(TensorNode(std::move(result_tensors)), buffer);
 }
 
@@ -104,8 +91,6 @@ inline at::Tensor pack(const TensorNode& structure) {
     at::Tensor narrowed_result_buffer = 
       result_buffer.narrow(0, index, tensors[i].numel());
     narrowed_result_buffer = narrowed_result_buffer.reshape(tensors[i].sizes());
-    // std::cout << "narrowed_result_buffer.sizes(): " << narrowed_result_buffer.sizes() << std::endl;
-    // std::cout << "tensors[i].sizes(): " << tensors[i].sizes() << std::endl;
     narrowed_result_buffer.copy_(tensors[i], true);
     index = index + tensors[i].numel();
   }

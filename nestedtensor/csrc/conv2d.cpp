@@ -41,16 +41,10 @@ Tensor NestedTensor_conv2d(
       return result;
     }
   }
-    // std::cout << "weight.sizes(): " << weight.sizes() << std::endl;
-    // std::cout << "stride: " << stride << std::endl;
-    // std::cout << "padding: " << padding << std::endl;
-    // std::cout << "dilation: " << dilation << std::endl;
-    // std::cout << "groups: " << groups << std::endl;
   if (bias) {
       return map_nested_tensor(
           [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
             return at::conv2d(input.unsqueeze(0), weight, bias, stride, padding, dilation, groups).squeeze(0);
-            // return at::conv2d(input, self, c10::nullopt, stride, padding, dilation, groups);
           },
           input,
           weight,
@@ -59,7 +53,6 @@ Tensor NestedTensor_conv2d(
   return map_nested_tensor(
       [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight) {
         return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);
-        // return at::conv2d(input, self, c10::nullopt, stride, padding, dilation, groups);
       },
       input,
       weight);

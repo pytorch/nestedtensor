@@ -23,13 +23,11 @@ void add_scalars(
   const int num_chunks = range / grain_size;
   for (int id = 0; id < num_chunks; id++) {
     output[offsets[batch_id] + id * grain_size + tid] =
-      // __hadd(input[offsets[batch_id] + id * grain_size + tid], scalars[scalars_id]);
       input[offsets[batch_id] + id * grain_size + tid] + scalars[scalars_id];
   }
   const int leftover = num_chunks * grain_size;
   if (leftover + tid < range) {
     output[offsets[batch_id] + leftover + tid] =
-      // __hadd(input[offsets[batch_id] + leftover + tid], scalars[scalars_id]);
       input[offsets[batch_id] + leftover + tid] + scalars[scalars_id];
   }
 }
@@ -45,7 +43,6 @@ void add_scalar_kernelLauncher(
 {
   dim3 grid;
   grid.x = batch_size;
-  // printf("batch_size: %d\n", batch_size);
 
   add_scalars<<<grid, 256, 0, stream>>>(
       input,
@@ -71,13 +68,11 @@ void mul_scalars(
   const int num_chunks = range / grain_size;
   for (int id = 0; id < num_chunks; id++) {
     output[offsets[batch_id] + id * grain_size + tid] =
-      // __hmul(input[offsets[batch_id] + id * grain_size + tid], scalars[scalars_id]);
       input[offsets[batch_id] + id * grain_size + tid] * scalars[scalars_id];
   }
   const int leftover = num_chunks * grain_size;
   if (leftover + tid < range) {
     output[offsets[batch_id] + leftover + tid] =
-      // __hmul(input[offsets[batch_id] + leftover + tid], scalars[scalars_id]);
       input[offsets[batch_id] + leftover + tid] * scalars[scalars_id];
   }
 }
@@ -151,7 +146,6 @@ __global__
 void batchnorm_inference(
     c10::Half* input,
     c10::Half* mean,
-    // c10::Half* invstd,
     c10::Half* running_var,
     c10::Half eps,
     c10::Half* weight,
@@ -166,7 +160,6 @@ void batchnorm_inference(
   const int tid = threadIdx.x;
   const int range = (offsets[batch_id + 1] - offsets[batch_id]);
   const int num_chunks = range / grain_size;
-  // c10::Half value = invstd[scalars_id] * weight[scalars_id];
   c10::Half value = running_var[scalars_id] + eps;
   value = hrsqrt(value);
   value = value * weight[scalars_id];
@@ -188,7 +181,6 @@ void batchnorm_inference(
 void batchnorm_inference_kernelLauncher(
     c10::Half* input, // [batch_size x offsets[-1]]
     c10::Half* mean, // [batch_size]
-    // c10::Half* invstd, // [batch_size]
     c10::Half* running_var,
     c10::Half eps,
     c10::Half* weight, // [batch_size]
@@ -205,7 +197,6 @@ void batchnorm_inference_kernelLauncher(
   batchnorm_inference<<<grid, 256, 0, stream>>>(
       input,
       mean,
-      // invstd,
       running_var,
       eps,
       weight,

@@ -22,12 +22,6 @@ inline at::Tensor stack_sizes(SizeNode size_node) {
     }
   }
   return torch::tensor(result_sizes_vector, torch::kInt64).reshape({size_node.degree(), -1});
-  // std::vector<at::Tensor> flattened = flatten(map(
-  //     [](std::vector<int64_t> sizes) {
-  //       return torch::tensor(sizes, torch::kInt64);
-  //     },
-  //     size_node));
-  // return at::stack(flattened);
 }
 
 inline std::vector<c10::optional<int64_t>> construct_efficient_size(

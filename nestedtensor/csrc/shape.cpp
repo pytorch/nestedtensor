@@ -90,12 +90,6 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   return wrap_buffer(get_buffer(self),
       new_ef_sizes,
       new_ef_strides);
-  // // TODO: Potential use for packed transpose, but requires custom backward.
-  // return map_nested_tensor(
-  //     [dim0, dim1, nested_dim](const at::Tensor t) {
-  //       return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
-  //     },
-  //     self);
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {

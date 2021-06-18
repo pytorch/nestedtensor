@@ -106,22 +106,6 @@ Tensor NestedTensor_batch_norm(
   }
 
   auto scalar_shape = make_scalar_shape(get_dim(input), n_input);
-  // std::cout << "IntArrayRef(scalar_shape): " << IntArrayRef(scalar_shape) << std::endl;
-  // std::cout << "weight.has_value(): " << weight.has_value() << std::endl;
-  // std::cout << "bias.has_value(): " << bias.has_value() << std::endl;
-  // std::cout << "is_nested_tensor_impl(running_mean): " << is_nested_tensor_impl(*running_mean) << std::endl;
-  // std::cout << "is_nested_tensor_impl(running_var): " << is_nested_tensor_impl(*running_var) << std::endl;
-  // std::cout << "is_nested_tensor_impl(bias): " << is_nested_tensor_impl(*bias) << std::endl;
-  // std::cout << "is_nested_tensor_impl(weight): " << is_nested_tensor_impl(*weight) << std::endl;
-  // std::cout << "(running_mean): " << (*running_mean).sizes() << std::endl;
-  // std::cout << "(running_var): " << (*running_var).sizes() << std::endl;
-  // std::cout << "(bias): " << (*bias).sizes() << std::endl;
-  // std::cout << "(weight): " << (*weight).sizes() << std::endl;
-  // map([](std::vector<int64_t> size) {
-  //     std::cout << "IntArrayRef(size): " << IntArrayRef(size) << std::endl;
-  //     return size;
-  //     }, get_nested_size(input));
-
   at::Tensor mean = *running_mean;
   at::Tensor var = *running_var;
 #ifdef WITH_CUDA
@@ -165,16 +149,11 @@ Tensor NestedTensor_batch_norm(
     int64_t index = 1;
     for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
       for (int64_t j = 0; j < *self_opt_sizes[1]; j++) {
-        // numbers.push_back(nt_sizes_all_ptr[i]);
         numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
         index++;
       }
     }
     at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-    // Tensor nt_sizes_cumsum =
-    //     at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
-    // TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
-    // Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
     Tensor nt_sizes = numbers_t.to(torch::kCUDA);
   
     c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
@@ -186,7 +165,6 @@ Tensor NestedTensor_batch_norm(
     nested_tensor::cuda::batchnorm_inference_kernelLauncher(
         input_buffer.data_ptr<c10::Half>(),
         mean_ptr,
-        // invstd_ptr,
         running_var_ptr,
         c10::Half((float)(eps)),
         weight_ptr,
