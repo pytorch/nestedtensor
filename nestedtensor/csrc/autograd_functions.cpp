@@ -124,6 +124,7 @@ Tensor NestedTensor_batch_norm(
 
   at::Tensor mean = *running_mean;
   at::Tensor var = *running_var;
+#ifdef WITH_CUDA
   if (weight &&
       bias &&
       (is_nested_tensor_impl(input)) &&
@@ -198,6 +199,7 @@ Tensor NestedTensor_batch_norm(
         );
     return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(output), get_efficient_nested_stride(output));
   }
+#endif
 
   at::Tensor invstd = 1 / at::sqrt(*running_var + eps);
 
