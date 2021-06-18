@@ -33,6 +33,7 @@ class TestFunctional(TestCase):
         )
 
     @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_add(self):
         nt = ntnt_nograd([torch.randn(4, 2, 5), torch.randn(4, 3, 5)],
                 device=torch.device('cuda'), dtype=torch.half)
