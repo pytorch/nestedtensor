@@ -34,7 +34,7 @@ NestedTensorImpl::NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage)
           storage->device()),
       _storage(storage) {
   remove_autograd_key();
-  key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::ADInplaceOrView});
+  key_set_ = key_set_ - c10::DispatchKeySet({c10::DispatchKey::ADInplaceOrView});
 }
 
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
