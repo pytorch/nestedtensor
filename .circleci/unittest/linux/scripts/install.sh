@@ -41,11 +41,11 @@ fi
 NIGHTLY_DATE=20210606
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
-    pip3 install --pre torch=1.10.0dev${NIGHTLY_DATE} torchvision==1.9.0dev${NIGHTLY_DATE} -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+    pip3 install -q --pre torch==1.10.0dev${NIGHTLY_DATE} torchvision==1.9.0dev${NIGHTLY_DATE} -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
     conda install -y ninja
     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" FORCE_CUDA=1 USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 else
-    pip3 install --pre torch==1.10.0dev${NIGHTLY_DATE}+cu102 torchvision==1.9.0dev${NIGHTLY_DATE}+cu102 -f https://download.pytorch.org/whl/nightly/cu102/torch_nightly.html
+    pip3 install -q --pre torch==1.10.0dev${NIGHTLY_DATE}+cu102 torchvision==1.9.0dev${NIGHTLY_DATE}+cu102 -f https://download.pytorch.org/whl/nightly/cu102/torch_nightly.html
     conda install -y ninja
     PYTORCH_VERSION="$(python -c "import torch; print(torch.__version__)")" USE_NINJA=1 python setup.py develop bdist_wheel -d $WHEELS_FOLDER
 fi
