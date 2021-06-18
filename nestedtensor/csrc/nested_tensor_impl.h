@@ -247,6 +247,9 @@ at::Tensor wrap_buffer(
     at::Tensor&&,
     EfficientSizeNode efficient_nested_size,
     EfficientSizeNode efficient_nested_stride);
+at::Tensor wrap_buffer(
+    at::Tensor&&,
+    EfficientSizeNode efficient_nested_size);
 
 template <class F, class... A>
 inline at::Tensor map_nested_tensor(F&& fn, A... a) {

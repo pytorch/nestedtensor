@@ -17,8 +17,8 @@ def _iter_constructors():
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device)
+def ntnt_nograd(x, device=None, dtype=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device, dtype=dtype)
 
 
 class TestFunctional(TestCase):
@@ -33,13 +33,35 @@ class TestFunctional(TestCase):
         )
 
     @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_add(self):
+        nt = ntnt_nograd([torch.randn(4, 2, 5), torch.randn(4, 3, 5)],
+                device=torch.device('cuda'), dtype=torch.half)
+        o = torch.randn(1, 4, 1, 1)
+        print("o")
+        print(o)
+        o = o.cuda().half()
+        print("nt")
+        print(nt)
+        res = nt + o
+        print("res")
+        print(res)
+
+    @torch.inference_mode()
     def test_conv2d(self):
-        nt = ntnt_nograd(
-            [torch.rand(3, 35, 56), torch.rand(
-                3, 43, 23), torch.rand(3, 24, 52)]
-        )
-        weight = torch.randn(5, 5).repeat(3, 3, 1, 1)
-        torch.conv2d(nt, weight)
+        def _test(ts, weight):
+            nt = ntnt_nograd(ts)
+            nt_out = torch.conv2d(nt, weight)
+            for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
+                t_out = torch.conv2d(t.unsqueeze(0), weight).squeeze(0)
+                print("t_out")
+                print(t_out)
+                self.assertEqual(t_out, nt_out_i)
+        ts = [torch.arange(3*2*3).reshape(3, 2, 3).float(),
+              torch.arange(3*3*2).reshape(3, 3, 2).float(),
+              torch.arange(3*2*2).reshape(3, 2, 2).float()]
+        weight = torch.arange(3*3*1*1).reshape(3, 3, 1, 1).float()
+        _test(ts, weight)
 
     def test_contiguousity(self):
         initial_t = torch.rand(2, 5, 10, 15)
@@ -1054,6 +1076,16 @@ class TestFunctional(TestCase):
         test(16, 256, 50, 16, 256)
         test(4,  256, 50, 256, 1024)
         test(16, 256, 50, 64, 1024)
+
+    @torch.inference_mode()
+    def test_relu(self):
+        nt = ntnt_nograd([torch.randn(2, 3), torch.randn(3, 2)])
+        n1 = torch.nn.ReLU(inplace=False)
+        out1 = n1(nt)
+        n2 = torch.nn.ReLU(inplace=True)
+        out2 = n2(nt)
+        self.assertEqual(out1, out2)
+        self.assertEqual(out1, nt)
 
 
 if __name__ == "__main__":

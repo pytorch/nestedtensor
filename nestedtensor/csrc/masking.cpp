@@ -218,7 +218,7 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
     if (nt_opt_size[2] && nt_buffer.is_cuda()) {
       Tensor nt_sizes_ =
           get_efficient_nested_size(nt).sizes().to(torch::kInt32);
-      TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor must be of nested_dim 2.")
+      TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
       Tensor nt_sizes = at::native::narrow(nt_sizes_, 1, 0, 1);
       int max_size_1 = nt_sizes.max().item<int>();
       nt_sizes =
