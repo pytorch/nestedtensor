@@ -71,4 +71,5 @@ if __name__ == "__main__":
     _benchmark("resnext101_32x4d", 256)
     _benchmark("regnet_y_128gf", 64)
     _benchmark("regnet_y_128gf", 128)
-    _benchmark("regnet_y_128gf", 256)
+    # Runs out of memory
+    # _benchmark("regnet_y_128gf", 256)

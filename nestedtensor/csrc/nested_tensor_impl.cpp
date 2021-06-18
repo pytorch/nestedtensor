@@ -6,6 +6,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
+#include <c10/core/DispatchKey.h>
 
 namespace at {
 
