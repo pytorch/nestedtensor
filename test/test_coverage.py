@@ -22,7 +22,7 @@ class TestCoverage(TestCase):
         def model(x):
             torch.manual_seed(20)
             linear = nn.Linear(9, 64)
-            norm = nn.BatchNorm1d(64)
+            norm = nn.BatchNorm1d(64).eval()
             # 3 voxel with 40, 50 and 90 points respectively
             x = linear(x)
             x = norm(x.transpose(2, 1).contiguous()

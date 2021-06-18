@@ -122,88 +122,96 @@ Tensor NestedTensor_batch_norm(
   //     return size;
   //     }, get_nested_size(input));
 
-  at::Tensor mean;
-  at::Tensor invstd;
+  at::Tensor mean = *running_mean;
+  at::Tensor var = *running_var;
+  if (weight &&
+      bias &&
+      (is_nested_tensor_impl(input)) &&
+      (!is_nested_tensor_impl(mean)) &&
+      (!is_nested_tensor_impl(var)) &&
+      (!is_nested_tensor_impl(*bias)) &&
+      (!is_nested_tensor_impl(*weight)) &&
+      (input.dtype()   == torch::kHalf) &&
+      (mean.dtype()    == torch::kHalf) &&
+      (var.dtype()     == torch::kHalf) &&
+      (bias->dtype()   == torch::kHalf) &&
+      (weight->dtype() == torch::kHalf)
+  )
+  {
+  
+    // Custom CUDA Half implementation.
+    mean = mean.contiguous();
+    Tensor bias_cont = (*bias).contiguous();
+    Tensor weight_cont = (*weight).contiguous();
+    Tensor running_var_cont = (*running_var).contiguous();
+  
+    Tensor output = input;
+    output = NestedTensor_contiguous(output);
+    Tensor input_buffer = get_buffer(output);
+    Tensor output_buffer = input_buffer.clone();
+  
+    auto self_opt_sizes = get_opt_sizes(input);
+  
+    Tensor nt_sizes_ =
+        get_efficient_nested_size(input).sizes().to(torch::kInt32);
+    Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
+    Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1);
+    Tensor nt_sizes_all = nt_sizes_1 * nt_sizes_2;
+    int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
+    std::vector<int> numbers;
+    numbers.reserve(1 + (nt_sizes_all.size(0) * *self_opt_sizes[1]));
+    numbers.push_back(0);
+    int64_t index = 1;
+    for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
+      for (int64_t j = 0; j < *self_opt_sizes[1]; j++) {
+        // numbers.push_back(nt_sizes_all_ptr[i]);
+        numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
+        index++;
+      }
+    }
+    at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
+    // Tensor nt_sizes_cumsum =
+    //     at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
+    // TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
+    // Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
+    Tensor nt_sizes = numbers_t.to(torch::kCUDA);
+  
+    c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
+    c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
+    c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
+    c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
+  
+    at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+    nested_tensor::cuda::batchnorm_inference_kernelLauncher(
+        input_buffer.data_ptr<c10::Half>(),
+        mean_ptr,
+        // invstd_ptr,
+        running_var_ptr,
+        c10::Half((float)(eps)),
+        weight_ptr,
+        bias_ptr,
+        output_buffer.data_ptr<c10::Half>(),
+        (int)(*self_opt_sizes[0] * *self_opt_sizes[1]),
+        (int)(*self_opt_sizes[0]),
+        nt_sizes.data_ptr<int>(),
+        defaultStream
+        );
+    return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(output), get_efficient_nested_stride(output));
+  }
 
-
-  mean = *running_mean;
-  // invstd = 1 / at::sqrt(*running_var + eps);
-
-
-  // Custom CUDA Half implementation.
-  mean = mean.contiguous();
-  invstd = invstd.contiguous();
-  Tensor bias_cont = (*bias).contiguous();
-  Tensor weight_cont = (*weight).contiguous();
-  Tensor running_var_cont = (*running_var).contiguous();
+  at::Tensor invstd = 1 / at::sqrt(*running_var + eps);
 
   Tensor output = input;
-  output = NestedTensor_contiguous(output);
-  Tensor input_buffer = get_buffer(output);
-  Tensor output_buffer = input_buffer.clone();
+  output = output - mean.reshape(IntArrayRef(scalar_shape));
+  output = output * invstd.reshape(IntArrayRef(scalar_shape));
 
-  auto self_opt_sizes = get_opt_sizes(input);
-
-  Tensor nt_sizes_ =
-      get_efficient_nested_size(input).sizes().to(torch::kInt32);
-  Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
-  Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1);
-  Tensor nt_sizes_all = nt_sizes_1 * nt_sizes_2;
-  int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
-  std::vector<int> numbers;
-  numbers.reserve(1 + (nt_sizes_all.size(0) * *self_opt_sizes[1]));
-  numbers.push_back(0);
-  int64_t index = 1;
-  for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
-    for (int64_t j = 0; j < *self_opt_sizes[1]; j++) {
-      // numbers.push_back(nt_sizes_all_ptr[i]);
-      numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
-      index++;
-    }
+  if (weight) {
+    output = output * weight->reshape(IntArrayRef(scalar_shape));
   }
-  at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-  // Tensor nt_sizes_cumsum =
-  //     at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
-  // TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
-  // Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
-  Tensor nt_sizes = numbers_t.to(torch::kCUDA);
-
-  c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
-  c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
-  c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
-  c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
-
-  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-  nested_tensor::cuda::batchnorm_inference_kernelLauncher(
-      input_buffer.data_ptr<c10::Half>(),
-      mean_ptr,
-      // invstd_ptr,
-      running_var_ptr,
-      c10::Half((float)(eps)),
-      weight_ptr,
-      bias_ptr,
-      output_buffer.data_ptr<c10::Half>(),
-      (int)(*self_opt_sizes[0] * *self_opt_sizes[1]),
-      (int)(*self_opt_sizes[0]),
-      nt_sizes.data_ptr<int>(),
-      defaultStream
-      );
-  return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(output), get_efficient_nested_stride(output));
-
-  // Tensor input_buffer = get_buffer(input);
-  // Tensor output_buffer 
-
-  // Tensor output = input;
-  // output = output - mean.reshape(IntArrayRef(scalar_shape));
-  // output = output * invstd.reshape(IntArrayRef(scalar_shape));
-
-  // if (weight) {
-  //   output = output * weight->reshape(IntArrayRef(scalar_shape));
-  // }
-  // if (bias) {
-  //   output = output + bias->reshape(IntArrayRef(scalar_shape));
-  // }
-  // return output;
+  if (bias) {
+    output = output + bias->reshape(IntArrayRef(scalar_shape));
+  }
+  return output;
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
