@@ -27,7 +27,9 @@ Tensor NestedTensor_relu(const Tensor& self) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu" << std::endl;
 #endif
-    return wrap_buffer(at::relu(get_buffer(self)), impl->nested_size());
+    return wrap_buffer(at::relu(get_buffer(self)),
+        get_efficient_nested_size(self),
+        get_efficient_nested_stride(self));
   }
   return map_nested_tensor(
       [](at::Tensor tensor) { return at::relu(tensor); }, self);
@@ -35,6 +37,14 @@ Tensor NestedTensor_relu(const Tensor& self) {
 
 // Registered below autograd
 Tensor& NestedTensor_relu_(Tensor& self) {
+  if (get_is_contiguous(self)) {
+#ifdef TRACEPACKED
+    std::cout << "calling packed relu_" << std::endl;
+#endif
+    Tensor buffer = get_buffer(self);
+    at::relu_(buffer);
+    return self;
+  }
   apply_nested_tensor([](at::Tensor& tensor) { at::relu_(tensor); }, self);
   return self;
 }

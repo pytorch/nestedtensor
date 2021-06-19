@@ -6,6 +6,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
+#include <c10/core/DispatchKey.h>
 
 namespace at {
 
@@ -33,7 +34,7 @@ NestedTensorImpl::NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage)
           storage->device()),
       _storage(storage) {
   remove_autograd_key();
-  key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::ADInplaceOrView});
+  key_set_ = key_set_ - c10::DispatchKeySet({c10::DispatchKey::ADInplaceOrView});
 }
 
 inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
@@ -102,6 +103,20 @@ at::Tensor wrap_buffer(
       "Internal error: expected nested_size of non-zero height.");
   PackedStorage* ps = new PackedStorage(
       std::move(buffer), efficient_nested_size, efficient_nested_stride);
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
+}
+
+at::Tensor wrap_buffer(
+    at::Tensor&& buffer,
+    EfficientSizeNode efficient_nested_size) {
+  TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
+  TORCH_CHECK(
+      efficient_nested_size.height() > 0,
+      "Internal error: expected nested_size of non-zero height.");
+  PackedStorage* ps = new PackedStorage(
+      std::move(buffer), efficient_nested_size);
   NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
   return at::detail::make_tensor<NestedTensorImpl>(
       std::shared_ptr<NestedTensorStorage>(ps_base));

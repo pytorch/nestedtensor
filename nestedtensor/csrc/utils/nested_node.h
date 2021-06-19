@@ -376,6 +376,11 @@ inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
   return std::vector<int64_t>(stride);
 }
 
+inline std::vector<int64_t> _cont_stride(int64_t* size_ptr, int64_t size) {
+  std::vector<int64_t> size_vector(size_ptr, size_ptr + size);
+  return _cont_stride(size_vector);
+}
+
 inline bool _is_cont_stride(int64_t* size, int64_t* stride, size_t length) {
   int64_t p = 1;
   size_t p_i = length;
@@ -398,6 +403,20 @@ inline int64_t num_memory(
   int64_t result = 1;
   for (size_t i = 0; i < size.size(); i++) {
     result = result + ((size[i] - 1) * stride[i]);
+  }
+  return result;
+}
+
+inline int64_t num_memory(
+    int64_t* size_ptr,
+    int64_t* stride_ptr,
+    int64_t size) {
+  // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
+  // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
+  // but carry 0 memory.
+  int64_t result = 1;
+  for (size_t i = 0; i < size; i++) {
+    result = result + ((size_ptr[i] - 1) * stride_ptr[i]);
   }
   return result;
 }

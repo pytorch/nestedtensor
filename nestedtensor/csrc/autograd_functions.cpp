@@ -2,6 +2,11 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#ifdef WITH_CUDA
+#include <c10/cuda/CUDAStream.h>
+#include <nestedtensor/csrc/cuda/add.h>
+#include <c10/util/Half.h>
+#endif
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -89,19 +94,10 @@ Tensor NestedTensor_batch_norm(
     bool cudnn_enabled) {
   auto opt_sizes = get_nested_tensor_impl(input)->opt_sizes();
   TORCH_CHECK(opt_sizes[1], "batch norm requires regular second dimension.");
+  TORCH_CHECK(!training, "batch norm does not support training.");
   int64_t n_input = *opt_sizes[1];
-  if (running_mean) {
-    check_dims_match_num_input_features(
-        "running_mean", n_input, get_numel(*running_mean));
-  } else if (!training) {
-    AT_ERROR("running_mean must be defined in evaluation mode");
-  }
-  if (running_var) {
-    check_dims_match_num_input_features(
-        "running_var", n_input, get_numel(*running_var));
-  } else if (!training) {
-    AT_ERROR("running_var must be defined in evaluation mode");
-  }
+  TORCH_CHECK(running_mean, "running_mean must be defined in evaluation mode");
+  TORCH_CHECK(running_var, "running_var must be defined in evaluation mode");
   if (weight) {
     check_dims_match_num_input_features("weight", n_input, get_numel(*weight));
   }
@@ -110,40 +106,80 @@ Tensor NestedTensor_batch_norm(
   }
 
   auto scalar_shape = make_scalar_shape(get_dim(input), n_input);
-
-  at::Tensor mean;
-  at::Tensor invstd;
-  at::Tensor save_mean;
-  at::Tensor save_invstd;
-
-  if (training) {
-    auto reduce_dims = make_reduce_dims(get_dim(input));
-    save_mean = at::mean(input, IntArrayRef(reduce_dims));
-
-    save_invstd =
-        1 / at::sqrt(at::var(input, IntArrayRef(reduce_dims), false) + eps);
-
-    if (running_mean) {
-      at::Tensor running_mean_(running_mean->getIntrusivePtr());
-      running_mean_ = running_mean_.detach();
-      running_mean_.copy_(
-          momentum * save_mean + (1 - momentum) * running_mean_);
+  at::Tensor mean = *running_mean;
+  at::Tensor var = *running_var;
+#ifdef WITH_CUDA
+  if (weight &&
+      bias &&
+      (is_nested_tensor_impl(input)) &&
+      (!is_nested_tensor_impl(mean)) &&
+      (!is_nested_tensor_impl(var)) &&
+      (!is_nested_tensor_impl(*bias)) &&
+      (!is_nested_tensor_impl(*weight)) &&
+      (input.dtype()   == torch::kHalf) &&
+      (mean.dtype()    == torch::kHalf) &&
+      (var.dtype()     == torch::kHalf) &&
+      (bias->dtype()   == torch::kHalf) &&
+      (weight->dtype() == torch::kHalf)
+  )
+  {
+  
+    // Custom CUDA Half implementation.
+    mean = mean.contiguous();
+    Tensor bias_cont = (*bias).contiguous();
+    Tensor weight_cont = (*weight).contiguous();
+    Tensor running_var_cont = (*running_var).contiguous();
+  
+    Tensor output = input;
+    output = NestedTensor_contiguous(output);
+    Tensor input_buffer = get_buffer(output);
+    Tensor output_buffer = input_buffer.clone();
+  
+    auto self_opt_sizes = get_opt_sizes(input);
+  
+    Tensor nt_sizes_ =
+        get_efficient_nested_size(input).sizes().to(torch::kInt32);
+    Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
+    Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1);
+    Tensor nt_sizes_all = nt_sizes_1 * nt_sizes_2;
+    int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
+    std::vector<int> numbers;
+    numbers.reserve(1 + (nt_sizes_all.size(0) * *self_opt_sizes[1]));
+    numbers.push_back(0);
+    int64_t index = 1;
+    for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
+      for (int64_t j = 0; j < *self_opt_sizes[1]; j++) {
+        numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
+        index++;
+      }
     }
-
-    if (running_var) {
-      Tensor unbiased_var = at::var(input, IntArrayRef(reduce_dims));
-      at::Tensor running_var_(running_var->getIntrusivePtr());
-      running_var_ = running_var_.detach();
-      running_var_.copy_(
-          momentum * unbiased_var + (1 - momentum) * running_var_);
-    }
-
-    mean = save_mean;
-    invstd = save_invstd;
-  } else {
-    mean = *running_mean;
-    invstd = 1 / at::sqrt(*running_var + eps);
+    at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
+    Tensor nt_sizes = numbers_t.to(torch::kCUDA);
+  
+    c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
+    c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
+    c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
+    c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
+  
+    at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+    nested_tensor::cuda::batchnorm_inference_kernelLauncher(
+        input_buffer.data_ptr<c10::Half>(),
+        mean_ptr,
+        running_var_ptr,
+        c10::Half((float)(eps)),
+        weight_ptr,
+        bias_ptr,
+        output_buffer.data_ptr<c10::Half>(),
+        (int)(*self_opt_sizes[0] * *self_opt_sizes[1]),
+        (int)(*self_opt_sizes[0]),
+        nt_sizes.data_ptr<int>(),
+        defaultStream
+        );
+    return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(output), get_efficient_nested_stride(output));
   }
+#endif
+
+  at::Tensor invstd = 1 / at::sqrt(*running_var + eps);
 
   Tensor output = input;
   output = output - mean.reshape(IntArrayRef(scalar_shape));
