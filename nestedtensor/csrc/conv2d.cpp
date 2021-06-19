@@ -38,7 +38,7 @@ Tensor NestedTensor_conv2d(
         std::cout << "HERE" << std::endl;
         // input = input.transpose(1, 3);
         // input = NestedTensor_contiguous(input);
-        input_buffer = get_buffer(input);
+        Tensor input_buffer_ = get_buffer(input);
         Tensor nt_sizes_ =
             get_efficient_nested_size(input).sizes().to(torch::kInt32);
         std::cout << "nt_sizes_: " << nt_sizes_ << std::endl;
@@ -59,11 +59,30 @@ Tensor NestedTensor_conv2d(
         at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
         std::cout << "numbers_t: " << numbers_t << std::endl;
         Tensor nt_sizes = numbers_t.to(torch::kCUDA);
+        c10::Half* input_ptr = input_buffer_.data_ptr<c10::Half>();
+        input_buffer = input_buffer_.clone();
+        input_buffer.fill_(-1);
+        at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+        defaultStream.synchronize();
+        c10::Half* output_ptr = input_buffer.data_ptr<c10::Half>();
+        nested_tensor::cuda::transpose_kernelLauncher(
+            input_ptr,
+            output_ptr,
+            nt_sizes.data_ptr<int>(),
+            *self_opt_sizes[0],
+            *self_opt_sizes[1],
+            defaultStream
+            );
+        std::cout << "01 input_buffer_: " << input_buffer_ << std::endl;
+        std::cout << "02 input_buffer: " << input_buffer << std::endl;
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
-      } else {
+      }
+      {
+        std::cout << "11 input_buffer: " << get_buffer(input) << std::endl;
         input = input.transpose(1, 3);
         input = NestedTensor_contiguous(input);
         input_buffer = get_buffer(input);
+        std::cout << "12 input_buffer: " << input_buffer << std::endl;
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
       }
       at::Tensor result_buffer = at::matmul(input_buffer, 

@@ -16,10 +16,16 @@ void transpose(
     const int num_channel)
 {
   const int batch_id  = blockIdx.x;
-  const int grain_size = blockDim.x;
-  const int tid = threadIdx.x;
-  const int range = (offsets[batch_id + 1] - offsets[batch_id]);
-  const int num_chunks = range / grain_size;
+  const int channel_id  = blockIdx.y;
+  // const int grain_size = blockDim.x;
+  // const int tid = threadIdx.x;
+  const int range = (offsets[(batch_id + 1) * num_channel] - offsets[batch_id * num_channel]);
+  for (int i = 0; i < range; i++) {
+  printf("batch_id: %d, channel_id: %d, offsets[%d]: %d, i: %d\n",
+      batch_id, channel_id, batch_id * channel_id, offsets[batch_id * channel_id]);
+    output[offsets[batch_id * channel_id] + channel_id + i / num_channel] = 
+      input[offsets[batch_id * channel_id] + i];
+  }
   // for (int id = 0; id < num_chunks; id++) {
   //   output[batch_id * output_stride + id * grain_size + tid]
   //     = input[offsets[batch_id] * inner_size + id * grain_size + tid];
@@ -41,6 +47,7 @@ void transpose_kernelLauncher(
 {
   dim3 grid;
   grid.x = batch_size;
+  grid.y = num_channel;
 
   transpose<<<grid, 1, 0, stream>>>(
       input,
