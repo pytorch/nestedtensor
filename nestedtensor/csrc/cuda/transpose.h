@@ -10,10 +10,9 @@ namespace cuda {
 void transpose_kernelLauncher(
     c10::Half* input,
     c10::Half* output,
-    const int* lengths,
+    const int* offsets,
     const int batch_size,
-    const int output_stride,
-    const int inner_size,
+    const int num_channel,
     const cudaStream_t stream);
 
 }
