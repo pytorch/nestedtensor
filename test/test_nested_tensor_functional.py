@@ -49,19 +49,22 @@ class TestFunctional(TestCase):
 
     @torch.inference_mode()
     def test_conv2d(self):
-        def _test(ts, weight):
-            nt = ntnt_nograd(ts)
-            nt_out = torch.conv2d(nt, weight)
-            for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
-                t_out = torch.conv2d(t.unsqueeze(0), weight).squeeze(0)
-                print("t_out")
-                print(t_out)
-                self.assertEqual(t_out, nt_out_i)
-        ts = [torch.arange(3*2*3).reshape(3, 2, 3).float(),
-              torch.arange(3*3*2).reshape(3, 3, 2).float(),
-              torch.arange(3*2*2).reshape(3, 2, 2).float()]
-        weight = torch.arange(3*3*1*1).reshape(3, 3, 1, 1).float()
-        _test(ts, weight)
+        def _test_dtype(dtype):
+            def _test(ts, weight):
+                nt = ntnt_nograd(ts, dtype=dtype)
+                nt_out = torch.conv2d(nt, weight)
+                for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
+                    t_out = torch.conv2d(t.unsqueeze(0), weight).squeeze(0)
+                    print("t_out")
+                    print(t_out)
+                    self.assertEqual(t_out, nt_out_i)
+            ts = [torch.arange(3*2*3).reshape(3, 2, 3).to(dtype),
+                  torch.arange(3*3*2).reshape(3, 3, 2).to(dtype),
+                  torch.arange(3*2*2).reshape(3, 2, 2).to(dtype)]
+            weight = torch.arange(3*3*1*1).reshape(3, 3, 1, 1).to(dtype)
+            _test(ts, weight)
+        _test_dtype(torch.float32)
+        _test_dtype(torch.float16)
 
     def test_contiguousity(self):
         initial_t = torch.rand(2, 5, 10, 15)

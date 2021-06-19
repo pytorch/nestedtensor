@@ -2,6 +2,11 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#ifdef WITH_CUDA
+#include <c10/cuda/CUDAStream.h>
+#include <nestedtensor/csrc/cuda/transpose.h>
+#include <c10/util/Half.h>
+#endif
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -24,10 +29,20 @@ Tensor NestedTensor_conv2d(
         dilation[0] == 1 && dilation[1] == 1 &&
         groups == 1
       ) {
-      input = input.transpose(1, 3);
-      input = NestedTensor_contiguous(input);
-      at::Tensor input_buffer = get_buffer(input);
-      input_buffer = input_buffer.reshape({-1, weight.size(1)});
+      at::Tensor input_buffer;
+      std::cout << "get_is_contiguous(input): " << get_is_contiguous(input) << std::endl;
+      if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
+        std::cout << "HERE" << std::endl;
+        input = input.transpose(1, 3);
+        input = NestedTensor_contiguous(input);
+        input_buffer = get_buffer(input);
+        input_buffer = input_buffer.reshape({-1, weight.size(1)});
+      } else {
+        input = input.transpose(1, 3);
+        input = NestedTensor_contiguous(input);
+        input_buffer = get_buffer(input);
+        input_buffer = input_buffer.reshape({-1, weight.size(1)});
+      }
       at::Tensor result_buffer = at::matmul(input_buffer, 
           weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
       int64_t weight_size_0 = weight.size(0);
