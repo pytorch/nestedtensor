@@ -120,7 +120,8 @@ Tensor NestedTensor_batch_norm(
       (mean.dtype()    == torch::kHalf) &&
       (var.dtype()     == torch::kHalf) &&
       (bias->dtype()   == torch::kHalf) &&
-      (weight->dtype() == torch::kHalf)
+      (weight->dtype() == torch::kHalf) &&
+      get_is_cuda(input)
   )
   {
   

@@ -30,7 +30,8 @@ Tensor NestedTensor_conv2d(
         dilation[0] == 1 && dilation[1] == 1 &&
         groups == 1 &&
         *self_opt_sizes[0] &&
-        *self_opt_sizes[1]
+        *self_opt_sizes[1] &&
+        get_is_cuda(input)
       ) {
       at::Tensor input_buffer;
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
@@ -40,6 +41,7 @@ Tensor NestedTensor_conv2d(
         input_buffer = get_buffer(input);
         Tensor nt_sizes_ =
             get_efficient_nested_size(input).sizes().to(torch::kInt32);
+        std::cout << "nt_sizes_: " << nt_sizes_ << std::endl;
         Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
         Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1);
         Tensor nt_sizes_all = nt_sizes_1 * nt_sizes_2;
