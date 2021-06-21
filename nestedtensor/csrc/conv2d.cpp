@@ -35,20 +35,15 @@ Tensor NestedTensor_conv2d(
       ) {
       at::Tensor input_buffer;
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
-        // std::cout << "HERE" << std::endl;
-        // input = input.transpose(1, 3);
-        // input = NestedTensor_contiguous(input);
-        Tensor input_buffer_ = get_buffer(input);
         Tensor nt_sizes_ =
             get_efficient_nested_size(input).sizes().to(torch::kInt32);
-        // std::cout << "nt_sizes_: " << nt_sizes_ << std::endl;
         Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
         Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
         Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1).contiguous();
         Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1 * nt_sizes_2;
         int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
         std::vector<int> numbers;
-        numbers.reserve(1 + (nt_sizes_all.size(0) * *self_opt_sizes[1]));
+        numbers.reserve(1 + nt_sizes_all.size(0));
         numbers.push_back(0);
         int64_t index = 1;
         for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
@@ -56,65 +51,52 @@ Tensor NestedTensor_conv2d(
           index++;
         }
         at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-        // std::cout << "numbers_t: " << numbers_t << std::endl;
+        std::cout << "numbers_t: " << numbers_t << std::endl;
         Tensor nt_sizes = numbers_t.to(torch::kCUDA);
 
-        Tensor nt_strides =
-            get_efficient_nested_stride(input).sizes().to(torch::kInt32);
-        Tensor nt_strides_dim2 = at::native::narrow(nt_strides, 1, 1, 1).contiguous();
-        Tensor nt_strides_dim3 = at::native::narrow(nt_strides, 1, 2, 1).contiguous();
-        // std::cout << "nt_strides_dim2: " << nt_strides_dim2 << std::endl;
-        // std::cout << "nt_strides_dim3: " << nt_strides_dim3 << std::endl;
-        nt_strides_dim2 = nt_strides_dim2.to(torch::kCUDA);
-        nt_strides_dim3 = nt_strides_dim3.to(torch::kCUDA);
+        nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(torch::kCUDA);
 
-        nt_sizes_1 = nt_sizes_1.to(torch::kCUDA);
-        nt_sizes_2 = nt_sizes_2.to(torch::kCUDA);
-
-        input_buffer = input_buffer_.clone();
-        input_buffer.fill_(-1);
+        Tensor input_buffer = get_buffer(input);
+        Tensor output_buffer = input_buffer.clone();
+        c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
+        c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
         at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-        c10::Half* input_ptr = input_buffer_.data_ptr<c10::Half>();
-        c10::Half* output_ptr = input_buffer.data_ptr<c10::Half>();
         nested_tensor::cuda::transpose_kernelLauncher(
             input_ptr,
             output_ptr,
             nt_sizes.data_ptr<int>(),
-            nt_sizes_1.data_ptr<int>(),
             nt_sizes_2.data_ptr<int>(),
-            nt_strides_dim2.data_ptr<int>(),
-            nt_strides_dim3.data_ptr<int>(),
             *self_opt_sizes[0],
             *self_opt_sizes[1],
+            false,
             defaultStream
             );
-        std::cout << "01 input_buffer_: "  << std::endl << input_buffer_ << std::endl;
-        std::cout << "02 input_buffer: "  << std::endl << input_buffer << std::endl;
-        defaultStream.synchronize();
-        input_buffer = input_buffer.reshape({-1, weight.size(1)});
-      } else {
-        // std::cout << "11 input_buffer: "  << std::endl << get_buffer(input) << std::endl;
-        // NCHW
-        input = input.transpose(1, 3);
-        // NWHC
-        input = NestedTensor_contiguous(input);
-        input_buffer = get_buffer(input);
-        // std::cout << "12 input_buffer: "  << std::endl << input_buffer << std::endl;
-        input_buffer = input_buffer.reshape({-1, weight.size(1)});
+        output_buffer = output_buffer.reshape({-1, weight.size(1)});
+        at::Tensor result_buffer = at::matmul(output_buffer, 
+            weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
+        std::cout << "MATMUL!" << std::endl;
+        // at::Tensor result_buffer = output_buffer.clone();
+        c10::Half* result_ptr = result_buffer.data_ptr<c10::Half>();
+        at::Tensor result_trans_buffer = result_buffer.clone();
+        c10::Half* result_trans_ptr = result_trans_buffer.data_ptr<c10::Half>();
+        nested_tensor::cuda::transpose_kernelLauncher(
+            result_ptr,
+            result_trans_ptr,
+            nt_sizes.data_ptr<int>(),
+            nt_sizes_2.data_ptr<int>(),
+            *self_opt_sizes[0],
+            *self_opt_sizes[1],
+            false,
+            defaultStream
+            );
+        int64_t weight_size_0 = weight.size(0);
+        auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
+            size_ptr[0] = weight_size_0;
+            }, get_efficient_nested_size(input));
+        at::Tensor result = wrap_buffer(result_trans_buffer.reshape(-1),
+            new_sizes);
+        return result;
       }
-      at::Tensor result_buffer = at::matmul(input_buffer, 
-          weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
-      int64_t weight_size_0 = weight.size(0);
-      auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
-          size_ptr[2] = weight_size_0;
-          }, get_efficient_nested_size(input));
-      at::Tensor result = wrap_buffer(result_buffer.reshape(-1),
-          new_sizes);
-      // NHWC
-      result = result.transpose(1, 3);
-      // NCWH
-      result = NestedTensor_contiguous(result);
-      return result;
     }
   }
   if (bias) {
