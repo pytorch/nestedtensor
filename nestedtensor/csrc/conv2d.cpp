@@ -35,54 +35,71 @@ Tensor NestedTensor_conv2d(
       ) {
       at::Tensor input_buffer;
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
-        std::cout << "HERE" << std::endl;
+        // std::cout << "HERE" << std::endl;
         // input = input.transpose(1, 3);
         // input = NestedTensor_contiguous(input);
         Tensor input_buffer_ = get_buffer(input);
         Tensor nt_sizes_ =
             get_efficient_nested_size(input).sizes().to(torch::kInt32);
-        std::cout << "nt_sizes_: " << nt_sizes_ << std::endl;
-        Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
-        Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1);
-        Tensor nt_sizes_all = nt_sizes_1 * nt_sizes_2;
+        // std::cout << "nt_sizes_: " << nt_sizes_ << std::endl;
+        Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
+        Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
+        Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1).contiguous();
+        Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1 * nt_sizes_2;
         int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
         std::vector<int> numbers;
         numbers.reserve(1 + (nt_sizes_all.size(0) * *self_opt_sizes[1]));
         numbers.push_back(0);
         int64_t index = 1;
         for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
-          for (int64_t j = 0; j < *self_opt_sizes[1]; j++) {
-            numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
-            index++;
-          }
+          numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
+          index++;
         }
         at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-        std::cout << "numbers_t: " << numbers_t << std::endl;
+        // std::cout << "numbers_t: " << numbers_t << std::endl;
         Tensor nt_sizes = numbers_t.to(torch::kCUDA);
-        c10::Half* input_ptr = input_buffer_.data_ptr<c10::Half>();
+
+        Tensor nt_strides =
+            get_efficient_nested_stride(input).sizes().to(torch::kInt32);
+        Tensor nt_strides_dim2 = at::native::narrow(nt_strides, 1, 1, 1).contiguous();
+        Tensor nt_strides_dim3 = at::native::narrow(nt_strides, 1, 2, 1).contiguous();
+        // std::cout << "nt_strides_dim2: " << nt_strides_dim2 << std::endl;
+        // std::cout << "nt_strides_dim3: " << nt_strides_dim3 << std::endl;
+        nt_strides_dim2 = nt_strides_dim2.to(torch::kCUDA);
+        nt_strides_dim3 = nt_strides_dim3.to(torch::kCUDA);
+
+        nt_sizes_1 = nt_sizes_1.to(torch::kCUDA);
+        nt_sizes_2 = nt_sizes_2.to(torch::kCUDA);
+
         input_buffer = input_buffer_.clone();
         input_buffer.fill_(-1);
         at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-        defaultStream.synchronize();
+        c10::Half* input_ptr = input_buffer_.data_ptr<c10::Half>();
         c10::Half* output_ptr = input_buffer.data_ptr<c10::Half>();
         nested_tensor::cuda::transpose_kernelLauncher(
             input_ptr,
             output_ptr,
             nt_sizes.data_ptr<int>(),
+            nt_sizes_1.data_ptr<int>(),
+            nt_sizes_2.data_ptr<int>(),
+            nt_strides_dim2.data_ptr<int>(),
+            nt_strides_dim3.data_ptr<int>(),
             *self_opt_sizes[0],
             *self_opt_sizes[1],
             defaultStream
             );
-        std::cout << "01 input_buffer_: " << input_buffer_ << std::endl;
-        std::cout << "02 input_buffer: " << input_buffer << std::endl;
+        std::cout << "01 input_buffer_: "  << std::endl << input_buffer_ << std::endl;
+        std::cout << "02 input_buffer: "  << std::endl << input_buffer << std::endl;
+        defaultStream.synchronize();
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
-      }
-      {
-        std::cout << "11 input_buffer: " << get_buffer(input) << std::endl;
+      } else {
+        // std::cout << "11 input_buffer: "  << std::endl << get_buffer(input) << std::endl;
+        // NCHW
         input = input.transpose(1, 3);
+        // NWHC
         input = NestedTensor_contiguous(input);
         input_buffer = get_buffer(input);
-        std::cout << "12 input_buffer: " << input_buffer << std::endl;
+        // std::cout << "12 input_buffer: "  << std::endl << input_buffer << std::endl;
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
       }
       at::Tensor result_buffer = at::matmul(input_buffer, 
@@ -93,7 +110,9 @@ Tensor NestedTensor_conv2d(
           }, get_efficient_nested_size(input));
       at::Tensor result = wrap_buffer(result_buffer.reshape(-1),
           new_sizes);
+      // NHWC
       result = result.transpose(1, 3);
+      // NCWH
       result = NestedTensor_contiguous(result);
       return result;
     }
