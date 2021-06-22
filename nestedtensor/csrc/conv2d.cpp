@@ -70,6 +70,7 @@ Tensor NestedTensor_conv2d(
             nt_sizes_0.data_ptr<int>(),
             nt_sizes_1_2.data_ptr<int>(),
             *self_opt_sizes[0],
+            input_buffer.numel(),
             defaultStream
             );
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
@@ -108,6 +109,7 @@ Tensor NestedTensor_conv2d(
             nt_sizes_1_2.data_ptr<int>(),
             nt_sizes_0.data_ptr<int>(),
             *self_opt_sizes[0],
+            result_buffer.numel(),
             defaultStream
             );
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {

@@ -14,6 +14,7 @@ void transpose_kernelLauncher(
     const int* sizes_dim2,
     const int* sizes_dim3,
     const int batch_size,
+    const int numel,
     const cudaStream_t stream);
 
 }
