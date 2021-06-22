@@ -7,6 +7,7 @@
 namespace nested_tensor {
 namespace cuda {
 
+template<int unroll_chunks, int block_mult, int num_threads>
 __global__
 void transpose(
     c10::Half* input,
@@ -16,24 +17,32 @@ void transpose(
     const int* sizes_dim3,
     const int batch_size)
 {
-  const int batch_id  = blockIdx.x / 1024;
-  const int block_id = blockIdx.x % 1024;
-  const int grain_size = 256 * 1024;
+  const int batch_id  = blockIdx.x / block_mult;
+  const int block_id = blockIdx.x % block_mult;
+  const int grain_size = num_threads * block_mult;
   const int tid = threadIdx.x;
   const int size2 = sizes_dim2[batch_id];
   const int size3 = sizes_dim3[batch_id];
   const int num_chunks = (size2 * size3) / grain_size;
-  for (int id = 0; id < num_chunks; id++) {
-    int ii = id * grain_size + (block_id) * 256 + tid;
-  // for (int ii = 0; ii < size2 * size3; ii++) {
+  const int num_4_chunks = num_chunks / unroll_chunks;
+  for (int id4 = 0; id4 < num_4_chunks; id4++) {
+#pragma unroll
+    for (int id = 0; id < unroll_chunks; id++) {
+      int ii = (id4 * unroll_chunks + id) * grain_size + (block_id) * num_threads + tid;
+      const int j = (ii % size3) * size2;
+      const int i = (ii / size3);
+      output[offsets[batch_id] + j + i] = input[offsets[batch_id] + ii];
+    }
+  }
+  for (int id = num_4_chunks * unroll_chunks; id < num_chunks; id++) {
+    int ii = id * grain_size + (block_id) * num_threads + tid;
     const int j = (ii % size3) * size2;
     const int i = (ii / size3);
     output[offsets[batch_id] + j + i] = input[offsets[batch_id] + ii];
-  // }
   }
   const int leftover = num_chunks * grain_size;
-  if (leftover + (block_id) * 256 + tid < (size2 * size3)) {
-    int ii = leftover + (block_id) * 256 + tid;
+  if (leftover + (block_id) * num_threads + tid < (size2 * size3)) {
+    int ii = leftover + (block_id) * num_threads + tid;
     const int j = (ii % size3) * size2;
     const int i = (ii / size3);
     output[offsets[batch_id] + j + i] = input[offsets[batch_id] + ii];
@@ -50,9 +59,9 @@ void transpose_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = batch_size * 1024;
+  grid.x = batch_size * 512;
 
-  transpose<<<grid, 256, 0, stream>>>(
+  transpose<8, 512, 512><<<grid, 512, 0, stream>>>(
       input,
       output,
       offsets,

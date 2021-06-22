@@ -75,13 +75,10 @@ Tensor NestedTensor_conv2d(
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
-        // std::cout << "MATMUL!" << std::endl;
-        // at::Tensor result_buffer = output_buffer.clone();
         c10::Half* result_ptr = result_buffer.data_ptr<c10::Half>();
         at::Tensor result_trans_buffer = result_buffer.clone();
         c10::Half* result_trans_ptr = result_trans_buffer.data_ptr<c10::Half>();
         int64_t weight_size_0 = weight.size(0);
-
 
         nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
         nt_sizes_0.fill_(weight_size_0);
