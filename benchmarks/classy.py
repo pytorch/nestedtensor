@@ -68,8 +68,8 @@ if __name__ == "__main__":
         run_benchmark(1, shapes, model, model_name, bsz)
 
     _benchmark("resnext101_32x4d", 64)
-    # _benchmark("resnext101_32x4d", 128)
-    # _benchmark("resnext101_32x4d", 256)
+    _benchmark("resnext101_32x4d", 128)
+    _benchmark("resnext101_32x4d", 256)
     # _benchmark("regnet_y_128gf", 64)
     # _benchmark("regnet_y_128gf", 128)
     # Runs out of memory
