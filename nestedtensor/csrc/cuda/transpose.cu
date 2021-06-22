@@ -10,7 +10,7 @@ namespace cuda {
 template<int unroll_chunks, int block_mult, int num_threads>
 __global__
 void transpose(
-    const c10::Half* input,
+    const c10::Half* __restrict__ input,
     c10::Half* output,
     const int* offsets,
     const int* sizes_dim2,
