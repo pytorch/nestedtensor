@@ -51,7 +51,7 @@ Tensor NestedTensor_conv2d(
           index++;
         }
         at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-        std::cout << "numbers_t: " << numbers_t << std::endl;
+        // std::cout << "numbers_t: " << numbers_t << std::endl;
         Tensor nt_sizes = numbers_t.to(torch::kCUDA);
 
         nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(torch::kCUDA);
@@ -74,13 +74,34 @@ Tensor NestedTensor_conv2d(
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
-        defaultStream.synchronize();
-        std::cout << "MATMUL!" << std::endl;
+        // std::cout << "MATMUL!" << std::endl;
         // at::Tensor result_buffer = output_buffer.clone();
         c10::Half* result_ptr = result_buffer.data_ptr<c10::Half>();
         at::Tensor result_trans_buffer = result_buffer.clone();
         c10::Half* result_trans_ptr = result_trans_buffer.data_ptr<c10::Half>();
-        defaultStream.synchronize();
+        int64_t weight_size_0 = weight.size(0);
+
+
+        nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
+        nt_sizes_0.fill_(weight_size_0);
+        nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
+        nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1).contiguous();
+        nt_sizes_all = nt_sizes_0 * nt_sizes_1 * nt_sizes_2;
+        nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
+        numbers.clear();
+        numbers.reserve(1 + nt_sizes_all.size(0));
+        numbers.push_back(0);
+        index = 1;
+        for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
+          numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
+          index++;
+        }
+        numbers_t = torch::tensor(numbers).to(torch::kInt32);
+        // std::cout << "numbers_t: " << numbers_t << std::endl;
+        nt_sizes = numbers_t.to(torch::kCUDA);
+        nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(torch::kCUDA);
+        nt_sizes_0 = (nt_sizes_0).to(torch::kCUDA);
+
         nested_tensor::cuda::transpose_kernelLauncher(
             result_ptr,
             result_trans_ptr,
@@ -90,7 +111,6 @@ Tensor NestedTensor_conv2d(
             *self_opt_sizes[0],
             defaultStream
             );
-        int64_t weight_size_0 = weight.size(0);
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
             size_ptr[0] = weight_size_0;
             }, get_efficient_nested_size(input));
