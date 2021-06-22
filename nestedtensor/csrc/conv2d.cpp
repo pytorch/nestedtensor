@@ -55,6 +55,7 @@ Tensor NestedTensor_conv2d(
         Tensor nt_sizes = numbers_t.to(torch::kCUDA);
 
         nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(torch::kCUDA);
+        nt_sizes_0 = (nt_sizes_0).to(torch::kCUDA);
 
         Tensor input_buffer = get_buffer(input);
         Tensor output_buffer = input_buffer.clone();
@@ -65,28 +66,28 @@ Tensor NestedTensor_conv2d(
             input_ptr,
             output_ptr,
             nt_sizes.data_ptr<int>(),
+            nt_sizes_0.data_ptr<int>(),
             nt_sizes_2.data_ptr<int>(),
             *self_opt_sizes[0],
-            *self_opt_sizes[1],
-            false,
             defaultStream
             );
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
+        defaultStream.synchronize();
         std::cout << "MATMUL!" << std::endl;
         // at::Tensor result_buffer = output_buffer.clone();
         c10::Half* result_ptr = result_buffer.data_ptr<c10::Half>();
         at::Tensor result_trans_buffer = result_buffer.clone();
         c10::Half* result_trans_ptr = result_trans_buffer.data_ptr<c10::Half>();
+        defaultStream.synchronize();
         nested_tensor::cuda::transpose_kernelLauncher(
             result_ptr,
             result_trans_ptr,
             nt_sizes.data_ptr<int>(),
             nt_sizes_2.data_ptr<int>(),
+            nt_sizes_0.data_ptr<int>(),
             *self_opt_sizes[0],
-            *self_opt_sizes[1],
-            false,
             defaultStream
             );
         int64_t weight_size_0 = weight.size(0);

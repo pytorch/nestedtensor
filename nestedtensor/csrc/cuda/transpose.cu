@@ -12,10 +12,9 @@ void transpose(
     c10::Half* input,
     c10::Half* output,
     const int* offsets,
+    const int* sizes_dim2,
     const int* sizes_dim3,
-    const int batch_size,
-    const int num_channel,
-    bool inverse)
+    const int batch_size)
 {
   const int batch_id  = blockIdx.x;
   // const int grain_size = blockDim.x;
@@ -28,24 +27,21 @@ void transpose(
     //    batch_id, sizes_dim2[batch_id], batch_id, sizes_dim3[batch_id],
     //    batch_id, strides_dim2[batch_id], batch_id, strides_dim3[batch_id]);
     // int64_t size2 = sizes_dim2[batch_id];
+    int size2 = sizes_dim2[batch_id];
     int size3 = sizes_dim3[batch_id];
-    for (int ii = 0; ii < num_channel * size3; ii++) {
-      int j = (ii % num_channel) * size3;
-      int i = (ii / num_channel);
+    for (int ii = 0; ii < size2 * size3; ii++) {
+      int j = (ii % size2) * size3;
+      int i = (ii / size2);
 
 
-      printf("size3: %i stride0: %i stride1: %i \n",
+      printf("size2: %d size3: %i stride0: %i stride1: %i \n",
+       size2,
        size3,
        offsets[batch_id] + j + i,
        offsets[batch_id] + ii
           );
-      if (inverse) {
-       output[offsets[batch_id] + ii] = 
-         input[offsets[batch_id] + j + i];
-      } else {
        output[offsets[batch_id] + j + i] = 
         input[offsets[batch_id] + ii];
-      }
     }
   // }
   // for (int id = 0; id < num_chunks; id++) {
@@ -63,10 +59,9 @@ void transpose_kernelLauncher(
     c10::Half* input, // [batch_size x None]
     c10::Half* output, // [batch_size x max(input.nested_size(1)) x inner_size]
     const int* offsets, // [batch_size]
+    const int* sizes_dim2,
     const int* sizes_dim3,
     const int batch_size,
-    const int num_channel,
-    bool inverse,
     const cudaStream_t stream)
 {
   dim3 grid;
@@ -76,10 +71,9 @@ void transpose_kernelLauncher(
       input,
       output,
       offsets,
+      sizes_dim2,
       sizes_dim3,
-      batch_size,
-      num_channel,
-      inverse);
+      batch_size);
 }
 
 }
