@@ -76,8 +76,6 @@ Tensor NestedTensor_conv2d(
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         c10::Half* result_ptr = result_buffer.data_ptr<c10::Half>();
-        at::Tensor result_trans_buffer = result_buffer.clone();
-        c10::Half* result_trans_ptr = result_trans_buffer.data_ptr<c10::Half>();
         int64_t weight_size_0 = weight.size(0);
 
         nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
@@ -99,10 +97,13 @@ Tensor NestedTensor_conv2d(
         nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
         // nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(at::Device(kCUDA), torch::kInt32, true, true);
         nt_sizes_0 = (nt_sizes_0).to(at::Device(kCUDA), torch::kInt32, true, true);
+        result_buffer = result_buffer.reshape(-1);
+        output_buffer.resize_as_(result_buffer);
+        output_ptr = output_buffer.data_ptr<c10::Half>();
 
         nested_tensor::cuda::transpose_kernelLauncher(
             result_ptr,
-            result_trans_ptr,
+            output_ptr,
             nt_sizes.data_ptr<int>(),
             nt_sizes_1_2.data_ptr<int>(),
             nt_sizes_0.data_ptr<int>(),
@@ -112,7 +113,7 @@ Tensor NestedTensor_conv2d(
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
             size_ptr[0] = weight_size_0;
             }, get_efficient_nested_size(input));
-        at::Tensor result = wrap_buffer(result_trans_buffer.reshape(-1),
+        at::Tensor result = wrap_buffer(output_buffer.reshape(-1),
             new_sizes);
         return result;
       }
