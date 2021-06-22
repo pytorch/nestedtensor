@@ -40,7 +40,8 @@ Tensor NestedTensor_conv2d(
         Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
         Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
         Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1).contiguous();
-        Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1 * nt_sizes_2;
+        Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
+        Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1_2;
         int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
         std::vector<int> numbers;
         numbers.reserve(1 + nt_sizes_all.size(0));
@@ -52,10 +53,10 @@ Tensor NestedTensor_conv2d(
         }
         at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
         // std::cout << "numbers_t: " << numbers_t << std::endl;
-        Tensor nt_sizes = numbers_t.to(torch::kCUDA);
+        Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
 
-        nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(torch::kCUDA);
-        nt_sizes_0 = (nt_sizes_0).to(torch::kCUDA);
+        nt_sizes_1_2 = nt_sizes_1_2.to(at::Device(kCUDA), torch::kInt32, true, true);
+        nt_sizes_0 = (nt_sizes_0).to(at::Device(kCUDA), torch::kInt32, true, true);
 
         Tensor input_buffer = get_buffer(input);
         Tensor output_buffer = input_buffer.clone();
@@ -67,7 +68,7 @@ Tensor NestedTensor_conv2d(
             output_ptr,
             nt_sizes.data_ptr<int>(),
             nt_sizes_0.data_ptr<int>(),
-            nt_sizes_2.data_ptr<int>(),
+            nt_sizes_1_2.data_ptr<int>(),
             *self_opt_sizes[0],
             defaultStream
             );
@@ -98,15 +99,15 @@ Tensor NestedTensor_conv2d(
         }
         numbers_t = torch::tensor(numbers).to(torch::kInt32);
         // std::cout << "numbers_t: " << numbers_t << std::endl;
-        nt_sizes = numbers_t.to(torch::kCUDA);
-        nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(torch::kCUDA);
-        nt_sizes_0 = (nt_sizes_0).to(torch::kCUDA);
+        nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
+        // nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(at::Device(kCUDA), torch::kInt32, true, true);
+        nt_sizes_0 = (nt_sizes_0).to(at::Device(kCUDA), torch::kInt32, true, true);
 
         nested_tensor::cuda::transpose_kernelLauncher(
             result_ptr,
             result_trans_ptr,
             nt_sizes.data_ptr<int>(),
-            nt_sizes_2.data_ptr<int>(),
+            nt_sizes_1_2.data_ptr<int>(),
             nt_sizes_0.data_ptr<int>(),
             *self_opt_sizes[0],
             defaultStream

@@ -155,7 +155,7 @@ Tensor NestedTensor_batch_norm(
       }
     }
     at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-    Tensor nt_sizes = numbers_t.to(torch::kCUDA);
+    Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
   
     c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
     c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
