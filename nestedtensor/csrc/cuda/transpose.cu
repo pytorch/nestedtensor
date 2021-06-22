@@ -16,9 +16,9 @@ void transpose(
     const int* sizes_dim3,
     const int batch_size)
 {
-  const int batch_id  = blockIdx.x;
-  const int block_id = blockIdx.y;
-  const int grain_size = 256 * 16;
+  const int batch_id  = blockIdx.x / 1024;
+  const int block_id = blockIdx.x % 1024;
+  const int grain_size = 256 * 1024;
   const int tid = threadIdx.x;
   const int size2 = sizes_dim2[batch_id];
   const int size3 = sizes_dim3[batch_id];
@@ -50,8 +50,7 @@ void transpose_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = batch_size;
-  grid.y = 16;
+  grid.x = batch_size * 1024;
 
   transpose<<<grid, 256, 0, stream>>>(
       input,
