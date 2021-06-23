@@ -17,8 +17,6 @@ namespace at {
 Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buffer) {
   Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
   Tensor nt_sizes_1_2 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
-  // std::cout << "nt_sizes_0: " << nt_sizes_0 << std::endl;
-  // std::cout << "nt_sizes_1_2: " << nt_sizes_1_2 << std::endl;
   Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1_2;
   int64_t* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int64_t>();
   int64_t* sizes_dim2_ptr = nt_sizes_0.data_ptr<int64_t>();
@@ -52,7 +50,6 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
     sizes_dim3_vec.push_back(size3);
     index++;
   }
-  // std::cout << "offsets_vec.size(): " << offsets_vec.size() << std::endl;
   at::Tensor offsets = torch::tensor(offsets_vec);
   at::Tensor blocks2 = torch::tensor(blocks2_vec);
   at::Tensor blocks3 = torch::tensor(blocks3_vec);
@@ -111,26 +108,21 @@ Tensor NestedTensor_conv2d(
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
         Tensor nt_sizes =
             get_efficient_nested_size(input).sizes();
-        // std::cout << "nt_sizes: " << nt_sizes << std::endl;
         Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
         Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
         Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
         Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
         nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
-        // std::cout << "nt_sizes 0: " << nt_sizes << std::endl;
         Tensor input_buffer = get_buffer(input);
         Tensor output_buffer = input_buffer.clone();
         output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
-        // std::cout << "output_buffer.sizes(): " << output_buffer.sizes() << std::endl;
-        // std::cout << "weight.sizes(): " << weight.sizes() << std::endl;
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
         nt_sizes_0.fill_(weight_size_0);
         nt_sizes = at::cat({nt_sizes_1_2, nt_sizes_0}, 1);
         output_buffer.resize_as_(result_buffer);
-        // std::cout << "nt_sizes 1: " << nt_sizes << std::endl;
         output_buffer = transpose_buffer(nt_sizes,
                                          result_buffer.reshape(-1),
                                          output_buffer.reshape(-1));
@@ -138,7 +130,6 @@ Tensor NestedTensor_conv2d(
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
             size_ptr[0] = weight_size_0;
             }, get_efficient_nested_size(input));
-        // std::cout << "new_sizes.sizes(): " << new_sizes.sizes() << std::endl;
         return wrap_buffer(output_buffer.reshape(-1), new_sizes);
       }
     }
