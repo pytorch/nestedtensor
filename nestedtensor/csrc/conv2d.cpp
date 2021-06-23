@@ -17,15 +17,14 @@ namespace at {
 Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buffer) {
   Tensor sizes_dim2 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
   Tensor sizes_dim3 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
-  Tensor nt_sizes_all = sizes_dim2 * sizes_dim3;
-  int64_t* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int64_t>();
+  Tensor nt_sizes_all = (sizes_dim2 * sizes_dim3).to(torch::kInt32);
+  int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
   int64_t* sizes_dim2_ptr = sizes_dim2.data_ptr<int64_t>();
   int64_t* sizes_dim3_ptr = sizes_dim3.data_ptr<int64_t>();
   int64_t batch_size = nt_sizes_.size(0);
   int64_t input_buffer_numel = input_buffer.numel();
-  std::vector<int> offsets_vec;
-  offsets_vec.reserve(1 + batch_size);
-  offsets_vec.push_back(0);
+  at::Tensor offsets = torch::zeros({1 + batch_size}, torch::kInt32);
+  int* offsets_ptr = offsets.data_ptr<int>();
   int64_t index = 1;
   int grain_size = 32;
   std::vector<int> blocks2_vec;
@@ -39,7 +38,7 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
     const int size3 = sizes_dim3_ptr[i];
     const int num_chunks_2 = (size2 + grain_size - 1) / grain_size;
     const int num_chunks_3 = (size3 + grain_size - 1) / grain_size;
-    offsets_vec.push_back(offsets_vec[index - 1] + (int)(nt_sizes_all_ptr[i]));
+    offsets_ptr[index] = offsets_ptr[index - 1] + (int)(nt_sizes_all_ptr[i]);
     for (int id2 = 0; id2 < num_chunks_2; id2++) {
       for (int id3 = 0; id3 < num_chunks_3; id3++) {
         blocks2_vec.push_back(id2 * grain_size);
@@ -49,7 +48,6 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
     }
     index++;
   }
-  at::Tensor offsets = torch::tensor(offsets_vec);
   at::Tensor blocks2 = torch::tensor(blocks2_vec);
   at::Tensor blocks3 = torch::tensor(blocks3_vec);
   at::Tensor blocks_batch_dim = torch::tensor(blocks_batch_dim_vec);
@@ -61,7 +59,7 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   all_meta = all_meta.to(at::Device(kCUDA), torch::kInt32, true, true);
   std::vector<int64_t> split_sizes;
-  split_sizes.push_back(offsets_vec.size());
+  split_sizes.push_back(offsets.numel());
   split_sizes.push_back(blocks2_vec.size());
   split_sizes.push_back(blocks3_vec.size());
   split_sizes.push_back(blocks_batch_dim_vec.size());
