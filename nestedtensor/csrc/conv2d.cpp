@@ -15,25 +15,26 @@ namespace at {
 
 #ifdef WITH_CUDA
 Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buffer) {
-  Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
-  Tensor nt_sizes_1_2 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
-  Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1_2;
+  Tensor sizes_dim2 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
+  Tensor sizes_dim3 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
+  Tensor nt_sizes_all = sizes_dim2 * sizes_dim3;
   int64_t* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int64_t>();
-  int64_t* sizes_dim2_ptr = nt_sizes_0.data_ptr<int64_t>();
-  int64_t* sizes_dim3_ptr = nt_sizes_1_2.data_ptr<int64_t>();
+  int64_t* sizes_dim2_ptr = sizes_dim2.data_ptr<int64_t>();
+  int64_t* sizes_dim3_ptr = sizes_dim3.data_ptr<int64_t>();
+  int64_t batch_size = nt_sizes_.size(0);
+  int64_t input_buffer_numel = input_buffer.numel();
   std::vector<int> offsets_vec;
-  offsets_vec.reserve(1 + nt_sizes_all.size(0));
+  offsets_vec.reserve(1 + batch_size);
   offsets_vec.push_back(0);
   int64_t index = 1;
   int grain_size = 32;
   std::vector<int> blocks2_vec;
+  blocks2_vec.reserve(input_buffer_numel / (grain_size * grain_size));
   std::vector<int> blocks3_vec;
+  blocks3_vec.reserve(input_buffer_numel / (grain_size * grain_size));
   std::vector<int> blocks_batch_dim_vec;
-  std::vector<int> sizes_dim2_vec;
-  std::vector<int> sizes_dim3_vec;
-  sizes_dim2_vec.reserve(nt_sizes_all.size(0));
-  sizes_dim3_vec.reserve(nt_sizes_all.size(0));
-  for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
+  blocks_batch_dim_vec.reserve(input_buffer_numel / (grain_size * grain_size));
+  for (int64_t i = 0; i < batch_size; i++) {
     const int size2 = sizes_dim2_ptr[i];
     const int size3 = sizes_dim3_ptr[i];
     const int num_chunks_2 = (size2 + grain_size - 1) / grain_size;
@@ -46,25 +47,33 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
         blocks_batch_dim_vec.push_back(i);
       }
     }
-    sizes_dim2_vec.push_back(size2);
-    sizes_dim3_vec.push_back(size3);
     index++;
   }
   at::Tensor offsets = torch::tensor(offsets_vec);
   at::Tensor blocks2 = torch::tensor(blocks2_vec);
   at::Tensor blocks3 = torch::tensor(blocks3_vec);
   at::Tensor blocks_batch_dim = torch::tensor(blocks_batch_dim_vec);
-  at::Tensor sizes_dim2 = torch::tensor(sizes_dim2_vec);
-  at::Tensor sizes_dim3 = torch::tensor(sizes_dim3_vec);
+  sizes_dim2 = sizes_dim2.reshape(-1);
+  sizes_dim3 = sizes_dim3.reshape(-1);
+
+  at::Tensor all_meta = at::cat({offsets, blocks2, blocks3, blocks_batch_dim, sizes_dim2, sizes_dim3});
 
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-  offsets = offsets.to(at::Device(kCUDA), torch::kInt32, true, true);
-  blocks2 = blocks2.to(at::Device(kCUDA), torch::kInt32, true, true);
-  blocks3 = blocks3.to(at::Device(kCUDA), torch::kInt32, true, true);
-  blocks_batch_dim = blocks_batch_dim.to(at::Device(kCUDA), torch::kInt32, true, true);
-  sizes_dim2 = sizes_dim2.to(at::Device(kCUDA), torch::kInt32, true, true);
-  sizes_dim3 = sizes_dim3.to(at::Device(kCUDA), torch::kInt32, true, true);
-
+  all_meta = all_meta.to(at::Device(kCUDA), torch::kInt32, true, true);
+  std::vector<int64_t> split_sizes;
+  split_sizes.push_back(offsets_vec.size());
+  split_sizes.push_back(blocks2_vec.size());
+  split_sizes.push_back(blocks3_vec.size());
+  split_sizes.push_back(blocks_batch_dim_vec.size());
+  split_sizes.push_back(sizes_dim2.size(0));
+  split_sizes.push_back(sizes_dim3.size(0));
+  std::vector<at::Tensor> split_all_meta = at::split_with_sizes(all_meta, c10::IntArrayRef(split_sizes), 0);
+  offsets = split_all_meta[0];
+  blocks2 = split_all_meta[1];
+  blocks3 = split_all_meta[2];
+  blocks_batch_dim = split_all_meta[3];
+  sizes_dim2 = split_all_meta[4];
+  sizes_dim3 = split_all_meta[5];
 
   c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
   c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
@@ -78,7 +87,7 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
       sizes_dim2.data_ptr<int>(),
       sizes_dim3.data_ptr<int>(),
       blocks2_vec.size(),
-      input_buffer.numel(),
+      input_buffer_numel,
       defaultStream
       );
   return output_buffer.reshape(-1);
