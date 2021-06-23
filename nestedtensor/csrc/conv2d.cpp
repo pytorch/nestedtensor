@@ -21,29 +21,64 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   // std::cout << "nt_sizes_1_2: " << nt_sizes_1_2 << std::endl;
   Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1_2;
   int64_t* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int64_t>();
-  std::vector<int> numbers;
-  numbers.reserve(1 + nt_sizes_all.size(0));
-  numbers.push_back(0);
+  int64_t* sizes_dim2_ptr = nt_sizes_0.data_ptr<int64_t>();
+  int64_t* sizes_dim3_ptr = nt_sizes_1_2.data_ptr<int64_t>();
+  std::vector<int> offsets_vec;
+  offsets_vec.reserve(1 + nt_sizes_all.size(0));
+  offsets_vec.push_back(0);
   int64_t index = 1;
+  int grain_size = 16;
+  std::vector<int> blocks2_vec;
+  std::vector<int> blocks3_vec;
+  std::vector<int> blocks_batch_dim_vec;
+  std::vector<int> sizes_dim2_vec;
+  std::vector<int> sizes_dim3_vec;
   for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
-    numbers.push_back(numbers[index - 1] + (int)(nt_sizes_all_ptr[i]));
+    const int size2 = sizes_dim2_ptr[i];
+    const int size3 = sizes_dim3_ptr[i];
+    const int num_chunks_2 = (size2 + grain_size - 1) / grain_size;
+    const int num_chunks_3 = (size3 + grain_size - 1) / grain_size;
+    offsets_vec.push_back(offsets_vec[index - 1] + (int)(nt_sizes_all_ptr[i]));
+    for (int id2 = 0; id2 < num_chunks_2; id2++) {
+      for (int id3 = 0; id3 < num_chunks_3; id3++) {
+        blocks2_vec.push_back(id2);
+        blocks3_vec.push_back(id3);
+        blocks_batch_dim_vec.push_back(i);
+      }
+    }
+    sizes_dim2_vec.push_back(size2);
+    sizes_dim3_vec.push_back(size3);
     index++;
   }
-  at::Tensor numbers_t = torch::tensor(numbers);
-  Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
-  nt_sizes_1_2 = nt_sizes_1_2.to(at::Device(kCUDA), torch::kInt32, true, true);
-  nt_sizes_0 = (nt_sizes_0).to(at::Device(kCUDA), torch::kInt32, true, true);
+  // std::cout << "offsets_vec.size(): " << offsets_vec.size() << std::endl;
+  at::Tensor offsets = torch::tensor(offsets_vec);
+  at::Tensor blocks2 = torch::tensor(blocks2_vec);
+  at::Tensor blocks3 = torch::tensor(blocks3_vec);
+  at::Tensor blocks_batch_dim = torch::tensor(blocks_batch_dim_vec);
+  at::Tensor sizes_dim2 = torch::tensor(sizes_dim2_vec);
+  at::Tensor sizes_dim3 = torch::tensor(sizes_dim3_vec);
+
+  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+  offsets = offsets.to(at::Device(kCUDA), torch::kInt32, true, true);
+  blocks2 = blocks2.to(at::Device(kCUDA), torch::kInt32, true, true);
+  blocks3 = blocks3.to(at::Device(kCUDA), torch::kInt32, true, true);
+  blocks_batch_dim = blocks_batch_dim.to(at::Device(kCUDA), torch::kInt32, true, true);
+  sizes_dim2 = sizes_dim2.to(at::Device(kCUDA), torch::kInt32, true, true);
+  sizes_dim3 = sizes_dim3.to(at::Device(kCUDA), torch::kInt32, true, true);
+
 
   c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
   c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
-  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   nested_tensor::cuda::transpose_kernelLauncher(
       input_ptr,
       output_ptr,
-      nt_sizes.data_ptr<int>(),
-      nt_sizes_0.data_ptr<int>(),
-      nt_sizes_1_2.data_ptr<int>(),
-      nt_sizes_.size(0),
+      offsets.data_ptr<int>(),
+      blocks2.data_ptr<int>(),
+      blocks3.data_ptr<int>(),
+      blocks_batch_dim.data_ptr<int>(),
+      sizes_dim2.data_ptr<int>(),
+      sizes_dim3.data_ptr<int>(),
+      offsets_vec.size(),
       input_buffer.numel(),
       defaultStream
       );
@@ -85,6 +120,8 @@ Tensor NestedTensor_conv2d(
         Tensor output_buffer = input_buffer.clone();
         output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
+        // std::cout << "output_buffer.sizes(): " << output_buffer.sizes() << std::endl;
+        // std::cout << "weight.sizes(): " << weight.sizes() << std::endl;
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);

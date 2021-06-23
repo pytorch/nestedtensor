@@ -11,9 +11,12 @@ void transpose_kernelLauncher(
     c10::Half* input,
     c10::Half* output,
     const int* offsets,
+    const int* blocks2,
+    const int* blocks3,
+    const int* blocks_batch_dim,
     const int* sizes_dim2,
     const int* sizes_dim3,
-    const int batch_size,
+    const int block_numel,
     const int numel,
     const cudaStream_t stream);
 
