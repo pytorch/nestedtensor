@@ -13,6 +13,43 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
+// TODO: Determine chunks and map from batch_id to tile id
+Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buffer) {
+  Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
+  Tensor nt_sizes_1_2 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
+  // std::cout << "nt_sizes_0: " << nt_sizes_0 << std::endl;
+  // std::cout << "nt_sizes_1_2: " << nt_sizes_1_2 << std::endl;
+  Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1_2;
+  int64_t* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int64_t>();
+  std::vector<int> numbers;
+  numbers.reserve(1 + nt_sizes_all.size(0));
+  numbers.push_back(0);
+  int64_t index = 1;
+  for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
+    numbers.push_back(numbers[index - 1] + (int)(nt_sizes_all_ptr[i]));
+    index++;
+  }
+  at::Tensor numbers_t = torch::tensor(numbers);
+  Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
+  nt_sizes_1_2 = nt_sizes_1_2.to(at::Device(kCUDA), torch::kInt32, true, true);
+  nt_sizes_0 = (nt_sizes_0).to(at::Device(kCUDA), torch::kInt32, true, true);
+
+  c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
+  c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
+  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+  nested_tensor::cuda::transpose_kernelLauncher(
+      input_ptr,
+      output_ptr,
+      nt_sizes.data_ptr<int>(),
+      nt_sizes_0.data_ptr<int>(),
+      nt_sizes_1_2.data_ptr<int>(),
+      nt_sizes_.size(0),
+      input_buffer.numel(),
+      defaultStream
+      );
+  return output_buffer.reshape(-1);
+}
+
 Tensor NestedTensor_conv2d(
     const Tensor& input_,
     const Tensor& weight,
@@ -35,89 +72,35 @@ Tensor NestedTensor_conv2d(
       ) {
       at::Tensor input_buffer;
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
-        Tensor nt_sizes_ =
-            get_efficient_nested_size(input).sizes().to(torch::kInt32);
-        Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
-        Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
-        Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1).contiguous();
+        Tensor nt_sizes =
+            get_efficient_nested_size(input).sizes();
+        // std::cout << "nt_sizes: " << nt_sizes << std::endl;
+        Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
+        Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+        Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
         Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
-        Tensor nt_sizes_all = nt_sizes_0 * nt_sizes_1_2;
-        int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
-        std::vector<int> numbers;
-        numbers.reserve(1 + nt_sizes_all.size(0));
-        numbers.push_back(0);
-        int64_t index = 1;
-        for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
-          numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
-          index++;
-        }
-        at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
-        // std::cout << "numbers_t: " << numbers_t << std::endl;
-        Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
-
-        nt_sizes_1_2 = nt_sizes_1_2.to(at::Device(kCUDA), torch::kInt32, true, true);
-        nt_sizes_0 = (nt_sizes_0).to(at::Device(kCUDA), torch::kInt32, true, true);
-
+        nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
+        // std::cout << "nt_sizes 0: " << nt_sizes << std::endl;
         Tensor input_buffer = get_buffer(input);
         Tensor output_buffer = input_buffer.clone();
-        c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
-        c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
-        at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-        nested_tensor::cuda::transpose_kernelLauncher(
-            input_ptr,
-            output_ptr,
-            nt_sizes.data_ptr<int>(),
-            nt_sizes_0.data_ptr<int>(),
-            nt_sizes_1_2.data_ptr<int>(),
-            *self_opt_sizes[0],
-            input_buffer.numel(),
-            defaultStream
-            );
+        output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
-        c10::Half* result_ptr = result_buffer.data_ptr<c10::Half>();
         int64_t weight_size_0 = weight.size(0);
-
-        nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
         nt_sizes_0.fill_(weight_size_0);
-        nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
-        nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1).contiguous();
-        nt_sizes_all = nt_sizes_0 * nt_sizes_1 * nt_sizes_2;
-        nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
-        numbers.clear();
-        numbers.reserve(1 + nt_sizes_all.size(0));
-        numbers.push_back(0);
-        index = 1;
-        for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
-          numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
-          index++;
-        }
-        numbers_t = torch::tensor(numbers).to(torch::kInt32);
-        // std::cout << "numbers_t: " << numbers_t << std::endl;
-        nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
-        // nt_sizes_2 = (nt_sizes_2 * nt_sizes_1).to(at::Device(kCUDA), torch::kInt32, true, true);
-        nt_sizes_0 = (nt_sizes_0).to(at::Device(kCUDA), torch::kInt32, true, true);
-        result_buffer = result_buffer.reshape(-1);
+        nt_sizes = at::cat({nt_sizes_1_2, nt_sizes_0}, 1);
         output_buffer.resize_as_(result_buffer);
-        output_ptr = output_buffer.data_ptr<c10::Half>();
+        // std::cout << "nt_sizes 1: " << nt_sizes << std::endl;
+        output_buffer = transpose_buffer(nt_sizes,
+                                         result_buffer.reshape(-1),
+                                         output_buffer.reshape(-1));
 
-        nested_tensor::cuda::transpose_kernelLauncher(
-            result_ptr,
-            output_ptr,
-            nt_sizes.data_ptr<int>(),
-            nt_sizes_1_2.data_ptr<int>(),
-            nt_sizes_0.data_ptr<int>(),
-            *self_opt_sizes[0],
-            result_buffer.numel(),
-            defaultStream
-            );
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
             size_ptr[0] = weight_size_0;
             }, get_efficient_nested_size(input));
-        at::Tensor result = wrap_buffer(output_buffer.reshape(-1),
-            new_sizes);
-        return result;
+        // std::cout << "new_sizes.sizes(): " << new_sizes.sizes() << std::endl;
+        return wrap_buffer(output_buffer.reshape(-1), new_sizes);
       }
     }
   }
