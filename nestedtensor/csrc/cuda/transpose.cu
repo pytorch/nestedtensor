@@ -48,7 +48,6 @@ void transpose(
     const int* size_dim2,
     const int* size_dim3)
 {
-  __shared__ c10::Half tile[num_threads_sqrt][num_threads_sqrt];
   const int block_id  = blockIdx.x;
   const int batch_id = blocks_batch_dim[block_id];
   const int grain_size = num_threads_sqrt;
@@ -63,19 +62,13 @@ void transpose(
   // const int num_chunks_3 = size3 / grain_size;
 
   const int offset = offsets[batch_id];
-  const int ii2 = id2 * grain_size + tid2;
-  const int ii3 = id3 * grain_size + tid3;
+  const int ii2 = id2 + tid2;
+  const int ii3 = id3 + tid3;
   if (ii2 < size2 && ii3 < size3) {
     const int ii = ii2 * size3 + ii3;
     const int j = (ii % size3) * size2;
     const int i = (ii / size3);
-    tile[tid2][tid3] = input[offset + ii];
-  }
-  if (ii2 < size2 && ii3 < size3) {
-    const int ii = ii2 * size3 + ii3;
-    const int j = (ii % size3) * size2;
-    const int i = (ii / size3);
-    output[offset + ii] = tile[tid3][tid2];
+    output[offset + j + i] = input[offset + ii];
   }
 
   // for (int id2 = 0; id2 < num_chunks_2; id2++) {
