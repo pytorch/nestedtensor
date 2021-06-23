@@ -41,8 +41,8 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
     offsets_vec.push_back(offsets_vec[index - 1] + (int)(nt_sizes_all_ptr[i]));
     for (int id2 = 0; id2 < num_chunks_2; id2++) {
       for (int id3 = 0; id3 < num_chunks_3; id3++) {
-        blocks2_vec.push_back(id2);
-        blocks3_vec.push_back(id3);
+        blocks2_vec.push_back(id2 * grain_size);
+        blocks3_vec.push_back(id3 * grain_size);
         blocks_batch_dim_vec.push_back(i);
       }
     }
@@ -78,7 +78,7 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
       blocks_batch_dim.data_ptr<int>(),
       sizes_dim2.data_ptr<int>(),
       sizes_dim3.data_ptr<int>(),
-      offsets_vec.size(),
+      blocks2_vec.size(),
       input_buffer.numel(),
       defaultStream
       );

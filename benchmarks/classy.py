@@ -42,9 +42,9 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
 
     # Test
     outputs_nt = model(ts_nt)
+    import sys; sys.exit(1)
     model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
-        continue
         # Using float16 tolerances from torch/testing/_core.yp
         assert torch.allclose(mo.squeeze(0), ntmo, rtol=1e-3, atol=1e-3)
 
