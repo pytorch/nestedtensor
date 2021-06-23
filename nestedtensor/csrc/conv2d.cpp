@@ -13,7 +13,7 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-// TODO: Determine chunks and map from batch_id to tile id
+#ifdef WITH_CUDA
 Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buffer) {
   Tensor nt_sizes_0 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
   Tensor nt_sizes_1_2 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
@@ -83,6 +83,7 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
       );
   return output_buffer.reshape(-1);
 }
+#endif
 
 Tensor NestedTensor_conv2d(
     const Tensor& input_,
@@ -93,6 +94,7 @@ Tensor NestedTensor_conv2d(
     IntArrayRef dilation,
     int64_t groups) {
   Tensor input = input_;
+#ifdef WITH_CUDA
   auto self_opt_sizes = get_opt_sizes(input);
   if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(weight)) {
     if (get_dim(input) == 4 && !bias && weight.size(2) == 1 && weight.size(3) == 1 &&
@@ -134,6 +136,7 @@ Tensor NestedTensor_conv2d(
       }
     }
   }
+#endif
   if (bias) {
       return map_nested_tensor(
           [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
