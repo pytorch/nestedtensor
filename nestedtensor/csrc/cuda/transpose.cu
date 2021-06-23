@@ -73,9 +73,8 @@ void transpose(
     const int ii21 = id2 + tid2;
     const int ii31 = id3 + tid3;
     const int ii1 = ii21 * size3 + ii31;
-    const int j = (ii1 % size3) * size2;
-    const int i = (ii1 / size3);
-    output[offset + j + i] = tile[tid2][tid3];
+    const int ii2 = (ii1 % size3) * size2 + (ii1 / size3);
+    output[offset + ii2] = tile[tid2][tid3];
   }
 
   // for (int id2 = 0; id2 < num_chunks_2; id2++) {

@@ -33,6 +33,8 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   std::vector<int> blocks_batch_dim_vec;
   std::vector<int> sizes_dim2_vec;
   std::vector<int> sizes_dim3_vec;
+  sizes_dim2_vec.reserve(nt_sizes_all.size(0));
+  sizes_dim3_vec.reserve(nt_sizes_all.size(0));
   for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
     const int size2 = sizes_dim2_ptr[i];
     const int size3 = sizes_dim3_ptr[i];
