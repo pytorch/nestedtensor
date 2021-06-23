@@ -61,9 +61,9 @@ class TestFunctional(TestCase):
                   torch.arange(2*2*2).reshape(2, 2, 2).to(device=device, dtype=dtype) + 6 + 8]
             weight = torch.arange(3*2*1*1).reshape(3, 2, 1, 1).to(device=device, dtype=dtype)
             _test(ts, weight)
-        _test_dtype(torch.float16, torch.device('cuda'))
-        _test_dtype(torch.float32, torch.device('cuda'))
-        return
+        if torch.cuda.is_available():
+            _test_dtype(torch.float16, torch.device('cuda'))
+            _test_dtype(torch.float32, torch.device('cuda'))
         _test_dtype(torch.float16, torch.device('cpu'))
         _test_dtype(torch.float32, torch.device('cpu'))
 
