@@ -27,7 +27,7 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   offsets_vec.reserve(1 + nt_sizes_all.size(0));
   offsets_vec.push_back(0);
   int64_t index = 1;
-  int grain_size = 16;
+  int grain_size = 32;
   std::vector<int> blocks2_vec;
   std::vector<int> blocks3_vec;
   std::vector<int> blocks_batch_dim_vec;

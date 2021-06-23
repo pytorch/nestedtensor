@@ -63,18 +63,25 @@ void transpose(
   // const int num_chunks_3 = size3 / grain_size;
 
   const int offset = offsets[batch_id];
-  const int ii2 = id2 + tid2;
-  const int ii3 = id3 + tid3;
-  if (ii2 < size2 && ii3 < size3) {
-    const int ii = ii2 * size3 + ii3;
-    tile[tid2][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+  for (int bindx = 0; bindx < 4; bindx++) {
+    const int ii2 = id2 + tid2;
+    const int ii3 = id3 + tid3 + 8 * bindx;
+    if (ii2 < size2 && ii3 < size3) {
+      const int ii = ii2 * size3 + ii3;
+      tile[tid2][tid3 + 8 * bindx] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+    }
   }
-  if (ii2 < size2 && ii3 < size3) {
-    const int ii21 = id2 + tid2;
-    const int ii31 = id3 + tid3;
-    const int ii1 = ii21 * size3 + ii31;
-    const int ii2 = (ii1 % size3) * size2 + (ii1 / size3);
-    output[offset + ii2] = tile[tid2][tid3];
+  for (int bindx = 0; bindx < 4; bindx++) {
+    const int ii2 = id2 + tid2;
+    const int ii3 = id3 + tid3 + 8 * bindx;
+    if (ii2 < size2 && ii3 < size3) {
+      const int ii21 = id2 + tid2;
+      const int ii31 = id3 + tid3 + 8 * bindx;
+      const int ii1 = ii21 * size3 + ii31;
+      const int j = (ii1 % size3) * size2;
+      const int i = (ii1 / size3);
+      output[offset + j + i] = tile[tid2][tid3 + 8 * bindx];
+    }
   }
 
   // for (int id2 = 0; id2 < num_chunks_2; id2++) {
@@ -128,7 +135,7 @@ void transpose_kernelLauncher(
   dim3 grid;
   grid.x = block_numel;
 
-  transpose<16><<<grid, dim3(16, 16), 0, stream>>>(
+  transpose<32><<<grid, dim3(32, 8), 0, stream>>>(
       input,
       output,
       offsets,
