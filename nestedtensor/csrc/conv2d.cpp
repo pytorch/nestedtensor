@@ -7,6 +7,7 @@
 #include <nestedtensor/csrc/cuda/transpose.h>
 #include <c10/util/Half.h>
 #endif
+#include <nestedtensor/csrc/masking.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -101,6 +102,7 @@ Tensor NestedTensor_conv2d(
     IntArrayRef dilation,
     int64_t groups) {
   Tensor input = input_;
+  TORCH_CHECK(get_dim(input) == 4, "Expected input to be dim 4, but got ", get_dim(input), ".");
 #ifdef WITH_CUDA
   auto self_opt_sizes = get_opt_sizes(input);
   if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(weight)) {
@@ -144,7 +146,46 @@ Tensor NestedTensor_conv2d(
     }
   }
 #endif
+  if (groups == 1) {
+    std::cout << "Running" << std::endl;
+    // std::cout << "weight.sizes(): " << weight.sizes();
+    // std::cout << " stride: " << stride;
+    // std::cout << " padding: " << padding;
+    // std::cout << " dilation: " << dilation;
+    // std::cout << " groups: " << groups;
+    std::cout << "1" << std::endl;
+    at::Tensor data;
+    std::cout << "2" << std::endl;
+    at::Tensor mask;
+    std::cout << "3" << std::endl;
+    std::tie(data, mask) = to_tensor_mask(input, 4);
+    std::cout << "4" << std::endl;
+    // std::cout << "data: " << data << std::endl;
+    // std::cout << "mask: " << mask << std::endl;
+    at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
+    std::cout << "5" << std::endl;
+    mask = mask.to(data.dtype());
+    std::cout << "6" << std::endl;
+    at::Tensor result_mask = at::conv2d(mask, weight, bias, stride, padding, dilation, groups);
+    std::cout << "7" << std::endl;
+    // int64_t mask_weight_numel = weight.size(1) * weight.size(2) * weight.size(3);
+    at::Tensor mask_weight_numel_tensor = at::max(result_mask);
+    std::cout << "8" << std::endl;
+    // std::cout << "mask_weight_numel_tensor: " << mask_weight_numel_tensor << std::endl;
+    // std::cout << "result_mask: " << result_mask << std::endl;
+    at::Tensor result_mask2 = result_mask.eq(mask_weight_numel_tensor);
+    std::cout << "9" << std::endl;
+    // std::cout << "result_data: " << result_data << std::endl;
+    // std::cout << "result_mask2: " << result_mask2 << std::endl;
+    auto opt_result = nt_from_tensor_mask(result_data, result_mask2, 1);
+    std::cout << "0" << std::endl;
+    TORCH_CHECK(opt_result, "Result does not form a valid NestedTensor.");
+    std::cout << "Done Running" << std::endl;
+    return *opt_result;
+  }
   if (bias) {
+      // std::cout << " (*bias).sizes(): " << (*bias).sizes();
+      // std::cout << std::endl;
       return map_nested_tensor(
           [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
             return at::conv2d(input.unsqueeze(0), weight, bias, stride, padding, dilation, groups).squeeze(0);
@@ -153,6 +194,7 @@ Tensor NestedTensor_conv2d(
           weight,
           *bias);
   }
+  // std::cout << std::endl;
   return map_nested_tensor(
       [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight) {
         return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);

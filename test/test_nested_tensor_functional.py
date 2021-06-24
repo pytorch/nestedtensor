@@ -47,25 +47,88 @@ class TestFunctional(TestCase):
         print("res")
         print(res)
 
+    def _test_conv2d_dtype(self, dtype, weight, device, shapes,
+                           stride=None, padding=None, dilation=None,
+                           groups=None):
+        if stride is None:
+            stride = [1, 1]
+        if padding is None:
+            padding = [0, 0]
+        if dilation is None:
+            dilation = [1, 1]
+        if groups is None:
+            groups = 1
+
+        def _prod(tup):
+            r = 1
+            for t in tup:
+                r = r * t
+            return r
+
+        def _test(ts, weight, stride, padding, dilation, groups):
+            nt = ntnt_nograd(ts, device=device, dtype=dtype)
+            nt_out = torch.conv2d(nt, weight, stride=stride,
+                                  padding=padding, dilation=dilation,
+                                  groups=groups)
+            print("nt")
+            print(nt)
+            print("nt_out")
+            print(nt_out)
+            for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
+                t_out = torch.conv2d(t.unsqueeze(0), weight,
+                                     stride=stride, padding=padding,
+                                     dilation=dilation,
+                                     groups=groups).squeeze(0)
+                self.assertEqual(t_out, nt_out_i)
+        ts = []
+        for s in shapes:
+            ts.append(torch.randn(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
+        weight = weight.to(device=device, dtype=dtype)
+        _test(ts, weight, stride, padding, dilation, groups)
+
     @torch.inference_mode()
-    def test_conv2d(self):
-        def _test_dtype(dtype, device):
-            def _test(ts, weight):
-                nt = ntnt_nograd(ts, device=device, dtype=dtype)
-                nt_out = torch.conv2d(nt, weight)
-                for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
-                    t_out = torch.conv2d(t.unsqueeze(0), weight).squeeze(0)
-                    self.assertEqual(t_out, nt_out_i)
-            ts = [torch.arange(2*2*3).reshape(2, 2, 3).to(device=device, dtype=dtype),
-                  torch.arange(2*4*2).reshape(2, 4, 2).to(device=device, dtype=dtype) + 6,
-                  torch.arange(2*2*2).reshape(2, 2, 2).to(device=device, dtype=dtype) + 6 + 8]
-            weight = torch.arange(3*2*1*1).reshape(3, 2, 1, 1).to(device=device, dtype=dtype)
-            _test(ts, weight)
-        if torch.cuda.is_available():
-            _test_dtype(torch.float16, torch.device('cuda'))
-            _test_dtype(torch.float32, torch.device('cuda'))
-        _test_dtype(torch.float16, torch.device('cpu'))
-        _test_dtype(torch.float32, torch.device('cpu'))
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_conv2d_1x1_cuda(self):
+        shapes = [(2, 2, 3), (2, 4, 2), (2, 2, 2)]
+        weight = torch.randn(3*2*1*1).reshape(3, 2, 1, 1)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
+
+    @torch.inference_mode()
+    def test_conv2d_1x1_cpu(self):
+        shapes = [(2, 2, 3), (2, 4, 2), (2, 2, 2)]
+        weight = torch.randn(3*2*1*1).reshape(3, 2, 1, 1)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cpu'), shapes)
+
+    @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_conv2d_3x3_cuda(self):
+        shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
+        weight = torch.randn(3*2*3*3).reshape(3, 2, 3, 3)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
+
+    @torch.inference_mode()
+    def test_conv2d_3x3_cpu(self):
+        shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
+        weight = torch.randn(3*2*3*3).reshape(3, 2, 3, 3)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cpu'), shapes)
+
+    @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_conv2d_3x3_resnext_common_cuda(self):
+        shapes = [(32, 4, 5), (32, 5, 3), (32, 3, 3)]
+        weight = torch.randn(32*1*3*3).reshape(32, 1, 3, 3)
+        for dtype in [torch.float16, torch.float32]:
+            stride = [1, 1]  # default
+            padding = [1, 1]
+            dilation = [1, 1]  # default
+            groups = 32
+            self._test_conv2d_dtype(dtype, weight, torch.device('cuda'),
+                                    shapes, stride=stride, padding=padding,
+                                    dilation=dilation, groups=groups)
 
     def test_contiguousity(self):
         initial_t = torch.rand(2, 5, 10, 15)

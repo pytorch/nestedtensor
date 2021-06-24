@@ -42,6 +42,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
 
     # Test
     outputs_nt = model(ts_nt)
+    # import sys; sys.exit(1)
     model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
         # Using float16 tolerances from torch/testing/_core.yp
@@ -59,7 +60,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
-    iters = 10
+    iters = 1
 
     def _benchmark(model_name, bsz):
         model = build_model({"name": model_name})

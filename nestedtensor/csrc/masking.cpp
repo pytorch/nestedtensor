@@ -143,6 +143,7 @@ c10::optional<Tensor> nt_from_tensor_mask(
     Tensor tensor,
     Tensor mask,
     int64_t nested_dim) {
+  TORCH_CHECK(nested_dim == 1, "Only nested_dim of 1 is currently supported.");
   if (nested_dim == 0) {
     if ((get_numel(mask) == 0) || (get_numel(mask) == 1 && mask.item<bool>())) {
       return tensor;
