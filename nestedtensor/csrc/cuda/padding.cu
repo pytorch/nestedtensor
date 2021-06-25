@@ -23,7 +23,7 @@ void add_padding(
   const int batch_id  = blockIdx.x;
   const int grid_id  = blockIdx.y;
   const int tid = threadIdx.x + grid_id * 256;
-  const int grainsize = 256 * 256;
+  const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
@@ -87,7 +87,7 @@ void add_padding_kernelLauncher(
 {
   dim3 grid;
   grid.x = batch_size;
-  grid.y = 256;
+  grid.y = 16;
 
   add_padding<T><<<grid, 256, 0, stream>>>(
       input,
