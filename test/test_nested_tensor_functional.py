@@ -133,8 +133,8 @@ class TestFunctional(TestCase):
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_conv2d_3x3_resnext_input_cuda(self):
-        shapes = [(1, 3, 2), (1, 3, 3), (1, 2, 3)]
-        weight = torch.randn(1, 1, 2, 2)
+        shapes = [(4, 3, 2), (4, 3, 3), (4, 2, 3)]
+        weight = torch.randn(5, 4, 2, 2)
         for dtype in [torch.float16, torch.float32]:
             stride = [1, 1]
             padding = [1, 1]

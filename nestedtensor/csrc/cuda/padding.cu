@@ -21,22 +21,44 @@ void add_padding(
 //    const int inner_size) 
 {
   const int batch_id  = blockIdx.x;
+  const int grid_id  = blockIdx.y;
+  const int tid = threadIdx.x + grid_id * 256;
+  const int grainsize = 256 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  for (int i = 0; i < input_dim; i++) {
-  }
-  int index = 0;
+  const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
   int output_offset = batch_id * output_sizes[0] * output_sizes[1] * output_sizes[2];
-  for (int i0 = 0; i0 < sizes_i[0]; i0++) {
-    int i0_offset = i0 * output_sizes[1] * output_sizes[2];
-    for (int i1 = 0; i1 < sizes_i[1]; i1++) {
-      int i1_offset = i1 * output_sizes[2];
-      for (int i2 = 0; i2 < sizes_i[2]; i2++) {
-        output[output_offset + i0_offset + i1_offset + i2] = input[offset + index];
-        index++;
-      }
-    }
+  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+    const int i = ii * grainsize + tid;
+    const int i0 = i / (sizes_i[1] * sizes_i[2]);
+    const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
+    const int i2 = i % sizes_i[2];
+    // printf("00 batch_id: %d i0: %d i1: %d i2: %d\n", batch_id, i0, i1, i2);
+    const int i0_offset = i0 * output_sizes[1] * output_sizes[2];
+    const int i1_offset = i1 * output_sizes[2];
+    output[output_offset + i0_offset + i1_offset + i2] = input[offset + i];
   }
+  const int i = (numel_i / grainsize) * grainsize + tid;
+  if (i < numel_i) {
+    const int i0 = i / (sizes_i[1] * sizes_i[2]);
+    const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
+    const int i2 = i % sizes_i[2];
+    // printf("00 batch_id: %d i0: %d i1: %d i2: %d\n", batch_id, i0, i1, i2);
+    const int i0_offset = i0 * output_sizes[1] * output_sizes[2];
+    const int i1_offset = i1 * output_sizes[2];
+    output[output_offset + i0_offset + i1_offset + i2] = input[offset + i];
+  }
+  // for (int i0 = 0; i0 < sizes_i[0]; i0++) {
+  //   int i0_offset = i0 * output_sizes[1] * output_sizes[2];
+  //   for (int i1 = 0; i1 < sizes_i[1]; i1++) {
+  //     int i1_offset = i1 * output_sizes[2];
+  //     for (int i2 = 0; i2 < sizes_i[2]; i2++) {
+  //       printf("11 batch_id: %d i0: %d i1: %d i2: %d\n", batch_id, i0, i1, i2);
+  //       // output[output_offset + i0_offset + i1_offset + i2] = input[offset + index];
+  //       // index++;
+  //     }
+  //   }
+  // }
   // const int grain_size = blockDim.x;
   // const int tid = threadIdx.x;
   // const int range = (offsets[batch_id + 1] - offsets[batch_id]) * inner_size;
@@ -65,8 +87,9 @@ void add_padding_kernelLauncher(
 {
   dim3 grid;
   grid.x = batch_size;
+  grid.y = 256;
 
-  add_padding<T><<<grid, 1, 0, stream>>>(
+  add_padding<T><<<grid, 256, 0, stream>>>(
       input,
       output,
       offsets,
