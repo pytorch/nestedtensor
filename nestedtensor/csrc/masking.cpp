@@ -41,7 +41,7 @@ std::tuple<Tensor, Tensor> merge_tensor_mask(
   return std::make_tuple(tensor, mask);
 }
 
-Tensor pad_tensor_to_shape(Tensor t, std::vector<int64_t> goal_shape) {
+Tensor pad_tensor_to_shape(Tensor t, const std::vector<int64_t>& goal_shape, double value = 0) {
   std::vector<int64_t> padd;
   auto tup = t.sizes();
   if (get_dim(t) != (int64_t)(goal_shape.size())) {
@@ -51,7 +51,7 @@ Tensor pad_tensor_to_shape(Tensor t, std::vector<int64_t> goal_shape) {
     padd.push_back(0);
     padd.push_back(goal_shape[i] - tup[i]);
   }
-  Tensor new_tensor = at::constant_pad_nd(t, IntArrayRef(padd), 0);
+  Tensor new_tensor = at::constant_pad_nd(t, IntArrayRef(padd), value);
   new_tensor = new_tensor.reshape(IntArrayRef(goal_shape));
   return new_tensor;
 }
@@ -143,7 +143,6 @@ c10::optional<Tensor> nt_from_tensor_mask(
     Tensor tensor,
     Tensor mask,
     int64_t nested_dim) {
-  TORCH_CHECK(nested_dim == 1, "Only nested_dim of 1 is currently supported.");
   if (nested_dim == 0) {
     if ((get_numel(mask) == 0) || (get_numel(mask) == 1 && mask.item<bool>())) {
       return tensor;
@@ -185,6 +184,7 @@ c10::optional<Tensor> nt_from_tensor_mask(
     }
     return c10::nullopt;
   }
+  TORCH_CHECK(nested_dim == 1, "Only nested_dim of 1 is currently supported.");
   std::vector<c10::optional<Tensor>> inner_tensors;
   if ((get_numel(mask) == 0) || (get_numel(mask) == 1 && mask.item<bool>())) {
     for (int64_t i = 0; i < tensor.size(0); i++) {
@@ -423,6 +423,33 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size,
   TORCH_CHECK(false, "from_padded_tensor not implemented for this case.");
 }
 
+Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
+  at::Tensor target_size_tensor = std::get<0>(at::max(target_size.sizes(), 0));
+  std::vector<int64_t> target_size_vec(target_size_tensor.data_ptr<int64_t>(),
+      target_size_tensor.data_ptr<int64_t>() + target_size_tensor.numel());
+  std::vector<at::Tensor> masks;
+  std::vector<at::Tensor> all_sizes = target_size.sizes().unbind();
+  for (int64_t i = 0; i < all_sizes.size(); i++) {
+    std::vector<int64_t> sizes_i(
+        all_sizes[i].data_ptr<int64_t>(), 
+        all_sizes[i].data_ptr<int64_t>() + all_sizes[i].numel());
+    // std::cout << "IntArrayRef(sizes_i): " << IntArrayRef(sizes_i) << std::endl;
+    at::Tensor mask_i = padded.new_full(
+                                    IntArrayRef(sizes_i),
+                                    true,
+                                    torch::kByte,
+                                    c10::nullopt,
+                                    c10::nullopt,
+                                    c10::nullopt);
+    mask_i = pad_tensor_to_shape(mask_i, target_size_vec);
+    masks.push_back(mask_i);
+  }
+  at::Tensor final_mask = at::stack(masks);
+  at::Tensor new_buffer = padded.masked_select(final_mask);
+  return wrap_buffer(std::move(new_buffer), target_size);
+  // std::cout << "final_mask: " << final_mask << std::endl;
+}
+
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
   if (get_dim(nt) == 3 && get_is_contiguous(nt)) {
@@ -454,12 +481,29 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     }
   }
 #endif
-  at::Tensor tensor;
-  at::Tensor mask;
-  std::tie(tensor, mask) = to_tensor_mask(nt, get_dim(nt));
-  mask = mask.to(torch::kBool);
-  tensor.masked_fill_(at::logical_not(mask), padding);
-  return tensor;
+  auto opt_sizes = get_opt_sizes(nt);
+  if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
+    nt = NestedTensor_contiguous(nt);
+    return get_buffer(nt);
+  }
+  auto max_size = get_max_size(nt);
+  TensorNode structure = get_nested_tensor_structure(nt);
+  if (structure.degree() == 0) {
+    return torch::tensor({padding});
+  }
+  std::vector<Tensor> res_tensor;
+  for (auto child : structure.unbind()) {
+    at::Tensor tensor = child.payload();
+    if (get_numel(tensor) == 0) {
+      TORCH_CHECK(false, "Empty tensors are not yet supported.");
+    }
+    // Dont pad in case of a scalar
+    if (get_dim(tensor) == 0) {
+      res_tensor.push_back(tensor);
+    }
+    res_tensor.push_back(pad_tensor_to_shape(tensor, max_size, padding));
+  }
+  return at::stack(res_tensor);
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {

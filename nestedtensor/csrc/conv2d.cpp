@@ -146,46 +146,17 @@ Tensor NestedTensor_conv2d(
     }
   }
 #endif
-  if (groups == 1) {
-    std::cout << "Running" << std::endl;
-    // std::cout << "weight.sizes(): " << weight.sizes();
-    // std::cout << " stride: " << stride;
-    // std::cout << " padding: " << padding;
-    // std::cout << " dilation: " << dilation;
-    // std::cout << " groups: " << groups;
-    std::cout << "1" << std::endl;
-    at::Tensor data;
-    std::cout << "2" << std::endl;
-    at::Tensor mask;
-    std::cout << "3" << std::endl;
-    std::tie(data, mask) = to_tensor_mask(input, 4);
-    std::cout << "4" << std::endl;
-    // std::cout << "data: " << data << std::endl;
-    // std::cout << "mask: " << mask << std::endl;
+  if (true) { //groups == 1) { // && dilation[0] == 1 && dilation[1] == 1 && padding[0] == 1 && padding[1] == 1) {
+    at::Tensor data = to_padded_tensor(input, 0);
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
-    std::cout << "5" << std::endl;
-    mask = mask.to(data.dtype());
-    std::cout << "6" << std::endl;
-    at::Tensor result_mask = at::conv2d(mask, weight, bias, stride, padding, dilation, groups);
-    std::cout << "7" << std::endl;
-    // int64_t mask_weight_numel = weight.size(1) * weight.size(2) * weight.size(3);
-    at::Tensor mask_weight_numel_tensor = at::max(result_mask);
-    std::cout << "8" << std::endl;
-    // std::cout << "mask_weight_numel_tensor: " << mask_weight_numel_tensor << std::endl;
-    // std::cout << "result_mask: " << result_mask << std::endl;
-    at::Tensor result_mask2 = result_mask.eq(mask_weight_numel_tensor);
-    std::cout << "9" << std::endl;
-    // std::cout << "result_data: " << result_data << std::endl;
-    // std::cout << "result_mask2: " << result_mask2 << std::endl;
-    auto opt_result = nt_from_tensor_mask(result_data, result_mask2, 1);
-    std::cout << "0" << std::endl;
-    TORCH_CHECK(opt_result, "Result does not form a valid NestedTensor.");
-    std::cout << "Done Running" << std::endl;
-    return *opt_result;
+    auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
+        size_ptr[0] = weight.size(0);
+        size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
+        size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
+        }, get_efficient_nested_size(input));
+    return from_padded_tensor(result_data, new_sizes);
   }
   if (bias) {
-      // std::cout << " (*bias).sizes(): " << (*bias).sizes();
-      // std::cout << std::endl;
       return map_nested_tensor(
           [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
             return at::conv2d(input.unsqueeze(0), weight, bias, stride, padding, dilation, groups).squeeze(0);
@@ -194,10 +165,9 @@ Tensor NestedTensor_conv2d(
           weight,
           *bias);
   }
-  // std::cout << std::endl;
   return map_nested_tensor(
       [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight) {
-        return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);
+      return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);
       },
       input,
       weight);

@@ -130,6 +130,20 @@ class TestFunctional(TestCase):
                                     shapes, stride=stride, padding=padding,
                                     dilation=dilation, groups=groups)
 
+    @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_conv2d_3x3_resnext_input_cuda(self):
+        shapes = [(1, 3, 2), (1, 3, 3), (1, 2, 3)]
+        weight = torch.randn(1, 1, 2, 2)
+        for dtype in [torch.float16, torch.float32]:
+            stride = [1, 1]
+            padding = [1, 1]
+            dilation = [1, 1]
+            groups = 1
+            self._test_conv2d_dtype(dtype, weight, torch.device('cuda'),
+                                    shapes, stride=stride, padding=padding,
+                                    dilation=dilation, groups=groups)
+
     def test_contiguousity(self):
         initial_t = torch.rand(2, 5, 10, 15)
         self.assertEqual(True, initial_t.is_contiguous())
