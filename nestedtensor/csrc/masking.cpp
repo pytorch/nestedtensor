@@ -433,7 +433,6 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     std::vector<int64_t> sizes_i(
         all_sizes[i].data_ptr<int64_t>(), 
         all_sizes[i].data_ptr<int64_t>() + all_sizes[i].numel());
-    // std::cout << "IntArrayRef(sizes_i): " << IntArrayRef(sizes_i) << std::endl;
     at::Tensor mask_i = padded.new_full(
                                     IntArrayRef(sizes_i),
                                     true,
@@ -447,7 +446,6 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
   at::Tensor final_mask = at::stack(masks);
   at::Tensor new_buffer = padded.masked_select(final_mask);
   return wrap_buffer(std::move(new_buffer), target_size);
-  // std::cout << "final_mask: " << final_mask << std::endl;
 }
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
