@@ -450,7 +450,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
-  if (get_dim(nt) == 3 && get_is_contiguous(nt)) {
+  if (get_dim(nt) == 3 && get_is_contiguous(nt) && nt.dtype() == torch::kFloat) {
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_opt_size[2] && nt_buffer.is_cuda()) {
