@@ -44,7 +44,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     outputs_nt = model(ts_nt)
     # import time; time.sleep(1)
     # outputs_nt = model(ts_nt)
-    # import sys; sys.exit(1)
+    import sys; sys.exit(1)
     model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
         # Using float16 tolerances from torch/testing/_core.yp

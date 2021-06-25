@@ -1,7 +1,7 @@
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 #include <cmath>
-#include <nestedtensor/csrc/cuda/attention.h>
+#include <nestedtensor/csrc/cuda/padding.h>
 #include <stdio.h>
 
 namespace nested_tensor {
@@ -13,55 +13,87 @@ void add_padding(
     const T* input,
     T* output,
     const int* offsets,
-    const int batch_size,
-    const int output_stride,
-    const int inner_size) 
+    const int* input_sizes,
+    int input_dim,
+    const int* output_sizes,
+    const int batch_size)
+//    const int output_stride,
+//    const int inner_size) 
 {
   const int batch_id  = blockIdx.x;
-  const int grain_size = blockDim.x;
-  const int tid = threadIdx.x;
-  const int range = (offsets[batch_id + 1] - offsets[batch_id]) * inner_size;
-  const int num_chunks = range / grain_size;
-  for (int id = 0; id < num_chunks; id++) {
-    output[batch_id * output_stride + id * grain_size + tid]
-      = input[offsets[batch_id] * inner_size + id * grain_size + tid];
+  const int offset = offsets[batch_id];
+  const int* sizes_i = input_sizes + batch_id * input_dim;
+  for (int i = 0; i < input_dim; i++) {
   }
-  const int leftover = num_chunks * grain_size;
-  if (leftover + tid < range) {
-    output[batch_id * output_stride + leftover + tid]
-      = input[offsets[batch_id] * inner_size + leftover + tid];
+  int index = 0;
+  int output_offset = batch_id * output_sizes[0] * output_sizes[1] * output_sizes[2];
+  for (int i0 = 0; i0 < sizes_i[0]; i0++) {
+    int i0_offset = i0 * output_sizes[1] * output_sizes[2];
+    for (int i1 = 0; i1 < sizes_i[1]; i1++) {
+      int i1_offset = i1 * output_sizes[2];
+      for (int i2 = 0; i2 < sizes_i[2]; i2++) {
+        output[output_offset + i0_offset + i1_offset + i2] = input[offset + index];
+        index++;
+      }
+    }
   }
+  // const int grain_size = blockDim.x;
+  // const int tid = threadIdx.x;
+  // const int range = (offsets[batch_id + 1] - offsets[batch_id]) * inner_size;
+  // const int num_chunks = range / grain_size;
+  // for (int id = 0; id < num_chunks; id++) {
+  //   output[batch_id * output_stride + id * grain_size + tid]
+  //     = input[offsets[batch_id] * inner_size + id * grain_size + tid];
+  // }
+  // const int leftover = num_chunks * grain_size;
+  // if (leftover + tid < range) {
+  //   output[batch_id * output_stride + leftover + tid]
+  //     = input[offsets[batch_id] * inner_size + leftover + tid];
+  // }
 }
 
 template<typename T>
 void add_padding_kernelLauncher(
     T* input, // [batch_size x None]
     T* output, // [batch_size x max(input.nested_size(1)) x inner_size]
-    const int* offsets, // [batch_size]
+    const int* offsets,
+    const int* input_sizes,
+    int input_dim,
+    const int* output_sizes,
     const int batch_size,
-    const int output_stride,
-    const int inner_size,
     const cudaStream_t stream)
 {
   dim3 grid;
   grid.x = batch_size;
 
-  add_padding<float><<<grid, 1024, 0, stream>>>(
+  add_padding<T><<<grid, 1, 0, stream>>>(
       input,
       output,
       offsets,
-      batch_size,
-      output_stride,
-      inner_size);
+      input_sizes,
+      input_dim,
+      output_sizes,
+      batch_size);
 }
 
 template void add_padding_kernelLauncher<float>(
     float* input,
     float* output,
     const int* offsets,
+    const int* input_sizes,
+    int input_dim,
+    const int* output_sizes,
     const int batch_size,
-    const int output_stride,
-    const int inner_size,
+    const cudaStream_t stream);
+
+template void add_padding_kernelLauncher<c10::Half>(
+    c10::Half* input,
+    c10::Half* output,
+    const int* offsets,
+    const int* input_sizes,
+    int input_dim,
+    const int* output_sizes,
+    const int batch_size,
     const cudaStream_t stream);
 
 template<typename T>
