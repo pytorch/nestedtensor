@@ -62,7 +62,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
-    iters = 1
+    iters = 10
 
     def _benchmark(model_name, bsz):
         model = build_model({"name": model_name})

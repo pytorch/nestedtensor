@@ -476,8 +476,9 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       at::Tensor max_size_tensor = torch::tensor(get_max_size_from_efficient_size(esize), torch::kInt32);
       Tensor offsets = batch_offsets_from_efficient_size(esize);
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
-      Tensor output = torch::empty(IntArrayRef(new_size), nt_buffer.options());
-      output.fill_(padding);
+      // Tensor output = torch::empty(IntArrayRef(new_size), nt_buffer.options());
+      Tensor output = nt_buffer.new_full(IntArrayRef(new_size), padding, nt_buffer.options());
+      // output.fill_(padding);
 
       max_size_tensor = max_size_tensor.to(at::Device(kCUDA), torch::kInt32, true, true);
       offsets = offsets.to(at::Device(kCUDA), torch::kInt32, true, true);
