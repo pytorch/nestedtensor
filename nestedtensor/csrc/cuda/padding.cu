@@ -17,8 +17,6 @@ void add_padding(
     int input_dim,
     const int* output_sizes,
     const int batch_size)
-//    const int output_stride,
-//    const int inner_size) 
 {
   const int batch_id  = blockIdx.x;
   const int grid_id  = blockIdx.y;
@@ -33,7 +31,6 @@ void add_padding(
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
-    // printf("00 batch_id: %d i0: %d i1: %d i2: %d\n", batch_id, i0, i1, i2);
     const int i0_offset = i0 * output_sizes[1] * output_sizes[2];
     const int i1_offset = i1 * output_sizes[2];
     output[output_offset + i0_offset + i1_offset + i2] = input[offset + i];
@@ -43,35 +40,10 @@ void add_padding(
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
-    // printf("00 batch_id: %d i0: %d i1: %d i2: %d\n", batch_id, i0, i1, i2);
     const int i0_offset = i0 * output_sizes[1] * output_sizes[2];
     const int i1_offset = i1 * output_sizes[2];
     output[output_offset + i0_offset + i1_offset + i2] = input[offset + i];
   }
-  // for (int i0 = 0; i0 < sizes_i[0]; i0++) {
-  //   int i0_offset = i0 * output_sizes[1] * output_sizes[2];
-  //   for (int i1 = 0; i1 < sizes_i[1]; i1++) {
-  //     int i1_offset = i1 * output_sizes[2];
-  //     for (int i2 = 0; i2 < sizes_i[2]; i2++) {
-  //       printf("11 batch_id: %d i0: %d i1: %d i2: %d\n", batch_id, i0, i1, i2);
-  //       // output[output_offset + i0_offset + i1_offset + i2] = input[offset + index];
-  //       // index++;
-  //     }
-  //   }
-  // }
-  // const int grain_size = blockDim.x;
-  // const int tid = threadIdx.x;
-  // const int range = (offsets[batch_id + 1] - offsets[batch_id]) * inner_size;
-  // const int num_chunks = range / grain_size;
-  // for (int id = 0; id < num_chunks; id++) {
-  //   output[batch_id * output_stride + id * grain_size + tid]
-  //     = input[offsets[batch_id] * inner_size + id * grain_size + tid];
-  // }
-  // const int leftover = num_chunks * grain_size;
-  // if (leftover + tid < range) {
-  //   output[batch_id * output_stride + leftover + tid]
-  //     = input[offsets[batch_id] * inner_size + leftover + tid];
-  // }
 }
 
 template<typename T>
@@ -183,55 +155,82 @@ void remove_padding(
     const T* input,
     T* output,
     const int* offsets,
-    const int batch_size,
-    const int output_stride,
-    const int inner_size)
+    const int* input_sizes,
+    const int* output_sizes,
+    int output_dim,
+    const int batch_size)
 {
   const int batch_id  = blockIdx.x;
-  const int grain_size = blockDim.x;
-  const int tid = threadIdx.x;
-  const int range = (offsets[batch_id + 1] - offsets[batch_id]) * inner_size;
-  const int num_chunks = range / grain_size;
-  for (int id = 0; id < num_chunks; id++) {
-    output[offsets[batch_id] * inner_size + id * grain_size + tid]
-     = input[batch_id * output_stride + id * grain_size + tid];
+  const int grid_id  = blockIdx.y;
+  const int tid = threadIdx.x + grid_id * 256;
+  const int grainsize = 16 * 256;
+  const int offset = offsets[batch_id];
+  const int* sizes_i = output_sizes + batch_id * output_dim;
+  const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
+  int input_offset = batch_id * input_sizes[0] * input_sizes[1] * input_sizes[2];
+  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+    const int i = ii * grainsize + tid;
+    const int i0 = i / (sizes_i[1] * sizes_i[2]);
+    const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
+    const int i2 = i % sizes_i[2];
+    const int i0_offset = i0 * input_sizes[1] * input_sizes[2];
+    const int i1_offset = i1 * input_sizes[2];
+    output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
   }
-  const int leftover = num_chunks * grain_size;
-  if (leftover + tid < range) {
-    output[offsets[batch_id] * inner_size + leftover + tid]
-     = input[batch_id * output_stride + leftover + tid];
+  const int i = (numel_i / grainsize) * grainsize + tid;
+  if (i < numel_i) {
+    const int i0 = i / (sizes_i[1] * sizes_i[2]);
+    const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
+    const int i2 = i % sizes_i[2];
+    const int i0_offset = i0 * input_sizes[1] * input_sizes[2];
+    const int i1_offset = i1 * input_sizes[2];
+    output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
   }
 }
 
 template<typename T>
 void remove_padding_kernelLauncher(
-    T* input, // [batch_size x None]
-    T* output, // [batch_size x max(input.nested_size(1)) x inner_size]
-    const int* offsets, // [batch_size]
+    const T* input,
+    T* output,
+    const int* offsets,
+    const int* input_sizes,
+    const int* output_sizes,
+    int output_dim,
     const int batch_size,
-    const int output_stride,
-    const int inner_size,
     const cudaStream_t stream)
 {
   dim3 grid;
   grid.x = batch_size;
+  grid.y = 16;
 
-  remove_padding<float><<<grid, 1024, 0, stream>>>(
-      input,
-      output,
-      offsets,
-      batch_size,
-      output_stride,
-      inner_size);
+  remove_padding<T><<<grid, 256, 0, stream>>>(
+    input,
+    output,
+    offsets,
+    input_sizes,
+    output_sizes,
+    output_dim,
+    batch_size);
 }
 
 template void remove_padding_kernelLauncher<float>(
-    float* input,
+    const float* input,
     float* output,
     const int* offsets,
+    const int* input_sizes,
+    const int* output_sizes,
+    int output_dim,
     const int batch_size,
-    const int output_stride,
-    const int inner_size,
+    const cudaStream_t stream);
+
+template void remove_padding_kernelLauncher<c10::Half>(
+    const c10::Half* input,
+    c10::Half* output,
+    const int* offsets,
+    const int* input_sizes,
+    const int* output_sizes,
+    int output_dim,
+    const int batch_size,
     const cudaStream_t stream);
 }
 }
