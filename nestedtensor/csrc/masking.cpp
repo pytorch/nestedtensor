@@ -467,7 +467,8 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
-  if (get_dim(nt) < 5 && get_is_contiguous(nt)) {
+  if ((get_dim(nt) == 3 || get_dim(nt) == 4) && get_is_contiguous(nt)) {
+    std::cout << "get_dim(nt): " << get_dim(nt) << std::endl;
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {
@@ -476,9 +477,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       at::Tensor max_size_tensor = torch::tensor(get_max_size_from_efficient_size(esize), torch::kInt32);
       Tensor offsets = batch_offsets_from_efficient_size(esize);
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
-      // Tensor output = torch::empty(IntArrayRef(new_size), nt_buffer.options());
       Tensor output = nt_buffer.new_full(IntArrayRef(new_size), padding, nt_buffer.options());
-      // output.fill_(padding);
 
       max_size_tensor = max_size_tensor.to(at::Device(kCUDA), torch::kInt32, true, true);
       offsets = offsets.to(at::Device(kCUDA), torch::kInt32, true, true);
