@@ -70,10 +70,6 @@ class TestFunctional(TestCase):
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
-            print("nt")
-            print(nt)
-            print("nt_out")
-            print(nt_out)
             for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
                 t_out = torch.conv2d(t.unsqueeze(0), weight,
                                      stride=stride, padding=padding,
@@ -113,7 +109,7 @@ class TestFunctional(TestCase):
     def test_conv2d_3x3_cpu(self):
         shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
         weight = torch.randn(3*2*3*3).reshape(3, 2, 3, 3)
-        self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes)
+        # self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes)
         self._test_conv2d_dtype(torch.float32, weight, torch.device('cpu'), shapes)
 
     @torch.inference_mode()
