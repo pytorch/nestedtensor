@@ -760,10 +760,13 @@ class TestNestedTensor(TestCase):
     def test_to_paded_tensor_cuda(self):
         import random
         random.seed(1010)
-        tensors = [torch.randn(random.randint(20, 40), 13) for _ in range(3)]
+        tensors = [torch.randn(random.randint(2, 4), 2) for _ in range(3)]
+        print([t.size() for t in tensors])
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
         data0 = nt.to_padded_tensor(padding=0)
+        print(data0)
         data1, _ = nt.to_tensor_mask()
+        print(data1)
         self.assertEqual(data0, data1)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
