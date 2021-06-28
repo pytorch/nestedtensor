@@ -467,8 +467,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
-  if ((get_dim(nt) == 3 || get_dim(nt) == 4) && get_is_contiguous(nt)) {
-    std::cout << "get_dim(nt): " << get_dim(nt) << std::endl;
+  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4) && get_is_contiguous(nt)) {
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {
@@ -476,7 +475,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       at::Tensor nt_sizes = esize.sizes();
       Tensor offsets = batch_offsets_from_efficient_size(esize);
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
-      std::cout << "IntArrayRef(new_size): " << IntArrayRef(new_size) << std::endl;
+      at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output = nt_buffer.new_full(IntArrayRef(new_size), padding, nt_buffer.options());
       Tensor new_size_tensor = torch::tensor(new_size);
 
@@ -484,7 +483,6 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       offsets = offsets.to(at::Device(kCUDA), torch::kInt32, true, true);
       nt_sizes = nt_sizes.to(at::Device(kCUDA), torch::kInt32, true, true);
 
-      at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       if (nt_buffer.dtype() == torch::kFloat16) {
         nested_tensor::cuda::add_padding_kernelLauncher(
             nt_buffer.data_ptr<c10::Half>(),

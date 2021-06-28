@@ -9,6 +9,39 @@ namespace cuda {
 
 template<typename T>
 __global__
+void add_padding_1(
+    const T* input,
+    T* output,
+    const int* offsets,
+    const int* input_sizes,
+    int input_dim,
+    const int* output_sizes,
+    const int batch_size)
+{
+  const int batch_id  = blockIdx.x;
+  const int grid_id  = blockIdx.y;
+  const int tid = threadIdx.x + grid_id * 256;
+  const int grainsize = 16 * 256;
+  const int batch_input_offset = offsets[batch_id];
+  const int* sizes_i = input_sizes + batch_id * input_dim;
+  const int numel_i = sizes_i[0];
+  const int batch_output_offset = batch_id * output_sizes[1];
+  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+    const int i = ii * grainsize + tid;
+    const int input_offset = batch_input_offset + i;
+    const int output_offset = batch_output_offset + i;
+    output[output_offset] = input[input_offset];
+  }
+  const int i = (numel_i / grainsize) * grainsize + tid;
+  if (i < numel_i) {
+    const int input_offset = batch_input_offset + i;
+    const int output_offset = batch_output_offset + i;
+    output[output_offset] = input[input_offset];
+  }
+}
+
+template<typename T>
+__global__
 void add_padding_2(
     const T* input,
     T* output,
@@ -101,6 +134,16 @@ void add_padding_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
   grid.y = 16;
+  if (input_dim == 1) {
+    add_padding_1<T><<<grid, 256, 0, stream>>>(
+        input,
+        output,
+        offsets,
+        input_sizes,
+        input_dim,
+        output_sizes,
+        batch_size);
+  }
   if (input_dim == 2) {
     add_padding_2<T><<<grid, 256, 0, stream>>>(
         input,
@@ -111,14 +154,16 @@ void add_padding_kernelLauncher(
         output_sizes,
         batch_size);
   }
-  add_padding_3<T><<<grid, 256, 0, stream>>>(
-      input,
-      output,
-      offsets,
-      input_sizes,
-      input_dim,
-      output_sizes,
-      batch_size);
+  if (input_dim == 3) {
+    add_padding_3<T><<<grid, 256, 0, stream>>>(
+        input,
+        output,
+        offsets,
+        input_sizes,
+        input_dim,
+        output_sizes,
+        batch_size);
+  }
 }
 
 template void add_padding_kernelLauncher<float>(
