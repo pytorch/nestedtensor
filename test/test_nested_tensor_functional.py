@@ -36,16 +36,10 @@ class TestFunctional(TestCase):
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_add(self):
         nt = ntnt_nograd([torch.randn(4, 2, 5), torch.randn(4, 3, 5)],
-                device=torch.device('cuda'), dtype=torch.half)
+                         device=torch.device('cuda'), dtype=torch.half)
         o = torch.randn(1, 4, 1, 1)
-        print("o")
-        print(o)
         o = o.cuda().half()
-        print("nt")
-        print(nt)
         res = nt + o
-        print("res")
-        print(res)
 
     def _test_conv2d_dtype(self, dtype, weight, device, shapes,
                            stride=None, padding=None, dilation=None,
