@@ -33,6 +33,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
         inp = torch.randn(*s, dtype=torch.half).cuda()
         ts.append(inp)
     ts_nt = nestedtensor.nested_tensor([t.squeeze(0) for t in ts], device=torch.device('cuda'), dtype=torch.half)
+    ts_padded = ts_nt.to_padded_tensor()
 
     def _loop():
         model_outputs = []
@@ -40,26 +41,34 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
             model_outputs.append(model(inp))
         return model_outputs
 
+    def _padded():
+        return model(ts_padded)
+
     # Test
     outputs_nt = model(ts_nt)
+    # import time; time.sleep(1)
+    # outputs_nt = model(ts_nt)
+    # import sys; sys.exit(1)
     model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
         # Using float16 tolerances from torch/testing/_core.yp
         assert torch.allclose(mo.squeeze(0), ntmo, rtol=1e-3, atol=1e-3)
 
     loop_time = benchmark_torch_function(iters, _loop)
+    padded_time = benchmark_torch_function(iters, _padded)
     nt_time = benchmark_torch_function(iters, lambda: model(ts_nt))
 
     shapes_2_array = np.array([s[2] for s in shapes])
     shapes_3_array = np.array([s[3] for s in shapes])
     print(f"model_name: {model_name.rjust(18)},", end='')
-    print(f" bsz: {bsz},", end='')
+    print(f" bsz: {bsz:3.0f},", end='')
     print(f" mean±std shapes[2]: {shapes_2_array.mean():.2f}±{shapes_2_array.std():.2f},", end='')
     print(f" mean±std shapes[3]: {shapes_3_array.mean():.2f}±{shapes_3_array.std():.2f},", end='')
-    print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
+    print(f" padded_size: {tuple(ts_padded.size())},", end='')
+    print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, padded: {padded_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
-    iters = 10
+    iters = 1
 
     def _benchmark(model_name, bsz):
         model = build_model({"name": model_name})
@@ -68,10 +77,8 @@ if __name__ == "__main__":
         shapes = [(1, 3, random.randint(100, 600), random.randint(100, 600)) for _ in range(bsz)]
         run_benchmark(iters, shapes, model, model_name, bsz)
 
-    _benchmark("resnext101_32x4d", 64)
-    _benchmark("resnext101_32x4d", 128)
-    _benchmark("resnext101_32x4d", 256)
-    _benchmark("regnet_y_128gf", 64)
-    _benchmark("regnet_y_128gf", 128)
-    # Runs out of memory
-    # _benchmark("regnet_y_128gf", 256)
+    for bsz in [16, 32, 64, 128]:
+        _benchmark("resnext101_32x4d", bsz)
+
+    for bsz in [16, 32]:
+        _benchmark("regnet_y_128gf", bsz)

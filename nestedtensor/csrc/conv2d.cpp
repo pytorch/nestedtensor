@@ -7,6 +7,7 @@
 #include <nestedtensor/csrc/cuda/transpose.h>
 #include <c10/util/Half.h>
 #endif
+#include <nestedtensor/csrc/masking.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -101,9 +102,10 @@ Tensor NestedTensor_conv2d(
     IntArrayRef dilation,
     int64_t groups) {
   Tensor input = input_;
+  TORCH_CHECK(get_dim(input) == 4, "Expected input to be dim 4, but got ", get_dim(input), ".");
 #ifdef WITH_CUDA
   auto self_opt_sizes = get_opt_sizes(input);
-  if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(weight)) {
+  if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(weight) && input.dtype() == torch::kFloat16) {
     if (get_dim(input) == 4 && !bias && weight.size(2) == 1 && weight.size(3) == 1 &&
         stride[0] == 1 && stride[1] == 1 &&
         padding[0] == 0 && padding[1] == 0 &&
@@ -144,6 +146,16 @@ Tensor NestedTensor_conv2d(
     }
   }
 #endif
+  if (input.dtype() == torch::kFloat16) {
+    at::Tensor data = to_padded_tensor(input, 0);
+    at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
+    auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
+        size_ptr[0] = weight.size(0);
+        size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
+        size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
+        }, get_efficient_nested_size(input));
+    return from_padded_tensor(result_data, new_sizes);
+  }
   if (bias) {
       return map_nested_tensor(
           [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
@@ -155,7 +167,7 @@ Tensor NestedTensor_conv2d(
   }
   return map_nested_tensor(
       [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight) {
-        return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);
+      return at::conv2d(input.unsqueeze(0), weight, c10::nullopt, stride, padding, dilation, groups).squeeze(0);
       },
       input,
       weight);

@@ -96,7 +96,7 @@ at::Tensor bt_min_mha(
 
   auto attn_output = at::matmul(attn_output_weights, val_buf).contiguous();
   attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
-  at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query));
   return at::matmul(attr_out, out_proj_weight.t());
 }
 
