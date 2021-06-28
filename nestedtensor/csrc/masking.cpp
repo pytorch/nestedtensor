@@ -417,7 +417,8 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
   if (padded.dim() < 5 && target_size.dim() < 5 &&
-    get_is_contiguous(padded) && padded.is_cuda()) {
+    get_is_contiguous(padded) && padded.is_cuda() &&
+    padded.dtype() == torch::kFloat16) {
     at::Tensor max_size_tensor = torch::tensor(get_max_size_from_efficient_size(target_size), torch::kInt32);
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
