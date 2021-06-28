@@ -65,8 +65,6 @@ void add_padding_2(
     const int i1 = i % sizes_i[1];
     const int input_offset = offset + i;
     const int out_offset = output_offset + i0 * output_sizes[2] + i1;
-    // printf("0 - output_sizes[1]: %d output_sizes[2]: %d out_offset: %d sizes[0]: %d sizes[1]: %d batch_id:%d i0: %d, i1: %d input_offset: %d\n", output_sizes[1], output_sizes[2], out_offset, sizes_i[0], sizes_i[1], batch_id, i0, i1, input_offset);
-    // printf("0 - input_offset: %d output_offset: %d\n", input_offset, out_offset);
     output[out_offset] = input[input_offset];
   }
   const int i = (numel_i / grainsize) * grainsize + tid;
@@ -75,8 +73,6 @@ void add_padding_2(
     const int i1 = i % sizes_i[1];
     const int input_offset = offset + i;
     const int out_offset = output_offset + i0 * output_sizes[2] + i1;
-    // printf("1 - output_sizes[1]: %d output_sizes[2]: %d out_offset: %d sizes[0]: %d sizes[1]: %d, batch_id: %d i0: %d, i1: %d input_offset: %d\n", output_sizes[1], output_sizes[2], out_offset, sizes_i[0], sizes_i[1], batch_id, i0, i1, input_offset);
-    // printf("1 - input_offset: %d output_offset: %d\n", input_offset, out_offset);
     output[out_offset] = input[input_offset];
   }
 }

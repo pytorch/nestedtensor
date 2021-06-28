@@ -788,6 +788,7 @@ class TestNestedTensor(TestCase):
                                random.randint(3, 30)) for _ in range(5)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
         data0 = nt.to_padded_tensor(padding=0)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
         data1, _ = nt.to_tensor_mask()
         self.assertEqual(data0, data1)
 
