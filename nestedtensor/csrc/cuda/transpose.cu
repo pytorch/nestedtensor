@@ -83,7 +83,6 @@ void transpose_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  // Actually is batch size.
   grid.x = block_numel,
 
   transpose<32><<<grid, 256, 0, stream>>>(
