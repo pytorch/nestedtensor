@@ -12,6 +12,7 @@ template <typename T>
 void add_padding_kernelLauncher(
     T* input,
     T* output,
+    T padding_value,
     const int* offsets,
     const int* input_sizes,
     int input_dim,

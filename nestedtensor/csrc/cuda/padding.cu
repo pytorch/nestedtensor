@@ -12,6 +12,7 @@ __global__
 void add_padding_1(
     const T* input,
     T* output,
+    T padding_value,
     const int* offsets,
     const int* input_sizes,
     int input_dim,
@@ -26,17 +27,23 @@ void add_padding_1(
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int numel_i = sizes_i[0];
   const int batch_output_offset = batch_id * output_sizes[1];
-  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+  for (int ii = 0; ii < (output_sizes[1] / grainsize); ii++) {
     const int i = ii * grainsize + tid;
-    const int input_offset = batch_input_offset + i;
     const int output_offset = batch_output_offset + i;
-    output[output_offset] = input[input_offset];
+    if (i < sizes_i[0]) {
+      output[output_offset] = input[batch_input_offset + i];
+    } else {
+      output[output_offset] = padding_value;
+    }
   }
-  const int i = (numel_i / grainsize) * grainsize + tid;
-  if (i < numel_i) {
-    const int input_offset = batch_input_offset + i;
+  const int i = (output_sizes[1] / grainsize) * grainsize + tid;
+  if (i < output_sizes[1]) {
     const int output_offset = batch_output_offset + i;
-    output[output_offset] = input[input_offset];
+    if (i < sizes_i[0]) {
+      output[output_offset] = input[batch_input_offset + i];
+    } else {
+      output[output_offset] = padding_value;
+    }
   }
 }
 
@@ -45,6 +52,7 @@ __global__
 void add_padding_2(
     const T* input,
     T* output,
+    T padding_value,
     const int* offsets,
     const int* input_sizes,
     int input_dim,
@@ -58,22 +66,29 @@ void add_padding_2(
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int numel_i = sizes_i[0] * sizes_i[1];
-  int output_offset = batch_id * output_sizes[1] * output_sizes[2];
-  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+  const int output_offset = batch_id * output_sizes[1] * output_sizes[2];
+  const int output_numel = output_sizes[1] * output_sizes[2];
+  for (int ii = 0; ii < (output_numel / grainsize); ii++) {
     const int i = ii * grainsize + tid;
-    const int i0 = i / (sizes_i[1]);
-    const int i1 = i % sizes_i[1];
-    const int input_offset = offset + i;
-    const int out_offset = output_offset + i0 * output_sizes[2] + i1;
-    output[out_offset] = input[input_offset];
+    const int i0 = i / (output_sizes[2]);
+    const int i1 = i % output_sizes[2];
+    if (i0 < sizes_i[0] && i1 < sizes_i[1]) {
+      const int input_offset = offset + i0 * sizes_i[1] + i1;
+      output[output_offset + i] = input[input_offset];
+    } else {
+      output[output_offset + i] = padding_value;
+    }
   }
-  const int i = (numel_i / grainsize) * grainsize + tid;
-  if (i < numel_i) {
-    const int i0 = i / (sizes_i[1]);
-    const int i1 = i % sizes_i[1];
-    const int input_offset = offset + i;
-    const int out_offset = output_offset + i0 * output_sizes[2] + i1;
-    output[out_offset] = input[input_offset];
+  const int i = (output_numel / grainsize) * grainsize + tid;
+  if (i < output_numel) {
+    const int i0 = i / (output_sizes[2]);
+    const int i1 = i % output_sizes[2];
+    if (i0 < sizes_i[0] && i1 < sizes_i[1]) {
+      const int input_offset = offset + i0 * sizes_i[1] + i1;
+      output[output_offset + i] = input[input_offset];
+    } else {
+      output[output_offset + i] = padding_value;
+    }
   }
 }
 
@@ -82,6 +97,7 @@ __global__
 void add_padding_3(
     const T* input,
     T* output,
+    T padding_value,
     const int* offsets,
     const int* input_sizes,
     int input_dim,
@@ -95,24 +111,31 @@ void add_padding_3(
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
-  int output_offset = batch_id * output_sizes[1] * output_sizes[2] * output_sizes[3];
-  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+  const int output_offset = batch_id * output_sizes[1] * output_sizes[2] * output_sizes[3];
+  const int output_numel = output_sizes[1] * output_sizes[2] * output_sizes[3];
+  for (int ii = 0; ii < (output_numel / grainsize); ii++) {
     const int i = ii * grainsize + tid;
-    const int i0 = i / (sizes_i[1] * sizes_i[2]);
-    const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
-    const int i2 = i % sizes_i[2];
-    const int i0_offset = i0 * output_sizes[2] * output_sizes[3];
-    const int i1_offset = i1 * output_sizes[3];
-    output[output_offset + i0_offset + i1_offset + i2] = input[offset + i];
+    const int i0 = i / (output_sizes[2] * output_sizes[3]);
+    const int i1 = (i % (output_sizes[2] * output_sizes[3])) / output_sizes[3];
+    const int i2 = i % output_sizes[3];
+    if (i0 < sizes_i[0] && i1 < sizes_i[1] && i2 < sizes_i[2]) {
+      const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
+      output[output_offset + i] = input[input_offset];
+    } else {
+      output[output_offset + i] = padding_value;
+    }
   }
-  const int i = (numel_i / grainsize) * grainsize + tid;
-  if (i < numel_i) {
-    const int i0 = i / (sizes_i[1] * sizes_i[2]);
-    const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
-    const int i2 = i % sizes_i[2];
-    const int i0_offset = i0 * output_sizes[2] * output_sizes[3];
-    const int i1_offset = i1 * output_sizes[3];
-    output[output_offset + i0_offset + i1_offset + i2] = input[offset + i];
+  const int i = (output_numel / grainsize) * grainsize + tid;
+  if (i < output_numel) {
+    const int i0 = i / (output_sizes[2] * output_sizes[3]);
+    const int i1 = (i % (output_sizes[2] * output_sizes[3])) / output_sizes[3];
+    const int i2 = i % output_sizes[3];
+    if (i0 < sizes_i[0] && i1 < sizes_i[1] && i2 < sizes_i[2]) {
+      const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
+      output[output_offset + i] = input[input_offset];
+    } else {
+      output[output_offset + i] = padding_value;
+    }
   }
 }
 
@@ -120,6 +143,7 @@ template<typename T>
 void add_padding_kernelLauncher(
     T* input, // [batch_size x None]
     T* output, // [batch_size x max(input.nested_size(1)) x inner_size]
+    T padding_value,
     const int* offsets,
     const int* input_sizes,
     int input_dim,
@@ -134,6 +158,7 @@ void add_padding_kernelLauncher(
     add_padding_1<T><<<grid, 256, 0, stream>>>(
         input,
         output,
+        padding_value,
         offsets,
         input_sizes,
         input_dim,
@@ -144,6 +169,7 @@ void add_padding_kernelLauncher(
     add_padding_2<T><<<grid, 256, 0, stream>>>(
         input,
         output,
+        padding_value,
         offsets,
         input_sizes,
         input_dim,
@@ -154,6 +180,7 @@ void add_padding_kernelLauncher(
     add_padding_3<T><<<grid, 256, 0, stream>>>(
         input,
         output,
+        padding_value,
         offsets,
         input_sizes,
         input_dim,
@@ -165,6 +192,7 @@ void add_padding_kernelLauncher(
 template void add_padding_kernelLauncher<float>(
     float* input,
     float* output,
+    float padding_value,
     const int* offsets,
     const int* input_sizes,
     int input_dim,
@@ -175,6 +203,7 @@ template void add_padding_kernelLauncher<float>(
 template void add_padding_kernelLauncher<c10::Half>(
     c10::Half* input,
     c10::Half* output,
+    c10::Half padding_value,
     const int* offsets,
     const int* input_sizes,
     int input_dim,
