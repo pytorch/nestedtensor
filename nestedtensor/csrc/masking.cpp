@@ -505,13 +505,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       Tensor offsets = batch_offsets_from_efficient_size(esize);
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-      // Tensor output;
       Tensor output = at::empty(IntArrayRef(new_size), nt_buffer.options());
-      // if (padding == 0) {
-      //   output = at::zeros(IntArrayRef(new_size), nt_buffer.options());
-      // } else {
-      //   output = nt_buffer.new_full(IntArrayRef(new_size), padding, nt_buffer.options());
-      // }
       Tensor new_size_tensor = torch::tensor(new_size);
 
       int64_t input_dim = nt_sizes.size(1);
