@@ -61,9 +61,11 @@ class TestFunctional(TestCase):
 
         def _test(ts, weight, stride, padding, dilation, groups):
             nt = ntnt_nograd(ts, device=device, dtype=dtype)
+            print(nt)
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
+            print(nt_out)
             for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
                 t_out = torch.conv2d(t.unsqueeze(0), weight,
                                      stride=stride, padding=padding,
@@ -82,7 +84,7 @@ class TestFunctional(TestCase):
         shapes = [(2, 2, 3), (2, 4, 2), (2, 2, 2)]
         weight = torch.randn(3*2*1*1).reshape(3, 2, 1, 1)
         self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
-        self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
+        # self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
 
     @torch.inference_mode()
     def test_conv2d_1x1_cpu(self):

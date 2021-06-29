@@ -31,24 +31,25 @@ void transpose(
   const int size3 = size_dim3[batch_id];
   const int offset = offsets[batch_id];
 
-  for (int bindx = 0; bindx < 4; bindx++) {
-    const int ii2 = id2 + tid2;
-    const int ii3 = id3 + tid3 + 8 * bindx;
+#pragma unroll
+  for (int sub = 0; sub < 4; sub++) {
+    const int ii2 = id2 + tid2 + sub * 8;
+    const int ii3 = id3 + tid3;
     if (ii2 < size2 && ii3 < size3) {
       const int ii = ii2 * size3 + ii3;
-      tile[tid2][tid3 + 8 * bindx] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+      tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
     }
   }
-  for (int bindx = 0; bindx < 4; bindx++) {
-    const int ii2 = id2 + tid2;
-    const int ii3 = id3 + tid3 + 8 * bindx;
-    if (ii2 < size2 && ii3 < size3) {
-      const int ii21 = id2 + tid2;
-      const int ii31 = id3 + tid3 + 8 * bindx;
+  __syncthreads();
+#pragma unroll
+  for (int sub = 0; sub < 4; sub++) {
+    const int ii21 = id2 + tid3;
+    const int ii31 = id3 + tid2 + sub * 8;
+    if (ii21 < size2 && ii31 < size3) {
       const int ii1 = ii21 * size3 + ii31;
       const int j = (ii1 % size3) * size2;
       const int i = (ii1 / size3);
-      output[offset + j + i] = tile[tid2][tid3 + 8 * bindx];
+      output[offset + j + i] = tile[tid3][tid2 + sub * 8];
     }
   }
 }
@@ -69,7 +70,7 @@ void transpose_kernelLauncher(
   dim3 grid;
   grid.x = block_numel;
 
-  transpose<32><<<grid, dim3(32, 8), 0, stream>>>(
+  transpose<32><<<grid, dim3(8, 32), 0, stream>>>(
       input,
       output,
       offsets,
