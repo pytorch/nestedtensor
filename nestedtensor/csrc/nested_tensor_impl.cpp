@@ -135,7 +135,10 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
       std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
-bool NestedTensor_is_pinned(const Tensor& self) {
+bool NestedTensor_is_pinned(const Tensor& self, c10::optional<Device> device) {
+  TORCH_CHECK(
+      !device.has_value() || device->is_cuda(),
+      "nested tensor doesn't support non-CUDA pinned memory");
   return get_nested_tensor_impl(self)->is_pinned();
 }
 

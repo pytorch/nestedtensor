@@ -159,9 +159,9 @@ Tensor NestedTensor__log_softmax(
       [&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
 }
 
-Tensor NestedTensor_pin_memory(const Tensor& self) {
+Tensor NestedTensor_pin_memory(const Tensor& self, c10::optional<Device> device) {
   return map_nested_tensor(
-      [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
+      [&](Tensor tensor) { return at::native::pin_memory(tensor, device); }, self);
 }
 
 Tensor NestedTensor_flatten(
