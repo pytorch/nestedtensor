@@ -14,20 +14,25 @@ void transpose(
     c10::Half* output,
     const int* block_offsets,
     const int* offsets,
-    // const int* blocks2,
-    // const int* blocks3,
-    const int* blocks_batch_dim,
+    const int batch_size,
     const int* size_dim2,
     const int* size_dim3)
 {
   __shared__ c10::Half tile[num_threads_sqrt][num_threads_sqrt + 1];
+  __shared__ int batch_id;
   const int block_id  = blockIdx.x;
-  const int batch_id = blocks_batch_dim[block_id];
-  const int grain_size = num_threads_sqrt;
   const int tid2 = threadIdx.x;
   const int tid3 = threadIdx.y;
-  // const int id2 = blocks2[block_id];
-  // const int id3 = blocks3[block_id];
+  int batch_id_search = tid2 * 32 + tid3;
+  while (batch_id_search < batch_size) {
+    if (block_offsets[batch_id_search] <= block_id && 
+        block_id < block_offsets[batch_id_search + 1]) {
+      batch_id = batch_id_search;
+    }
+    batch_id_search += 256;
+  }
+  __syncthreads();
+  const int grain_size = num_threads_sqrt;
   const int size2 = size_dim2[batch_id];
   const int size3 = size_dim3[batch_id];
   const int block_offset = block_offsets[batch_id];
@@ -63,26 +68,22 @@ void transpose_kernelLauncher(
     c10::Half* output, // [batch_size x max(input.nested_size(1)) x inner_size]
     const int* block_offsets,
     const int* offsets,
-    // const int* blocks2,
-    // const int* blocks3,
-    const int* blocks_batch_dim,
+    const int batch_size,
+    const int block_numel,
     const int* size_dim2,
     const int* size_dim3,
-    const int block_numel,
-    const int numel,
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = block_numel;
+  // Actually is batch size.
+  grid.x = block_numel,
 
   transpose<32><<<grid, dim3(8, 32), 0, stream>>>(
       input,
       output,
       block_offsets,
       offsets,
-      // blocks2,
-      // blocks3,
-      blocks_batch_dim,
+      batch_size,
       size_dim2,
       size_dim3);
 }
