@@ -12,9 +12,10 @@ __global__
 void transpose(
     c10::Half* input,
     c10::Half* output,
+    const int* block_offsets,
     const int* offsets,
-    const int* blocks2,
-    const int* blocks3,
+    // const int* blocks2,
+    // const int* blocks3,
     const int* blocks_batch_dim,
     const int* size_dim2,
     const int* size_dim3)
@@ -25,26 +26,29 @@ void transpose(
   const int grain_size = num_threads_sqrt;
   const int tid2 = threadIdx.x;
   const int tid3 = threadIdx.y;
-  const int id2 = blocks2[block_id];
-  const int id3 = blocks3[block_id];
+  // const int id2 = blocks2[block_id];
+  // const int id3 = blocks3[block_id];
   const int size2 = size_dim2[batch_id];
   const int size3 = size_dim3[batch_id];
+  const int block_offset = block_offsets[batch_id];
   const int offset = offsets[batch_id];
 
-#pragma unroll
+  const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
+  const int current_block = block_id - block_offset;
+  const int ii3 = (current_block % num_chunks_3) * grain_size + tid3;
   for (int sub = 0; sub < 4; sub++) {
-    const int ii2 = id2 + tid2 + sub * 8;
-    const int ii3 = id3 + tid3;
+    const int ii2 = (current_block / num_chunks_3) * grain_size + tid2 + sub * 8;
     if (ii2 < size2 && ii3 < size3) {
       const int ii = ii2 * size3 + ii3;
       tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
     }
   }
+
   __syncthreads();
-#pragma unroll
+
+  const int ii21 = (current_block / num_chunks_3) * grain_size + tid3;
   for (int sub = 0; sub < 4; sub++) {
-    const int ii21 = id2 + tid3;
-    const int ii31 = id3 + tid2 + sub * 8;
+    const int ii31 = (current_block % num_chunks_3) * grain_size + tid2 + sub * 8;
     if (ii21 < size2 && ii31 < size3) {
       const int ii1 = ii21 * size3 + ii31;
       const int j = (ii1 % size3) * size2;
@@ -57,9 +61,10 @@ void transpose(
 void transpose_kernelLauncher(
     c10::Half* input, // [batch_size x None]
     c10::Half* output, // [batch_size x max(input.nested_size(1)) x inner_size]
+    const int* block_offsets,
     const int* offsets,
-    const int* blocks2,
-    const int* blocks3,
+    // const int* blocks2,
+    // const int* blocks3,
     const int* blocks_batch_dim,
     const int* size_dim2,
     const int* size_dim3,
@@ -73,9 +78,10 @@ void transpose_kernelLauncher(
   transpose<32><<<grid, dim3(8, 32), 0, stream>>>(
       input,
       output,
+      block_offsets,
       offsets,
-      blocks2,
-      blocks3,
+      // blocks2,
+      // blocks3,
       blocks_batch_dim,
       size_dim2,
       size_dim3);

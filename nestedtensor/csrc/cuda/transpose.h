@@ -10,9 +10,10 @@ namespace cuda {
 void transpose_kernelLauncher(
     c10::Half* input,
     c10::Half* output,
+    const int* block_offsets,
     const int* offsets,
-    const int* blocks2,
-    const int* blocks3,
+    // const int* blocks2,
+    // const int* blocks3,
     const int* blocks_batch_dim,
     const int* sizes_dim2,
     const int* sizes_dim3,
