@@ -65,7 +65,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     print(f" mean±std shapes[2]: {shapes_2_array.mean():.2f}±{shapes_2_array.std():.2f},", end='')
     print(f" mean±std shapes[3]: {shapes_3_array.mean():.2f}±{shapes_3_array.std():.2f},", end='')
     print(f" padded_size: {tuple(ts_padded.size())},", end='')
-    print(f" loop: {loop_time / iters:.2f}ms, nt: {nt_time / iters:.2f}ms, padded: {padded_time / iters:.2f}ms, speedup: {loop_time / nt_time:.2f}x")
+    print(f" loop: {loop_time / iters:7.2f}ms, nt: {nt_time / iters:7.2f}ms, padded: {padded_time / iters:7.2f}ms, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
     iters = 10
