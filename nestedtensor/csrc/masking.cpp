@@ -500,9 +500,9 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       } else {
         output = nt_buffer.new_full(IntArrayRef(new_size), padding, nt_buffer.options());
       }
-      // Tensor new_size_tensor = torch::tensor(new_size);
+      Tensor new_size_tensor = torch::tensor(new_size);
 
-      // new_size_tensor = new_size_tensor.to(at::Device(kCUDA), torch::kInt32, true, true);
+      new_size_tensor = new_size_tensor.to(at::Device(kCUDA), torch::kInt32, true, true);
       offsets = offsets.to(at::Device(kCUDA), torch::kInt32, true, true);
       nt_sizes = nt_sizes.to(at::Device(kCUDA), torch::kInt32, true, true);
 
@@ -513,7 +513,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
             nt_sizes.size(1),
-            new_size, // _tensor.data_ptr<int>(),
+            new_size_tensor.data_ptr<int>(),
             nt_sizes.size(0),
             defaultStream);
         return output;
@@ -525,7 +525,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
             nt_sizes.size(1),
-            new_size, //_tensor.data_ptr<int>(),
+            new_size_tensor.data_ptr<int>(),
             nt_sizes.size(0),
             defaultStream);
         return output;
