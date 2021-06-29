@@ -757,12 +757,38 @@ class TestNestedTensor(TestCase):
                                lambda: nt.to_sparse_csr_tensor())
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
-    def test_to_paded_tensor_cuda(self):
+    def test_to_paded_tensor_cuda_dim2(self):
         import random
         random.seed(1010)
-        tensors = [torch.randn(random.randint(20, 40), 13) for _ in range(3)]
+        tensors = [torch.randn(random.randint(3, 30)) for _ in range(5)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
         data0 = nt.to_padded_tensor(padding=0)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, _ = nt.to_tensor_mask()
+        self.assertEqual(data0, data1)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_to_paded_tensor_cuda_dim3(self):
+        import random
+        random.seed(1010)
+        tensors = [torch.randn(random.randint(3, 30), random.randint(3, 30))
+                   for _ in range(5)]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        data0 = nt.to_padded_tensor(padding=0)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, _ = nt.to_tensor_mask()
+        self.assertEqual(data0, data1)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_to_paded_tensor_cuda_dim4(self):
+        import random
+        random.seed(1010)
+        tensors = [torch.randn(random.randint(3, 30),
+                               random.randint(3, 30),
+                               random.randint(3, 30)) for _ in range(5)]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        data0 = nt.to_padded_tensor(padding=0)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
         data1, _ = nt.to_tensor_mask()
         self.assertEqual(data0, data1)
 

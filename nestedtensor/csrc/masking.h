@@ -26,6 +26,10 @@ at::Tensor from_padded_tensor(
     torch::nested_tensor::EfficientSizeNode target_size,
     torch::nested_tensor::EfficientSizeNode target_stride);
 
+at::Tensor from_padded_tensor(
+    at::Tensor nt,
+    torch::nested_tensor::EfficientSizeNode target_size);
+
 c10::optional<at::Tensor> nt_from_tensor_mask(
     at::Tensor tensor,
     at::Tensor mask,
