@@ -48,7 +48,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     outputs_nt = model(ts_nt)
     # import time; time.sleep(1)
     # outputs_nt = model(ts_nt)
-    import sys; sys.exit(1)
+    # import sys; sys.exit(1)
     model_outputs = _loop()
     for mo, ntmo in zip(model_outputs, outputs_nt.unbind()):
         # Using float16 tolerances from torch/testing/_core.yp
@@ -77,8 +77,7 @@ if __name__ == "__main__":
         shapes = [(1, 3, random.randint(100, 600), random.randint(100, 600)) for _ in range(bsz)]
         run_benchmark(iters, shapes, model, model_name, bsz)
 
-    # for bsz in [16, 32, 64, 128]:
-    for bsz in [64, 128]:
+    for bsz in [16, 32, 64, 128]:
         _benchmark("resnext101_32x4d", bsz)
 
     for bsz in [16, 32]:

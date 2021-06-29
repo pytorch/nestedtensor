@@ -6,6 +6,7 @@
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/cuda/transpose.h>
 #include <c10/util/Half.h>
+#include <ATen/cuda/CUDAContext.h>
 #endif
 #include <nestedtensor/csrc/masking.h>
 
@@ -60,6 +61,8 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
 
   c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
   c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
+
+  // std::cout << "at::cuda::warp_size(): " << at::cuda::warp_size() << std::endl;
   nested_tensor::cuda::transpose_kernelLauncher(
       input_ptr,
       output_ptr,

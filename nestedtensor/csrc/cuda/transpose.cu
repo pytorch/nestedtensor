@@ -19,19 +19,27 @@ void transpose(
     const int* size_dim3)
 {
   __shared__ c10::Half tile[num_threads_sqrt][num_threads_sqrt + 1];
-  __shared__ int batch_id;
   const int block_id  = blockIdx.x;
-  const int tid2 = threadIdx.x;
-  const int tid3 = threadIdx.y;
-  int batch_id_search = tid2 * 32 + tid3;
-  while (batch_id_search < batch_size) {
-    if (block_offsets[batch_id_search] <= block_id && 
-        block_id < block_offsets[batch_id_search + 1]) {
-      batch_id = batch_id_search;
+  const int tid2 = threadIdx.x / 32;
+  const int tid3 = threadIdx.x % 32;
+  int batch_id = threadIdx.x % 32;
+  bool found = false;
+  while (batch_id < batch_size) {
+    if (block_offsets[batch_id] <= block_id && 
+        block_id < block_offsets[batch_id + 1]) {
+      found = true;
+      break;
     }
-    batch_id_search += 256;
+    batch_id += 32;
   }
-  __syncthreads();
+  if (!found) {
+    batch_id = 0;
+  }
+  #pragma unroll
+  for (int i = 0; i < 32; i++) {
+    batch_id = batch_id | __shfl_sync(0xFFFFFFFF, batch_id, i, 32);
+  }
+
   const int grain_size = num_threads_sqrt;
   const int size2 = size_dim2[batch_id];
   const int size3 = size_dim3[batch_id];
@@ -78,7 +86,7 @@ void transpose_kernelLauncher(
   // Actually is batch size.
   grid.x = block_numel,
 
-  transpose<32><<<grid, dim3(8, 32), 0, stream>>>(
+  transpose<32><<<grid, 256, 0, stream>>>(
       input,
       output,
       block_offsets,

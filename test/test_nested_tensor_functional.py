@@ -81,7 +81,7 @@ class TestFunctional(TestCase):
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_conv2d_1x1_cuda(self):
-        shapes = [(2, 2, 3), (2, 4, 2), (2, 2, 2)]
+        shapes = [(2, 2, 3), (2, 4, 2)] # , (2, 2, 2)]
         weight = torch.randn(3*2*1*1).reshape(3, 2, 1, 1)
         self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
         # self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
