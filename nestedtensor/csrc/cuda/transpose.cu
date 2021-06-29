@@ -35,6 +35,7 @@ void transpose(
   if (!found) {
     batch_id = 0;
   }
+  // TODO: Parameterize on warp size instead of assuming 32.
   #pragma unroll
   for (int i = 0; i < 32; i++) {
     batch_id = batch_id | __shfl_sync(0xFFFFFFFF, batch_id, i, 32);
