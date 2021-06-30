@@ -6,6 +6,7 @@
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/cuda/transpose.h>
 #include <c10/util/Half.h>
+#include <ATen/cuda/CUDAContext.h>
 #endif
 #include <nestedtensor/csrc/masking.h>
 
@@ -26,67 +27,51 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   int64_t input_buffer_numel = input_buffer.numel();
   at::Tensor offsets = torch::zeros({1 + batch_size}, torch::kInt32);
   int* offsets_ptr = offsets.data_ptr<int>();
+  at::Tensor block_offsets = torch::zeros({1 + batch_size}, torch::kInt32);
+  int* block_offsets_ptr = block_offsets.data_ptr<int>();
   int64_t index = 1;
   int grain_size = 32;
-  std::vector<int> blocks2_vec;
-  blocks2_vec.reserve(input_buffer_numel / (grain_size * grain_size));
-  std::vector<int> blocks3_vec;
-  blocks3_vec.reserve(input_buffer_numel / (grain_size * grain_size));
-  std::vector<int> blocks_batch_dim_vec;
-  blocks_batch_dim_vec.reserve(input_buffer_numel / (grain_size * grain_size));
   for (int64_t i = 0; i < batch_size; i++) {
     const int size2 = sizes_dim2_ptr[i];
     const int size3 = sizes_dim3_ptr[i];
     const int num_chunks_2 = (size2 + grain_size - 1) / grain_size;
     const int num_chunks_3 = (size3 + grain_size - 1) / grain_size;
     offsets_ptr[index] = offsets_ptr[index - 1] + (int)(nt_sizes_all_ptr[i]);
-    for (int id2 = 0; id2 < num_chunks_2; id2++) {
-      for (int id3 = 0; id3 < num_chunks_3; id3++) {
-        blocks2_vec.push_back(id2 * grain_size);
-        blocks3_vec.push_back(id3 * grain_size);
-        blocks_batch_dim_vec.push_back(i);
-      }
-    }
+    block_offsets_ptr[index] = block_offsets_ptr[index - 1] + num_chunks_2 * num_chunks_3; 
     index++;
   }
-  at::Tensor blocks2 = torch::tensor(blocks2_vec);
-  at::Tensor blocks3 = torch::tensor(blocks3_vec);
-  at::Tensor blocks_batch_dim = torch::tensor(blocks_batch_dim_vec);
+  int block_numel = block_offsets_ptr[batch_size];
   sizes_dim2 = sizes_dim2.reshape(-1);
   sizes_dim3 = sizes_dim3.reshape(-1);
 
-  at::Tensor all_meta = at::cat({offsets, blocks2, blocks3, blocks_batch_dim, sizes_dim2, sizes_dim3});
+  at::Tensor all_meta = at::cat({offsets, block_offsets, sizes_dim2, sizes_dim3});
 
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   all_meta = all_meta.to(at::Device(kCUDA), torch::kInt32, true, true);
   std::vector<int64_t> split_sizes;
   split_sizes.push_back(offsets.numel());
-  split_sizes.push_back(blocks2_vec.size());
-  split_sizes.push_back(blocks3_vec.size());
-  split_sizes.push_back(blocks_batch_dim_vec.size());
+  split_sizes.push_back(block_offsets.numel());
   split_sizes.push_back(sizes_dim2.size(0));
   split_sizes.push_back(sizes_dim3.size(0));
   std::vector<at::Tensor> split_all_meta = at::split_with_sizes(all_meta, c10::IntArrayRef(split_sizes), 0);
   offsets = split_all_meta[0];
-  blocks2 = split_all_meta[1];
-  blocks3 = split_all_meta[2];
-  blocks_batch_dim = split_all_meta[3];
-  sizes_dim2 = split_all_meta[4];
-  sizes_dim3 = split_all_meta[5];
+  block_offsets = split_all_meta[1];
+  sizes_dim2 = split_all_meta[2];
+  sizes_dim3 = split_all_meta[3];
 
   c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
   c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
+
+  // std::cout << "at::cuda::warp_size(): " << at::cuda::warp_size() << std::endl;
   nested_tensor::cuda::transpose_kernelLauncher(
       input_ptr,
       output_ptr,
+      block_offsets.data_ptr<int>(),
       offsets.data_ptr<int>(),
-      blocks2.data_ptr<int>(),
-      blocks3.data_ptr<int>(),
-      blocks_batch_dim.data_ptr<int>(),
+      batch_size, 
+      block_numel,
       sizes_dim2.data_ptr<int>(),
       sizes_dim3.data_ptr<int>(),
-      blocks2_vec.size(),
-      input_buffer_numel,
       defaultStream
       );
   return output_buffer.reshape(-1);

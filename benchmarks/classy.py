@@ -21,7 +21,7 @@ def benchmark_torch_function(iters, f, *args, **kwargs):
     if torch.cuda.is_available():
         end_event.record()
         torch.cuda.synchronize()
-        return start_event.elapsed_time(end_event) / 1e3
+        return start_event.elapsed_time(end_event)
     else:
         return (time.time() - t0)
 
@@ -65,10 +65,10 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     print(f" mean±std shapes[2]: {shapes_2_array.mean():.2f}±{shapes_2_array.std():.2f},", end='')
     print(f" mean±std shapes[3]: {shapes_3_array.mean():.2f}±{shapes_3_array.std():.2f},", end='')
     print(f" padded_size: {tuple(ts_padded.size())},", end='')
-    print(f" loop: {loop_time / iters:.2f}s, nt: {nt_time / iters:.2f}s, padded: {padded_time / iters:.2f}s, speedup: {loop_time / nt_time:.2f}x")
+    print(f" loop: {loop_time / iters:7.2f}ms, nt: {nt_time / iters:7.2f}ms, padded: {padded_time / iters:7.2f}ms, speedup: {loop_time / nt_time:.2f}x")
 
 if __name__ == "__main__":
-    iters = 1
+    iters = 10
 
     def _benchmark(model_name, bsz):
         model = build_model({"name": model_name})
