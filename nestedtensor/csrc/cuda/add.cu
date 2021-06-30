@@ -145,11 +145,11 @@ void sub_scalar_kernelLauncher(
 __global__
 void batchnorm_inference(
     const c10::Half* input,
-    c10::Half* mean,
-    c10::Half* running_var,
-    c10::Half eps,
-    c10::Half* weight,
-    c10::Half* bias,
+    const c10::Half* mean,
+    const c10::Half* running_var,
+    const c10::Half eps,
+    const c10::Half* weight,
+    const c10::Half* bias,
     c10::Half* output,
     const int input_outer_stride,
     const int* offsets)
@@ -168,7 +168,6 @@ void batchnorm_inference(
 
   int input_offset = offsets[batch_id] + tid;
   int id = 0;
-  // printf("num_chunks: %d\n", num_chunks);
   for (; id < num_chunks; id++) {
     output[input_offset] = __ldg(reinterpret_cast<const __half*>(input) + input_offset) * value - value2;
     input_offset += grain_size;
