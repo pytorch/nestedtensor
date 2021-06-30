@@ -757,39 +757,42 @@ class TestNestedTensor(TestCase):
                                lambda: nt.to_sparse_csr_tensor())
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
-    def test_to_paded_tensor_cuda_dim2(self):
+    def test_to_padded_tensor_cuda_dim2(self):
         import random
         random.seed(1010)
         tensors = [torch.randn(random.randint(3, 30)) for _ in range(5)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        data0 = nt.to_padded_tensor(padding=0)
+        data0 = nt.to_padded_tensor(padding=1)
         nt = ntnt_nograd(tensors, device=torch.device('cpu'))
-        data1, _ = nt.to_tensor_mask()
+        data1, mask1 = nt.to_tensor_mask()
+        data1.masked_fill_(mask1.logical_not(), 1)
         self.assertEqual(data0, data1)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
-    def test_to_paded_tensor_cuda_dim3(self):
+    def test_to_padded_tensor_cuda_dim3(self):
         import random
         random.seed(1010)
         tensors = [torch.randn(random.randint(3, 30), random.randint(3, 30))
                    for _ in range(5)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        data0 = nt.to_padded_tensor(padding=0)
+        data0 = nt.to_padded_tensor(padding=1)
         nt = ntnt_nograd(tensors, device=torch.device('cpu'))
-        data1, _ = nt.to_tensor_mask()
+        data1, mask1 = nt.to_tensor_mask()
+        data1.masked_fill_(mask1.logical_not(), 1)
         self.assertEqual(data0, data1)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
-    def test_to_paded_tensor_cuda_dim4(self):
+    def test_to_padded_tensor_cuda_dim4(self):
         import random
         random.seed(1010)
         tensors = [torch.randn(random.randint(3, 30),
                                random.randint(3, 30),
                                random.randint(3, 30)) for _ in range(5)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        data0 = nt.to_padded_tensor(padding=0)
+        data0 = nt.to_padded_tensor(padding=1)
         nt = ntnt_nograd(tensors, device=torch.device('cpu'))
-        data1, _ = nt.to_tensor_mask()
+        data1, mask1 = nt.to_tensor_mask()
+        data1.masked_fill_(mask1.logical_not(), 1)
         self.assertEqual(data0, data1)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
