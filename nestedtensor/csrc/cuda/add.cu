@@ -142,6 +142,7 @@ void sub_scalar_kernelLauncher(
       offsets);
 }
 
+template <int num_threads>
 __global__
 void batchnorm_inference(
     const c10::Half* input,
@@ -151,28 +152,28 @@ void batchnorm_inference(
     const c10::Half* weight,
     const c10::Half* bias,
     c10::Half* output,
-    const int input_outer_stride,
+    const int num_scalars,
     const int* offsets)
 {
-  const int batch_id  = blockIdx.x;
-  const int grid_id  = blockIdx.y;
-  const int scalars_id  = batch_id / input_outer_stride;
-  const int grain_size = 256 * 2;
-  const int tid = threadIdx.x + grid_id * 256;
-  const int range = (offsets[batch_id + 1] - offsets[batch_id]);
+  const int batch_id = blockIdx.x;
+  const int scalars_id  = blockIdx.y;
+  const int grain_size = num_threads;
+  const int tid = threadIdx.x;
+  const int offset_id = batch_id * num_scalars + scalars_id;
+  const int range = (offsets[offset_id + 1] - offsets[offset_id]);
   const int num_chunks = range / grain_size;
   c10::Half value = running_var[scalars_id] + eps;
   value = hrsqrt(value);
   value = value * weight[scalars_id];
   c10::Half value2 = mean[scalars_id] * value - bias[scalars_id];
 
-  int input_offset = offsets[batch_id] + tid;
+  int input_offset = offsets[offset_id] + tid;
   int id = 0;
   for (; id < num_chunks; id++) {
     output[input_offset] = __ldg(reinterpret_cast<const __half*>(input) + input_offset) * value - value2;
     input_offset += grain_size;
   }
-  if (input_offset < offsets[batch_id + 1]) { //leftover + tid < range) {
+  if (input_offset < offsets[offset_id + 1]) {
     output[input_offset] = __ldg(reinterpret_cast<const __half*>(input) + input_offset) * value - value2;
   }
 }
@@ -186,15 +187,16 @@ void batchnorm_inference_kernelLauncher(
     c10::Half* bias, // [batch_size]
     c10::Half* output, // [batch_size x offsets[-1]]
     const int batch_size,
-    const int input_outer_stride,
+    const int num_scalars,
+    const int numel,
     const int* offsets /* [batch_size] */,
     const cudaStream_t stream)
 {
   dim3 grid;
   grid.x = batch_size;
-  grid.y = 2;
+  grid.y = num_scalars;
 
-  batchnorm_inference<<<grid, 256, 0, stream>>>(
+  batchnorm_inference<32><<<grid, 32, 0, stream>>>(
       input,
       mean,
       running_var,
@@ -202,7 +204,7 @@ void batchnorm_inference_kernelLauncher(
       weight,
       bias,
       output,
-      input_outer_stride,
+      num_scalars,
       offsets);
 }
 

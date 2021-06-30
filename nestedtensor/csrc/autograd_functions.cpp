@@ -172,12 +172,15 @@ Tensor NestedTensor_batch_norm(
         bias_ptr,
         input_buffer.data_ptr<c10::Half>(),
         // output_buffer.data_ptr<c10::Half>(),
-        (int)(*self_opt_sizes[0] * *self_opt_sizes[1]),
         (int)(*self_opt_sizes[0]),
+        (int)(weight_cont.size(0)),
+        (int)(*self_opt_sizes[0] *
+              *self_opt_sizes[1] *
+              *self_opt_sizes[2] *
+              *self_opt_sizes[3]),
         nt_sizes.data_ptr<int>(),
         defaultStream
         );
-    // return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(output), get_efficient_nested_stride(output));
     return wrap_buffer(std::move(input_buffer), get_efficient_nested_size(output), get_efficient_nested_stride(output));
   }
 #endif
