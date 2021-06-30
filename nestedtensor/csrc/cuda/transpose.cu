@@ -49,9 +49,14 @@ void transpose(
 
   const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
   const int current_block = block_id - block_offset;
-  const int ii3 = (current_block % num_chunks_3) * grain_size + tid3;
+  const int offset1_tid2 = (current_block % num_chunks_3) * grain_size + tid2;
+  const int offset2_tid2 = (current_block / num_chunks_3) * grain_size + tid2;
+  const int offset1_tid3 = (current_block % num_chunks_3) * grain_size + tid3;
+  const int offset2_tid3 = (current_block / num_chunks_3) * grain_size + tid3;
+  const int ii3 = offset1_tid3;
+#pragma unroll
   for (int sub = 0; sub < 4; sub++) {
-    const int ii2 = (current_block / num_chunks_3) * grain_size + tid2 + sub * 8;
+    const int ii2 = offset2_tid2 + sub * 8;
     if (ii2 < size2 && ii3 < size3) {
       const int ii = ii2 * size3 + ii3;
       tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
@@ -60,9 +65,10 @@ void transpose(
 
   __syncthreads();
 
-  const int ii21 = (current_block / num_chunks_3) * grain_size + tid3;
+  const int ii21 = offset2_tid3;
+#pragma unroll
   for (int sub = 0; sub < 4; sub++) {
-    const int ii31 = (current_block % num_chunks_3) * grain_size + tid2 + sub * 8;
+    const int ii31 = offset1_tid2 + sub * 8;
     if (ii21 < size2 && ii31 < size3) {
       const int ii1 = ii21 * size3 + ii31;
       const int j = (ii1 % size3) * size2;
