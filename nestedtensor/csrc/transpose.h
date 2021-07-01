@@ -9,4 +9,5 @@ Tensor transpose_buffer(
         Tensor output_buffer);
 
 Tensor transpose_nhwc_nchw(Tensor input);
+Tensor transpose_nchw_nhwc(Tensor input);
 }

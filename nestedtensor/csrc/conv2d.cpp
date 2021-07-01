@@ -60,8 +60,8 @@ Tensor NestedTensor_conv2d(
         // Tensor input_buffer = get_buffer(input);
         // Tensor output_buffer = input_buffer.clone();
         // output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
-        // output_buffer = output_buffer.reshape({-1, weight.size(1)});
-        Tensor output_buffer = get_buffer(transpose_nhwc_nchw(input));
+        Tensor output_buffer = get_buffer_channel_last(transpose_nchw_nhwc(input));
+        output_buffer = output_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
