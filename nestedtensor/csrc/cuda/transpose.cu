@@ -36,10 +36,13 @@ void transpose(
     batch_id = 0;
   }
   // TODO: Parameterize on warp size instead of assuming 32.
-  #pragma unroll
-  for (int i = 0; i < 32; i++) {
-    batch_id = batch_id | __shfl_sync(0xFFFFFFFF, batch_id, i, 32);
-  }
+  // #pragma unroll
+  // for (int i = 0; i < 32; i++) {
+  //   batch_id = batch_id | __shfl_sync(0xFFFFFFFF, batch_id, i, 32);
+  // }
+  for (int warp_offset = 16; warp_offset > 0; warp_offset /= 2)
+      batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
+  batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
 
   const int grain_size = num_threads_sqrt;
   const int size2 = size_dim2[batch_id];
