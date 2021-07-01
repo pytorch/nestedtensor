@@ -138,12 +138,15 @@ Tensor NestedTensor_batch_norm(
       Tensor input_buffer = get_buffer_channel_last(input);
       int64_t num_channel = weight_cont.size(0);
       input_buffer = input_buffer.reshape({-1, num_channel});
-      at::Tensor invstd = 1 / at::sqrt(running_var_cont + eps);
+      at::Tensor invstd = at::rsqrt(running_var_cont + eps);
+      at::Tensor value = invstd * weight_cont;
+      at::Tensor value2 = -(mean * value - bias_cont);
 
-      input_buffer = input_buffer - mean.reshape({1, num_channel});
-      input_buffer = input_buffer * invstd.reshape({1, num_channel});
-      input_buffer = input_buffer * weight_cont.reshape({1, num_channel});
-      input_buffer = input_buffer + bias_cont.reshape({1, num_channel});
+      input_buffer = at::addcmul(value2.reshape({1, num_channel}), input_buffer, value.reshape({1, num_channel}));
+      // input_buffer = input_buffer * value.reshape({1, num_channel}) + value2.reshape({1, num_channel});
+      // input_buffer = (input_buffer * invstd.reshape({1, num_channel})) + bias_cont.reshape({1, num_channel});
+      // // input_buffer = input_buffer * weight_cont.reshape({1, num_channel});
+      // // input_buffer = input_buffer + bias_cont.reshape({1, num_channel});
       input_buffer = input_buffer.reshape(-1);
 
       // Tensor output = input;
