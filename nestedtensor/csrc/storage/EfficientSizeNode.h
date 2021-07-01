@@ -201,6 +201,20 @@ inline EfficientSizeNode map_efficient_size(
 template <class F>
 inline void apply_efficient_size(
     F&& fn,
+    EfficientSizeNode& size_node0) {
+  at::Tensor sizes0 = size_node0.sizes();
+  int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
+  int64_t structure0 = size_node0.structure();
+  for (int64_t i = 0; i < sizes0.size(0); i++) {
+    fn(sizes0_ptr + i * sizes0.size(1),
+       sizes0.size(1));
+  }
+  size_node0.refresh_opt_sizes();
+}
+
+template <class F>
+inline void apply_efficient_size(
+    F&& fn,
     EfficientSizeNode& size_node0,
     EfficientSizeNode& size_node1) {
   at::Tensor sizes0 = size_node0.sizes();

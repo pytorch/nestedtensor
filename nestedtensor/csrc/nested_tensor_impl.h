@@ -238,8 +238,11 @@ inline int64_t get_is_contiguous(
 }
 
 inline int64_t get_is_channel_last(const at::Tensor& tensor) {
-  auto storage = get_nested_tensor_impl(tensor)->get_storage();
-  return storage.get()->kind() == NestedTensorStorageKind::channellastpacked;
+  if (is_nested_tensor_impl(tensor)) {
+    auto storage = get_nested_tensor_impl(tensor)->get_storage();
+    return storage.get()->kind() == NestedTensorStorageKind::channellastpacked;
+  }
+  return tensor.is_contiguous(at::MemoryFormat::ChannelsLast);
 }
 
 inline int64_t get_is_cuda(

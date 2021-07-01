@@ -90,6 +90,8 @@ Tensor transpose_nhwc_nchw_out(Tensor input, Tensor output) {
   Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
   nt_sizes = at::cat({nt_sizes_1_2, nt_sizes_0}, 1);
   Tensor input_buffer = get_buffer_channel_last(input);
+  std::cout << "0 input_buffer.sizes(): " << input_buffer.sizes() << std::endl;
+  std::cout << "0 input_buffer.strides(): " << input_buffer.strides() << std::endl;
   Tensor output_buffer = get_buffer(output);
   output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
   output_buffer = output_buffer.reshape(-1);
@@ -107,6 +109,7 @@ Tensor transpose_nhwc_nchw(Tensor input) {
   return transpose_nhwc_nchw_out(input, output);
 }
 
+// TODO: Might actually return nwhc (same for inverse above), but for our applications this doesn't matter.
 Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output) {
 #ifdef WITH_CUDA
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc_out needs 4d input.");
@@ -121,6 +124,8 @@ Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output) {
   Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
   nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
   Tensor input_buffer = get_buffer(input);
+  std::cout << "0 input_buffer.sizes(): " << input_buffer.sizes() << std::endl;
+  std::cout << "0 input_buffer.strides(): " << input_buffer.strides() << std::endl;
   Tensor output_buffer = at::empty_like(input_buffer);
   output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
   output_buffer = output_buffer.reshape(-1);
