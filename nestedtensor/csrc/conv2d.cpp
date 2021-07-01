@@ -79,19 +79,7 @@ Tensor NestedTensor_conv2d(
 #endif
   if (input.dtype() == torch::kFloat16) {
     if (get_is_channel_last(input)) {
-        Tensor input_buffer = get_buffer_channel_last(input);
-        Tensor nt_sizes =
-            get_efficient_nested_size(input).sizes();
-        Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
-        Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
-        Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
-        Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
-        nt_sizes = at::cat({nt_sizes_1_2, nt_sizes_0}, 1);
-        Tensor output_buffer = input_buffer.clone();
-        output_buffer = transpose_buffer(nt_sizes,
-                                         input_buffer.reshape(-1),
-                                         output_buffer.reshape(-1));
-        input = wrap_buffer(output_buffer.reshape(-1), get_efficient_nested_size(input));
+        input = transpose_nhwc_nchw(input);
     }
     at::Tensor data = to_padded_tensor(input, 0);
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
