@@ -79,8 +79,9 @@ Tensor NestedTensor_conv2d(
   }
 #endif
   if (input.dtype() == torch::kFloat16) {
-  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+    bool got_channel_last = false;
     if (get_is_channel_last(input)) {
+        got_channel_last = true;
         input = transpose_nhwc_nchw(input);
     }
     at::Tensor data = to_padded_tensor(input, 0);
@@ -90,7 +91,11 @@ Tensor NestedTensor_conv2d(
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
         size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
         }, get_efficient_nested_size(input));
-    return from_padded_tensor(result_data, new_sizes);
+    at::Tensor result = from_padded_tensor(result_data, new_sizes);
+    if (got_channel_last) {
+      return transpose_nchw_nhwc(result);
+    }
+    return result;
   }
   if (bias) {
       return map_nested_tensor(

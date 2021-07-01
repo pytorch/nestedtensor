@@ -7,6 +7,7 @@
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
 #include <c10/core/DispatchKey.h>
+#include <nestedtensor/csrc/transpose.h>
 
 namespace at {
 
@@ -154,8 +155,12 @@ bool NestedTensor_is_pinned(const Tensor& self) {
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(
-    const at::Tensor& self,
+    const at::Tensor& self_,
     int64_t dim) {
+  at::Tensor self = self_;
+  if (get_is_channel_last(self)) {
+    self = transpose_nhwc_nchw(self);
+  }
   auto _data = get_nested_tensor_impl(self);
   dim = at::maybe_wrap_dim(dim, get_dim(self));
   auto node = _data->get_structure();
