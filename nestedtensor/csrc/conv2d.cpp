@@ -48,16 +48,14 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
 
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   all_meta = all_meta.to(at::Device(kCUDA), torch::kInt32, true, true);
-  std::vector<int64_t> split_sizes;
-  split_sizes.push_back(offsets.numel());
-  split_sizes.push_back(block_offsets.numel());
-  split_sizes.push_back(sizes_dim2.size(0));
-  split_sizes.push_back(sizes_dim3.size(0));
-  std::vector<at::Tensor> split_all_meta = at::split_with_sizes(all_meta, c10::IntArrayRef(split_sizes), 0);
-  offsets = split_all_meta[0];
-  block_offsets = split_all_meta[1];
-  sizes_dim2 = split_all_meta[2];
-  sizes_dim3 = split_all_meta[3];
+  index = 0;
+  offsets = all_meta.narrow(0, 0, offsets.numel());
+  index += offsets.numel();
+  block_offsets = all_meta.narrow(0, index, block_offsets.numel());
+  index += block_offsets.numel();
+  sizes_dim2 = all_meta.narrow(0, index, sizes_dim2.size(0));
+  index += sizes_dim2.size(0);
+  sizes_dim3 = all_meta.narrow(0, index, sizes_dim3.size(0));
 
   c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
   c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();

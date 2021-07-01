@@ -36,10 +36,9 @@ void transpose(
     batch_id = 0;
   }
   // TODO: Parameterize on warp size instead of assuming 32.
-  #pragma unroll
-  for (int i = 0; i < 32; i++) {
-    batch_id = batch_id | __shfl_sync(0xFFFFFFFF, batch_id, i, 32);
-  }
+  for (int warp_offset = 16; warp_offset > 0; warp_offset /= 2)
+      batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
+  batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
 
   const int grain_size = num_threads_sqrt;
   const int size2 = size_dim2[batch_id];
@@ -49,10 +48,12 @@ void transpose(
 
   const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
   const int current_block = block_id - block_offset;
-  const int offset1_tid2 = (current_block % num_chunks_3) * grain_size + tid2;
-  const int offset2_tid2 = (current_block / num_chunks_3) * grain_size + tid2;
-  const int offset1_tid3 = (current_block % num_chunks_3) * grain_size + tid3;
-  const int offset2_tid3 = (current_block / num_chunks_3) * grain_size + tid3;
+  const int current_block_mod = (current_block % num_chunks_3) * grain_size;
+  const int current_block_div = (current_block / num_chunks_3) * grain_size;
+  const int offset1_tid2 = (current_block_mod) + tid2;
+  const int offset2_tid2 = (current_block_div) + tid2;
+  const int offset1_tid3 = (current_block_mod) + tid3;
+  const int offset2_tid3 = (current_block_div) + tid3;
   const int ii3 = offset1_tid3;
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
