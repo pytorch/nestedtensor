@@ -173,7 +173,8 @@ inline at::Tensor get_buffer_channel_last(const at::Tensor& tensor) {
       "Given Tensor doesn't have channel last buffer.");
   NestedTensorStorage* storagep = storage.get();
   ChannelLastPackedStorage* ps = dynamic_cast<ChannelLastPackedStorage*>(storagep);
-  return ps->get_buffer();
+  at::Tensor buffer = ps->get_buffer();
+  return buffer;
 }
 
 inline const std::vector<c10::optional<int64_t>> get_opt_sizes(

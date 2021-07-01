@@ -440,16 +440,22 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     if (get_is_channel_last(padded)) {
       got_channel_last = true;
     }
+    Tensor target_offsets;
       if (get_is_channel_last(padded)) {
-        apply_efficient_size([](int64_t* size_ptr, int64_t size) {
+        map_efficient_size([](int64_t* size_ptr, int64_t size) {
+            int64_t tmp = size_ptr[2];
+            size_ptr[2] = size_ptr[0];
+            size_ptr[0] = tmp;
             std::cout << ", 0 from_padded_tensor : ";
             for (int64_t i = 0; i < size; i++) {
             std::cout << ", " << size_ptr[i];
             }
             }, target_size);
         std::cout << std::endl;
+        target_offsets = batch_offsets_from_efficient_size(target_size);
+      } else {
+        target_offsets = batch_offsets_from_efficient_size(target_size);
       }
-    Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
     Tensor output = torch::empty({target_size.numel()}, padded.options());
