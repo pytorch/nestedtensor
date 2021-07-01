@@ -105,7 +105,6 @@ Tensor NestedTensor_batch_norm(
     check_dims_match_num_input_features("bias", n_input, get_numel(*bias));
   }
 
-  auto scalar_shape = make_scalar_shape(get_dim(input), n_input);
   at::Tensor mean = *running_mean;
   at::Tensor var = *running_var;
 #ifdef WITH_CUDA
@@ -139,22 +138,21 @@ Tensor NestedTensor_batch_norm(
     auto self_opt_sizes = get_opt_sizes(input);
   
     Tensor nt_sizes_ =
-        get_efficient_nested_size(input).sizes().to(torch::kInt32);
+        get_efficient_nested_size(input).sizes(); // .to(torch::kInt32);
     Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
     Tensor nt_sizes_2 = at::native::narrow(nt_sizes_, 1, 2, 1);
     Tensor nt_sizes_all = nt_sizes_1 * nt_sizes_2;
-    int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
-    std::vector<int> numbers;
-    numbers.reserve(1 + (nt_sizes_all.size(0) * *self_opt_sizes[1]));
-    numbers.push_back(0);
+    int64_t* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int64_t>();
+    at::Tensor numbers_t = at::empty({1 + (nt_sizes_all.size(0) * *self_opt_sizes[1])}, torch::kInt64);
+    int64_t* numbers_t_ptr = numbers_t.data_ptr<int64_t>();
+    numbers_t_ptr[0] = 0;
     int64_t index = 1;
     for (int64_t i = 0; i < nt_sizes_all.size(0); i++) {
       for (int64_t j = 0; j < *self_opt_sizes[1]; j++) {
-        numbers.push_back(numbers[index - 1] + nt_sizes_all_ptr[i]);
+        numbers_t_ptr[index] = (numbers_t_ptr[index - 1] + nt_sizes_all_ptr[i]);
         index++;
       }
     }
-    at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
     Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
   
     c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
@@ -184,6 +182,7 @@ Tensor NestedTensor_batch_norm(
     return wrap_buffer(std::move(input_buffer), get_efficient_nested_size(output), get_efficient_nested_stride(output));
   }
 #endif
+  auto scalar_shape = make_scalar_shape(get_dim(input), n_input);
 
   at::Tensor invstd = 1 / at::sqrt(*running_var + eps);
 
