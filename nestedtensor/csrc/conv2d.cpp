@@ -90,22 +90,29 @@ Tensor NestedTensor_conv2d(
 #endif
   if (input.dtype() == torch::kFloat16) {
     // std::cout << "start conv2d" << std::endl;
-    // bool got_channel_last = false;
-    // if (get_is_channel_last(input)) {
-    //     got_channel_last = true;
-    //     at::Tensor data = to_padded_tensor(input, 0);
-    //     std::cout << "data.sizes(): " << data.sizes() << std::endl;
-    //     std::cout << "data.strides(): " << data.strides() << std::endl;
-    //     // input = transpose_nhwc_nchw(input);
-    // }
+     bool got_channel_last = false;
+    if (get_is_channel_last(input)) {
+        got_channel_last = true;
+        // at::Tensor data = to_padded_tensor(input, 0);
+        // std::cout << "data.sizes(): " << data.sizes() << std::endl;
+        // std::cout << "data.strides(): " << data.strides() << std::endl;
+        input = transpose_nhwc_nchw(input);
+    }
     at::Tensor data = to_padded_tensor(input, 0);
-    std::cout << "conved 0 data.sizes(): " << data.sizes() << std::endl;
-    std::cout << "conved 0 data.strides(): " << data.strides() << std::endl;
+    // std::cout << "conved 0 data.sizes(): " << data.sizes() << std::endl;
+    // std::cout << "conved 0 data.strides(): " << data.strides() << std::endl;
+    // if (get_is_channel_last(data)) {
+    //   std::cout << "HALT" << std::endl;
+    //   exit(1);
+    // }
+    // if (get_is_contiguous(data)) {
+    //   data = data.permute({0, 3, 1, 2});
+    // }
     // if (get_is_channel_last(input)) {
     //   data = data.permute({0, 3, 1, 2});
     // }
-    std::cout << "conved 1 data.sizes(): " << data.sizes() << std::endl;
-    std::cout << "conved 1 data.strides(): " << data.strides() << std::endl;
+    // std::cout << "conved 1 data.sizes(): " << data.sizes() << std::endl;
+    // std::cout << "conved 1 data.strides(): " << data.strides() << std::endl;
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
             std::cout << "- 0 new conv2d : ";
@@ -120,7 +127,7 @@ Tensor NestedTensor_conv2d(
             std::cout << ", " << size_ptr[i];
             }
         }, get_efficient_nested_size(input));
-    std::cout << std::endl;
+    // std::cout << std::endl;
     // if (!get_is_contiguous(result_data)) {
     //   std::cout << "result_data.sizes(): " << result_data.sizes() << std::endl;
     //   std::cout << "result_data.strides(): " << result_data.strides() << std::endl;
@@ -132,12 +139,12 @@ Tensor NestedTensor_conv2d(
     //   std::cout << "result_data.strides(): " << result_data.strides() << std::endl;
     // }
     at::Tensor result = from_padded_tensor(result_data, new_sizes);
-    // if (got_channel_last) {
-    //   std::cout << "result.sizes(): " << result.sizes() << std::endl;
-    //   std::cout << "result.strides(): " << result.strides() << std::endl;
-    //   exit(1);
-    //   return transpose_nchw_nhwc(result);
-    // }
+    if (got_channel_last) {
+      // std::cout << "result.sizes(): " << result.sizes() << std::endl;
+      // std::cout << "result.strides(): " << result.strides() << std::endl;
+      // exit(1);
+      return transpose_nchw_nhwc(result);
+    }
     // std::cout << "end conv2d" << std::endl;
     return result;
   }
