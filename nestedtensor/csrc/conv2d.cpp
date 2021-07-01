@@ -39,6 +39,16 @@ Tensor NestedTensor_conv2d(
         get_is_cuda(input)
       ) {
       at::Tensor input_buffer;
+      int64_t weight_size_0 = weight.size(0);
+      auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
+          size_ptr[0] = weight_size_0;
+          }, get_efficient_nested_size(input));
+      if (get_is_channel_last(input) && input.dtype() == torch::kHalf) {
+        Tensor input_buffer = get_buffer_channel_last(input);
+        at::Tensor result_buffer = at::matmul(input_buffer, 
+            weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
+        return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
+      }
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
         Tensor nt_sizes =
             get_efficient_nested_size(input).sizes();
@@ -60,10 +70,6 @@ Tensor NestedTensor_conv2d(
         // output_buffer = transpose_buffer(nt_sizes,
         //                                  result_buffer.reshape(-1),
         //                                  output_buffer.reshape(-1));
-
-        auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
-            size_ptr[0] = weight_size_0;
-            }, get_efficient_nested_size(input));
         // return wrap_buffer(output_buffer.reshape(-1), new_sizes);
         return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
       }
