@@ -60,7 +60,6 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
   c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
 
-  // std::cout << "at::cuda::warp_size(): " << at::cuda::warp_size() << std::endl;
   nested_tensor::cuda::transpose_kernelLauncher(
       input_ptr,
       output_ptr,
@@ -90,8 +89,6 @@ Tensor transpose_nhwc_nchw_out(Tensor input, Tensor output) {
   Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
   nt_sizes = at::cat({nt_sizes_1_2, nt_sizes_0}, 1);
   Tensor input_buffer = get_buffer_channel_last(input);
-  // std::cout << "0 input_buffer.sizes(): " << input_buffer.sizes() << std::endl;
-  // std::cout << "0 input_buffer.strides(): " << input_buffer.strides() << std::endl;
   Tensor output_buffer = get_buffer(output);
   output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
   output_buffer = output_buffer.reshape(-1);
@@ -124,8 +121,6 @@ Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output) {
   Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
   nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
   Tensor input_buffer = get_buffer(input);
-  // std::cout << "0 input_buffer.sizes(): " << input_buffer.sizes() << std::endl;
-  // std::cout << "0 input_buffer.strides(): " << input_buffer.strides() << std::endl;
   Tensor output_buffer = at::empty_like(input_buffer);
   output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
   output_buffer = output_buffer.reshape(-1);
