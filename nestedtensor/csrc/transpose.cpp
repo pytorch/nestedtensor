@@ -74,6 +74,24 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
       );
   return output_buffer.reshape(-1);
 #endif
-  TORCH_CHECK(false, "tranpose_buffer needs CUDA.");
+  TORCH_CHECK(false, "transpose_buffer needs CUDA.");
+}
+
+Tensor transpose_nhwc_nchw(Tensor input) {
+  TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw needs 4d input.");
+  TORCH_CHECK(get_is_channel_last(input), "transpose_nhwc_nchw input needs to be channel last.");
+#ifdef WITH_CUDA
+  Tensor nt_sizes = get_efficient_nested_size(input).sizes();
+  Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
+  Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+  Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
+  Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
+  nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
+  Tensor input_buffer = get_buffer(input);
+  Tensor output_buffer = input_buffer.clone();
+  output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
+  return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(input));
+#endif
+  TORCH_CHECK(false, "transpose_nhwc_nchw needs CUDA.");
 }
 }

@@ -50,17 +50,18 @@ Tensor NestedTensor_conv2d(
         return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
       }
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
-        Tensor nt_sizes =
-            get_efficient_nested_size(input).sizes();
-        Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
-        Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
-        Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
-        Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
-        nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
-        Tensor input_buffer = get_buffer(input);
-        Tensor output_buffer = input_buffer.clone();
-        output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
-        output_buffer = output_buffer.reshape({-1, weight.size(1)});
+        // Tensor nt_sizes =
+        //     get_efficient_nested_size(input).sizes();
+        // Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
+        // Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+        // Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
+        // Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
+        // nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
+        // Tensor input_buffer = get_buffer(input);
+        // Tensor output_buffer = input_buffer.clone();
+        // output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
+        // output_buffer = output_buffer.reshape({-1, weight.size(1)});
+        Tensor output_buffer = get_buffer(transpose_nhwc_nchw(input));
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);

@@ -4,6 +4,7 @@
 #include <nestedtensor/csrc/cuda/add.h>
 #include <c10/util/Half.h>
 #endif
+#include <nestedtensor/csrc/transpose.h>
 
 namespace at {
 
@@ -29,6 +30,14 @@ Tensor NestedTensor_add_Tensor(
                 get_buffer_channel_last(other).reshape({-1})),
             self_efficient_nested_size);
       }
+      if (get_is_channel_last(self) && !get_is_channel_last(other) &&
+          get_dim(self) == get_dim(other) && get_dim(self) == 4) {
+        return NestedTensor_add_Tensor(self, transpose_nhwc_nchw(other), alpha);
+      }
+      std::cout << "get_is_channel_last(self): " << get_is_channel_last(self) << std::endl;
+      std::cout << "get_is_channel_last(other): " << get_is_channel_last(other) << std::endl;
+      std::cout << "get_dim(self): " << get_dim(self) << std::endl;
+      std::cout << "get_dim(other): " << get_dim(other) << std::endl;
       if (!get_is_contiguous(self)) {
         self = NestedTensor_contiguous(self);
       }

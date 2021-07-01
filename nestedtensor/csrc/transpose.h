@@ -7,4 +7,6 @@ Tensor transpose_buffer(
         Tensor nt_sizes_,
         Tensor input_buffer,
         Tensor output_buffer);
+
+Tensor transpose_nhwc_nchw(Tensor input);
 }
