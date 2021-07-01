@@ -12,7 +12,7 @@ inline at::Tensor stack_sizes(SizeNode size_node) {
   }
   std::vector<SizeNode> unbound_size_node = size_node.unbind();
   std::vector<int64_t> result_sizes_vector;
-  for(int64_t i = 0; i < unbound_size_node.size(); i++) {
+  for(size_t i = 0; i < unbound_size_node.size(); i++) {
     std::vector<int64_t> sizes = unbound_size_node[i].payload();
     if(i == 0) {
       result_sizes_vector.reserve(size_node.degree() * sizes.size());
@@ -21,7 +21,7 @@ inline at::Tensor stack_sizes(SizeNode size_node) {
       result_sizes_vector.push_back(sizes[j]);
     }
   }
-  return torch::tensor(result_sizes_vector, torch::kInt64).reshape({size_node.degree(), -1});
+  return torch::tensor(result_sizes_vector, torch::kInt64).reshape({(int64_t)(size_node.degree()), -1});
 }
 
 inline std::vector<c10::optional<int64_t>> construct_efficient_size(
