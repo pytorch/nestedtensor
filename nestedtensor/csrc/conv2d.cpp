@@ -45,6 +45,7 @@ Tensor NestedTensor_conv2d(
           }, get_efficient_nested_size(input));
       if (get_is_channel_last(input) && input.dtype() == torch::kHalf) {
         Tensor input_buffer = get_buffer_channel_last(input);
+        input_buffer = input_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(input_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
@@ -78,6 +79,7 @@ Tensor NestedTensor_conv2d(
   }
 #endif
   if (input.dtype() == torch::kFloat16) {
+  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
     if (get_is_channel_last(input)) {
         input = transpose_nhwc_nchw(input);
     }
