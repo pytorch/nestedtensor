@@ -41,18 +41,8 @@ Tensor NestedTensor_conv2d(
       at::Tensor input_buffer;
       int64_t weight_size_0 = weight.size(0);
       auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
-          std::cout << "size: " << size << std::endl;
-            std::cout << ", 0 conv2d : ";
-            for (int64_t i = 0; i < size; i++) {
-            std::cout << ", " << size_ptr[i];
-            }
           size_ptr[0] = weight_size_0;
-            std::cout << ", 1 conv2d : ";
-            for (int64_t i = 0; i < size; i++) {
-            std::cout << ", " << size_ptr[i];
-            }
           }, get_efficient_nested_size(input));
-        std::cout << std::endl;
       if (get_is_channel_last(input) && input.dtype() == torch::kHalf) {
         Tensor input_buffer = get_buffer_channel_last(input);
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
@@ -61,91 +51,33 @@ Tensor NestedTensor_conv2d(
         return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
       }
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
-        // Tensor nt_sizes =
-        //     get_efficient_nested_size(input).sizes();
-        // Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
-        // Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
-        // Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
-        // Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
-        // nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
-        // Tensor input_buffer = get_buffer(input);
-        // Tensor output_buffer = input_buffer.clone();
-        // output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
         Tensor output_buffer = get_buffer_channel_last(transpose_nchw_nhwc(input));
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
-        // nt_sizes_0.fill_(weight_size_0);
-        // nt_sizes = at::cat({nt_sizes_1_2, nt_sizes_0}, 1);
-        // output_buffer.resize_as_(result_buffer);
-        // output_buffer = transpose_buffer(nt_sizes,
-        //                                  result_buffer.reshape(-1),
-        //                                  output_buffer.reshape(-1));
-        // return wrap_buffer(output_buffer.reshape(-1), new_sizes);
         return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
       }
     }
   }
 #endif
   if (input.dtype() == torch::kFloat16) {
-    // std::cout << "start conv2d" << std::endl;
      bool got_channel_last = false;
     if (get_is_channel_last(input)) {
         got_channel_last = true;
-        // at::Tensor data = to_padded_tensor(input, 0);
-        // std::cout << "data.sizes(): " << data.sizes() << std::endl;
-        // std::cout << "data.strides(): " << data.strides() << std::endl;
         input = transpose_nhwc_nchw(input);
     }
     at::Tensor data = to_padded_tensor(input, 0);
-    // std::cout << "conved 0 data.sizes(): " << data.sizes() << std::endl;
-    // std::cout << "conved 0 data.strides(): " << data.strides() << std::endl;
-    // if (get_is_channel_last(data)) {
-    //   std::cout << "HALT" << std::endl;
-    //   exit(1);
-    // }
-    // if (get_is_contiguous(data)) {
-    //   data = data.permute({0, 3, 1, 2});
-    // }
-    // if (get_is_channel_last(input)) {
-    //   data = data.permute({0, 3, 1, 2});
-    // }
-    // std::cout << "conved 1 data.sizes(): " << data.sizes() << std::endl;
-    // std::cout << "conved 1 data.strides(): " << data.strides() << std::endl;
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
-            std::cout << "- 0 new conv2d : ";
-            for (int64_t i = 0; i < size; i++) {
-            std::cout << ", " << size_ptr[i];
-            }
         size_ptr[0] = weight.size(0);
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
         size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
-            std::cout << "- 1 new conv2d : ";
-            for (int64_t i = 0; i < size; i++) {
-            std::cout << ", " << size_ptr[i];
-            }
         }, get_efficient_nested_size(input));
-    // std::cout << std::endl;
-    // if (!get_is_contiguous(result_data)) {
-    //   std::cout << "result_data.sizes(): " << result_data.sizes() << std::endl;
-    //   std::cout << "result_data.strides(): " << result_data.strides() << std::endl;
-    //   std::cout << "HERE" << std::endl;
-    //   exit(1);
-    // }
-    // if (got_channel_last) {
-    //   std::cout << "result_data.sizes(): " << result_data.sizes() << std::endl;
-    //   std::cout << "result_data.strides(): " << result_data.strides() << std::endl;
-    // }
     at::Tensor result = from_padded_tensor(result_data, new_sizes);
     if (got_channel_last) {
-      // std::cout << "result.sizes(): " << result.sizes() << std::endl;
-      // std::cout << "result.strides(): " << result.strides() << std::endl;
-      // exit(1);
       return transpose_nchw_nhwc(result);
     }
-    // std::cout << "end conv2d" << std::endl;
     return result;
   }
   if (bias) {

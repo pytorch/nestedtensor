@@ -441,24 +441,6 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
       got_channel_last = true;
     }
     Tensor target_offsets;
-    padded = padded.contiguous();
-    //   if (get_is_channel_last(padded)) {
-    //     map_efficient_size([](int64_t* size_ptr, int64_t size) {
-    //         int64_t tmp = size_ptr[2];
-    //         size_ptr[2] = size_ptr[0];
-    //         size_ptr[0] = tmp;
-    //         std::cout << ", 0 from_padded_tensor : ";
-    //         for (int64_t i = 0; i < size; i++) {
-    //         std::cout << ", " << size_ptr[i];
-    //         }
-    //         }, target_size);
-    //     std::cout << std::endl;
-    //     target_offsets = batch_offsets_from_efficient_size(target_size);
-    //     std::cout << "0 target_offsets: " << target_offsets << std::endl;
-    //   } else {
-    //     target_offsets = batch_offsets_from_efficient_size(target_size);
-    //     std::cout << "1 target_offsets: " << target_offsets << std::endl;
-    //   }
     target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
@@ -538,19 +520,10 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       std::vector<int64_t> new_size;
       if (get_is_channel_last(nt)) {
         auto esize = map_efficient_size([](int64_t* size_ptr, int64_t size) {
-            // std::cout << ", 0 to_padded_tensor : ";
-            // for (int64_t i = 0; i < size; i++) {
-            // std::cout << ", " << size_ptr[i];
-            // }
             int64_t tmp = size_ptr[0];
             size_ptr[0] = size_ptr[2];
             size_ptr[2] = tmp;
-            // std::cout << ", 1 to_padded_tensor : ";
-            // for (int64_t i = 0; i < size; i++) {
-            // std::cout << ", " << size_ptr[i];
-            // }
             }, get_efficient_nested_size(nt));
-        // std::cout << std::endl;
       nt_sizes = esize.sizes();
       offsets = batch_offsets_from_efficient_size(esize);
       new_size = padded_size_from_efficient_size(esize);
@@ -560,11 +533,6 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       offsets = batch_offsets_from_efficient_size(esize);
       new_size = padded_size_from_efficient_size(esize);
       }
-      // if (get_is_channel_last(nt)) {
-      // std::cout << "nt_sizes: " << nt_sizes << std::endl;
-      // std::cout << "IntArrayRef(new_size): " << IntArrayRef(new_size) << std::endl;
-      // exit(1);
-      // }
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output;
       if (get_is_channel_last(nt)) {
@@ -601,13 +569,9 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
-        // std::cout << "0 output.sizes(): " << output.sizes() << std::endl;
-        // std::cout << "0 output.strides(): " << output.strides() << std::endl;
         if (get_is_channel_last(nt)) {
           output = output.permute({0, 3, 1, 2});
         }
-        // std::cout << "1 output.sizes(): " << output.sizes() << std::endl;
-        // std::cout << "1 output.strides(): " << output.strides() << std::endl;
         return output;
       }
       if (nt_buffer.dtype() == torch::kFloat) {
@@ -621,13 +585,9 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
-        // std::cout << "0 output.sizes(): " << output.sizes() << std::endl;
-        // std::cout << "0 output.strides(): " << output.strides() << std::endl;
         if (get_is_channel_last(nt)) {
           output = output.permute({0, 3, 1, 2});
         }
-        // std::cout << "1 output.sizes(): " << output.sizes() << std::endl;
-        // std::cout << "1 output.strides(): " << output.strides() << std::endl;
         return output;
       }
       TORCH_CHECK(false, "Input datatype ", nt_buffer.dtype(), " is not supported.");

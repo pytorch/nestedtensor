@@ -16,31 +16,11 @@ Tensor NestedTensor_add_Tensor(
     const Scalar& alpha) {
   Tensor self = self_;
   Tensor other = other_;
-  // std::cout << "is_nested_tensor_impl(self): " << is_nested_tensor_impl(self) << std::endl;
-  // std::cout << "is_nested_tensor_impl(other): " << is_nested_tensor_impl(other) << std::endl;
-  // std::cout << "get_dim(self): " << get_dim(self) << std::endl;
-  // std::cout << "get_dim(other): " << get_dim(other) << std::endl;
-  // std::cout << "get_is_channel_last(self): " << get_is_channel_last(self) << std::endl;
-  // std::cout << "get_is_channel_last(other): " << get_is_channel_last(other) << std::endl;
   if (is_nested_tensor_impl(self) && is_nested_tensor_impl(other)) {
     EfficientSizeNode self_efficient_nested_size =
         get_efficient_nested_size(self);
     EfficientSizeNode other_efficient_nested_size =
         get_efficient_nested_size(other);
-        // apply_efficient_size([](int64_t* size_ptr, int64_t size) {
-        //     std::cout << ", self : ";
-        //     for (int64_t i = 0; i < size; i++) {
-        //     std::cout << ", " << size_ptr[i];
-        //     }
-        //     }, self_efficient_nested_size);
-        // std::cout << std::endl;
-        // apply_efficient_size([](int64_t* size_ptr, int64_t size) {
-        //     std::cout << ", other: ";
-        //     for (int64_t i = 0; i < size; i++) {
-        //     std::cout << ", " << size_ptr[i];
-        //     }
-        //     }, other_efficient_nested_size);
-        // std::cout << std::endl;
     if (efficient_size_matches(
             self_efficient_nested_size, other_efficient_nested_size)) {
       if (get_is_channel_last(self) && get_is_channel_last(other)) {
