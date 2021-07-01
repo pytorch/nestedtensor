@@ -140,10 +140,22 @@ Tensor NestedTensor_batch_norm(
       input_buffer = input_buffer.reshape({-1, num_channel});
       at::Tensor invstd = at::rsqrt(running_var_cont + eps);
       at::Tensor value = invstd * weight_cont;
-      at::Tensor value2 = -at::addcmul(-bias_cont, mean, value);
+      at::Tensor value2 = -(mean * value - bias_cont);
 
       input_buffer = at::addcmul(value2.reshape({1, num_channel}), input_buffer, value.reshape({1, num_channel}));
       input_buffer = input_buffer.reshape(-1);
+
+      // Tensor output = input;
+      // output = output - mean.reshape(IntArrayRef(scalar_shape));
+      // output = output * invstd.reshape(IntArrayRef(scalar_shape));
+
+      // if (weight) {
+      //   output = output * weight->reshape(IntArrayRef(scalar_shape));
+      // }
+      // if (bias) {
+      //   output = output + bias->reshape(IntArrayRef(scalar_shape));
+      // }
+      // return output;
       return wrap_buffer_channel_last(std::move(input_buffer), get_efficient_nested_size(input));
     }
 
