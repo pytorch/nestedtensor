@@ -24,7 +24,6 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   int64_t* sizes_dim2_ptr = sizes_dim2.data_ptr<int64_t>();
   int64_t* sizes_dim3_ptr = sizes_dim3.data_ptr<int64_t>();
   int64_t batch_size = nt_sizes_.size(0);
-  // int64_t input_buffer_numel = input_buffer.numel();
   at::Tensor offsets = torch::zeros({1 + batch_size}, torch::kInt32);
   int* offsets_ptr = offsets.data_ptr<int>();
   at::Tensor block_offsets = torch::zeros({1 + batch_size}, torch::kInt32);

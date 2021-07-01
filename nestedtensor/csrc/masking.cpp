@@ -471,9 +471,6 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
         padded.dim() - 1,
         padded.size(0),
         defaultStream);
-    // if (got_channel_last) {
-    //   return wrap_buffer_channel_last(std::move(output), target_size);
-    // }
     return wrap_buffer(std::move(output), target_size);
   }
 #endif
