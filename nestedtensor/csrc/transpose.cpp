@@ -90,6 +90,7 @@ Tensor transpose_nhwc_nchw(Tensor input) {
   Tensor input_buffer = get_buffer_channel_last(input);
   Tensor output_buffer = at::empty_like(input_buffer);
   output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
+  output_buffer = output_buffer.reshape(-1);
   return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(input));
 #endif
   TORCH_CHECK(false, "transpose_nhwc_nchw needs CUDA.");
