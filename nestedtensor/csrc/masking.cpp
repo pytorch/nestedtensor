@@ -453,8 +453,10 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
             }, target_size);
         std::cout << std::endl;
         target_offsets = batch_offsets_from_efficient_size(target_size);
+        std::cout << "0 target_offsets: " << target_offsets << std::endl;
       } else {
         target_offsets = batch_offsets_from_efficient_size(target_size);
+        std::cout << "1 target_offsets: " << target_offsets << std::endl;
       }
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
