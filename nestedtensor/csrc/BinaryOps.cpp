@@ -26,8 +26,8 @@ Tensor NestedTensor_add_Tensor(
       if (get_is_channel_last(self) && get_is_channel_last(other)) {
         return wrap_buffer_channel_last(
             at::add(
-                get_buffer_channel_last(self).reshape({-1}),
-                get_buffer_channel_last(other).reshape({-1})),
+                get_buffer_channel_last(self),
+                get_buffer_channel_last(other)).reshape(-1),
             self_efficient_nested_size);
       }
       if (get_is_channel_last(self) && !get_is_channel_last(other) &&
