@@ -44,7 +44,8 @@ void batchnorm_inference_kernelLauncher(
     c10::Half* bias,
     c10::Half* output,
     const int batch_size,
-    const int input_outer_stride,
+    const int num_scalars,
+    const int numel,
     const int* offsets,
     const cudaStream_t stream);
 
