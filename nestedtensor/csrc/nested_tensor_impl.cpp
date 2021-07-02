@@ -7,6 +7,7 @@
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
 #include <c10/core/DispatchKey.h>
+#include <nestedtensor/csrc/transpose.h>
 
 namespace at {
 
@@ -122,13 +123,27 @@ at::Tensor wrap_buffer(
       std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
+at::Tensor wrap_buffer_channel_last(
+    at::Tensor&& buffer,
+    EfficientSizeNode efficient_nested_size) {
+  TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
+  TORCH_CHECK(
+      efficient_nested_size.height() == 1,
+      "Internal error: expected nested_size to be height 1.");
+  ChannelLastPackedStorage* ps = new ChannelLastPackedStorage(
+      std::move(buffer), efficient_nested_size);
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
+}
+
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   if (get_is_contiguous(self, memory_format)) {
     return self;
   }
   TORCH_CHECK(
-      memory_format != MemoryFormat::Preserve,
-      "preserve memory format is unsupported by the contiguous operator");
+      memory_format == MemoryFormat::Contiguous, 
+      "Only contiguous format is unsupported by the contiguous operator");
   PackedStorage* ps = new PackedStorage(get_nested_tensor_structure(self));
   NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
   return at::detail::make_tensor<NestedTensorImpl>(
@@ -140,8 +155,12 @@ bool NestedTensor_is_pinned(const Tensor& self) {
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(
-    const at::Tensor& self,
+    const at::Tensor& self_,
     int64_t dim) {
+  at::Tensor self = self_;
+  if (get_is_channel_last(self)) {
+    self = transpose_nhwc_nchw(self);
+  }
   auto _data = get_nested_tensor_impl(self);
   dim = at::maybe_wrap_dim(dim, get_dim(self));
   auto node = _data->get_structure();
