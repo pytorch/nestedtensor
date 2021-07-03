@@ -822,9 +822,9 @@ class TestNestedTensor(TestCase):
     def test_nchw_nhwc_cuda(self):
         import random
         random.seed(1010)
-        tensors = [torch.randn(random.randint(3, 5),
-                               random.randint(3, 5),
-                               random.randint(3, 5)) for _ in range(5)]
+        tensors = [torch.randn(random.randint(2, 4),
+                               random.randint(2, 4),
+                               random.randint(2, 4)) for _ in range(2)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
         nt0 = nestedtensor.transpose_nchw_nhwc(nt)
         print(nt0)
