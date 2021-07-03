@@ -188,6 +188,16 @@ TORCH_LIBRARY(nestedtensor, m) {
     return get_is_contiguous(self);
   });
 
+  m.def("transpose_nhwc_nchw(Tensor self) -> Tensor");
+  m.impl("transpose_nhwc_nchw", NestedTensorKey, [](Tensor self) {
+    return transpose_nhwc_nchw(self);
+  });
+
+  m.def("transpose_nchw_nhwc(Tensor self) -> Tensor");
+  m.impl("transpose_nchw_nhwc", NestedTensorKey, [](Tensor self) {
+    return transpose_nchw_nhwc(self);
+  });
+
   m.def("make_contiguous(Tensor self) -> Tensor");
   m.impl("make_contiguous", NestedTensorKey, [](Tensor self) {
     return NestedTensor_contiguous(self);
