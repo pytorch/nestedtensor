@@ -9,6 +9,7 @@
 #include <ATen/cuda/CUDAContext.h>
 #endif
 #include <nestedtensor/csrc/masking.h>
+#include <nestedtensor/csrc/transpose.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
