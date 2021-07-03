@@ -7,9 +7,10 @@
 namespace nested_tensor {
 namespace cuda {
 
+template <typename T>
 void transpose_kernelLauncher(
-    c10::Half* input,
-    c10::Half* output,
+    T* input,
+    T* output,
     const int* block_offsets,
     const int* offsets,
     const int batch_size,
