@@ -173,6 +173,16 @@ def to_nested_tensor(tensor, dim=0):
         torch.ops.nestedtensor.to_nested_tensor(tensor._impl if isinstance(tensor, NestedTensor) else tensor, dim))
 
 
+def transpose_nchw_nhwc(tensor):
+    return _wrap_result(
+        torch.ops.nestedtensor.transpose_nchw_nhwc(tensor._impl))
+
+
+def transpose_nhwc_nchw(tensor):
+    return _wrap_result(
+        torch.ops.nestedtensor.transpose_nhwc_nchw(tensor._impl))
+
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
