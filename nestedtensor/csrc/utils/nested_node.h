@@ -415,7 +415,7 @@ inline int64_t num_memory(
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.
   int64_t result = 1;
-  for (int64_t i = 0; i < size; i++) {
+  for (size_t i = 0; i < size; i++) {
     result = result + ((size_ptr[i] - 1) * stride_ptr[i]);
   }
   return result;

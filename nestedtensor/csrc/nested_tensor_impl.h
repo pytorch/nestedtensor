@@ -166,17 +166,6 @@ inline at::Tensor get_buffer(const at::Tensor& tensor) {
   return ps->get_buffer();
 }
 
-inline at::Tensor get_buffer_channel_last(const at::Tensor& tensor) {
-  auto storage = get_nested_tensor_impl(tensor)->get_storage();
-  TORCH_CHECK(
-      storage.get()->kind() == NestedTensorStorageKind::channellastpacked,
-      "Given Tensor doesn't have channel last buffer.");
-  NestedTensorStorage* storagep = storage.get();
-  ChannelLastPackedStorage* ps = dynamic_cast<ChannelLastPackedStorage*>(storagep);
-  at::Tensor buffer = ps->get_buffer();
-  return buffer;
-}
-
 inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
     const at::Tensor& tensor) {
   TORCH_CHECK(
@@ -229,29 +218,15 @@ Tensor NestedTensor_contiguous(
 inline int64_t get_is_contiguous(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
-  TORCH_CHECK(
-      memory_format == MemoryFormat::Contiguous, 
-      "Only contiguous format is unsupported by the get_is_contiguous operator");
   if (is_nested_tensor_impl(tensor)) {
     return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous();
   }
   return tensor.is_contiguous();
 }
 
-inline int64_t get_is_channel_last(const at::Tensor& tensor) {
-  if (is_nested_tensor_impl(tensor)) {
-    auto storage = get_nested_tensor_impl(tensor)->get_storage();
-    return storage.get()->kind() == NestedTensorStorageKind::channellastpacked;
-  }
-  return tensor.is_contiguous(at::MemoryFormat::ChannelsLast);
-}
-
 inline int64_t get_is_cuda(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
-  TORCH_CHECK(
-      memory_format == MemoryFormat::Contiguous, 
-      "Only contiguous format is unsupported by the get_is_cuda operator");
   if (is_nested_tensor_impl(tensor)) {
     return get_nested_tensor_impl(tensor)->get_storage()->is_cuda();
   }
@@ -273,9 +248,6 @@ at::Tensor wrap_buffer(
     EfficientSizeNode efficient_nested_size,
     EfficientSizeNode efficient_nested_stride);
 at::Tensor wrap_buffer(
-    at::Tensor&&,
-    EfficientSizeNode efficient_nested_size);
-at::Tensor wrap_buffer_channel_last(
     at::Tensor&&,
     EfficientSizeNode efficient_nested_size);
 

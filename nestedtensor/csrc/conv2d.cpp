@@ -9,12 +9,72 @@
 #include <ATen/cuda/CUDAContext.h>
 #endif
 #include <nestedtensor/csrc/masking.h>
-#include <nestedtensor/csrc/transpose.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
 
 namespace at {
+
+#ifdef WITH_CUDA
+Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buffer) {
+  Tensor sizes_dim2 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
+  Tensor sizes_dim3 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
+  Tensor nt_sizes_all = (sizes_dim2 * sizes_dim3).to(torch::kInt32);
+  int* nt_sizes_all_ptr = nt_sizes_all.data_ptr<int>();
+  int64_t* sizes_dim2_ptr = sizes_dim2.data_ptr<int64_t>();
+  int64_t* sizes_dim3_ptr = sizes_dim3.data_ptr<int64_t>();
+  int64_t batch_size = nt_sizes_.size(0);
+  int64_t input_buffer_numel = input_buffer.numel();
+  at::Tensor offsets = torch::zeros({1 + batch_size}, torch::kInt32);
+  int* offsets_ptr = offsets.data_ptr<int>();
+  at::Tensor block_offsets = torch::zeros({1 + batch_size}, torch::kInt32);
+  int* block_offsets_ptr = block_offsets.data_ptr<int>();
+  int64_t index = 1;
+  int grain_size = 32;
+  for (int64_t i = 0; i < batch_size; i++) {
+    const int size2 = sizes_dim2_ptr[i];
+    const int size3 = sizes_dim3_ptr[i];
+    const int num_chunks_2 = (size2 + grain_size - 1) / grain_size;
+    const int num_chunks_3 = (size3 + grain_size - 1) / grain_size;
+    offsets_ptr[index] = offsets_ptr[index - 1] + (int)(nt_sizes_all_ptr[i]);
+    block_offsets_ptr[index] = block_offsets_ptr[index - 1] + num_chunks_2 * num_chunks_3; 
+    index++;
+  }
+  int block_numel = block_offsets_ptr[batch_size];
+  sizes_dim2 = sizes_dim2.reshape(-1);
+  sizes_dim3 = sizes_dim3.reshape(-1);
+
+  at::Tensor all_meta = at::cat({offsets, block_offsets, sizes_dim2, sizes_dim3});
+
+  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+  all_meta = all_meta.to(at::Device(kCUDA), torch::kInt32, true, true);
+  index = 0;
+  offsets = all_meta.narrow(0, 0, offsets.numel());
+  index += offsets.numel();
+  block_offsets = all_meta.narrow(0, index, block_offsets.numel());
+  index += block_offsets.numel();
+  sizes_dim2 = all_meta.narrow(0, index, sizes_dim2.size(0));
+  index += sizes_dim2.size(0);
+  sizes_dim3 = all_meta.narrow(0, index, sizes_dim3.size(0));
+
+  c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
+  c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
+
+  // std::cout << "at::cuda::warp_size(): " << at::cuda::warp_size() << std::endl;
+  nested_tensor::cuda::transpose_kernelLauncher(
+      input_ptr,
+      output_ptr,
+      block_offsets.data_ptr<int>(),
+      offsets.data_ptr<int>(),
+      batch_size, 
+      block_numel,
+      sizes_dim2.data_ptr<int>(),
+      sizes_dim3.data_ptr<int>(),
+      defaultStream
+      );
+  return output_buffer.reshape(-1);
+}
+#endif
 
 Tensor NestedTensor_conv2d(
     const Tensor& input_,
@@ -39,34 +99,37 @@ Tensor NestedTensor_conv2d(
         get_is_cuda(input)
       ) {
       at::Tensor input_buffer;
-      int64_t weight_size_0 = weight.size(0);
-      auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
-          size_ptr[0] = weight_size_0;
-          }, get_efficient_nested_size(input));
-      if (get_is_channel_last(input) && input.dtype() == torch::kHalf) {
-        Tensor input_buffer = get_buffer_channel_last(input);
-        input_buffer = input_buffer.reshape({-1, weight.size(1)});
-        at::Tensor result_buffer = at::matmul(input_buffer, 
-            weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
-        return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
-      }
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
-        Tensor output_buffer = get_buffer_channel_last(transpose_nchw_nhwc(input));
+        Tensor nt_sizes =
+            get_efficient_nested_size(input).sizes();
+        Tensor nt_sizes_0 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
+        Tensor nt_sizes_1 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+        Tensor nt_sizes_2 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
+        Tensor nt_sizes_1_2 = nt_sizes_1 * nt_sizes_2;
+        nt_sizes = at::cat({nt_sizes_0, nt_sizes_1_2}, 1);
+        Tensor input_buffer = get_buffer(input);
+        Tensor output_buffer = input_buffer.clone();
+        output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(output_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
-        return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
+        nt_sizes_0.fill_(weight_size_0);
+        nt_sizes = at::cat({nt_sizes_1_2, nt_sizes_0}, 1);
+        output_buffer.resize_as_(result_buffer);
+        output_buffer = transpose_buffer(nt_sizes,
+                                         result_buffer.reshape(-1),
+                                         output_buffer.reshape(-1));
+
+        auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
+            size_ptr[0] = weight_size_0;
+            }, get_efficient_nested_size(input));
+        return wrap_buffer(output_buffer.reshape(-1), new_sizes);
       }
     }
   }
 #endif
   if (input.dtype() == torch::kFloat16) {
-     bool got_channel_last = false;
-    if (get_is_channel_last(input)) {
-        got_channel_last = true;
-        input = transpose_nhwc_nchw(input);
-    }
     at::Tensor data = to_padded_tensor(input, 0);
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
@@ -74,11 +137,7 @@ Tensor NestedTensor_conv2d(
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
         size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
         }, get_efficient_nested_size(input));
-    at::Tensor result = from_padded_tensor(result_data, new_sizes);
-    if (got_channel_last) {
-      return transpose_nchw_nhwc(result);
-    }
-    return result;
+    return from_padded_tensor(result_data, new_sizes);
   }
   if (bias) {
       return map_nested_tensor(

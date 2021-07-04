@@ -4,7 +4,7 @@
 namespace torch {
 namespace nested_tensor {
 
-enum NestedTensorStorageKind { packed, channellastpacked };
+enum NestedTensorStorageKind { packed, list };
 
 struct NestedTensorStorage {
   virtual ~NestedTensorStorage() = default;
