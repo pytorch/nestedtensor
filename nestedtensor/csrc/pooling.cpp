@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#include <nestedtensor/csrc/masking.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -36,6 +37,21 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
+  TORCH_CHECK(get_dim(self) == 4, "Input must be 4 dimensional.");
+  if (self.dtype() == torch::kFloat16) {
+    at::Tensor data = to_padded_tensor(self, 0);
+    at::Tensor result_data = at::max_pool2d(data,
+                                            kernel_size,
+                                            stride,
+                                            padding,
+                                            dilation,
+                                            ceil_mode);
+    auto new_sizes = map_efficient_size([&kernel_size, &stride, &padding, &dilation](int64_t* size_ptr, int64_t size) {
+        size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) / stride[0]) + 1;
+        size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) / stride[1]) + 1;
+        }, get_efficient_nested_size(self));
+    return from_padded_tensor(result_data, new_sizes);
+  }
   return map_nested_tensor(
       [&](at::Tensor t) {
         return at::max_pool2d(
