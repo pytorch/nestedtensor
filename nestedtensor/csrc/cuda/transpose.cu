@@ -9,13 +9,13 @@ namespace cuda {
 
 template<typename T, int num_threads_sqrt>
 __global__
-void transpose(
+void transpose_nchw_nhwc(
     T* input,
     T* output,
     const int* block_offsets,
     const int* offsets,
     const int batch_size,
-    const int* size_dim2,
+    const int size_dim2,
     const int* size_dim3)
 {
   __shared__ T tile[num_threads_sqrt][num_threads_sqrt + 1];
@@ -41,7 +41,7 @@ void transpose(
   batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
 
   const int grain_size = num_threads_sqrt;
-  const int size2 = size_dim2[batch_id];
+  const int size2 = size_dim2;
   const int size3 = size_dim3[batch_id];
   const int block_offset = block_offsets[batch_id];
   const int offset = offsets[batch_id];
@@ -80,21 +80,21 @@ void transpose(
 }
 
 template <typename T>
-void transpose_kernelLauncher(
+void transpose_nchw_nhwc_kernelLauncher(
     T* input, // [batch_size x None]
     T* output, // [batch_size x max(input.nested_size(1)) x inner_size]
     const int* block_offsets,
     const int* offsets,
     const int batch_size,
     const int block_numel,
-    const int* size_dim2,
+    const int size_dim2,
     const int* size_dim3,
     const cudaStream_t stream)
 {
   dim3 grid;
   grid.x = block_numel,
 
-  transpose<T, 32><<<grid, 256, 0, stream>>>(
+  transpose_nchw_nhwc<T, 32><<<grid, 256, 0, stream>>>(
       input,
       output,
       block_offsets,
@@ -104,25 +104,25 @@ void transpose_kernelLauncher(
       size_dim3);
 }
 
-template void transpose_kernelLauncher<c10::Half>(
+template void transpose_nchw_nhwc_kernelLauncher<c10::Half>(
     c10::Half* input,
     c10::Half* output,
     const int* block_offsets,
     const int* offsets,
     const int batch_size,
     const int block_numel,
-    const int* size_dim2,
+    const int size_dim2,
     const int* size_dim3,
     const cudaStream_t stream);
 
-template void transpose_kernelLauncher<float>(
+template void transpose_nchw_nhwc_kernelLauncher<float>(
     float* input,
     float* output,
     const int* block_offsets,
     const int* offsets,
     const int batch_size,
     const int block_numel,
-    const int* size_dim2,
+    const int size_dim2,
     const int* size_dim3,
     const cudaStream_t stream);
 

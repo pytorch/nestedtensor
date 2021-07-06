@@ -13,8 +13,4 @@ Tensor transpose_nhwc_nchw(Tensor input);
 
 Tensor transpose_nchw_nhwc(Tensor input);
 
-Tensor transpose_nhwc_nchw_out(Tensor input, Tensor output);
-
-Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output);
-
 }
