@@ -109,10 +109,6 @@ Tensor transpose_nchw_nhwc(Tensor input, Tensor output) {
   int* block_offsets_ptr = block_offsets.data_ptr<int>();
   int batch_size = sizes_dim2.numel();
   int block_numel = block_offsets_ptr[batch_size];
-  // std::cout << "offsets: " << offsets << std::endl;
-  // std::cout << "block_offsets: " << block_offsets << std::endl;
-  // std::cout << "sizes_dim2: " << sizes_dim2 << std::endl;
-  // std::cout << "sizes_dim3: " << sizes_dim3 << std::endl;
   auto result_meta_tensors = _transfer_metadata({offsets,
                                                  block_offsets,
                                                  sizes_dim2,
