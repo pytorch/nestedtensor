@@ -204,6 +204,13 @@ inline int64_t get_dim(const at::Tensor& tensor) {
   return tensor.dim();
 }
 
+inline const caffe2::TypeMeta get_dtype(const at::Tensor& tensor) {
+  if (is_nested_tensor_impl(tensor)) {
+    return get_nested_tensor_impl(tensor)->get_storage()->dtype();
+  }
+  return tensor.dtype();
+}
+
 inline int64_t get_numel(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
     return get_nested_tensor_impl(tensor)->get_storage()->numel();

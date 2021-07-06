@@ -7,6 +7,7 @@
 #include <torch/csrc/autograd/python_variable_indexing.h>
 #include <torch/extension.h>
 #include <chrono>
+#include <nestedtensor/csrc/transpose.h>
 
 // NOTE: A NestedTensor without any constituents, i.e.
 // nested_tensor([]) is of dimension 1 because
@@ -186,6 +187,16 @@ TORCH_LIBRARY(nestedtensor, m) {
   m.def("get_is_contiguous(Tensor self) -> int");
   m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) {
     return get_is_contiguous(self);
+  });
+
+  m.def("transpose_nhwc_nchw(Tensor self) -> Tensor");
+  m.impl("transpose_nhwc_nchw", NestedTensorKey, [](Tensor self) {
+    return transpose_nhwc_nchw(self);
+  });
+
+  m.def("transpose_nchw_nhwc(Tensor self) -> Tensor");
+  m.impl("transpose_nchw_nhwc", NestedTensorKey, [](Tensor self) {
+    return transpose_nchw_nhwc(self);
   });
 
   m.def("make_contiguous(Tensor self) -> Tensor");
