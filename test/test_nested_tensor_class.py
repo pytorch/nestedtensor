@@ -827,33 +827,34 @@ class TestNestedTensor(TestCase):
             return r
         import random
         random.seed(1010)
-        shapes = [(3,
-                   random.randint(2, 4),
-                   random.randint(2, 4)) for _ in range(2)]
-        print(shapes)
-        tensors = [torch.arange(_prod(s)).reshape(*s) for s in shapes]
+        shapes = [(128,
+                   random.randint(20, 100),
+                   random.randint(20, 100)) for _ in range(20)]
+        # print(shapes)
+        # tensors = [torch.arange(_prod(s)).reshape(*s) for s in shapes]
+        tensors = [torch.randn(*s) for s in shapes]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        print("nt")
-        print(nt)
-        print(nt.nested_size())
-        print(nt.nested_stride())
+        # print("nt")
+        # print(nt)
+        # print(nt.nested_size())
+        # print(nt.nested_stride())
         nt0 = nestedtensor.transpose_nchw_nhwc(nt)
-        print("nt0")
-        print(nt0)
-        print(nt0.nested_size())
-        print(nt0.nested_stride())
+        # print("nt0")
+        # print(nt0)
+        # print(nt0.nested_size())
+        # print(nt0.nested_stride())
         tensors1 = [t.permute(1, 2, 0) for t in tensors]
         nt1 = ntnt_nograd(tensors1, device=torch.device('cuda'))
-        print("nt1")
-        print(nt1)
-        print(nt1.nested_size())
-        print(nt1.nested_stride())
+        # print("nt1")
+        # print(nt1)
+        # print(nt1.nested_size())
+        # print(nt1.nested_stride())
         self.assertEqual(nt0, nt1)
         nt2 = nestedtensor.transpose_nhwc_nchw(nt0)
-        print("nt2")
-        print(nt2)
-        print(nt2.nested_size())
-        print(nt2.nested_stride())
+        # print("nt2")
+        # print(nt2)
+        # print(nt2.nested_size())
+        # print(nt2.nested_stride())
         self.assertEqual(nt, nt2)
 
 

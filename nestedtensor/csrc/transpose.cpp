@@ -36,7 +36,6 @@ Tensor _collapse_two_dims(Tensor input, int64_t dim1, int64_t dim2) {
     Tensor collapsed_sizes = sizes_dim2 * sizes_dim3;
     new_nt_sizes = at::cat({sizes_dim1, collapsed_sizes}, 1);
   }
-  std::cout << "new_nt_sizes: " << new_nt_sizes << std::endl;
   auto new_esizes = torch::nested_tensor::EfficientSizeNode(1, input_esizes.structure(), new_nt_sizes);
   Tensor result = wrap_buffer(get_buffer(input), new_esizes);
   TORCH_CHECK(get_dim(result) == 3, "Expected result to be 3 dimensional.");
@@ -123,6 +122,8 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
 Tensor transpose_nchw_nhwc(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc input needs to be contiguous.");
+  auto input_opt_sizes = get_opt_sizes(input);
+  TORCH_CHECK(input_opt_sizes[1], "Expected first dimension to be regular.");
   Tensor input_buffer = get_buffer(input);
   auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
       int64_t tmp = size_ptr[0];
@@ -180,6 +181,8 @@ Tensor _transpose_nhwc_nchw(Tensor input, Tensor output) {
 Tensor transpose_nhwc_nchw(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nhwc_nchw input needs to be contiguous.");
+  auto input_opt_sizes = get_opt_sizes(input);
+  TORCH_CHECK(input_opt_sizes[3], "Expected last dimension to be regular.");
   Tensor input_buffer = get_buffer(input);
   auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
       // nhwc
