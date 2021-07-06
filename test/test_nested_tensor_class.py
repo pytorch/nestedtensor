@@ -9,8 +9,8 @@ import utils
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device)
+def ntnt_nograd(x, device=None, dtype=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device, dtype=dtype)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -827,18 +827,17 @@ class TestNestedTensor(TestCase):
             return r
         import random
         random.seed(1010)
-        shapes = [(random.randint(2, 4),
-                               random.randint(2, 4),
-                               random.randint(2, 4)) for _ in range(2)]
+        shapes = [(random.randint(1, 3),
+                   random.randint(1, 3),
+                   random.randint(1, 3)) for _ in range(2)]
         tensors = [torch.arange(_prod(s)).reshape(*s) for s in shapes]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        print(nt)
-        print(nt.nested_size())
-        print(nt.nested_stride())
         nt0 = nestedtensor.transpose_nchw_nhwc(nt)
+        tensors1 = [t.transpose(0, 2) for t in tensors]
+        nt1 = ntnt_nograd(tensors1, device=torch.device('cuda'))
         print(nt0)
-        print(nt0.nested_size())
-        print(nt0.nested_stride())
+        print(nt1)
+        self.assertEqual(nt0, nt1)
 
 
 class TestContiguous(TestCase):

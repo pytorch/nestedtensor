@@ -18,7 +18,7 @@ void transpose(
     const int* size_dim2,
     const int* size_dim3)
 {
-  __shared__ c10::Half tile[num_threads_sqrt][num_threads_sqrt + 1];
+  __shared__ T tile[num_threads_sqrt][num_threads_sqrt + 1];
   const int block_id  = blockIdx.x;
   const int tid2 = threadIdx.x / 32;
   const int tid3 = threadIdx.x % 32;
@@ -60,7 +60,7 @@ void transpose(
     const int ii2 = offset2_tid2 + sub * 8;
     if (ii2 < size2 && ii3 < size3) {
       const int ii = ii2 * size3 + ii3;
-      tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+      tile[tid2 + sub * 8][tid3] = input[offset + ii];
     }
   }
 

@@ -140,8 +140,6 @@ Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output) {
   Tensor output_buffer = at::empty_like(input_buffer);
   output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
   output_buffer = output_buffer.reshape(-1);
-  std::cout << "input_buffer: " << input_buffer << std::endl;
-  std::cout << "output_buffer: " << output_buffer << std::endl;
   auto input_esize = get_efficient_nested_size(input);
   return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(output));
 #endif
