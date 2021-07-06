@@ -820,42 +820,27 @@ class TestNestedTensor(TestCase):
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_nchw_nhwc_cuda(self):
-        def _prod(tup):
-            r = 1
-            for t in tup:
-                r = r * t
-            return r
-        import random
-        random.seed(1010)
-        shapes = [(128,
-                   random.randint(20, 100),
-                   random.randint(20, 100)) for _ in range(20)]
-        # print(shapes)
-        # tensors = [torch.arange(_prod(s)).reshape(*s) for s in shapes]
-        tensors = [torch.randn(*s) for s in shapes]
-        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        # print("nt")
-        # print(nt)
-        # print(nt.nested_size())
-        # print(nt.nested_stride())
-        nt0 = nestedtensor.transpose_nchw_nhwc(nt)
-        # print("nt0")
-        # print(nt0)
-        # print(nt0.nested_size())
-        # print(nt0.nested_stride())
-        tensors1 = [t.permute(1, 2, 0) for t in tensors]
-        nt1 = ntnt_nograd(tensors1, device=torch.device('cuda'))
-        # print("nt1")
-        # print(nt1)
-        # print(nt1.nested_size())
-        # print(nt1.nested_stride())
-        self.assertEqual(nt0, nt1)
-        nt2 = nestedtensor.transpose_nhwc_nchw(nt0)
-        # print("nt2")
-        # print(nt2)
-        # print(nt2.nested_size())
-        # print(nt2.nested_stride())
-        self.assertEqual(nt, nt2)
+        def _test(dtype):
+            def _prod(tup):
+                r = 1
+                for t in tup:
+                    r = r * t
+                return r
+            import random
+            random.seed(1010)
+            shapes = [(32,
+                       random.randint(20, 100),
+                       random.randint(20, 100)) for _ in range(20)]
+            tensors = [torch.randn(*s) for s in shapes]
+            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype)
+            nt0 = nestedtensor.transpose_nchw_nhwc(nt)
+            tensors1 = [t.permute(1, 2, 0) for t in tensors]
+            nt1 = ntnt_nograd(tensors1, device=torch.device('cuda'), dtype=dtype)
+            self.assertEqual(nt0, nt1)
+            nt2 = nestedtensor.transpose_nhwc_nchw(nt0)
+            self.assertEqual(nt, nt2)
+        _test(torch.float16)
+        _test(torch.float32)
 
 
 class TestContiguous(TestCase):
