@@ -140,8 +140,10 @@ Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output) {
   Tensor output_buffer = at::empty_like(input_buffer);
   output_buffer = transpose_buffer(nt_sizes, input_buffer, output_buffer);
   output_buffer = output_buffer.reshape(-1);
+  std::cout << "input_buffer: " << input_buffer << std::endl;
+  std::cout << "output_buffer: " << output_buffer << std::endl;
   auto input_esize = get_efficient_nested_size(input);
-  return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(input));
+  return wrap_buffer(std::move(output_buffer), get_efficient_nested_size(output));
 #endif
   TORCH_CHECK(false, "transpose_nchw_nhwc needs CUDA.");
 }
@@ -150,8 +152,12 @@ Tensor transpose_nchw_nhwc(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc input needs to be contiguous.");
   Tensor input_buffer = get_buffer(input);
-  Tensor output = wrap_buffer(at::empty_like(input_buffer),
-                                           get_efficient_nested_size(input));
+  auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
+      int64_t tmp = size_ptr[0];
+      size_ptr[0] = size_ptr[2];
+      size_ptr[2] = tmp;
+      }, get_efficient_nested_size(input));
+  Tensor output = wrap_buffer(at::empty_like(input_buffer), new_sizes);
   return transpose_nchw_nhwc_out(input, output);
 }
 }

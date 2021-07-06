@@ -820,14 +820,25 @@ class TestNestedTensor(TestCase):
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_nchw_nhwc_cuda(self):
+        def _prod(tup):
+            r = 1
+            for t in tup:
+                r = r * t
+            return r
         import random
         random.seed(1010)
-        tensors = [torch.randn(random.randint(2, 4),
+        shapes = [(random.randint(2, 4),
                                random.randint(2, 4),
                                random.randint(2, 4)) for _ in range(2)]
+        tensors = [torch.arange(_prod(s)).reshape(*s) for s in shapes]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        print(nt)
+        print(nt.nested_size())
+        print(nt.nested_stride())
         nt0 = nestedtensor.transpose_nchw_nhwc(nt)
         print(nt0)
+        print(nt0.nested_size())
+        print(nt0.nested_stride())
 
 
 class TestContiguous(TestCase):
