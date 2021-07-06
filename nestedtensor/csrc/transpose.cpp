@@ -86,13 +86,7 @@ std::vector<Tensor> _transfer_metadata(std::vector<Tensor> meta_tensors) {
 }
 
 template <typename scalar_t>
-Tensor transpose_nchw_nhwc(Tensor input, Tensor output) {
-  TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc_out needs 4d input.");
-  TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc_out input needs to be contiguous.");
-  TORCH_CHECK(get_dim(output) == 4, "transpose_nchw_nhwc_out needs 4d output.");
-  TORCH_CHECK(get_is_contiguous(output), "transpose_nchw_nhwc_out output needs to be channel last.");
-  TORCH_CHECK(get_is_cuda(input), "transpose_buffer needs CUDA input.");
-  TORCH_CHECK(get_is_cuda(output), "transpose_buffer needs CUDA output.");
+Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
 #ifdef WITH_CUDA
   Tensor collapsed_input = _collapse_two_dims(input, 2, 3);
   Tensor nt_sizes = get_efficient_nested_size(collapsed_input).sizes();
@@ -101,8 +95,6 @@ Tensor transpose_nchw_nhwc(Tensor input, Tensor output) {
   Tensor offsets;
   Tensor block_offsets;
   std::tie(offsets, block_offsets) = _create_offsets<32>(collapsed_input);
-  std::cout << "offsets: " << offsets << std::endl;
-  std::cout << "block_offsets: " << block_offsets << std::endl;
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   Tensor input_buffer = get_buffer(input);
   Tensor output_buffer = get_buffer(output);
@@ -128,19 +120,6 @@ Tensor transpose_nchw_nhwc(Tensor input, Tensor output) {
   return output;
 }
 
-Tensor transpose_nhwc_nchw(Tensor input) {
-  TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw needs 4d input.");
-  TORCH_CHECK(get_is_contiguous(input), "transpose_nhwc_nchw input needs to be channel last.");
-  Tensor input_buffer = get_buffer(input);
-  auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
-      int64_t tmp = size_ptr[0];
-      size_ptr[0] = size_ptr[2];
-      size_ptr[2] = tmp;
-      }, get_efficient_nested_size(input));
-  TORCH_CHECK(false, "Not implemented.");
-  return input;
-}
-
 Tensor transpose_nchw_nhwc(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc input needs to be contiguous.");
@@ -155,11 +134,72 @@ Tensor transpose_nchw_nhwc(Tensor input) {
       }, get_efficient_nested_size(input));
   Tensor output = wrap_buffer(at::empty_like(input_buffer), new_sizes);
   if (get_dtype(input) == torch::kFloat16) {
-    return transpose_nchw_nhwc<c10::Half>(input, output);
+    return _transpose_nchw_nhwc<c10::Half>(input, output);
   }
   if (get_dtype(input) == torch::kFloat) {
-    return transpose_nchw_nhwc<float>(input, output);
+    return _transpose_nchw_nhwc<float>(input, output);
   }
   TORCH_CHECK(false, "Given dtype ", get_dtype(input), " not supported.");
 }
+
+template <typename scalar_t>
+Tensor _transpose_nhwc_nchw(Tensor input, Tensor output) {
+#ifdef WITH_CUDA
+  Tensor collapsed_input = _collapse_two_dims(input, 1, 2);
+  Tensor nt_sizes = get_efficient_nested_size(collapsed_input).sizes();
+  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
+  Tensor sizes_dim3 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+  Tensor offsets;
+  Tensor block_offsets;
+  std::tie(offsets, block_offsets) = _create_offsets<32>(collapsed_input);
+  at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+  Tensor input_buffer = get_buffer(input);
+  Tensor output_buffer = get_buffer(output);
+  int* block_offsets_ptr = block_offsets.data_ptr<int>();
+  int batch_size = sizes_dim3.numel();
+  int block_numel = block_offsets_ptr[batch_size];
+  auto result_meta_tensors = _transfer_metadata({offsets,
+                                                 block_offsets,
+                                                 sizes_dim2,
+                                                 sizes_dim3});
+  nested_tensor::cuda::transpose_nhwc_nchw_kernelLauncher(
+      input_buffer.data_ptr<scalar_t>(),
+      output_buffer.data_ptr<scalar_t>(),
+      result_meta_tensors[1].data_ptr<int>(), // block_offsets
+      result_meta_tensors[0].data_ptr<int>(), // offsets
+      batch_size, 
+      block_numel,
+      sizes_dim3[0].item<int64_t>(),
+      result_meta_tensors[2].data_ptr<int>(), // sizes_dim3
+      defaultStream
+      );
+#endif
+  return output;
+}
+
+Tensor transpose_nhwc_nchw(Tensor input) {
+  TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw needs 4d input.");
+  TORCH_CHECK(get_is_contiguous(input), "transpose_nhwc_nchw input needs to be contiguous.");
+  Tensor input_buffer = get_buffer(input);
+  auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
+      // nhwc
+      int64_t tmp = size_ptr[0];
+      size_ptr[0] = size_ptr[2];
+      size_ptr[2] = tmp;
+      // ncwh
+      tmp = size_ptr[1];
+      size_ptr[1] = size_ptr[2];
+      size_ptr[2] = tmp;
+      // nchw
+      }, get_efficient_nested_size(input));
+  Tensor output = wrap_buffer(at::empty_like(input_buffer), new_sizes);
+  if (get_dtype(input) == torch::kFloat16) {
+    return _transpose_nhwc_nchw<c10::Half>(input, output);
+  }
+  if (get_dtype(input) == torch::kFloat) {
+    return _transpose_nhwc_nchw<float>(input, output);
+  }
+  TORCH_CHECK(false, "Given dtype ", get_dtype(input), " not supported.");
+}
+
 }
