@@ -173,12 +173,21 @@ void transpose_nhwc_nchw(
   const int offset2_tid3 = (current_block_div) + tid3;
   const int ii3 = offset1_tid3;
   if (ii3 < num_channel) {
+    if (offset2_tid2 + 3 * 8 < size2) {
 #pragma unroll
-    for (int sub = 0; sub < 4; sub++) {
-      const int ii2 = offset2_tid2 + sub * 8;
-      if (ii2 < size2) {
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii2 = offset2_tid2 + sub * 8;
         const int ii = ii2 * num_channel + ii3;
         tile[tid2 + sub * 8][tid3] = input[offset + ii];
+      }
+    } else {
+#pragma unroll
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii2 = offset2_tid2 + sub * 8;
+        if (ii2 < size2) {
+          const int ii = ii2 * num_channel + ii3;
+          tile[tid2 + sub * 8][tid3] = input[offset + ii];
+        }
       }
     }
   }
@@ -188,14 +197,25 @@ void transpose_nhwc_nchw(
   int ii21 = offset2_tid3;
   if (ii21 < size2) {
     ii21 = ii21 * num_channel;
+    if (offset1_tid2 + 3 * 8 < num_channel) {
 #pragma unroll
-    for (int sub = 0; sub < 4; sub++) {
-      const int ii31 = offset1_tid2 + sub * 8;
-      if (ii31 < num_channel) {
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii31 = offset1_tid2 + sub * 8;
         const int ii1 = ii21 + ii31;
         const int j = (ii1 % num_channel) * size2;
         const int i = (ii1 / num_channel);
         output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+      }
+    } else {
+#pragma unroll
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii31 = offset1_tid2 + sub * 8;
+        if (ii31 < num_channel) {
+          const int ii1 = ii21 + ii31;
+          const int j = (ii1 % num_channel) * size2;
+          const int i = (ii1 / num_channel);
+          output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+        }
       }
     }
   }
