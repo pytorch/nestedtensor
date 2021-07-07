@@ -272,6 +272,24 @@ void batchnorm_inference_channels_last_kernelLauncher(
   const int chunk_size = 32;
   const int slice_size = numel / num_channel;
   const int num_blocks = (slice_size + chunk_size - 1) / chunk_size;
+  // At least 3 blocks per SM on Volta
+  if (num_blocks < 240) {
+    const int chunk_size = 16;
+    const int slice_size = numel / num_channel;
+    const int num_blocks = (slice_size + chunk_size - 1) / chunk_size;
+    grid.x = num_blocks;
+    batchnorm_inference_channels_last<16, 256><<<grid, 256, 0, stream>>>(
+        input,
+        mean,
+        running_var,
+        eps,
+        weight,
+        bias,
+        output,
+        num_channel,
+        numel);
+    return;
+  }
   grid.x = num_blocks;
 
   batchnorm_inference_channels_last<32, 256><<<grid, 256, 0, stream>>>(
