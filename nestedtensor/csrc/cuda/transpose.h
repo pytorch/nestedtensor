@@ -7,15 +7,26 @@
 namespace nested_tensor {
 namespace cuda {
 
-void transpose_kernelLauncher(
-    c10::Half* input,
-    c10::Half* output,
+template <typename T>
+void transpose_nchw_nhwc_kernelLauncher(
+    T* input,
+    T* output,
     const int* block_offsets,
     const int* offsets,
     const int batch_size,
     const int block_numel,
-    const int* sizes_dim2,
-    const int* sizes_dim3,
+    const int num_channel,
+    const cudaStream_t stream);
+
+template <typename T>
+void transpose_nhwc_nchw_kernelLauncher(
+    T* input,
+    T* output,
+    const int* block_offsets,
+    const int* offsets,
+    const int batch_size,
+    const int block_numel,
+    const int num_channel,
     const cudaStream_t stream);
 
 }
