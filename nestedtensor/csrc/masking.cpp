@@ -496,7 +496,8 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
-  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4) && get_is_contiguous(nt)) {
+  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
+    nt = NestedTensor_contiguous(nt, c10::MemoryFormat::Contiguous);
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {

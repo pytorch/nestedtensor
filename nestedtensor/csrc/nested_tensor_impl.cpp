@@ -137,7 +137,10 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
         std::shared_ptr<NestedTensorStorage>(ps_base));
   }
   if (memory_format == at::MemoryFormat::ChannelsLast) {
-    Tensor self_cont = NestedTensor_contiguous(self, at::MemoryFormat::Contiguous);
+    Tensor self_cont = self;
+    if (!get_is_contiguous(self, c10::MemoryFormat::Contiguous)) {
+      self_cont = NestedTensor_contiguous(self, at::MemoryFormat::Contiguous);
+    }
     TORCH_CHECK(get_dim(self_cont) == 4, "ChannelsLast memory format requires 4 dim input.");
     auto new_strides = map_efficient_size([](int64_t* stride_ptr, int64_t* size_ptr, int64_t size) {
         stride_ptr[2] = size_ptr[0];
