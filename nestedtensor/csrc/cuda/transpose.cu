@@ -180,8 +180,8 @@ void transpose_nhwc_nchw(
       tile[tid2 + 2 * 8][tid3] = input[offset + ii + 2 * 8 * num_channel];
       tile[tid2 + 3 * 8][tid3] = input[offset + ii + 3 * 8 * num_channel];
     } else {
-#pragma unroll
       int ii = offset2_tid2 * num_channel + ii3;
+#pragma unroll
       for (int sub = 0; sub < 4; sub++) {
         if (ii < size2 * num_channel) {
           tile[tid2 + sub * 8][tid3] = input[offset + ii];
@@ -197,13 +197,13 @@ void transpose_nhwc_nchw(
   if (ii21 < size2) {
     ii21 = ii21 * num_channel;
     if (offset1_tid2 + 3 * 8 < num_channel) {
+      int ii1 = ii21 + offset1_tid2;
 #pragma unroll
       for (int sub = 0; sub < 4; sub++) {
-        const int ii31 = offset1_tid2 + sub * 8;
-        const int ii1 = ii21 + ii31;
         const int j = (ii1 % num_channel) * size2;
         const int i = (ii1 / num_channel);
         output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+        ii1 += 8;
       }
     } else {
 #pragma unroll
