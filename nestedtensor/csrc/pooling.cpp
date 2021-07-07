@@ -50,7 +50,11 @@ Tensor NestedTensor_max_pool2d(
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) / stride[0]) + 1;
         size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) / stride[1]) + 1;
         }, get_efficient_nested_size(self));
-    return from_padded_tensor(result_data, new_sizes);
+    Tensor result = from_padded_tensor(result_data, new_sizes);
+    if (get_is_contiguous(self, c10::MemoryFormat::ChannelsLast)) {
+      return NestedTensor_contiguous(result, c10::MemoryFormat::ChannelsLast);
+    }
+    return result;
   }
   return map_nested_tensor(
       [&](at::Tensor t) {
