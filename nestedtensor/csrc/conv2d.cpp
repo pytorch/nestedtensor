@@ -39,9 +39,24 @@ Tensor NestedTensor_conv2d(
         get_is_cuda(input)
       ) {
       // std::cout << "HHEEEE0 get_is_contiguous(input, c10::MemoryFormat::ChannelsLast): " << get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) << std::endl;
-      // if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) && input.dtype() == torch::kHalf) {
-      //   std::cout << "HHEEEE" << std::endl;
-      // }
+      if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) && input.dtype() == torch::kHalf) {
+        Tensor input_buffer = get_buffer(input);
+        input_buffer = input_buffer.view({-1, weight.size(1)});
+        at::Tensor result_buffer = at::matmul(input_buffer, 
+            weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
+        int64_t weight_size_0 = weight.size(0);
+        auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
+            size_ptr[0] = weight_size_0;
+            }, get_efficient_nested_size(input));
+        auto new_strides = map_efficient_size([] (int64_t* size_ptr, int64_t size) {
+            int64_t tmp2 = size_ptr[2];
+            size_ptr[2] = size_ptr[0];
+            int64_t tmp1 = size_ptr[1];
+            size_ptr[1] = size_ptr[2] * tmp2;
+            size_ptr[0] = 1;
+            }, new_sizes);
+        return wrap_buffer(result_buffer.view(-1), new_sizes, new_strides);
+      }
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
         input = transpose_nchw_nhwc(input);
         Tensor input_buffer = get_buffer(input);
