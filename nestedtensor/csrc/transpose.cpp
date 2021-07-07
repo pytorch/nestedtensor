@@ -101,9 +101,7 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
   int batch_size = sizes_dim2.numel();
   int block_numel = block_offsets_ptr[batch_size];
   auto result_meta_tensors = _transfer_metadata({offsets,
-                                                 block_offsets,
-                                                 sizes_dim2,
-                                                 sizes_dim3});
+                                                 block_offsets});
   nested_tensor::cuda::transpose_nchw_nhwc_kernelLauncher(
       input_buffer.data_ptr<scalar_t>(),
       output_buffer.data_ptr<scalar_t>(),
@@ -112,7 +110,6 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
       batch_size, 
       block_numel,
       sizes_dim2[0].item<int64_t>(),
-      result_meta_tensors[3].data_ptr<int>(), // sizes_dim3
       defaultStream
       );
 #endif
@@ -160,9 +157,7 @@ Tensor _transpose_nhwc_nchw(Tensor input, Tensor output) {
   int batch_size = sizes_dim3.numel();
   int block_numel = block_offsets_ptr[batch_size];
   auto result_meta_tensors = _transfer_metadata({offsets,
-                                                 block_offsets,
-                                                 sizes_dim2,
-                                                 sizes_dim3});
+                                                 block_offsets});
   nested_tensor::cuda::transpose_nhwc_nchw_kernelLauncher(
       input_buffer.data_ptr<scalar_t>(),
       output_buffer.data_ptr<scalar_t>(),
@@ -171,7 +166,6 @@ Tensor _transpose_nhwc_nchw(Tensor input, Tensor output) {
       batch_size, 
       block_numel,
       sizes_dim3[0].item<int64_t>(),
-      result_meta_tensors[2].data_ptr<int>(), // sizes_dim3
       defaultStream
       );
 #endif

@@ -15,8 +15,7 @@ void transpose_nchw_nhwc(
     const int* block_offsets,
     const int* offsets,
     const int batch_size,
-    const int num_channel,
-    const int* image_numel)
+    const int num_channel)
 {
   __shared__ T tile[num_threads_sqrt][num_threads_sqrt + 1];
   const int block_id  = blockIdx.x;
@@ -42,9 +41,10 @@ void transpose_nchw_nhwc(
 
   const int grain_size = num_threads_sqrt;
   const int size2 = num_channel;
-  const int size3 = image_numel[batch_id];
   const int block_offset = block_offsets[batch_id];
   const int offset = offsets[batch_id];
+  const int next_offset = offsets[batch_id + 1];
+  const int size3 = (next_offset - offset) / num_channel;
 
   const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
   const int current_block = block_id - block_offset;
@@ -88,11 +88,10 @@ void transpose_nchw_nhwc_kernelLauncher(
     const int batch_size,
     const int block_numel,
     const int num_channel,
-    const int* image_numel,
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = block_numel,
+  grid.x = block_numel;
 
   transpose_nchw_nhwc<T, 32><<<grid, 256, 0, stream>>>(
       input,
@@ -100,8 +99,7 @@ void transpose_nchw_nhwc_kernelLauncher(
       block_offsets,
       offsets,
       batch_size,
-      num_channel,
-      image_numel);
+      num_channel);
 }
 
 template void transpose_nchw_nhwc_kernelLauncher<c10::Half>(
@@ -112,7 +110,6 @@ template void transpose_nchw_nhwc_kernelLauncher<c10::Half>(
     const int batch_size,
     const int block_numel,
     const int num_channel,
-    const int* image_numel,
     const cudaStream_t stream);
 
 template void transpose_nchw_nhwc_kernelLauncher<float>(
@@ -123,7 +120,6 @@ template void transpose_nchw_nhwc_kernelLauncher<float>(
     const int batch_size,
     const int block_numel,
     const int num_channel,
-    const int* image_numel,
     const cudaStream_t stream);
 
 template<typename T, int num_threads_sqrt>
@@ -135,7 +131,7 @@ void transpose_nhwc_nchw(
     const int* offsets,
     const int batch_size,
     const int num_channel,
-    const int* image_numel)
+    const int num_chunks)
 {
   __shared__ T tile[num_threads_sqrt][num_threads_sqrt + 1];
   const int block_id  = blockIdx.x;
@@ -159,41 +155,59 @@ void transpose_nhwc_nchw(
       batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
   batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
 
-  const int grain_size = num_threads_sqrt;
-  const int size2 = image_numel[batch_id];
-  const int size3 = num_channel;
   const int block_offset = block_offsets[batch_id];
   const int offset = offsets[batch_id];
+  const int next_offset = offsets[batch_id + 1];
+  const int image_numel = next_offset - offset;
+  const int size2 = image_numel / num_channel;
 
-  const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
   const int current_block = block_id - block_offset;
-  const int current_block_mod = (current_block % num_chunks_3) * grain_size;
-  const int current_block_div = (current_block / num_chunks_3) * grain_size;
+  const int current_block_mod = (current_block % num_chunks) * num_threads_sqrt;
+  const int current_block_div = (current_block / num_chunks) * num_threads_sqrt;
   const int offset1_tid2 = (current_block_mod) + tid2;
-  const int offset2_tid2 = (current_block_div) + tid2;
-  const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
-  const int ii3 = offset1_tid3;
+
+  int ii = offset + (current_block / num_chunks) * num_threads_sqrt * num_channel + tid2 * num_channel + (current_block_mod) + tid3;
+  if (ii + 3 * 8 * num_channel < next_offset) {
+    tile[tid2 + 0 * 8][tid3] = input[ii + 0 * 8 * num_channel];
+    tile[tid2 + 1 * 8][tid3] = input[ii + 1 * 8 * num_channel];
+    tile[tid2 + 2 * 8][tid3] = input[ii + 2 * 8 * num_channel];
+    tile[tid2 + 3 * 8][tid3] = input[ii + 3 * 8 * num_channel];
+  } else {
 #pragma unroll
-  for (int sub = 0; sub < 4; sub++) {
-    const int ii2 = offset2_tid2 + sub * 8;
-    if (ii2 < size2 && ii3 < size3) {
-      const int ii = ii2 * size3 + ii3;
-      tile[tid2 + sub * 8][tid3] = input[offset + ii];
+    for (int sub = 0; sub < 4; sub++) {
+      if (ii < next_offset) {
+        tile[tid2 + sub * 8][tid3] = input[ii];
+      }
+      ii += 8 * num_channel;
     }
   }
 
   __syncthreads();
 
-  const int ii21 = offset2_tid3;
+  int ii21 = offset2_tid3;
+  if (ii21 < size2) {
+    ii21 = ii21 * num_channel;
+    if (offset1_tid2 + 3 * 8 < num_channel) {
+      int ii1 = ii21 + offset1_tid2;
 #pragma unroll
-  for (int sub = 0; sub < 4; sub++) {
-    const int ii31 = offset1_tid2 + sub * 8;
-    if (ii21 < size2 && ii31 < size3) {
-      const int ii1 = ii21 * size3 + ii31;
-      const int j = (ii1 % size3) * size2;
-      const int i = (ii1 / size3);
-      output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+      for (int sub = 0; sub < 4; sub++) {
+        const int j = (ii1 % num_channel) * size2;
+        const int i = (ii1 / num_channel);
+        output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+        ii1 += 8;
+      }
+    } else {
+#pragma unroll
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii31 = offset1_tid2 + sub * 8;
+        if (ii31 < num_channel) {
+          const int ii1 = ii21 + ii31;
+          const int j = (ii1 % num_channel) * size2;
+          const int i = (ii1 / num_channel);
+          output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+        }
+      }
     }
   }
 }
@@ -207,12 +221,12 @@ void transpose_nhwc_nchw_kernelLauncher(
     const int batch_size,
     const int block_numel,
     const int num_channel,
-    const int* image_numel,
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = block_numel,
+  grid.x = block_numel;
 
+  const int num_chunks = (num_channel + 32 - 1) / 32;
   transpose_nhwc_nchw<T, 32><<<grid, 256, 0, stream>>>(
       input,
       output,
@@ -220,7 +234,7 @@ void transpose_nhwc_nchw_kernelLauncher(
       offsets,
       batch_size,
       num_channel,
-      image_numel);
+      num_chunks);
 }
 
 template void transpose_nhwc_nchw_kernelLauncher<c10::Half>(
@@ -231,7 +245,6 @@ template void transpose_nhwc_nchw_kernelLauncher<c10::Half>(
     const int batch_size,
     const int block_numel,
     const int num_channel,
-    const int* image_numel,
     const cudaStream_t stream);
 
 template void transpose_nhwc_nchw_kernelLauncher<float>(
@@ -242,7 +255,6 @@ template void transpose_nhwc_nchw_kernelLauncher<float>(
     const int batch_size,
     const int block_numel,
     const int num_channel,
-    const int* image_numel,
     const cudaStream_t stream);
 
 }
