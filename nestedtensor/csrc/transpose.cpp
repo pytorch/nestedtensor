@@ -114,7 +114,6 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
       sizes_dim2[0].item<int64_t>(),
       defaultStream
       );
-  defaultStream.synchronize();
 #endif
   return output;
 }
