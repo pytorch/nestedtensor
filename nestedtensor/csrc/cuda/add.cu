@@ -226,28 +226,28 @@ void batchnorm_inference_channels_last(
   const int slice_offset = block_id * chunk_size;
   const int num_slices = numel / num_channel;
   if (slice_offset + chunk_size < num_slices) {
+    for (int scalars_id = tid; scalars_id < num_channel; scalars_id += num_threads) {
+      c10::Half value = running_var[scalars_id] + eps;
+      value = hrsqrt(value);
+      value = value * weight[scalars_id];
+      c10::Half value2 = mean[scalars_id] * value - bias[scalars_id];
+      int offset = slice_offset * num_channel + scalars_id;
 #pragma unroll
-    for (int i = 0; i < chunk_size; i++) {
-      const int slice_id = slice_offset + i;
-      for (int scalars_id = tid; scalars_id < num_channel; scalars_id += num_threads) {
-        c10::Half value = running_var[scalars_id] + eps;
-        value = hrsqrt(value);
-        value = value * weight[scalars_id];
-        c10::Half value2 = mean[scalars_id] * value - bias[scalars_id];
-        const int offset = slice_id * num_channel + scalars_id;
+      for (int i = 0; i < chunk_size; i++) {
         output[offset] = __ldg(reinterpret_cast<const __half*>(input) + offset) * value - value2;
+        offset += num_channel;
       }
     }
   } else {
+    for (int scalars_id = tid; scalars_id < num_channel; scalars_id += num_threads) {
+      c10::Half value = running_var[scalars_id] + eps;
+      value = hrsqrt(value);
+      value = value * weight[scalars_id];
+      c10::Half value2 = mean[scalars_id] * value - bias[scalars_id];
 #pragma unroll
-    for (int i = 0; i < chunk_size; i++) {
-      const int slice_id = slice_offset + i;
-      for (int scalars_id = tid; scalars_id < num_channel; scalars_id += num_threads) {
+      for (int i = 0; i < chunk_size; i++) {
+        const int slice_id = slice_offset + i;
         if (slice_id < num_slices) {
-          c10::Half value = running_var[scalars_id] + eps;
-          value = hrsqrt(value);
-          value = value * weight[scalars_id];
-          c10::Half value2 = mean[scalars_id] * value - bias[scalars_id];
           const int offset = slice_id * num_channel + scalars_id;
           output[offset] = __ldg(reinterpret_cast<const __half*>(input) + offset) * value - value2;
         }
@@ -269,12 +269,12 @@ void batchnorm_inference_channels_last_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  const int chunk_size = 16;
+  const int chunk_size = 32;
   const int slice_size = numel / num_channel;
   const int num_blocks = (slice_size + chunk_size - 1) / chunk_size;
   grid.x = num_blocks;
 
-  batchnorm_inference_channels_last<16, 256><<<grid, 256, 0, stream>>>(
+  batchnorm_inference_channels_last<32, 256><<<grid, 256, 0, stream>>>(
       input,
       mean,
       running_var,
