@@ -131,13 +131,31 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
   if (memory_format == at::MemoryFormat::Contiguous) {
+    if (get_is_contiguous(self, c10::MemoryFormat::ChannelsLast)) {
+      auto transposed_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
+          // nchw
+          int64_t tmp = size_ptr[0];
+          size_ptr[0] = size_ptr[2];
+          size_ptr[2] = tmp;
+          // nwhc
+          tmp = size_ptr[0];
+          size_ptr[0] = size_ptr[1];
+          size_ptr[1] = tmp;
+          // nhwc
+          }, get_efficient_nested_size(self));
+      Tensor self_transposed = wrap_buffer(get_buffer(self), transposed_sizes);
+      return transpose_nhwc_nchw(self_transposed);
+    }
     PackedStorage* ps = new PackedStorage(get_nested_tensor_structure(self));
     NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
     return at::detail::make_tensor<NestedTensorImpl>(
         std::shared_ptr<NestedTensorStorage>(ps_base));
   }
   if (memory_format == at::MemoryFormat::ChannelsLast) {
-    Tensor self_cont = NestedTensor_contiguous(self, at::MemoryFormat::Contiguous);
+    Tensor self_cont = self;
+    if (!get_is_contiguous(self, c10::MemoryFormat::Contiguous)) {
+      self_cont = NestedTensor_contiguous(self, at::MemoryFormat::Contiguous);
+    }
     TORCH_CHECK(get_dim(self_cont) == 4, "ChannelsLast memory format requires 4 dim input.");
     auto new_strides = map_efficient_size([](int64_t* stride_ptr, int64_t* size_ptr, int64_t size) {
         stride_ptr[2] = size_ptr[0];

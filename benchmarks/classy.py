@@ -34,6 +34,7 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
         ts.append(inp)
     ts_nt = nestedtensor.nested_tensor([t.squeeze(0) for t in ts], device=torch.device('cuda'), dtype=torch.half)
     ts_padded = ts_nt.to_padded_tensor()
+    ts_nt = nestedtensor.nested_tensor([t.squeeze(0) for t in ts], device=torch.device('cuda'), dtype=torch.half, channels_last=True)
 
     def _loop():
         model_outputs = []

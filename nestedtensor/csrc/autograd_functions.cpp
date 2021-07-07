@@ -123,12 +123,25 @@ Tensor NestedTensor_batch_norm(
       get_is_cuda(input)
   )
   {
-  
     // Custom CUDA Half implementation.
     mean = mean.contiguous();
     Tensor bias_cont = (*bias).contiguous();
     Tensor weight_cont = (*weight).contiguous();
     Tensor running_var_cont = (*running_var).contiguous();
+
+    if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast)) {
+      Tensor input_buffer = get_buffer(input);
+      int64_t num_channel = weight_cont.size(0);
+      input_buffer = input_buffer.view({-1, num_channel});
+      at::Tensor invstd = at::rsqrt(running_var_cont + eps);
+      at::Tensor value = invstd * weight_cont;
+      at::Tensor value2 = -(mean * value - bias_cont);
+
+      input_buffer = at::addcmul(value2.reshape({1, num_channel}), input_buffer, value.reshape({1, num_channel}));
+      input_buffer = input_buffer.view(-1);
+
+      return wrap_buffer(std::move(input_buffer), get_efficient_nested_size(input), get_efficient_nested_stride(input));
+    }
   
     Tensor output = input;
     output = NestedTensor_contiguous(output);
