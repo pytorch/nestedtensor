@@ -169,25 +169,24 @@ void transpose_nhwc_nchw(
   const int current_block_div = (current_block / num_chunks) * num_threads_sqrt;
   const int offset1_tid2 = (current_block_mod) + tid2;
   const int offset2_tid2 = (current_block_div) + tid2;
-  const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
-  const int ii3 = offset1_tid3;
+
+  const int ii3 = (current_block_mod) + tid3;
   if (ii3 < num_channel) {
     if (offset2_tid2 + 3 * 8 < size2) {
-#pragma unroll
-      for (int sub = 0; sub < 4; sub++) {
-        const int ii2 = offset2_tid2 + sub * 8;
-        const int ii = ii2 * num_channel + ii3;
-        tile[tid2 + sub * 8][tid3] = input[offset + ii];
-      }
+      int ii = offset2_tid2 * num_channel + ii3;
+      tile[tid2 + 0 * 8][tid3] = input[offset + ii + 0 * 8 * num_channel];
+      tile[tid2 + 1 * 8][tid3] = input[offset + ii + 1 * 8 * num_channel];
+      tile[tid2 + 2 * 8][tid3] = input[offset + ii + 2 * 8 * num_channel];
+      tile[tid2 + 3 * 8][tid3] = input[offset + ii + 3 * 8 * num_channel];
     } else {
 #pragma unroll
+      int ii = offset2_tid2 * num_channel + ii3;
       for (int sub = 0; sub < 4; sub++) {
-        const int ii2 = offset2_tid2 + sub * 8;
-        if (ii2 < size2) {
-          const int ii = ii2 * num_channel + ii3;
+        if (ii < size2 * num_channel) {
           tile[tid2 + sub * 8][tid3] = input[offset + ii];
         }
+        ii += 8 * num_channel;
       }
     }
   }
