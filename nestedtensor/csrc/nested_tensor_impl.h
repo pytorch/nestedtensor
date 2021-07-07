@@ -222,7 +222,7 @@ Tensor NestedTensor_contiguous(
     const Tensor& self,
     MemoryFormat memory_format = MemoryFormat::Contiguous);
 
-inline int64_t get_is_contiguous(
+inline bool get_is_contiguous(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {
@@ -231,7 +231,7 @@ inline int64_t get_is_contiguous(
   return tensor.is_contiguous(memory_format);
 }
 
-inline int64_t get_is_cuda(
+inline bool get_is_cuda(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {

@@ -140,17 +140,19 @@ inline bool storage_is_contiguous_channels_last(
   const at::Tensor& strides_sizes = nested_stride.sizes();
   int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
   int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
+  std::vector<int64_t> sizes(4, 0);
+  std::vector<int64_t> strides(4, 0);
   for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
-    std::vector<int64_t> sizes;
-    sizes.push_back(1);
-    sizes.push_back(sizes_sizes_ptr[i * 3 + 0]);
-    sizes.push_back(sizes_sizes_ptr[i * 3 + 1]);
-    sizes.push_back(sizes_sizes_ptr[i * 3 + 2]);
-    std::vector<int64_t> strides;
-    strides.push_back(1);
-    strides.push_back(strides_sizes_ptr[i * 3 + 0]);
-    strides.push_back(strides_sizes_ptr[i * 3 + 1]);
-    strides.push_back(strides_sizes_ptr[i * 3 + 2]);
+    sizes[0] = 1;
+    sizes[1] = sizes_sizes_ptr[i * 3 + 0];
+    sizes[2] = sizes_sizes_ptr[i * 3 + 1];
+    sizes[3] = sizes_sizes_ptr[i * 3 + 2];
+    strides[0] = sizes_sizes_ptr[i * 3 + 0] *
+                 sizes_sizes_ptr[i * 3 + 1] *
+                 sizes_sizes_ptr[i * 3 + 2];
+    strides[1] = strides_sizes_ptr[i * 3 + 0];
+    strides[2] = strides_sizes_ptr[i * 3 + 1];
+    strides[3] = strides_sizes_ptr[i * 3 + 2];
     if (!c10::is_channels_last_strides_2d(IntArrayRef(sizes), IntArrayRef(strides))) {
       return false;
     }
