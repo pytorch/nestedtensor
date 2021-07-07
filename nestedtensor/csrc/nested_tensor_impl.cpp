@@ -140,7 +140,12 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
     Tensor self_cont = NestedTensor_contiguous(self, at::MemoryFormat::Contiguous);
     TORCH_CHECK(get_dim(self_cont) == 4, "ChannelsLast memory format requires 4 dim input.");
     self_cont = transpose_nchw_nhwc(self_cont);
-    return self_cont;
+    auto new_strides = map_efficient_size([](int64_t* stride_ptr, int64_t* size_ptr, int64_t size) {
+        stride_ptr[2] = size_ptr[0];
+        stride_ptr[1] = stride_ptr[2] * size_ptr[2];
+        stride_ptr[0] = 1;
+        }, get_efficient_nested_stride(self), get_efficient_nested_size(self));
+    return wrap_buffer(get_buffer(self_cont), get_efficient_nested_size(self), new_strides);
   }
   TORCH_CHECK(false, "Given memory format ", memory_format, " not supported by NestedTensor_contiguous.");
   return self;

@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/storage/EfficientSizeNode.h>
 #include <nestedtensor/csrc/storage/StorageBase.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
+#include <c10/core/MemoryFormat.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -122,6 +123,41 @@ inline bool storage_is_contiguous(
   return true;
 }
 
+inline bool storage_is_contiguous_channels_last(
+    const at::Tensor& buffer,
+    const EfficientSizeNode& nested_size,
+    const EfficientSizeNode& nested_stride) {
+  if (!buffer.is_contiguous()) {
+    return false;
+  }
+  if (buffer.numel() == 0) {
+    return true;
+  }
+  if (nested_size.dim() != 4) {
+    return false;
+  }
+  const at::Tensor& sizes_sizes = nested_size.sizes();
+  const at::Tensor& strides_sizes = nested_stride.sizes();
+  int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
+  int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
+  for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
+    std::vector<int64_t> sizes;
+    sizes.push_back(1);
+    sizes.push_back(sizes_sizes_ptr[i * 3 + 0]);
+    sizes.push_back(sizes_sizes_ptr[i * 3 + 1]);
+    sizes.push_back(sizes_sizes_ptr[i * 3 + 2]);
+    std::vector<int64_t> strides;
+    strides.push_back(1);
+    strides.push_back(strides_sizes_ptr[i * 3 + 0]);
+    strides.push_back(strides_sizes_ptr[i * 3 + 1]);
+    strides.push_back(strides_sizes_ptr[i * 3 + 2]);
+    if (!c10::is_channels_last_strides_2d(IntArrayRef(sizes), IntArrayRef(strides))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 } // namespace impl
 
 struct PackedStorage : public NestedTensorStorage {
@@ -139,7 +175,7 @@ struct PackedStorage : public NestedTensorStorage {
             _buffer,
             _nested_size,
             _nested_stride)),
-        _is_contiguous_channels_last(impl::storage_is_contiguous(
+        _is_contiguous_channels_last(impl::storage_is_contiguous_channels_last(
             _buffer,
             _nested_size,
             _nested_stride)) {

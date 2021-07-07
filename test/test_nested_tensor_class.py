@@ -853,18 +853,24 @@ class TestNestedTensor(TestCase):
                 return r
             import random
             random.seed(1010)
-            shapes = [(32,
-                       random.randint(20, 100),
-                       random.randint(20, 100)) for _ in range(20)]
+            shapes = [(3,
+                       random.randint(2, 4),
+                       random.randint(2, 4)) for _ in range(2)]
             tensors = [torch.randn(*s) for s in shapes]
             nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype)
             print(nt)
             print(nt.nested_size())
             print(nt.nested_stride())
+            tensors_channel_last = [t.unsqueeze(0).to(memory_format=torch.channels_last).squeeze(0) for t in tensors]
+            for t in tensors_channel_last:
+                print(t)
+                print(t.size())
+                print(t.stride())
             nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype, channels_last=True)
             print(nt)
             print(nt.nested_size())
             print(nt.nested_stride())
+
         _test(torch.float16)
         # _test(torch.float32)
 

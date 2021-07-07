@@ -213,6 +213,10 @@ at::Tensor nested_tensor_impl(
   if (pin_memory) {
     buffer = buffer.pin_memory();
   }
+  if (channels_last) {
+    result = NestedTensor_contiguous(result, c10::MemoryFormat::ChannelsLast);
+    return result;
+  }
   return wrap_buffer(std::move(buffer), get_efficient_nested_size(result));
 }
 
