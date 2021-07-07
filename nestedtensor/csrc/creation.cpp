@@ -193,7 +193,8 @@ at::Tensor nested_tensor_impl(
     py::object dtype_,
     py::object device_,
     bool requires_grad,
-    bool pin_memory) {
+    bool pin_memory,
+    bool channels_last) {
   if (requires_grad) {
     throw std::runtime_error(
         "This version of nestedtensor currently does not support autograd. Please open an issue on https://github.com/pytorch/nestedtensor if you need this.");
@@ -207,13 +208,12 @@ at::Tensor nested_tensor_impl(
     }
   }
   Tensor result = wrap_tensor_node(std::move(ivalue_structure));
-  result = NestedTensor_contiguous(result);
   Tensor buffer = get_buffer(result);
   buffer = buffer.to(device, dtype);
   if (pin_memory) {
     buffer = buffer.pin_memory();
   }
-  return wrap_buffer(std::move(buffer), get_efficient_nested_size(result), get_efficient_nested_stride(result));
+  return wrap_buffer(std::move(buffer), get_efficient_nested_size(result));
 }
 
 } // namespace nested_tensor

@@ -35,7 +35,7 @@ struct NestedTensorStorage {
   virtual NestedTensorStorageKind kind() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual bool is_contiguous() const {
+  virtual bool is_contiguous(at::MemoryFormat memory_format = at::MemoryFormat::Contiguous) const {
     TORCH_CHECK(false, "Not Implemented.");
   }
   virtual bool is_cuda() const {

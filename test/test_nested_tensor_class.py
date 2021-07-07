@@ -9,8 +9,9 @@ import utils
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None, dtype=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device, dtype=dtype)
+def ntnt_nograd(x, device=None, dtype=None, channels_last=None):
+    return nestedtensor.nested_tensor(x,
+            requires_grad=False, device=device, dtype=dtype, channels_last=channels_last)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -841,6 +842,31 @@ class TestNestedTensor(TestCase):
             self.assertEqual(nt, nt2)
         _test(torch.float16)
         _test(torch.float32)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_channels_last_cuda(self):
+        def _test(dtype):
+            def _prod(tup):
+                r = 1
+                for t in tup:
+                    r = r * t
+                return r
+            import random
+            random.seed(1010)
+            shapes = [(32,
+                       random.randint(20, 100),
+                       random.randint(20, 100)) for _ in range(20)]
+            tensors = [torch.randn(*s) for s in shapes]
+            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype)
+            print(nt)
+            print(nt.nested_size())
+            print(nt.nested_stride())
+            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype, channels_last=True)
+            print(nt)
+            print(nt.nested_size())
+            print(nt.nested_stride())
+        _test(torch.float16)
+        # _test(torch.float32)
 
 
 class TestContiguous(TestCase):

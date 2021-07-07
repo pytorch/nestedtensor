@@ -226,9 +226,9 @@ inline int64_t get_is_contiguous(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous();
+    return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous(memory_format);
   }
-  return tensor.is_contiguous();
+  return tensor.is_contiguous(memory_format);
 }
 
 inline int64_t get_is_cuda(

@@ -138,6 +138,10 @@ struct PackedStorage : public NestedTensorStorage {
         _is_contiguous(impl::storage_is_contiguous(
             _buffer,
             _nested_size,
+            _nested_stride)),
+        _is_contiguous_channels_last(impl::storage_is_contiguous(
+            _buffer,
+            _nested_size,
             _nested_stride)) {
     TORCH_CHECK(
         _nested_size.height(),
@@ -211,8 +215,15 @@ struct PackedStorage : public NestedTensorStorage {
   NestedTensorStorageKind kind() const override {
     return NestedTensorStorageKind::packed;
   }
-  bool is_contiguous() const override {
-    return _is_contiguous;
+  bool is_contiguous(at::MemoryFormat memory_format) const override {
+    if (memory_format == at::MemoryFormat::Contiguous) {
+      return _is_contiguous;
+    }
+    if (memory_format == at::MemoryFormat::ChannelsLast) {
+      return _is_contiguous_channels_last;
+    }
+    TORCH_CHECK(false, "is_contiguous does not support memory format ", memory_format);
+    return false;
   }
   bool is_cuda() const override {
     return _buffer.is_cuda();
@@ -229,6 +240,7 @@ struct PackedStorage : public NestedTensorStorage {
   c10::Device _device;
   bool _is_pinned;
   const bool _is_contiguous;
+  const bool _is_contiguous_channels_last;
 };
 
 } // namespace nested_tensor
