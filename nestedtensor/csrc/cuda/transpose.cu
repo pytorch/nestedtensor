@@ -38,7 +38,6 @@ void transpose_nchw_nhwc(
   for (int warp_offset = 16; warp_offset > 0; warp_offset /= 2)
       batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
   batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
-  // printf("batch_id: %d\n", batch_id);
 
   const int grain_size = num_threads_sqrt;
   const int size2 = num_channel;
@@ -51,13 +50,11 @@ void transpose_nchw_nhwc(
   const int current_block = block_id - block_offset;
   const int current_block_mod = (current_block % num_chunks_3) * grain_size;
   const int current_block_div = (current_block / num_chunks_3) * grain_size;
-
   const int offset1_tid2 = (current_block_mod) + tid2;
   const int offset2_tid2 = (current_block_div) + tid2;
   const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
   const int ii3 = offset1_tid3;
-
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
     const int ii2 = offset2_tid2 + sub * 8;
