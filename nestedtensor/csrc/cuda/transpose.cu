@@ -135,7 +135,7 @@ void transpose_nhwc_nchw(
     const int* offsets,
     const int batch_size,
     const int num_channel,
-    const int* image_numel,
+    // const int* image_numel,
     const int num_chunks)
 {
   __shared__ T tile[num_threads_sqrt][num_threads_sqrt + 1];
@@ -160,9 +160,12 @@ void transpose_nhwc_nchw(
       batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
   batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
 
-  const int size2 = image_numel[batch_id];
+  // const int size2 = image_numel[batch_id];
   const int block_offset = block_offsets[batch_id];
   const int offset = offsets[batch_id];
+  const int next_offset = offsets[batch_id + 1];
+  const int image_numel = next_offset - offset;
+  const int size2 = image_numel / num_channel;
 
   const int current_block = block_id - block_offset;
   const int current_block_mod = (current_block % num_chunks) * num_threads_sqrt;
@@ -173,7 +176,7 @@ void transpose_nhwc_nchw(
 
   const int ii3 = (current_block_mod) + tid3;
   if (ii3 < num_channel) {
-    if (offset2_tid2 + 3 * 8 < size2) {
+    if (offset2_tid2 * num_channel + num_channel * 3 * 8 < num_channel * size2) {
       int ii = offset2_tid2 * num_channel + ii3;
       tile[tid2 + 0 * 8][tid3] = input[offset + ii + 0 * 8 * num_channel];
       tile[tid2 + 1 * 8][tid3] = input[offset + ii + 1 * 8 * num_channel];
@@ -243,7 +246,7 @@ void transpose_nhwc_nchw_kernelLauncher(
       offsets,
       batch_size,
       num_channel,
-      image_numel,
+      // image_numel,
       num_chunks);
 }
 
