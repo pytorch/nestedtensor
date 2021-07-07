@@ -7,6 +7,7 @@
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
 #include <c10/core/DispatchKey.h>
+#include <nestedtensor/csrc/transpose.h>
 
 namespace at {
 
@@ -129,10 +130,25 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  PackedStorage* ps = new PackedStorage(get_nested_tensor_structure(self));
-  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      std::shared_ptr<NestedTensorStorage>(ps_base));
+  if (memory_format == at::MemoryFormat::Contiguous) {
+    PackedStorage* ps = new PackedStorage(get_nested_tensor_structure(self));
+    NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+    return at::detail::make_tensor<NestedTensorImpl>(
+        std::shared_ptr<NestedTensorStorage>(ps_base));
+  }
+  if (memory_format == at::MemoryFormat::ChannelsLast) {
+    Tensor self_cont = NestedTensor_contiguous(self, at::MemoryFormat::Contiguous);
+    TORCH_CHECK(get_dim(self_cont) == 4, "ChannelsLast memory format requires 4 dim input.");
+    auto new_strides = map_efficient_size([](int64_t* stride_ptr, int64_t* size_ptr, int64_t size) {
+        stride_ptr[2] = size_ptr[0];
+        stride_ptr[1] = stride_ptr[2] * size_ptr[2];
+        stride_ptr[0] = 1;
+        }, get_efficient_nested_stride(self_cont), get_efficient_nested_size(self_cont));
+    self_cont = transpose_nchw_nhwc(self_cont);
+    return wrap_buffer(get_buffer(self_cont), get_efficient_nested_size(self), new_strides);
+  }
+  TORCH_CHECK(false, "Given memory format ", memory_format, " not supported by NestedTensor_contiguous.");
+  return self;
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {

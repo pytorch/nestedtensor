@@ -6,7 +6,7 @@ from . import nested
 import nestedtensor
 
 
-def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):
+def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False, channels_last=False):
     """
     Arguments match torch.tensor
     """
@@ -14,7 +14,9 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         dtype = torch.get_default_dtype()
     if device is None:
         device = torch.device('cpu')
-    return nested.NestedTensor(nestedtensor._C.nested_tensor_impl(data, dtype, device, requires_grad, pin_memory))
+    if channels_last is None:
+        channels_last = False
+    return nested.NestedTensor(nestedtensor._C.nested_tensor_impl(data, dtype, device, requires_grad, pin_memory, channels_last))
 
 
 def as_nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory=False):

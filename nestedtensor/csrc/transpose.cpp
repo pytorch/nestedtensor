@@ -97,6 +97,8 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   Tensor input_buffer = get_buffer(input);
   Tensor output_buffer = get_buffer(output);
+  TORCH_CHECK(input_buffer.is_cuda(), "Expected input_buffer to be CUDA.");
+  TORCH_CHECK(output_buffer.is_cuda(), "Expected output_buffer to be CUDA.");
   int* block_offsets_ptr = block_offsets.data_ptr<int>();
   int batch_size = sizes_dim2.numel();
   int block_numel = block_offsets_ptr[batch_size];
