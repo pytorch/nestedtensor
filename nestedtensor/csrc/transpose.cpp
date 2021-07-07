@@ -102,6 +102,8 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
   int block_numel = block_offsets_ptr[batch_size];
   auto result_meta_tensors = _transfer_metadata({offsets,
                                                  block_offsets});
+  std::cout << "input_buffer.numel(): " << input_buffer.numel() << std::endl;
+  std::cout << "output_buffer.numel(): " << output_buffer.numel() << std::endl;
   nested_tensor::cuda::transpose_nchw_nhwc_kernelLauncher(
       input_buffer.data_ptr<scalar_t>(),
       output_buffer.data_ptr<scalar_t>(),
@@ -112,6 +114,7 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
       sizes_dim2[0].item<int64_t>(),
       defaultStream
       );
+  defaultStream.synchronize();
 #endif
   return output;
 }

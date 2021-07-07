@@ -60,6 +60,7 @@ void transpose_nchw_nhwc(
     const int ii2 = offset2_tid2 + sub * 8;
     if (ii2 < size2 && ii3 < size3) {
       const int ii = ii2 * size3 + ii3;
+      printf("input ii: %d\n", ii);
       tile[tid2 + sub * 8][tid3] = input[offset + ii];
     }
   }
@@ -67,9 +68,11 @@ void transpose_nchw_nhwc(
   __syncthreads();
 
   const int ii21 = offset2_tid3;
+  printf("ii21: %d\n", ii21);
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
     const int ii31 = offset1_tid2 + sub * 8;
+    printf("ii21: %d ii31: %d\n", ii21, ii31);
     if (ii21 < size2 && ii31 < size3) {
       const int ii1 = ii21 * size3 + ii31;
       const int j = (ii1 % size3) * size2;
@@ -77,6 +80,8 @@ void transpose_nchw_nhwc(
       output[offset + j + i] = tile[tid3][tid2 + sub * 8];
     }
   }
+
+  __syncthreads();
 }
 
 template <typename T>
