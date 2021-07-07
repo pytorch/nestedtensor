@@ -223,7 +223,7 @@ void batchnorm_inference_channels_last(
 {
   const int slice_id = blockIdx.x;
   const int tid = threadIdx.x;
-  for (int scalars_id = 0; scalars_id < num_channel; scalars_id += num_threads) {
+  for (int scalars_id = tid; scalars_id < num_channel; scalars_id += num_threads) {
     c10::Half value = running_var[scalars_id] + eps;
     value = hrsqrt(value);
     value = value * weight[scalars_id];
