@@ -38,7 +38,6 @@ Tensor NestedTensor_conv2d(
         *self_opt_sizes[1] &&
         get_is_cuda(input)
       ) {
-      // std::cout << "HHEEEE0 get_is_contiguous(input, c10::MemoryFormat::ChannelsLast): " << get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) << std::endl;
       if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) && input.dtype() == torch::kHalf) {
         Tensor input_buffer = get_buffer(input);
         input_buffer = input_buffer.view({-1, weight.size(1)});
@@ -73,11 +72,8 @@ Tensor NestedTensor_conv2d(
     }
   }
 #endif
-  // std::cout << "HHEEEE1 get_is_contiguous(input, c10::MemoryFormat::ChannelsLast): " << get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) << std::endl;
   if (input.dtype() == torch::kFloat16) {
     at::Tensor data = to_padded_tensor(input, 0);
-    // std::cout << "data.sizes() " << data.sizes() << std::endl;
-    // std::cout << "data.strides() " << data.strides() << std::endl;
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
         size_ptr[0] = weight.size(0);

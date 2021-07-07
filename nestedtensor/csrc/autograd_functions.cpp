@@ -123,8 +123,6 @@ Tensor NestedTensor_batch_norm(
       get_is_cuda(input)
   )
   {
-    // std::cout << "HHEEEE3 get_is_contiguous(input, c10::MemoryFormat::ChannelsLast): " << get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) << std::endl;
-  
     // Custom CUDA Half implementation.
     mean = mean.contiguous();
     Tensor bias_cont = (*bias).contiguous();
