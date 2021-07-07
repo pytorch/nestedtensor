@@ -38,6 +38,7 @@ void transpose_nchw_nhwc(
   for (int warp_offset = 16; warp_offset > 0; warp_offset /= 2)
       batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
   batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
+  // printf("batch_id: %d\n", batch_id);
 
   const int grain_size = num_threads_sqrt;
   const int size2 = num_channel;
@@ -50,17 +51,18 @@ void transpose_nchw_nhwc(
   const int current_block = block_id - block_offset;
   const int current_block_mod = (current_block % num_chunks_3) * grain_size;
   const int current_block_div = (current_block / num_chunks_3) * grain_size;
+
   const int offset1_tid2 = (current_block_mod) + tid2;
   const int offset2_tid2 = (current_block_div) + tid2;
   const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
   const int ii3 = offset1_tid3;
+
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
     const int ii2 = offset2_tid2 + sub * 8;
     if (ii2 < size2 && ii3 < size3) {
       const int ii = ii2 * size3 + ii3;
-      printf("input ii: %d\n", ii);
       tile[tid2 + sub * 8][tid3] = input[offset + ii];
     }
   }
@@ -68,11 +70,9 @@ void transpose_nchw_nhwc(
   __syncthreads();
 
   const int ii21 = offset2_tid3;
-  printf("ii21: %d\n", ii21);
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
     const int ii31 = offset1_tid2 + sub * 8;
-    printf("ii21: %d ii31: %d\n", ii21, ii31);
     if (ii21 < size2 && ii31 < size3) {
       const int ii1 = ii21 * size3 + ii31;
       const int j = (ii1 % size3) * size2;
@@ -80,8 +80,6 @@ void transpose_nchw_nhwc(
       output[offset + j + i] = tile[tid3][tid2 + sub * 8];
     }
   }
-
-  __syncthreads();
 }
 
 template <typename T>

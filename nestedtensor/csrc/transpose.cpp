@@ -97,13 +97,19 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   Tensor input_buffer = get_buffer(input);
   Tensor output_buffer = get_buffer(output);
+  TORCH_CHECK(input_buffer.is_cuda(), "Expected input_buffer to be CUDA.");
+  TORCH_CHECK(output_buffer.is_cuda(), "Expected output_buffer to be CUDA.");
+  std::cout << "input_buffer.is_cuda(): " << input_buffer.is_cuda() << std::endl;
+  std::cout << "output_buffer.is_cuda(): " << output_buffer.is_cuda() << std::endl;
   int* block_offsets_ptr = block_offsets.data_ptr<int>();
   int batch_size = sizes_dim2.numel();
   int block_numel = block_offsets_ptr[batch_size];
   auto result_meta_tensors = _transfer_metadata({offsets,
                                                  block_offsets});
-  std::cout << "input_buffer.numel(): " << input_buffer.numel() << std::endl;
-  std::cout << "output_buffer.numel(): " << output_buffer.numel() << std::endl;
+  // std::cout << "input_buffer.numel(): " << input_buffer.numel() << std::endl;
+  // std::cout << "output_buffer.numel(): " << output_buffer.numel() << std::endl;
+  // std::cout << "result_meta_tensors[0]: " << result_meta_tensors[0] << std::endl;
+  // std::cout << "result_meta_tensors[1]: " << result_meta_tensors[1] << std::endl;
   nested_tensor::cuda::transpose_nchw_nhwc_kernelLauncher(
       input_buffer.data_ptr<scalar_t>(),
       output_buffer.data_ptr<scalar_t>(),
