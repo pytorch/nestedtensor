@@ -208,5 +208,57 @@ void batchnorm_inference_kernelLauncher(
       offsets);
 }
 
+template <int num_threads>
+__global__
+void batchnorm_inference_channels_last(
+    const c10::Half* input,
+    const c10::Half* mean,
+    const c10::Half* running_var,
+    const c10::Half eps,
+    const c10::Half* weight,
+    const c10::Half* bias,
+    c10::Half* output,
+    const int num_channel,
+    const int numel)
+{
+  const int slice_id = blockIdx.x;
+  const int tid = threadIdx.x;
+  for (int scalars_id = 0; scalars_id < num_channel; scalars_id += num_threads) {
+    c10::Half value = running_var[scalars_id] + eps;
+    value = hrsqrt(value);
+    value = value * weight[scalars_id];
+    c10::Half value2 = mean[scalars_id] * value - bias[scalars_id];
+    const int offset = slice_id * num_channel + scalars_id;
+    output[offset] = __ldg(reinterpret_cast<const __half*>(input) + offset) * value - value2;
+  }
+}
+
+void batchnorm_inference_channels_last_kernelLauncher(
+    c10::Half* input, // [batch_size x offsets[-1]]
+    c10::Half* mean, // [batch_size]
+    c10::Half* running_var,
+    c10::Half eps,
+    c10::Half* weight, // [batch_size]
+    c10::Half* bias, // [batch_size]
+    c10::Half* output, // [batch_size x offsets[-1]]
+    const int num_channel,
+    const int numel,
+    const cudaStream_t stream)
+{
+  dim3 grid;
+  grid.x = numel / num_channel;
+
+  batchnorm_inference_channels_last<256><<<grid, 256, 0, stream>>>(
+      input,
+      mean,
+      running_var,
+      eps,
+      weight,
+      bias,
+      output,
+      num_channel,
+      numel);
+}
+
 }
 }

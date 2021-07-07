@@ -129,15 +129,32 @@ Tensor NestedTensor_batch_norm(
     Tensor weight_cont = (*weight).contiguous();
     Tensor running_var_cont = (*running_var).contiguous();
 
+    c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
+    c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
+    c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
+    c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
+
     if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast)) {
       Tensor input_buffer = get_buffer(input);
       int64_t num_channel = weight_cont.size(0);
-      input_buffer = input_buffer.view({-1, num_channel});
-      at::Tensor invstd = at::rsqrt(running_var_cont + eps);
-      at::Tensor value = invstd * weight_cont;
-      at::Tensor value2 = -(mean * value - bias_cont);
+      at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+      nested_tensor::cuda::batchnorm_inference_channels_last_kernelLauncher(
+          input_buffer.data_ptr<c10::Half>(),
+          mean_ptr,
+          running_var_ptr,
+          c10::Half((float)(eps)),
+          weight_ptr,
+          bias_ptr,
+          input_buffer.data_ptr<c10::Half>(),
+          num_channel,
+          input_buffer.numel(),
+          defaultStream);
+      // input_buffer = input_buffer.view({-1, num_channel});
+      // at::Tensor invstd = at::rsqrt(running_var_cont + eps);
+      // at::Tensor value = invstd * weight_cont;
+      // at::Tensor value2 = -(mean * value - bias_cont);
 
-      input_buffer = at::addcmul(value2.reshape({1, num_channel}), input_buffer, value.reshape({1, num_channel}));
+      // input_buffer = at::addcmul(value2.reshape({1, num_channel}), input_buffer, value.reshape({1, num_channel}));
       input_buffer = input_buffer.view(-1);
 
       return wrap_buffer(std::move(input_buffer), get_efficient_nested_size(input), get_efficient_nested_stride(input));
@@ -167,11 +184,6 @@ Tensor NestedTensor_batch_norm(
       }
     }
     Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
-  
-    c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
-    c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
-    c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
-    c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
   
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
     nested_tensor::cuda::batchnorm_inference_kernelLauncher(

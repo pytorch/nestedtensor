@@ -49,5 +49,17 @@ void batchnorm_inference_kernelLauncher(
     const int* offsets,
     const cudaStream_t stream);
 
+void batchnorm_inference_channels_last_kernelLauncher(
+    c10::Half* input,
+    c10::Half* mean,
+    c10::Half* running_var,
+    c10::Half eps,
+    c10::Half* weight,
+    c10::Half* bias,
+    c10::Half* output,
+    const int num_channel,
+    const int numel,
+    const cudaStream_t stream);
+
 }
 }
