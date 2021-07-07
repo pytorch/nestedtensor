@@ -171,11 +171,11 @@ void transpose_nhwc_nchw(
   const int current_block_mod = (current_block % num_chunks) * num_threads_sqrt;
   const int current_block_div = (current_block / num_chunks) * num_threads_sqrt;
   const int offset1_tid2 = (current_block_mod) + tid2;
-  const int offset2_tid2 = (current_block_div) + tid2;
   const int offset2_tid3 = (current_block_div) + tid3;
 
   const int ii3 = (current_block_mod) + tid3;
   if (ii3 < num_channel) {
+    const int offset2_tid2 = (current_block / num_chunks) * num_threads_sqrt + tid2;
     int ii = offset + offset2_tid2 * num_channel + ii3;
     if (ii + 3 * 8 * num_channel < next_offset) {
       tile[tid2 + 0 * 8][tid3] = input[ii + 0 * 8 * num_channel];
