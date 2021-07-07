@@ -857,26 +857,13 @@ class TestNestedTensor(TestCase):
                        random.randint(2, 4),
                        random.randint(2, 4)) for _ in range(2)]
             tensors = [torch.randn(*s) for s in shapes]
-            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype)
-            print(nt)
-            print(nt.is_contiguous())
-            print(nt.is_contiguous(torch.channels_last))
-            print(nt.nested_size())
-            print(nt.nested_stride())
             tensors_channel_last = [t.unsqueeze(0).to(memory_format=torch.channels_last).squeeze(0) for t in tensors]
-            # for t in tensors_channel_last:
-            #     print(t)
-            #     print(t.size())
-            #     print(t.stride())
             nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype, channels_last=True)
-            print(nt)
-            print(nt.is_contiguous())
-            print(nt.is_contiguous(torch.channels_last))
-            print(nt.nested_size())
-            print(nt.nested_stride())
+            for (t_i, nt_i) in zip(tensors_channel_last, nt):
+                self.assertEqual(t_i, nt_i, prec=1e-3)
 
         _test(torch.float16)
-        # _test(torch.float32)
+        _test(torch.float32)
 
 
 class TestContiguous(TestCase):
