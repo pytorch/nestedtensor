@@ -66,11 +66,8 @@ for nnodes, nedges in zip(nnodes_list, nedges_list):
     tensors_x.append(x)
     tensors_edge_index.append(edge_index)
 
-nt_x = nestedtensor.nested_tensor(tensors_x, device=torch.device('cuda'))
-nt_edge_index = nestedtensor.nested_tensor(tensors_edge_index, device=torch.device('cuda'))
-
-print(nt_x.nested_size())
-print(nt_edge_index.nested_size())
+nt_x = nestedtensor.nested_tensor(tensors_x, device=device)
+nt_edge_index = nestedtensor.nested_tensor(tensors_edge_index, device=device)
 
 
 @torch.inference_mode()
@@ -78,4 +75,11 @@ def loop():
     for x, edge_index in zip(tensors_x, tensors_edge_index):
         model(x, edge_index)
 
+
+@torch.inference_mode()
+def nt():
+    model(nt_x, nt_edge_index)
+
+
 print(benchmark_torch_function(10, loop))
+print(benchmark_torch_function(10, nt))
