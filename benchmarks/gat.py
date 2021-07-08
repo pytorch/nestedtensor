@@ -33,10 +33,10 @@ class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = GATConv(num_features, 8, heads=8,
-                             dropout=0.6).jittable()
+                             dropout=0.6)
 
         self.conv2 = GATConv(64, num_classes, heads=1, concat=True,
-                             dropout=0.6).jittable()
+                             dropout=0.6)
 
     def forward(self, x, edge_index):
         x = F.dropout(x, p=0.6, training=self.training)
