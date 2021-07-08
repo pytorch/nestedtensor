@@ -37,7 +37,7 @@ Tensor NestedTensor_relu(const Tensor& self) {
 
 // Registered below autograd
 Tensor& NestedTensor_relu_(Tensor& self) {
-  if (get_is_contiguous(self)) {
+  if (get_is_contiguous(self) || get_is_contiguous(self, c10::MemoryFormat::ChannelsLast)) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu_" << std::endl;
 #endif

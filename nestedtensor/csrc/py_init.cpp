@@ -184,9 +184,9 @@ TORCH_LIBRARY(nestedtensor, m) {
     return get_numel(self);
   });
 
-  m.def("get_is_contiguous(Tensor self) -> int");
-  m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) {
-    return get_is_contiguous(self);
+  m.def("get_is_contiguous(Tensor self, MemoryFormat memory_format) -> bool");
+  m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self, c10::MemoryFormat memory_format) {
+    return get_is_contiguous(self, memory_format);
   });
 
   m.def("transpose_nhwc_nchw(Tensor self) -> Tensor");

@@ -123,12 +123,35 @@ Tensor NestedTensor_batch_norm(
       get_is_cuda(input)
   )
   {
-  
     // Custom CUDA Half implementation.
     mean = mean.contiguous();
     Tensor bias_cont = (*bias).contiguous();
     Tensor weight_cont = (*weight).contiguous();
     Tensor running_var_cont = (*running_var).contiguous();
+
+    c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
+    c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
+    c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
+    c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
+
+    if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast)) {
+      Tensor input_buffer = get_buffer(input);
+      int64_t num_channel = weight_cont.size(0);
+      at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+      nested_tensor::cuda::batchnorm_inference_channels_last_kernelLauncher(
+          input_buffer.data_ptr<c10::Half>(),
+          mean_ptr,
+          running_var_ptr,
+          c10::Half((float)(eps)),
+          weight_ptr,
+          bias_ptr,
+          input_buffer.data_ptr<c10::Half>(),
+          num_channel,
+          input_buffer.numel(),
+          defaultStream);
+      input_buffer = input_buffer.view(-1);
+      return wrap_buffer(std::move(input_buffer), get_efficient_nested_size(input), get_efficient_nested_stride(input));
+    }
   
     Tensor output = input;
     output = NestedTensor_contiguous(output);
@@ -154,11 +177,6 @@ Tensor NestedTensor_batch_norm(
       }
     }
     Tensor nt_sizes = numbers_t.to(at::Device(kCUDA), torch::kInt32, true, true);
-  
-    c10::Half* mean_ptr = mean.data_ptr<c10::Half>();
-    c10::Half* running_var_ptr = running_var_cont.data_ptr<c10::Half>();
-    c10::Half* bias_ptr = bias_cont.data_ptr<c10::Half>();
-    c10::Half* weight_ptr = weight_cont.data_ptr<c10::Half>();
   
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
     nested_tensor::cuda::batchnorm_inference_kernelLauncher(
