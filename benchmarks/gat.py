@@ -1,0 +1,81 @@
+import torch
+import torch.nn.functional as F
+from torch_geometric.nn import GATConv
+import random
+import time
+import nestedtensor
+
+@torch.inference_mode()
+def benchmark_torch_function(iters, f, *args, **kwargs):
+    f(*args, **kwargs)
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+        start_event = torch.cuda.Event(enable_timing=True)
+        end_event = torch.cuda.Event(enable_timing=True)
+        start_event.record()
+    else:
+        t0 = time.time()
+    for _ in range(iters):
+        f(*args, **kwargs)
+    if torch.cuda.is_available():
+        end_event.record()
+        torch.cuda.synchronize()
+        return start_event.elapsed_time(end_event)
+    else:
+        return (time.time() - t0)
+
+
+num_features = 1433
+num_classes = 7
+
+
+class Net(torch.nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = GATConv(num_features, 8, heads=8,
+                             dropout=0.6).jittable()
+
+        self.conv2 = GATConv(64, num_classes, heads=1, concat=True,
+                             dropout=0.6).jittable()
+
+    def forward(self, x, edge_index):
+        x = F.dropout(x, p=0.6, training=self.training)
+        x = F.elu(self.conv1(x, edge_index))
+        x = F.dropout(x, p=0.6, training=self.training)
+        x = self.conv2(x, edge_index)
+        return F.log_softmax(x, dim=1)
+
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model = Net().to(device).eval()
+
+random.seed(1010)
+nnodes_list = []
+nedges_list = []
+for i in range(50):
+    nnodes_list.append(random.randint(100, 4000))
+    nedges_list.append(random.randint(8000, 15000))
+
+tensors_x = []
+tensors_edge_index = []
+for nnodes, nedges in zip(nnodes_list, nedges_list):
+    x = torch.normal(-10, 4, (nnodes, 1433))
+    x[x < 0] = 0.
+    x[x > 1] = 1.
+    edge_index = torch.randint(0, nnodes, (2, nedges), dtype=torch.int64)
+    tensors_x.append(x)
+    tensors_edge_index.append(edge_index)
+
+nt_x = nestedtensor.nested_tensor(tensors_x, device=torch.device('cuda'))
+nt_edge_index = nestedtensor.nested_tensor(tensors_edge_index, device=torch.device('cuda'))
+
+print(nt_x.nested_size())
+print(nt_edge_index.nested_size())
+
+
+@torch.inference_mode()
+def loop():
+    for x, edge_index in zip(tensors_x, tensors_edge_index):
+        model(x, edge_index)
+
+print(benchmark_torch_function(10, loop))
