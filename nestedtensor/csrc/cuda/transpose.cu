@@ -21,12 +21,12 @@ void transpose_nchw_nhwc(
   const int batch_id = blockIdx.x;
   const int tid2 = threadIdx.x / 32;
   const int tid3 = threadIdx.x % 32;
-  for (int block_id = block_offsets[batch_id] + blockIdx.y;
-           block_id < block_offsets[batch_id + 1];
+  const int block_offset = block_offsets[batch_id];
+  const int next_block_offset = block_offsets[batch_id + 1];
+  for (int block_id = block_offset + blockIdx.y; block_id < next_block_offset;
            block_id += 256) {
   const int grain_size = num_threads_sqrt;
   const int size2 = num_channel;
-  const int block_offset = block_offsets[batch_id];
   const int offset = offsets[batch_id];
   const int next_offset = offsets[batch_id + 1];
   const int size3 = (next_offset - offset) / num_channel;
