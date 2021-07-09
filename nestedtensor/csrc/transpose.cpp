@@ -23,18 +23,21 @@ Tensor _collapse_two_dims(Tensor input, int64_t dim1, int64_t dim2) {
   TORCH_CHECK(get_dim(input) == 4, "Expected input to be 4 dim.");
   auto input_esizes = get_efficient_nested_size(input);
   Tensor nt_sizes = input_esizes.sizes();
+  int64_t* nt_sizes_ptr = nt_sizes.data_ptr<int64_t>();
+  int64_t batch_size = nt_sizes.size(0);
 
-  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
-  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
-  Tensor sizes_dim3 = at::native::narrow(nt_sizes, 1, 2, 1).contiguous();
-
-  Tensor new_nt_sizes;
+  Tensor new_nt_sizes = torch::empty({batch_size, 2}, torch::kInt64);
+  int64_t* new_nt_sizes_ptr = new_nt_sizes.data_ptr<int64_t>();
   if (dim1 == 1) {
-    Tensor collapsed_sizes = sizes_dim1 * sizes_dim2;
-    new_nt_sizes = at::cat({collapsed_sizes, sizes_dim3}, 1);
+    for (int64_t i = 0; i < batch_size; i++) {
+      new_nt_sizes_ptr[i * 2 + 0] = nt_sizes_ptr[i * 3 + 0] * nt_sizes_ptr[i * 3 + 1];
+      new_nt_sizes_ptr[i * 2 + 1] = nt_sizes_ptr[i * 3 + 2];
+    }
   } else if (dim1 == 2) {
-    Tensor collapsed_sizes = sizes_dim2 * sizes_dim3;
-    new_nt_sizes = at::cat({sizes_dim1, collapsed_sizes}, 1);
+    for (int64_t i = 0; i < batch_size; i++) {
+      new_nt_sizes_ptr[i * 2 + 0] = nt_sizes_ptr[i * 3 + 0];
+      new_nt_sizes_ptr[i * 2 + 1] = nt_sizes_ptr[i * 3 + 1] * nt_sizes_ptr[i * 3 + 2];
+    }
   }
   auto new_esizes = torch::nested_tensor::EfficientSizeNode(1, input_esizes.structure(), new_nt_sizes);
   Tensor result = wrap_buffer(get_buffer(input), new_esizes);
