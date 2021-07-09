@@ -63,6 +63,9 @@ void transpose_nchw_nhwc(
       output[offset + j + i] = tile[tid3][tid2 + sub * 8];
     }
   }
+
+  __syncthreads();
+
   }
 }
 
