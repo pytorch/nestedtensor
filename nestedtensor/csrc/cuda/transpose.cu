@@ -42,13 +42,14 @@ void transpose_nchw_nhwc(
 
   if (ii3 < size3) {
   int ii2 = offset2_tid2;
+  int ii = ii3 + ii2 * size3;
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
-    if (ii2 < size2) {
-      const int ii = ii2 * size3 + ii3;
-      tile[tid2 + sub * 8][tid3] = input[ii];
-    }
+    bool valid = ii2 < size2;
+    // const int ii = ii2 * size3 + ii3;
+    tile[tid2 + sub * 8][tid3] = valid ? input[ii] : T(0);
     ii2 += 8;
+    ii += 8 * size3;
   }
   }
 
