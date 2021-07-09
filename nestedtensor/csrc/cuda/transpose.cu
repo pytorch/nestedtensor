@@ -78,7 +78,8 @@ void transpose_nchw_nhwc_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = block_numel;
+  grid.x = batch_size;
+  grid.y = 256;
 
   transpose_nchw_nhwc<T, 32><<<grid, 256, 0, stream>>>(
       input,
@@ -211,8 +212,7 @@ void transpose_nhwc_nchw_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = batch_size;
-  grid.y = 256;
+  grid.x = block_numel;
 
   const int num_chunks = (num_channel + 32 - 1) / 32;
   transpose_nhwc_nchw<T, 32><<<grid, 256, 0, stream>>>(
