@@ -127,33 +127,20 @@ void transpose_nhwc_nchw(
     const int num_chunks)
 {
   __shared__ T tile[num_threads_sqrt][num_threads_sqrt + 1];
-  const int block_id  = blockIdx.x;
+  const int batch_id  = blockIdx.y;
   const int tid2 = threadIdx.x / 32;
   const int tid3 = threadIdx.x % 32;
-  int batch_id = threadIdx.x % 32;
-  bool found = false;
-  while (batch_id < batch_size) {
-    if (block_offsets[batch_id] <= block_id && 
-        block_id < block_offsets[batch_id + 1]) {
-      found = true;
-      break;
-    }
-    batch_id += 32;
-  }
-  if (!found) {
-    batch_id = 0;
-  }
-  // TODO: Parameterize on warp size instead of assuming 32.
-  for (int warp_offset = 16; warp_offset > 0; warp_offset /= 2)
-      batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
-  batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
 
   const int block_offset = block_offsets[batch_id];
+  const int next_block_offset = block_offsets[batch_id + 1];
   const int offset = offsets[batch_id];
   const int next_offset = offsets[batch_id + 1];
   const int image_numel = next_offset - offset;
   const int size2 = image_numel / num_channel;
 
+  for (int block_id = blockIdx.x + block_offset;
+           block_id < next_block_offset;
+           block_id += 256) {
   const int current_block = block_id - block_offset;
   const int current_block_mod = (current_block % num_chunks) * num_threads_sqrt;
   const int current_block_div = (current_block / num_chunks) * num_threads_sqrt;
@@ -203,6 +190,9 @@ void transpose_nhwc_nchw(
       }
     }
   }
+
+  __syncthreads();
+  }
 }
 
 template <typename T>
@@ -217,7 +207,8 @@ void transpose_nhwc_nchw_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = block_numel;
+  grid.x = 256;
+  grid.y = batch_size;
 
   const int num_chunks = (num_channel + 32 - 1) / 32;
   transpose_nhwc_nchw<T, 32><<<grid, 256, 0, stream>>>(
