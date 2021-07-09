@@ -7,7 +7,7 @@
 namespace nested_tensor {
 namespace cuda {
 
-template<typename T, int grain_size>
+template<typename T, int grain_size, int num_blocks>
 __global__
 void transpose_nchw_nhwc(
     T* input,
@@ -31,7 +31,7 @@ void transpose_nchw_nhwc(
   const int size3 = (next_offset - offset) / num_channel;
   const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
   for (int current_block = blockIdx.x; current_block < (next_block_offset - block_offset);
-           current_block += 256) {
+           current_block += num_blocks) {
 
   const int current_block_mod = (current_block % num_chunks_3) * grain_size;
   const int current_block_div = (current_block / num_chunks_3) * grain_size;
@@ -86,7 +86,7 @@ void transpose_nchw_nhwc_kernelLauncher(
   grid.x = 256;
   grid.y = batch_size;
 
-  transpose_nchw_nhwc<T, 32><<<grid, 256, 0, stream>>>(
+  transpose_nchw_nhwc<T, 32, 256><<<grid, 256, 0, stream>>>(
       input,
       output,
       block_offsets,
@@ -115,7 +115,7 @@ template void transpose_nchw_nhwc_kernelLauncher<float>(
     const int num_channel,
     const cudaStream_t stream);
 
-template<typename T, int num_threads_sqrt>
+template<typename T, int num_threads_sqrt, int num_blocks>
 __global__
 void transpose_nhwc_nchw(
     T* input,
@@ -142,7 +142,7 @@ void transpose_nhwc_nchw(
 
   for (int block_id = blockIdx.x + block_offset;
            block_id < next_block_offset;
-           block_id += 256) {
+           block_id += num_blocks) {
   const int current_block = block_id - block_offset;
   const int current_block_mod = (current_block % num_chunks) * num_threads_sqrt;
   const int current_block_div = (current_block / num_chunks) * num_threads_sqrt;
@@ -192,11 +192,11 @@ void transpose_nhwc_nchw_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = 256;
+  grid.x = 128;
   grid.y = batch_size;
 
   const int num_chunks = (num_channel + 32 - 1) / 32;
-  transpose_nhwc_nchw<T, 32><<<grid, 256, 0, stream>>>(
+  transpose_nhwc_nchw<T, 32, 128><<<grid, 256, 0, stream>>>(
       input,
       output,
       block_offsets,
