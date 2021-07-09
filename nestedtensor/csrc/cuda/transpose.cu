@@ -137,6 +137,8 @@ void transpose_nhwc_nchw(
   const int next_offset = offsets[batch_id + 1];
   const int image_numel = next_offset - offset;
   const int size2 = image_numel / num_channel;
+  input = input + offset;
+  output = output + offset;
 
   for (int block_id = blockIdx.x + block_offset;
            block_id < next_block_offset;
@@ -147,7 +149,7 @@ void transpose_nhwc_nchw(
   const int offset1_tid2 = (current_block_mod) + tid2;
   const int offset2_tid3 = (current_block_div) + tid3;
 
-  int ii = offset + (current_block / num_chunks) * num_threads_sqrt * num_channel + tid2 * num_channel + (current_block_mod) + tid3;
+  int ii = (current_block / num_chunks) * num_threads_sqrt * num_channel + tid2 * num_channel + (current_block_mod) + tid3;
   if (ii + 3 * 8 * num_channel < next_offset) {
     tile[tid2 + 0 * 8][tid3] = input[ii + 0 * 8 * num_channel];
     tile[tid2 + 1 * 8][tid3] = input[ii + 1 * 8 * num_channel];
@@ -156,9 +158,8 @@ void transpose_nhwc_nchw(
   } else {
 #pragma unroll
     for (int sub = 0; sub < 4; sub++) {
-      if (ii < next_offset) {
-        tile[tid2 + sub * 8][tid3] = input[ii];
-      }
+      bool valid = ii < next_offset;
+      tile[tid2 + sub * 8][tid3] = valid ? input[ii] : T(0);
       ii += 8 * num_channel;
     }
   }
@@ -174,7 +175,7 @@ void transpose_nhwc_nchw(
       for (int sub = 0; sub < 4; sub++) {
         const int j = (ii1 % num_channel) * size2;
         const int i = (ii1 / num_channel);
-        output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+        output[j + i] = tile[tid3][tid2 + sub * 8];
         ii1 += 8;
       }
     } else {
@@ -185,7 +186,7 @@ void transpose_nhwc_nchw(
           const int ii1 = ii21 + ii31;
           const int j = (ii1 % num_channel) * size2;
           const int i = (ii1 / num_channel);
-          output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+          output[j + i] = tile[tid3][tid2 + sub * 8];
         }
       }
     }
