@@ -57,15 +57,17 @@ void transpose_nchw_nhwc(
   const int ii21 = offset2_tid3;
   if (ii21 < size2) {
   int ii31 = offset1_tid2;
+  int ii1 = ii21 * size3 + ii31;
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
     if (ii31 < size3) {
-      const int ii1 = ii21 * size3 + ii31;
+      // const int ii1 = ii21 * size3 + ii31;
       const int j = (ii1 % size3) * size2;
       const int i = (ii1 / size3);
       output[j + i] = tile[tid3][tid2 + sub * 8];
     }
     ii31 += 8;
+    ii1 += 8;
   }
   }
 
