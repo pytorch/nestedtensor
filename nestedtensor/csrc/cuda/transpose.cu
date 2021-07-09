@@ -40,28 +40,27 @@ void transpose_nchw_nhwc(
   const int ii3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
 
-  if (ii3 < size3) {
+  // if (ii3 < size3) {
   int ii2 = offset2_tid2;
   int ii = ii3 + ii2 * size3;
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
-    bool valid = ii2 < size2;
+    bool valid = ii3 < size3 && ii2 < size2;
     tile[tid2 + sub * 8][tid3] = valid ? input[ii] : T(0);
     ii2 += 8;
     ii += 8 * size3;
   }
-  }
+  // }
 
   __syncthreads();
 
   const int ii21 = offset2_tid3;
-  if (ii21 < size2) {
+//   if (ii21 < size2) {
   int ii31 = offset1_tid2;
   int ii1 = ii21 * size3 + ii31;
 #pragma unroll
   for (int sub = 0; sub < 4; sub++) {
-    if (ii31 < size3) {
-      // const int ii1 = ii21 * size3 + ii31;
+    if (ii21 < size2 && ii31 < size3) {
       const int j = (ii1 % size3) * size2;
       const int i = (ii1 / size3);
       output[j + i] = tile[tid3][tid2 + sub * 8];
@@ -69,7 +68,7 @@ void transpose_nchw_nhwc(
     ii31 += 8;
     ii1 += 8;
   }
-  }
+//  }
 
   __syncthreads();
 
