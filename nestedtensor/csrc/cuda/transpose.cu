@@ -166,9 +166,7 @@ void transpose_nhwc_nchw(
     int ii1 = ii21 + ii31;
 #pragma unroll
     for (int sub = 0; sub < 4; sub++) {
-      // const int ii31 = offset1_tid2 + sub * 8;
       if (ii31 < num_channel) {
-        // const int ii1 = ii21 + ii31;
         const int j = (ii1 % num_channel) * size2;
         const int i = (ii1 / num_channel);
         output[j + i] = tile[tid3][tid2 + sub * 8];
