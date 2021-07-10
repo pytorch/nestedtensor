@@ -105,6 +105,7 @@ void add_padding_3(
     int output_sizes_2,
     int output_sizes_3,
     int output_sizes_2_3,
+    int output_numel,
     const int batch_size)
 {
   const int batch_id  = blockIdx.x;
@@ -113,8 +114,7 @@ void add_padding_3(
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
-  const int output_offset = batch_id * output_sizes_1 * output_sizes_2_3;
-  const int output_numel = output_sizes_1 * output_sizes_2_3;
+  const int output_offset = batch_id * output_numel;
   const int sizes_0 = sizes_i[0];
   const int sizes_1 = sizes_i[1];
   const int sizes_2 = sizes_i[2];
@@ -190,6 +190,7 @@ void add_padding_kernelLauncher(
         output_sizes[2],
         output_sizes[3],
         output_sizes[2] * output_sizes[3],
+        output_sizes[1] * output_sizes[2] * output_sizes[3],
         batch_size);
   }
 }
