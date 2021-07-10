@@ -120,16 +120,16 @@ void add_padding_3(
   const int sizes_2 = sizes_i[2];
   output = output + output_offset;
   input = input + offset;
+  int i = tid;
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
-    const int i = ii * grainsize + tid;
     const int i0 = i / (output_sizes_2_3);
     const int i1 = (i % (output_sizes_2_3)) / output_sizes_3;
     const int i2 = i % output_sizes_3;
     bool valid = i0 < sizes_0 && i1 < sizes_1 && i2 < sizes_2;
     const int input_offset = i0 * (sizes_1 * sizes_2) + i1 * sizes_2 + i2;
     output[i] = valid ? input[input_offset] : padding_value;
+    i += grainsize;
   }
-  const int i = (output_numel / grainsize) * grainsize + tid;
   if (i < output_numel) {
     const int i0 = i / (output_sizes_2_3);
     const int i1 = (i % (output_sizes_2_3)) / output_sizes_3;
