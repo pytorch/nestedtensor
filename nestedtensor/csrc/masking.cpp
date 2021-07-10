@@ -507,23 +507,21 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output = at::empty(IntArrayRef(new_size), nt_buffer.options());
-      Tensor new_size_tensor = torch::tensor(new_size);
+      Tensor new_size_tensor = torch::tensor(new_size, torch::kInt32);
 
       int64_t input_dim = nt_sizes.size(1);
       int64_t batch_size = nt_sizes.size(0);
-      at::Tensor metadata = at::cat({new_size_tensor, offsets, nt_sizes.reshape(-1)});
+      at::Tensor metadata = at::cat({offsets, nt_sizes.reshape(-1)});
       metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
       std::vector<int64_t> split_sizes;
-      split_sizes.push_back(new_size_tensor.numel());
       split_sizes.push_back(offsets.numel());
       split_sizes.push_back(nt_sizes.numel());
 
       std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
 
-      new_size_tensor = split[0];
-      offsets = split[1];
-      nt_sizes = split[2];
+      offsets = split[0];
+      nt_sizes = split[1];
 
       if (nt_buffer.dtype() == torch::kFloat16) {
         nested_tensor::cuda::add_padding_kernelLauncher(
