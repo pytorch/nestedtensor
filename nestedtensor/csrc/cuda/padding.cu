@@ -111,16 +111,13 @@ void add_padding_3(
   const int batch_id  = blockIdx.y;
   const int grid_id  = blockIdx.x;
   const int tid = threadIdx.x + grid_id * 256;
-  const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
-  const int output_offset = batch_id * output_numel;
   const int sizes_0 = sizes_i[0];
   const int sizes_1 = sizes_i[1];
   const int sizes_2 = sizes_i[2];
   const int sizes_1_2 = sizes_1 * sizes_2;
-  output = output + output_offset;
-  input = input + offset;
+  output = output + batch_id * output_numel;
+  input = input + offsets[batch_id];
   int i = tid;
   for (;i < output_numel;) {
     const int i0 = i / (output_sizes_2_3);
