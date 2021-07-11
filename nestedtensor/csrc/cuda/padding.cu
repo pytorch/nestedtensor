@@ -19,8 +19,8 @@ void add_padding_1(
     const int* output_sizes,
     const int batch_size)
 {
-  const int batch_id  = blockIdx.x;
-  const int grid_id  = blockIdx.y;
+  const int batch_id  = blockIdx.y;
+  const int grid_id  = blockIdx.x;
   const int tid = threadIdx.x + grid_id * 256;
   const int grainsize = 16 * 256;
   const int batch_input_offset = offsets[batch_id];
@@ -59,8 +59,8 @@ void add_padding_2(
     const int* output_sizes,
     const int batch_size)
 {
-  const int batch_id  = blockIdx.x;
-  const int grid_id  = blockIdx.y;
+  const int batch_id  = blockIdx.y;
+  const int grid_id  = blockIdx.x;
   const int tid = threadIdx.x + grid_id * 256;
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
@@ -108,8 +108,8 @@ void add_padding_3(
     int output_numel,
     const int batch_size)
 {
-  const int batch_id  = blockIdx.x;
-  const int grid_id  = blockIdx.y;
+  const int batch_id  = blockIdx.y;
+  const int grid_id  = blockIdx.x;
   const int tid = threadIdx.x + grid_id * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
@@ -146,8 +146,8 @@ void add_padding_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = batch_size;
-  grid.y = 16;
+  grid.x = 16;
+  grid.y = batch_size;
   if (input_dim == 1) {
     add_padding_1<T><<<grid, 256, 0, stream>>>(
         input,
