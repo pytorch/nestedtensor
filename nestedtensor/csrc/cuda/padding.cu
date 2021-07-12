@@ -111,11 +111,11 @@ void add_padding_3(
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int sizes_0 = sizes_i[0];
   int i = tid;
+  output = output + batch_id * output_numel + i0 * output_sizes_2_3;
   if (i0 < sizes_0) {
     const int sizes_1 = sizes_i[1];
     const int sizes_2 = sizes_i[2];
     const int sizes_1_2 = sizes_1 * sizes_2;
-    output = output + batch_id * output_numel + i0 * output_sizes_2_3;
     input = input + offsets[batch_id] + i0 * sizes_1_2;
     bool valid_0 = i0 < sizes_0;
     for (;i < output_sizes_2_3;) {
