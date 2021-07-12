@@ -101,30 +101,27 @@ void add_padding_3(
     const int* offsets,
     const int* input_sizes,
     int input_dim,
-    int output_sizes_1,
-    int output_sizes_2,
     int output_sizes_3,
     int output_sizes_2_3,
-    int output_numel,
-    const int batch_size)
+    int output_numel) 
 {
   const int batch_id  = blockIdx.y;
-  const int grid_id  = blockIdx.x;
-  const int tid = threadIdx.x + grid_id * 256;
+  const int i0 = blockIdx.x;
+  const int tid = threadIdx.x;
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int sizes_0 = sizes_i[0];
   const int sizes_1 = sizes_i[1];
   const int sizes_2 = sizes_i[2];
   const int sizes_1_2 = sizes_1 * sizes_2;
-  output = output + batch_id * output_numel;
-  input = input + offsets[batch_id];
+  output = output + batch_id * output_numel + i0 * output_sizes_2_3;
+  input = input + offsets[batch_id] + i0 * sizes_1_2;
   int i = tid;
-  for (;i < output_numel;) {
-    const int i0 = i / (output_sizes_2_3);
-    const int i1 = (i % (output_sizes_2_3)) / output_sizes_3;
+  bool valid_0 = i0 < sizes_0;
+  for (;i < output_sizes_2_3;) {
+    const int i1 = i / output_sizes_3;
     const int i2 = i % output_sizes_3;
-    bool valid = i0 < sizes_0 && i1 < sizes_1 && i2 < sizes_2;
-    const int input_offset = i0 * (sizes_1_2) + i1 * sizes_2 + i2;
+    const bool valid = valid_0 && i1 < sizes_1 && i2 < sizes_2;
+    const int input_offset = valid ? i1 * sizes_2 + i2 : 0;
     output[i] = valid ? input[input_offset] : padding_value;
     i += grainsize;
   }
@@ -143,7 +140,7 @@ void add_padding_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = 16;
+  grid.x = output_sizes[1];
   grid.y = batch_size;
   if (input_dim == 1) {
     add_padding_1<T><<<grid, 256, 0, stream>>>(
@@ -168,19 +165,16 @@ void add_padding_kernelLauncher(
         batch_size);
   }
   if (input_dim == 3) {
-    add_padding_3<T, 16 * 256><<<grid, 256, 0, stream>>>(
+    add_padding_3<T, 256><<<grid, 256, 0, stream>>>(
         input,
         output,
         padding_value,
         offsets,
         input_sizes,
         input_dim,
-        output_sizes[1],
-        output_sizes[2],
         output_sizes[3],
         output_sizes[2] * output_sizes[3],
-        output_sizes[1] * output_sizes[2] * output_sizes[3],
-        batch_size);
+        output_sizes[1] * output_sizes[2] * output_sizes[3]);
   }
 }
 
