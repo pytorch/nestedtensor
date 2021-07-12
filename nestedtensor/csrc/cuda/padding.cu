@@ -117,13 +117,20 @@ void add_padding_3(
   input = input + offsets[batch_id] + i0 * sizes_1_2;
   int i = tid;
   bool valid_0 = i0 < sizes_0;
+  if (valid_0) {
   for (;i < output_sizes_2_3;) {
     const int i1 = i / output_sizes_3;
     const int i2 = i % output_sizes_3;
-    const bool valid = valid_0 && i1 < sizes_1 && i2 < sizes_2;
+    const bool valid = i1 < sizes_1 && i2 < sizes_2;
     const int input_offset = valid ? i1 * sizes_2 + i2 : 0;
     output[i] = valid ? input[input_offset] : padding_value;
     i += grainsize;
+  }
+  } else {
+  for (;i < output_sizes_2_3;) {
+    output[i] = padding_value;
+    i += grainsize;
+  }
   }
 }
 
