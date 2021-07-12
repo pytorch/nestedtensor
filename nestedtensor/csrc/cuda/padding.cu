@@ -110,27 +110,27 @@ void add_padding_3(
   const int tid = threadIdx.x;
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int sizes_0 = sizes_i[0];
-  const int sizes_1 = sizes_i[1];
-  const int sizes_2 = sizes_i[2];
-  const int sizes_1_2 = sizes_1 * sizes_2;
-  output = output + batch_id * output_numel + i0 * output_sizes_2_3;
-  input = input + offsets[batch_id] + i0 * sizes_1_2;
   int i = tid;
-  bool valid_0 = i0 < sizes_0;
-  if (valid_0) {
-  for (;i < output_sizes_2_3;) {
-    const int i1 = i / output_sizes_3;
-    const int i2 = i % output_sizes_3;
-    const bool valid = i1 < sizes_1 && i2 < sizes_2;
-    const int input_offset = valid ? i1 * sizes_2 + i2 : 0;
-    output[i] = valid ? input[input_offset] : padding_value;
-    i += grainsize;
-  }
+  if (i0 < sizes_0) {
+    const int sizes_1 = sizes_i[1];
+    const int sizes_2 = sizes_i[2];
+    const int sizes_1_2 = sizes_1 * sizes_2;
+    output = output + batch_id * output_numel + i0 * output_sizes_2_3;
+    input = input + offsets[batch_id] + i0 * sizes_1_2;
+    bool valid_0 = i0 < sizes_0;
+    for (;i < output_sizes_2_3;) {
+      const int i1 = i / output_sizes_3;
+      const int i2 = i % output_sizes_3;
+      const bool valid = i1 < sizes_1 && i2 < sizes_2;
+      const int input_offset = valid ? i1 * sizes_2 + i2 : 0;
+      output[i] = valid ? input[input_offset] : padding_value;
+      i += grainsize;
+    }
   } else {
-  for (;i < output_sizes_2_3;) {
-    output[i] = padding_value;
-    i += grainsize;
-  }
+    for (;i < output_sizes_2_3;) {
+      output[i] = padding_value;
+      i += grainsize;
+    }
   }
 }
 
