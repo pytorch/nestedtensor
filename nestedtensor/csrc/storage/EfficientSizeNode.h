@@ -21,7 +21,7 @@ inline at::Tensor stack_sizes(SizeNode size_node) {
       result_sizes_vector.push_back(sizes[j]);
     }
   }
-  return torch::tensor(result_sizes_vector, torch::kInt64).reshape({size_node.degree(), -1});
+  return torch::tensor(result_sizes_vector, torch::kInt64).reshape({static_cast<int64_t>(size_node.degree()), -1});
 }
 
 inline std::vector<c10::optional<int64_t>> construct_efficient_size(
@@ -64,7 +64,7 @@ struct EfficientSizeNode {
       int64_t structure,
       const at::Tensor& sizes)
       : _height(height),
-        _structure(structure), 
+        _structure(structure),
         _sizes(sizes),
         _opt_sizes(impl::construct_efficient_size(_structure, _height, _sizes))
   {}
