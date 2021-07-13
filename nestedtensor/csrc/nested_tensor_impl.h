@@ -204,6 +204,13 @@ inline int64_t get_dim(const at::Tensor& tensor) {
   return tensor.dim();
 }
 
+inline const caffe2::TypeMeta get_dtype(const at::Tensor& tensor) {
+  if (is_nested_tensor_impl(tensor)) {
+    return get_nested_tensor_impl(tensor)->get_storage()->dtype();
+  }
+  return tensor.dtype();
+}
+
 inline int64_t get_numel(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
     return get_nested_tensor_impl(tensor)->get_storage()->numel();
@@ -215,16 +222,16 @@ Tensor NestedTensor_contiguous(
     const Tensor& self,
     MemoryFormat memory_format = MemoryFormat::Contiguous);
 
-inline int64_t get_is_contiguous(
+inline bool get_is_contiguous(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous();
+    return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous(memory_format);
   }
-  return tensor.is_contiguous();
+  return tensor.is_contiguous(memory_format);
 }
 
-inline int64_t get_is_cuda(
+inline bool get_is_cuda(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {
@@ -342,13 +349,9 @@ constexpr auto trace(FuncPtr /*func_ptr*/) {
 }
 
 #ifdef TRACEPACKED
-// #define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, trace(TORCH_FN(FUNC)))
-#define nt_impl(M, NAME, FUNC) \
-  M.impl(                      \
-      NAME,                    \
-      torch::CppFunction::makeFromUnboxedFunction(trace(TORCH_FN(FUNC))))
+// #define nt_impl(M, NAME, FUNC) M.impl(NAME, trace(TORCH_FN(FUNC)))
 #else
-// #define nt_impl(M, NAME, FUNC) M.impl_UNBOXED(NAME, FUNC)
+// #define nt_impl(M, NAME, FUNC) M.impl(NAME, trace(TORCH_FN(FUNC)))
 #define nt_impl(M, NAME, FUNC) M.impl(NAME, TORCH_FN(FUNC))
 #endif
 

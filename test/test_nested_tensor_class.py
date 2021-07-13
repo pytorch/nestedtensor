@@ -9,8 +9,9 @@ import utils
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device)
+def ntnt_nograd(x, device=None, dtype=None, channels_last=None):
+    return nestedtensor.nested_tensor(x,
+            requires_grad=False, device=device, dtype=dtype, channels_last=channels_last)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -758,13 +759,42 @@ class TestNestedTensor(TestCase):
                                lambda: nt.to_sparse_csr_tensor())
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
-    def test_to_paded_tensor_cuda(self):
+    def test_to_padded_tensor_cuda_dim2(self):
         import random
         random.seed(1010)
-        tensors = [torch.randn(random.randint(20, 40), 13) for _ in range(3)]
+        tensors = [torch.randn(random.randint(3, 30)) for _ in range(5)]
         nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        data0 = nt.to_padded_tensor(padding=0)
-        data1, _ = nt.to_tensor_mask()
+        data0 = nt.to_padded_tensor(padding=1)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, mask1 = nt.to_tensor_mask()
+        data1.masked_fill_(mask1.logical_not(), 1)
+        self.assertEqual(data0, data1)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_to_padded_tensor_cuda_dim3(self):
+        import random
+        random.seed(1010)
+        tensors = [torch.randn(random.randint(3, 30), random.randint(3, 30))
+                   for _ in range(5)]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        data0 = nt.to_padded_tensor(padding=1)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, mask1 = nt.to_tensor_mask()
+        data1.masked_fill_(mask1.logical_not(), 1)
+        self.assertEqual(data0, data1)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_to_padded_tensor_cuda_dim4(self):
+        import random
+        random.seed(1010)
+        tensors = [torch.randn(random.randint(3, 30),
+                               random.randint(3, 30),
+                               random.randint(3, 30)) for _ in range(5)]
+        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
+        data0 = nt.to_padded_tensor(padding=1)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, mask1 = nt.to_tensor_mask()
+        data1.masked_fill_(mask1.logical_not(), 1)
         self.assertEqual(data0, data1)
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
@@ -789,6 +819,55 @@ class TestNestedTensor(TestCase):
         data, mask0 = nt.to_tensor_mask(mask_dim=2)
         mask1 = torch.ops.nestedtensor.to_mask(nt, 2)
         self.assertEqual(mask0, mask1)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_nchw_nhwc_cuda(self):
+        def _test(dtype):
+            def _prod(tup):
+                r = 1
+                for t in tup:
+                    r = r * t
+                return r
+            import random
+            random.seed(1010)
+            shapes = [(32,
+                       random.randint(20, 100),
+                       random.randint(20, 100)) for _ in range(20)]
+            tensors = [torch.randn(*s) for s in shapes]
+            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype)
+            nt0 = nestedtensor.transpose_nchw_nhwc(nt)
+            tensors1 = [t.permute(1, 2, 0) for t in tensors]
+            nt1 = ntnt_nograd(tensors1, device=torch.device('cuda'), dtype=dtype)
+            self.assertEqual(nt0, nt1)
+            nt2 = nestedtensor.transpose_nhwc_nchw(nt0)
+            self.assertEqual(nt, nt2)
+        _test(torch.float16)
+        _test(torch.float32)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_channels_last_cuda(self):
+        def _test(dtype):
+            def _prod(tup):
+                r = 1
+                for t in tup:
+                    r = r * t
+                return r
+            import random
+            random.seed(1010)
+            shapes = [(30,
+                       random.randint(20, 40),
+                       random.randint(20, 40)) for _ in range(7)]
+            tensors = [torch.randn(*s) for s in shapes]
+            tensors_channel_last = [t.unsqueeze(0).to(memory_format=torch.channels_last).squeeze(0) for t in tensors]
+            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype, channels_last=True)
+            for (t_i, nt_i) in zip(tensors_channel_last, nt):
+                if (dtype == torch.float16):
+                    self.assertEqual(t_i, nt_i, prec=1e-2)
+                else:
+                    self.assertEqual(t_i, nt_i)
+
+        _test(torch.float16)
+        _test(torch.float32)
 
 
 class TestContiguous(TestCase):

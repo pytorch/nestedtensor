@@ -367,9 +367,6 @@ class TestTensorMask(TestCase):
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
         TestCase.assertEqual(self, res_nt, nt.nested_tensor([]))
 
-        res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask, nested_dim=2)
-        TestCase.assertEqual(self, res_nt, nt.nested_tensor([]))
-
         mask = torch.tensor([False, False, False])
         res_nt = nt.nested_tensor_from_tensor_mask(tensor, mask)
         TestCase.assertEqual(self, res_nt, nt.nested_tensor([]))

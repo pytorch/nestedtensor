@@ -22,6 +22,14 @@ Tensor NestedTensor_add_Tensor(
         get_efficient_nested_size(other);
     if (efficient_size_matches(
             self_efficient_nested_size, other_efficient_nested_size)) {
+      if (get_is_contiguous(self, c10::MemoryFormat::ChannelsLast) &&
+          get_is_contiguous(other, c10::MemoryFormat::ChannelsLast)) {
+        return wrap_buffer(
+            at::add(
+                get_buffer(self).view({-1}), get_buffer(other).view({-1})),
+            self_efficient_nested_size,
+            get_efficient_nested_stride(self));
+      }
       if (!get_is_contiguous(self)) {
         self = NestedTensor_contiguous(self);
       }

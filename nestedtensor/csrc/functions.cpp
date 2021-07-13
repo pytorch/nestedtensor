@@ -161,7 +161,7 @@ Tensor NestedTensor__log_softmax(
 
 Tensor NestedTensor_pin_memory(const Tensor& self, c10::optional<Device> device) {
   return map_nested_tensor(
-      [&](Tensor tensor) { return at::native::pin_memory(tensor, device); }, self);
+      [&device](Tensor tensor) { return at::native::pin_memory(tensor, device); }, self);
 }
 
 Tensor NestedTensor_flatten(

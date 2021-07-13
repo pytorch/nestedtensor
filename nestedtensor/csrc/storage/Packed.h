@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/storage/EfficientSizeNode.h>
 #include <nestedtensor/csrc/storage/StorageBase.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
+#include <c10/core/MemoryFormat.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -122,6 +123,43 @@ inline bool storage_is_contiguous(
   return true;
 }
 
+inline bool storage_is_contiguous_channels_last(
+    const at::Tensor& buffer,
+    const EfficientSizeNode& nested_size,
+    const EfficientSizeNode& nested_stride) {
+  if (!buffer.is_contiguous()) {
+    return false;
+  }
+  if (buffer.numel() == 0) {
+    return true;
+  }
+  if (nested_size.dim() != 4) {
+    return false;
+  }
+  const at::Tensor& sizes_sizes = nested_size.sizes();
+  const at::Tensor& strides_sizes = nested_stride.sizes();
+  int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
+  int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
+  std::vector<int64_t> sizes(4, 0);
+  std::vector<int64_t> strides(4, 0);
+  for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
+    sizes[0] = 1;
+    sizes[1] = sizes_sizes_ptr[i * 3 + 0];
+    sizes[2] = sizes_sizes_ptr[i * 3 + 1];
+    sizes[3] = sizes_sizes_ptr[i * 3 + 2];
+    strides[0] = sizes_sizes_ptr[i * 3 + 0] *
+                 sizes_sizes_ptr[i * 3 + 1] *
+                 sizes_sizes_ptr[i * 3 + 2];
+    strides[1] = strides_sizes_ptr[i * 3 + 0];
+    strides[2] = strides_sizes_ptr[i * 3 + 1];
+    strides[3] = strides_sizes_ptr[i * 3 + 2];
+    if (!c10::is_channels_last_strides_2d(IntArrayRef(sizes), IntArrayRef(strides))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 } // namespace impl
 
 struct PackedStorage : public NestedTensorStorage {
@@ -136,6 +174,10 @@ struct PackedStorage : public NestedTensorStorage {
         _device(buffer.device()),
         _is_pinned(buffer.is_pinned()),
         _is_contiguous(impl::storage_is_contiguous(
+            _buffer,
+            _nested_size,
+            _nested_stride)),
+        _is_contiguous_channels_last(impl::storage_is_contiguous_channels_last(
             _buffer,
             _nested_size,
             _nested_stride)) {
@@ -211,8 +253,15 @@ struct PackedStorage : public NestedTensorStorage {
   NestedTensorStorageKind kind() const override {
     return NestedTensorStorageKind::packed;
   }
-  bool is_contiguous() const override {
-    return _is_contiguous;
+  bool is_contiguous(at::MemoryFormat memory_format) const override {
+    if (memory_format == at::MemoryFormat::Contiguous) {
+      return _is_contiguous;
+    }
+    if (memory_format == at::MemoryFormat::ChannelsLast) {
+      return _is_contiguous_channels_last;
+    }
+    TORCH_CHECK(false, "is_contiguous does not support memory format ", memory_format);
+    return false;
   }
   bool is_cuda() const override {
     return _buffer.is_cuda();
@@ -229,6 +278,7 @@ struct PackedStorage : public NestedTensorStorage {
   c10::Device _device;
   bool _is_pinned;
   const bool _is_contiguous;
+  const bool _is_contiguous_channels_last;
 };
 
 } // namespace nested_tensor

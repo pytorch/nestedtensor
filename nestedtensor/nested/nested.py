@@ -173,6 +173,16 @@ def to_nested_tensor(tensor, dim=0):
         torch.ops.nestedtensor.to_nested_tensor(tensor._impl if isinstance(tensor, NestedTensor) else tensor, dim))
 
 
+def transpose_nchw_nhwc(tensor):
+    return _wrap_result(
+        torch.ops.nestedtensor.transpose_nchw_nhwc(tensor._impl))
+
+
+def transpose_nhwc_nchw(tensor):
+    return _wrap_result(
+        torch.ops.nestedtensor.transpose_nhwc_nchw(tensor._impl))
+
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
@@ -355,8 +365,12 @@ class NestedTensor(metaclass=NestedTensorMeta):
             return self
         return _wrap_result(torch.ops.nestedtensor.make_contiguous(self._impl))
 
-    def is_contiguous(self):
-        return torch.ops.nestedtensor.get_is_contiguous(self._impl)
+    def is_contiguous(self, memory_format=torch.contiguous_format):
+        if (memory_format == torch.contiguous_format):
+            return torch.ops.nestedtensor.get_is_contiguous(self._impl, 0)
+        if (memory_format == torch.channels_last):
+            return torch.ops.nestedtensor.get_is_contiguous(self._impl, 2)
+        raise RuntimeError("Given memory format " + str(memory_format) + " not supported.")
 
     def nested_dim(self):
         """
