@@ -13,13 +13,8 @@ Tensor NestedTensor_view(const Tensor& self, IntArrayRef size) {
   TORCH_CHECK(
       int64_t(size.size()) > self_data->nested_dim(),
       "view cannot be exclusive to nested dimensions.");
-  for (int64_t i = 0; i < self_data->nested_dim(); i++) {
-    if (size[i] >= 0) {
-      throw std::runtime_error(
-          "Cannot view explicitly along irregular dimension " +
-          std::to_string(i) + ". Please use -1 as a placeholder.");
-    }
-  }
+  auto self_opt_sizes = get_opt_sizes(self);
+  TORCH_CHECK(*self_opt_sizes[0] == size[0], "First dimension must be unchanged.");
   int64_t nested_dim = self_data->nested_dim();
   std::vector<int64_t> target_shape;
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
@@ -38,13 +33,8 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   TORCH_CHECK(
       int64_t(size.size()) > self_data->nested_dim(),
       "Reshape cannot be exclusive to nested dimensions.");
-  for (int64_t i = 0; i < self_data->nested_dim(); i++) {
-    if (size[i] >= 0) {
-      throw std::runtime_error(
-          "Cannot reshape explicitly along irregular dimension " +
-          std::to_string(i) + ". Please use -1 as a placeholder.");
-    }
-  }
+  auto self_opt_sizes = get_opt_sizes(self);
+  TORCH_CHECK(*self_opt_sizes[0] == size[0], "First dimension must be unchanged.");
   int64_t nested_dim = self_data->nested_dim();
   std::vector<int64_t> target_shape;
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
