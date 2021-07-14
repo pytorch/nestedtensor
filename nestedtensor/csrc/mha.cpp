@@ -55,9 +55,9 @@ at::Tensor min_mha(
 
   q = q * torch::tensor(scaling);
 
-  q = q.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
-  k = k.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
-  v = v.reshape({-1, -1, num_heads, head_dim}).transpose(1, 2);
+  q = q.reshape({*opt_sizes[0], -1, num_heads, head_dim}).transpose(1, 2);
+  k = k.reshape({*opt_sizes[0], -1, num_heads, head_dim}).transpose(1, 2);
+  v = v.reshape({*opt_sizes[0], -1, num_heads, head_dim}).transpose(1, 2);
   auto attn_output_weights = at::matmul(q, k.transpose(2, 3));
   attn_output_weights = at::softmax(attn_output_weights, -1);
   attn_output_weights = at::dropout(attn_output_weights, dropout_p, training);
