@@ -54,7 +54,7 @@ binary_common: &binary_common
     wheel_docker_image:
       description: "Wheel only: what docker image to use"
       type: string
-      default: "pytorch/manylinux-cuda101"
+      default: "pytorch/manylinux-cuda111"
   environment:
     PYTHON_VERSION: << parameters.python_version >>
     PYTORCH_VERSION: << parameters.pytorch_version >>
@@ -142,7 +142,7 @@ jobs:
   unittest_linux_gpu:
     <<: *binary_common
     machine:
-      image: ubuntu-1604-cuda-10.2:202012-01
+      image: ubuntu-1604-cuda-11.1:202012-01
     resource_class: gpu.nvidia.medium
     steps:
       - checkout
@@ -200,13 +200,13 @@ workflows:
           matrix:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
-              cu_version: ["cu102"]
+              cu_version: ["cu111"]
       - binary_wheel_upload:
           context: org-member
           matrix:
             parameters:
               python_version: ["3.6", "3.7", "3.8"]
-              subfolder: ["cpu", "cu102"]
+              subfolder: ["cpu", "cu111"]
           filters:
             branches:
               only: nightly
