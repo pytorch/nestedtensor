@@ -28,7 +28,9 @@ Tensor NestedTensor_conv2d(
   TORCH_CHECK(get_dim(input) == 4, "Expected input to be dim 4, but got ", get_dim(input), ".");
 #ifdef WITH_CUDA
   auto self_opt_sizes = get_opt_sizes(input);
-  if (is_nested_tensor_impl(input) && !is_nested_tensor_impl(weight) && input.dtype() == torch::kFloat16) {
+  if (is_nested_tensor_impl(input) &&
+      !is_nested_tensor_impl(weight) &&
+      (input.dtype() == torch::kFloat16 || input.dtype() == torch::kFloat32)) {
     if (get_dim(input) == 4 && !bias && weight.size(2) == 1 && weight.size(3) == 1 &&
         stride[0] == 1 && stride[1] == 1 &&
         padding[0] == 0 && padding[1] == 0 &&
@@ -38,7 +40,7 @@ Tensor NestedTensor_conv2d(
         *self_opt_sizes[1] &&
         get_is_cuda(input)
       ) {
-      if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast) && input.dtype() == torch::kHalf) {
+      if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast)) {
         Tensor input_buffer = get_buffer(input);
         input_buffer = input_buffer.view({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(input_buffer, 
@@ -56,7 +58,7 @@ Tensor NestedTensor_conv2d(
             }, new_sizes);
         return wrap_buffer(result_buffer.view(-1), new_sizes, new_strides);
       }
-      if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
+      if (get_is_contiguous(input)) {
         input = transpose_nchw_nhwc(input);
         Tensor input_buffer = get_buffer(input);
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
