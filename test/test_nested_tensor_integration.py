@@ -3,6 +3,12 @@ import nestedtensor
 import unittest
 from utils_test_case import TestCase
 
+try:
+    import classy_vision
+    TEST_CLASSY_VISION=True
+except ModuleNotFoundError:
+    TEST_CLASSY_VISION=False
+
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
@@ -179,6 +185,32 @@ class TestIntegration(TestCase):
 
         for t0, t1 in zip(res_nt.unbind(), [res_0, res_1]):
             self.assertEqual(t0, t1)
+
+    @unittest.skipIf(not TEST_CLASSY_VISION, "No classy vision")
+    def test_fusion_resnext101_32x4d(self):
+        @torch.inference_mode()
+        def _test(dtype, use_channels_last):
+            from classy_vision.models import build_model
+            from torch.fx import symbolic_trace
+            model = build_model({"name": "resnext101_32x4d"}).eval().cuda()
+            model._initialize_weights(False)
+            fused = symbolic_trace(model)
+            fused = nestedtensor.fuse_conv_bn(fused)
+            model = model.to(dtype)
+            fused = fused.to(dtype)
+            data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)
+            if use_channels_last:
+                data = data.contiguous(memory_format=torch.channels_last)
+            ref_output = model(data)
+            new_output = fused(data)
+            if dtype == torch.float16:
+                self.assertEqual(ref_output, new_output, prec=2e-3)
+            else:
+                self.assertEqual(ref_output, new_output)
+        _test(torch.float16, False)
+        _test(torch.float32, False)
+        # _test(torch.float16, True)
+        _test(torch.float32, True)
 
 
 if __name__ == "__main__":
