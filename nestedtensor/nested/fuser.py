@@ -131,7 +131,7 @@ def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
                 if len(node.args[0].users) > 1:  # Output of conv is used by other nodes
                     continue
                 conv = modules[node.args[0].target]
-                relu = modules[node.target]
+                # relu = modules[node.target]
                 fused_conv = Conv2dReLU(conv.weight, conv.bias, conv.stride, conv.padding, conv.dilation, conv.groups)
                 replace_node_module(node.args[0], modules, fused_conv)
                 node.replace_all_uses_with(node.args[0])

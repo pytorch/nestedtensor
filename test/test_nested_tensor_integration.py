@@ -180,6 +180,28 @@ class TestIntegration(TestCase):
         for t0, t1 in zip(res_nt.unbind(), [res_0, res_1]):
             self.assertEqual(t0, t1)
 
+    def test_fusion_resnext101_32x4d(self):
+        @torch.inference_mode()
+        def _test(dtype):
+            from classy_vision.models import build_model
+            from torch.fx import symbolic_trace
+            model = build_model({"name": "resnext101_32x4d"}).eval().cuda()
+            model._initialize_weights(False)
+            fused = symbolic_trace(model)
+            fused = nestedtensor.fuse_conv_bn(fused)
+            fused = nestedtensor.fuse_conv_relu(fused)
+            model = model.to(dtype)
+            fused = fused.to(dtype)
+            data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)
+            ref_output = model(data)
+            new_output = fused(data)
+            if dtype == torch.float16:
+                self.assertEqual(ref_output, new_output, prec=2e-3)
+            else:
+                self.assertEqual(ref_output, new_output)
+        _test(torch.float16)
+        _test(torch.float32)
+
 
 if __name__ == "__main__":
     unittest.main()

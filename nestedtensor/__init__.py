@@ -11,6 +11,9 @@ from .nested.nested import to_nested_tensor
 from .nested.nested import transpose_nchw_nhwc
 from .nested.nested import transpose_nhwc_nchw
 
+from .nested.fuser import fuse_conv_bn
+from .nested.fuser import fuse_conv_relu
+
 from . import nested
 
 from . import _C
