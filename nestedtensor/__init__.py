@@ -12,7 +12,6 @@ from .nested.nested import transpose_nchw_nhwc
 from .nested.nested import transpose_nhwc_nchw
 
 from .nested.fuser import fuse_conv_bn
-from .nested.fuser import fuse_conv_relu
 
 from . import nested
 

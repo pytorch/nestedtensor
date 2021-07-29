@@ -52,19 +52,19 @@ Tensor NestedTensor_clamp(
       self);
 }
 
-Tensor& NestedTensor_clamp_out(
-    const Tensor& self,
-    const optional<Scalar>& min,
-    const optional<Scalar>& max,
-    Tensor& result) {
-  apply_nested_tensor(
-      [min, max](const at::Tensor self, at::Tensor result) {
-        at::native::clamp_out(self, min, max, result);
-      },
-      self,
-      result);
-  return result;
-}
+// Tensor& NestedTensor_clamp_out(
+//     const Tensor& self,
+//     const optional<Scalar>& min,
+//     const optional<Scalar>& max,
+//     Tensor& result) {
+//   apply_nested_tensor(
+//       [min, max](const at::Tensor self, at::Tensor result) {
+//         at::native::clamp_out(self, min, max, result);
+//       },
+//       self,
+//       result);
+//   return result;
+// }
 
 Tensor& NestedTensor_clamp_min_(Tensor& self, const c10::Scalar& min) {
   apply_nested_tensor(
@@ -197,7 +197,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
 
   nt_impl(m, "clamp", NestedTensor_clamp);
   nt_impl(m, "clamp_", NestedTensor_clamp_);
-  nt_impl(m, "clamp.out", NestedTensor_clamp_out);
+//  nt_impl(m, "clamp.out", NestedTensor_clamp_out);
 
   nt_impl(m, "clamp_min", NestedTensor_clamp_min);
   nt_impl(m, "clamp_min_", NestedTensor_clamp_min_);

@@ -182,25 +182,31 @@ class TestIntegration(TestCase):
 
     def test_fusion_resnext101_32x4d(self):
         @torch.inference_mode()
-        def _test(dtype):
+        def _test(dtype, use_channels_last):
             from classy_vision.models import build_model
             from torch.fx import symbolic_trace
             model = build_model({"name": "resnext101_32x4d"}).eval().cuda()
             model._initialize_weights(False)
             fused = symbolic_trace(model)
             fused = nestedtensor.fuse_conv_bn(fused)
-            fused = nestedtensor.fuse_conv_relu(fused)
             model = model.to(dtype)
             fused = fused.to(dtype)
             data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)
+            if use_channels_last:
+                data = data.contiguous(memory_format=torch.channels_last)
             ref_output = model(data)
             new_output = fused(data)
+            print(ref_output.mean())
+            print(new_output.mean())
+            print("")
             if dtype == torch.float16:
                 self.assertEqual(ref_output, new_output, prec=2e-3)
             else:
                 self.assertEqual(ref_output, new_output)
-        _test(torch.float16)
-        _test(torch.float32)
+        _test(torch.float16, False)
+        _test(torch.float32, False)
+        # _test(torch.float16, True)
+        _test(torch.float32, True)
 
 
 if __name__ == "__main__":
