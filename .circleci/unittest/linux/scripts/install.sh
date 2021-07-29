@@ -38,7 +38,7 @@ else
    PYVSHORT=cp${PYVSHORT}-cp${PYVSHORT}m
 fi
 
-NIGHTLY_DATE=20210710
+NIGHTLY_DATE=20210728
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
     pip3 install -q --pre torch==1.10.0dev${NIGHTLY_DATE} torchvision==0.11.0dev${NIGHTLY_DATE}+cpu -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
