@@ -3,6 +3,12 @@ import nestedtensor
 import unittest
 from utils_test_case import TestCase
 
+try:
+    import classy_vision
+    TEST_CLASSY_VISION=True
+except ModuleNotFoundError:
+    TEST_CLASSY_VISION=False
+
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 def ntnt_nograd(x): return nestedtensor.nested_tensor(x, requires_grad=False)
@@ -180,6 +186,7 @@ class TestIntegration(TestCase):
         for t0, t1 in zip(res_nt.unbind(), [res_0, res_1]):
             self.assertEqual(t0, t1)
 
+    @unittest.skipIf(not TEST_CLASSY_VISION, "No classy vision")
     def test_fusion_resnext101_32x4d(self):
         @torch.inference_mode()
         def _test(dtype, use_channels_last):
