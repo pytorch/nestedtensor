@@ -203,9 +203,6 @@ class TestIntegration(TestCase):
                 data = data.contiguous(memory_format=torch.channels_last)
             ref_output = model(data)
             new_output = fused(data)
-            print(ref_output.mean())
-            print(new_output.mean())
-            print("")
             if dtype == torch.float16:
                 self.assertEqual(ref_output, new_output, prec=2e-3)
             else:
