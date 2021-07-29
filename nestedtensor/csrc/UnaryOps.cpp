@@ -53,13 +53,13 @@ Tensor NestedTensor_clamp(
 }
 
 Tensor& NestedTensor_clamp_out(
+    Tensor& result,
     const Tensor& self,
     const optional<Scalar>& min,
-    const optional<Scalar>& max,
-    Tensor& result) {
+    const optional<Scalar>& max) {
   apply_nested_tensor(
       [min, max](const at::Tensor self, at::Tensor result) {
-        at::native::clamp_out(self, min, max, result);
+        at::clamp_out(result, self, min, max);
       },
       self,
       result);
