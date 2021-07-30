@@ -200,7 +200,8 @@ class TestIntegration(TestCase):
             fused = nestedtensor.fuse_conv_relu(fused)
             # fused = nestedtensor.fuse_conv_add_relu(fused)
             # print("1", fused)
-            # print("1 modules", list(fused.modules()))
+            # print("\n".join(dict(fused.named_modules()).keys()))
+            # print("1 modules", "\n".join(list(map(str, fused.modules()))[:6]))
             # fused = nestedtensor.fuse_conv_relu(fused)
             # import sys; sys.exit(1)
             model = model.to(dtype)
@@ -214,7 +215,7 @@ class TestIntegration(TestCase):
                 self.assertEqual(ref_output, new_output, prec=2e-3)
             else:
                 self.assertEqual(ref_output, new_output)
-        _test(torch.float32, False)
+        # _test(torch.float32, False)
         _test(torch.float16, False)
         # _test(torch.float16, True)
         _test(torch.float32, True)

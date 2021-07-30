@@ -147,13 +147,20 @@ class Conv2dAddReLU(torch.nn.Module):
             self.slow_fusion = True
 
     def forward(self, inp, add_input):
+        # weight = self.weight.to(memory_format=torch.contiguous_format)
+        # print("0: ", inp.is_contiguous(memory_format=torch.channels_last))
+        # print("0: ", add_input.is_contiguous(memory_format=torch.channels_last))
+        # print("1: ", self.weight.is_contiguous(memory_format=torch.channels_last))
         if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
             inp = inp.to(memory_format=torch.channels_last)
+            add_input = add_input.to(memory_format=torch.channels_last)
         if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
             inp = inp.to(memory_format=torch.contiguous_format)
+            add_input = add_input.to(memory_format=torch.contiguous_format)
         if not self.slow_fusion and not self.weight_is_channels_last:
             self.weight.data = self.weight.to(memory_format=torch.channels_last)
             inp = inp.to(memory_format=torch.channels_last)
+            add_input = add_input.to(memory_format=torch.channels_last)
             self.weight_is_channels_last = True
         out = torch.cudnn_convolution_add_relu(inp,
                                                self.weight,
@@ -164,6 +171,18 @@ class Conv2dAddReLU(torch.nn.Module):
                                                self.padding,
                                                self.dilation,
                                                self.groups)
+        # out = torch.conv2d(inp,
+        #                                        self.weight,
+        #                                        # add_input,
+        #                                        # 1.0,
+        #                                        self.bias,
+        #                                        self.stride,
+        #                                        self.padding,
+        #                                        self.dilation,
+        #                                        self.groups)
+        # out += add_input
+        # out.relu_()
+        # out = out.to(memory_format=torch.channels_last)
         return out
 
 def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
@@ -189,9 +208,14 @@ def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
                 replace_node_module(node.args[0], modules, fused_conv)
                 node.replace_all_uses_with(node.args[0])
                 new_graph.erase_node(node)
+    # new_graph.print_tabular()
+
 
     last_nodes = []
+    count = 0
     for node in new_graph.nodes:
+        if count == 31:
+            break
         if (node.op == "call_function" or node.op == "call_module"):
             last_nodes.append(node)
             if len(last_nodes) == 4:
@@ -206,12 +230,21 @@ def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
         is_match = is_match and (str(last_nodes[1]).split("_")[0] == "add")
         is_match = is_match and isinstance(modules[last_nodes[2].target], torch.nn.ReLU)
         if (is_match):
+            # print("0: ", last_nodes)
+            # print("1: ", last_nodes[1])
+            # print("2: ", last_nodes[1].args)
+            # print("3: ", last_nodes[1].args[0])
+            # print("")
             conv = modules[last_nodes[1].args[0].target]
             fused_conv = Conv2dAddReLU(conv.weight, conv.bias, conv.stride, conv.padding, conv.dilation, conv.groups)
-            modules[last_nodes[2].target] = fused_conv
+            # modules[last_nodes[2].target] = fused_conv
+            replace_node_module(last_nodes[2], modules, fused_conv)
+            # setattr(modules[last_nodes[2].target], last_nodes[2].target, fused_conv)
             last_nodes[2].args = (last_nodes[0].args[0], last_nodes[1].args[1])
             new_graph.erase_node(last_nodes[1])
             new_graph.erase_node(last_nodes[0])
+            count += 1
+    # new_graph.print_tabular()
     return fx.GraphModule(fx_model, new_graph)
 
 
