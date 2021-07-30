@@ -196,7 +196,12 @@ class TestIntegration(TestCase):
             model._initialize_weights(False)
             fused = symbolic_trace(model)
             fused = nestedtensor.fuse_conv_bn(fused)
-            fused = nestedtensor.fuse_conv_relu(fused)
+            fused = nestedtensor.fuse_conv_add_relu(fused)
+            print(fused)
+            # print("1", fused)
+            # print("1 modules", list(fused.modules()))
+            # fused = nestedtensor.fuse_conv_relu(fused)
+            # import sys; sys.exit(1)
             model = model.to(dtype)
             fused = fused.to(dtype)
             data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)
@@ -208,8 +213,8 @@ class TestIntegration(TestCase):
                 self.assertEqual(ref_output, new_output, prec=2e-3)
             else:
                 self.assertEqual(ref_output, new_output)
-        _test(torch.float16, False)
         _test(torch.float32, False)
+        _test(torch.float16, False)
         # _test(torch.float16, True)
         _test(torch.float32, True)
 
