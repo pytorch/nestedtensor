@@ -2,6 +2,7 @@ import torch
 import nestedtensor
 import unittest
 from utils_test_case import TestCase
+from utils import debug_on
 
 try:
     import classy_vision
@@ -196,13 +197,12 @@ class TestIntegration(TestCase):
             model._initialize_weights(False)
             fused = symbolic_trace(model)
             fused = nestedtensor.fuse_conv_bn(fused)
-            fused = nestedtensor.fuse_conv_add_relu(fused)
-            print(fused)
+            fused = nestedtensor.fuse_conv_relu(fused)
+            # fused = nestedtensor.fuse_conv_add_relu(fused)
             # print("1", fused)
             # print("1 modules", list(fused.modules()))
             # fused = nestedtensor.fuse_conv_relu(fused)
             # import sys; sys.exit(1)
-            fused = nestedtensor.fuse_conv_relu(fused)
             model = model.to(dtype)
             fused = fused.to(dtype)
             data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)

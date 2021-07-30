@@ -109,14 +109,14 @@ class Conv2dReLU(torch.nn.Module):
             self.slow_fusion = True
 
     def forward(self, inp):
-        # if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
-        #     inp = inp.to(memory_format=torch.channels_last)
-        # if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
-        #     inp = inp.to(memory_format=torch.contiguous_format)
-        # if not self.slow_fusion and not self.weight_is_channels_last:
-        #     self.weight.data = self.weight.to(memory_format=torch.channels_last)
-        #     inp = inp.to(memory_format=torch.channels_last)
-        #     self.weight_is_channels_last = True
+        if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
+            inp = inp.to(memory_format=torch.channels_last)
+        if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
+            inp = inp.to(memory_format=torch.contiguous_format)
+        if not self.slow_fusion and not self.weight_is_channels_last:
+            self.weight.data = self.weight.to(memory_format=torch.channels_last)
+            inp = inp.to(memory_format=torch.channels_last)
+            self.weight_is_channels_last = True
         out = torch.cudnn_convolution_relu(inp,
                                             self.weight,
                                             self.bias,
@@ -124,6 +124,46 @@ class Conv2dReLU(torch.nn.Module):
                                             self.padding,
                                             self.dilation,
                                             self.groups)
+        return out
+
+class Conv2dAddReLU(torch.nn.Module):
+    def __init__(self,
+                 weight,
+                 bias,
+                 stride,
+                 padding,
+                 dilation,
+                 groups):
+        super(Conv2dAddReLU, self).__init__()
+        self.weight = weight
+        self.weight_is_channels_last = False
+        self.bias = bias
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = groups
+        self.slow_fusion = False
+        if self.weight.size(2) == 7 and self.weight.size(3) == 7:
+            self.slow_fusion = True
+
+    def forward(self, inp, add_input):
+        if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
+            inp = inp.to(memory_format=torch.channels_last)
+        if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
+            inp = inp.to(memory_format=torch.contiguous_format)
+        if not self.slow_fusion and not self.weight_is_channels_last:
+            self.weight.data = self.weight.to(memory_format=torch.channels_last)
+            inp = inp.to(memory_format=torch.channels_last)
+            self.weight_is_channels_last = True
+        out = torch.cudnn_convolution_add_relu(inp,
+                                               self.weight,
+                                               add_input,
+                                               1.0,
+                                               self.bias,
+                                               self.stride,
+                                               self.padding,
+                                               self.dilation,
+                                               self.groups)
         return out
 
 def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
@@ -149,59 +189,6 @@ def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
                 replace_node_module(node.args[0], modules, fused_conv)
                 node.replace_all_uses_with(node.args[0])
                 new_graph.erase_node(node)
-    return fx.GraphModule(fx_model, new_graph)
-
-class Conv2dAddReLU(torch.nn.Module):
-    def __init__(self,
-                 weight,
-                 bias,
-                 stride,
-                 padding,
-                 dilation,
-                 groups):
-        super(Conv2dAddReLU, self).__init__()
-        self.weight = weight
-        self.weight_is_channels_last = False
-        self.bias = bias
-        self.stride = stride
-        self.padding = padding
-        self.dilation = dilation
-        self.groups = groups
-        self.slow_fusion = False
-        if self.weight.size(2) == 7 and self.weight.size(3) == 7:
-            self.slow_fusion = True
-
-    def forward(self, inp, add_input):
-        # if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
-        #     inp = inp.to(memory_format=torch.channels_last)
-        # if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
-        #     inp = inp.to(memory_format=torch.contiguous_format)
-        # if not self.slow_fusion and not self.weight_is_channels_last:
-        #     self.weight.data = self.weight.to(memory_format=torch.channels_last)
-        #     inp = inp.to(memory_format=torch.channels_last)
-        #     self.weight_is_channels_last = True
-        out = torch.cudnn_convolution_add_relu(inp,
-                                               self.weight,
-                                               add_input,
-                                               1.0,
-                                               self.bias,
-                                               self.stride,
-                                               self.padding,
-                                               self.dilation,
-                                               self.groups)
-        return out
-
-def fuse_conv_add_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
-    """
-    Fuses convolution/BN layers for inference purposes. Will deepcopy your
-    model by default, but can modify the model inplace as well.
-    """
-    if not inplace:
-        model = copy.deepcopy(model)
-    fx_model = fx.symbolic_trace(model)
-    modules = dict(fx_model.named_modules())
-    new_graph = copy.deepcopy(fx_model.graph)
-    # new_graph.print_tabular()
 
     last_nodes = []
     for node in new_graph.nodes:
@@ -220,49 +207,24 @@ def fuse_conv_add_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module
         is_match = is_match and isinstance(modules[last_nodes[2].target], torch.nn.ReLU)
         if (is_match):
             conv = modules[last_nodes[1].args[0].target]
-            # print(conv)
-            # print(type(conv))
             fused_conv = Conv2dAddReLU(conv.weight, conv.bias, conv.stride, conv.padding, conv.dilation, conv.groups)
-            # print("last_nodes[0]: ", last_nodes[0])
-            # print("last_nodes[1]: ", last_nodes[1])
-            # print("last_nodes[2]: ", last_nodes[2])
-            # print("last_nodes[0].args: ", last_nodes[0].args)
-            # print("last_nodes[1].args: ", last_nodes[1].args)
-            # print("last_nodes[2].args: ", last_nodes[2].args)
-            # print("last_nodes[0].target: ", last_nodes[0].target)
-            # print("last_nodes[1].target: ", last_nodes[1].target)
-            # print("last_nodes[2].target: ", last_nodes[2].target)
-            # replace_node_module(last_nodes[2], modules, fused_conv)
-            # print(modules.keys())
             modules[last_nodes[2].target] = fused_conv
-            # print("0: ", modules[last_nodes[2].target])
-            # print("1: ", type(modules[last_nodes[2].target]))
-            # modules[last_nodes[2].target] = fused_conv
-            # setattr(modules[last_nodes[2].target], last_nodes[2].target, fused_conv)
-            # print("2: last_nodes[2].target: ", modules[last_nodes[2].target])
             last_nodes[2].args = (last_nodes[0].args[0], last_nodes[1].args[1])
-            # print("last_nodes[2].args: ", last_nodes[2].args)
-            # print("")
-            # last_nodes[2].args = (last_nodes[1].args
-            # last_nodes[2].replace_all_uses_with(last_nodes[2].args[0])
-            # new_graph.erase_node(last_nodes[0])
             new_graph.erase_node(last_nodes[1])
             new_graph.erase_node(last_nodes[0])
-    new_graph.lint()
-    new_graph.print_tabular()
-    print(new_graph)
-    # import sys; sys.exit(1)
     return fx.GraphModule(fx_model, new_graph)
-#
-#       if isinstance(node, fx.Node):
-#           if len(node.args) > 0:
-#               if node.args[0].target in modules:
-#                   print(node.op, node.target, node.args, node.args[0].target, modules[node.args[0].target])
-#               else:
-#                   print(node.op, node.target, node.args, node.args[0].target, " no modules")
-#           else:
-#               continue
-#               print(node.op, node, node.target, node.args, " no target ", " no modules")
-#       else:
-#           print("Dunno lol: ", node)
-#   return model
+
+
+def fuse_conv_add_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
+    """
+    Fuses convolution/BN layers for inference purposes. Will deepcopy your
+    model by default, but can modify the model inplace as well.
+    """
+    if not inplace:
+        model = copy.deepcopy(model)
+    fx_model = fx.symbolic_trace(model)
+    modules = dict(fx_model.named_modules())
+    new_graph = copy.deepcopy(fx_model.graph)
+
+    new_graph.lint()
+    return fx.GraphModule(fx_model, new_graph)
