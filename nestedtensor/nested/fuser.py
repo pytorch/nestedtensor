@@ -104,10 +104,18 @@ class Conv2dReLU(torch.nn.Module):
         self.padding = padding
         self.dilation = dilation
         self.groups = groups
+        self.slow_fusion = False
+        if self.weight.size(2) == 7 and self.weight.size(3) == 7:
+            self.slow_fusion = True
 
     def forward(self, inp):
-        if inp.is_contiguous(memory_format=torch.channels_last) and not self.weight_is_channels_last:
+        if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
+            inp = inp.to(memory_format=torch.channels_last)
+        if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
+            inp = inp.to(memory_format=torch.contiguous_format)
+        if not self.slow_fusion and not self.weight_is_channels_last:
             self.weight.data = self.weight.to(memory_format=torch.channels_last)
+            inp = inp.to(memory_format=torch.channels_last)
             self.weight_is_channels_last = True
         out = torch.cudnn_convolution_relu(inp,
                                             self.weight,
