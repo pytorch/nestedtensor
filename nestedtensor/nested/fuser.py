@@ -266,3 +266,5 @@ def fuse_conv_add_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module
 #       else:
 #           print("Dunno lol: ", node)
 #   return model
+=======
+>>>>>>> master
