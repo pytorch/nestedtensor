@@ -107,7 +107,7 @@ Tensor& NestedTensor_clamp_max_out(
     Tensor& result) {
   apply_nested_tensor(
       [max](const Tensor self, Tensor result) {
-        at::clamp_max_out(self, max, result);
+        at::clamp_max_out(self, result, max);
       },
       self,
       result);
