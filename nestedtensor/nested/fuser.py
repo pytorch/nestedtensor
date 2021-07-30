@@ -87,3 +87,66 @@ def fuse_conv_bn(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
                 node.replace_all_uses_with(node.args[0])
                 new_graph.erase_node(node)
     return fx.GraphModule(fx_model, new_graph)
+
+class Conv2dReLU(torch.nn.Module):
+    def __init__(self,
+                 weight,
+                 bias,
+                 stride,
+                 padding,
+                 dilation,
+                 groups):
+        super(Conv2dReLU, self).__init__()
+        self.weight = weight
+        self.weight_is_channels_last = False
+        self.bias = bias
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = groups
+        self.slow_fusion = False
+        if self.weight.size(2) == 7 and self.weight.size(3) == 7:
+            self.slow_fusion = True
+
+    def forward(self, inp):
+        if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
+            inp = inp.to(memory_format=torch.channels_last)
+        if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
+            inp = inp.to(memory_format=torch.contiguous_format)
+        if not self.slow_fusion and not self.weight_is_channels_last:
+            self.weight.data = self.weight.to(memory_format=torch.channels_last)
+            inp = inp.to(memory_format=torch.channels_last)
+            self.weight_is_channels_last = True
+        out = torch.cudnn_convolution_relu(inp,
+                                            self.weight,
+                                            self.bias,
+                                            self.stride,
+                                            self.padding,
+                                            self.dilation,
+                                            self.groups)
+        return out
+
+def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
+    """
+    Fuses convolution/BN layers for inference purposes. Will deepcopy your
+    model by default, but can modify the model inplace as well.
+    """
+    patterns = [(torch.nn.Conv2d, torch.nn.ReLU)]
+    if not inplace:
+        model = copy.deepcopy(model)
+    fx_model = fx.symbolic_trace(model)
+    modules = dict(fx_model.named_modules())
+    new_graph = copy.deepcopy(fx_model.graph)
+
+    for pattern in patterns:
+        for node in new_graph.nodes:
+            if matches_module_pattern(pattern, node, modules):
+                if len(node.args[0].users) > 1:  # Output of conv is used by other nodes
+                    continue
+                conv = modules[node.args[0].target]
+                relu = modules[node.target]
+                fused_conv = Conv2dReLU(conv.weight, conv.bias, conv.stride, conv.padding, conv.dilation, conv.groups)
+                replace_node_module(node.args[0], modules, fused_conv)
+                node.replace_all_uses_with(node.args[0])
+                new_graph.erase_node(node)
+    return fx.GraphModule(fx_model, new_graph)
