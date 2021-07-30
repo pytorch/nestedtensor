@@ -13,10 +13,7 @@ from .nested.nested import transpose_nhwc_nchw
 
 from .nested.fuser import fuse_conv_bn
 from .nested.fuser import fuse_conv_relu
-<<<<<<< HEAD
 from .nested.fuser import fuse_conv_add_relu
-=======
->>>>>>> master
 
 from . import nested
 
