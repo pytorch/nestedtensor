@@ -196,16 +196,13 @@ class TestIntegration(TestCase):
             model._initialize_weights(False)
             fused = symbolic_trace(model)
             fused = nestedtensor.fuse_conv_bn(fused)
-<<<<<<< HEAD
             fused = nestedtensor.fuse_conv_add_relu(fused)
             print(fused)
             # print("1", fused)
             # print("1 modules", list(fused.modules()))
             # fused = nestedtensor.fuse_conv_relu(fused)
             # import sys; sys.exit(1)
-=======
             fused = nestedtensor.fuse_conv_relu(fused)
->>>>>>> master
             model = model.to(dtype)
             fused = fused.to(dtype)
             data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)
