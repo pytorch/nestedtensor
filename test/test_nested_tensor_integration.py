@@ -195,29 +195,21 @@ class TestIntegration(TestCase):
             from torch.fx import symbolic_trace
             model = build_model({"name": "resnext101_32x4d"}).eval().cuda()
             model._initialize_weights(False)
-            fused = symbolic_trace(model)
-            fused = nestedtensor.fuse_conv_bn(fused)
-            fused = nestedtensor.fuse_conv_relu(fused)
-            # fused = nestedtensor.fuse_conv_add_relu(fused)
-            # print("1", fused)
-            # print("\n".join(dict(fused.named_modules()).keys()))
-            # print("1 modules", "\n".join(list(map(str, fused.modules()))[:6]))
-            # fused = nestedtensor.fuse_conv_relu(fused)
-            # import sys; sys.exit(1)
+            fused = nestedtensor.fuse_conv_bn(model)
             model = model.to(dtype)
             fused = fused.to(dtype)
             data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)
+            ref_output = model(data)
             if use_channels_last:
                 data = data.contiguous(memory_format=torch.channels_last)
-            ref_output = model(data)
             new_output = fused(data)
             if dtype == torch.float16:
                 self.assertEqual(ref_output, new_output, prec=2e-3)
             else:
                 self.assertEqual(ref_output, new_output)
-        # _test(torch.float32, False)
+        _test(torch.float32, False)
         _test(torch.float16, False)
-        # _test(torch.float16, True)
+        _test(torch.float16, True)
         _test(torch.float32, True)
 
 
