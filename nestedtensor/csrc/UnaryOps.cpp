@@ -103,14 +103,14 @@ Tensor NestedTensor_clamp_max(const Tensor& self, const c10::Scalar& min) {
 
 Tensor& NestedTensor_clamp_max_out(
     const Tensor& self,
-    const Scalar& min,
+    const Scalar& max,
     Tensor& result) {
   apply_nested_tensor(
-      [min](const Tensor self, Tensor result) {
-        at::native::clamp_max_out(self, min, result);
+      [max](Tensor result, const Tensor tensor) {
+        at::clamp_max_out(result, tensor, max);
       },
-      self,
-      result);
+      result,
+      self);
   return result;
 }
 
