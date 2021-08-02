@@ -106,11 +106,11 @@ Tensor& NestedTensor_clamp_max_out(
     const Scalar& max,
     Tensor& result) {
   apply_nested_tensor(
-      [max](const Tensor self, Tensor result) {
-        at::clamp_max_out(self, result, max);
+      [max](Tensor result, const Tensor tensor) {
+        at::clamp_max_out(result, tensor, max);
       },
-      self,
-      result);
+      result,
+      self);
   return result;
 }
 
