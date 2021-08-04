@@ -118,7 +118,7 @@ class Conv2dReLU(torch.nn.Module):
         #     self.weight.data = self.weight.to(memory_format=torch.channels_last)
         #     inp = inp.to(memory_format=torch.channels_last)
         #     self.weight_is_channels_last = True
-        # out = torch.cudnn_convolution_relu(inp,
+        # return torch.cudnn_convolution_relu(inp,
         #                                     self.weight,
         #                                     self.bias,
         #                                     self.stride,
