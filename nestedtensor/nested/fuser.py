@@ -203,7 +203,6 @@ def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
                 replace_node_module(node.args[0], modules, fused_conv)
                 node.replace_all_uses_with(node.args[0])
                 new_graph.erase_node(node)
-    # new_graph.print_tabular()
 
 
     last_nodes = []
@@ -225,21 +224,13 @@ def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
         is_match = is_match and (str(last_nodes[1]).split("_")[0] == "add")
         is_match = is_match and isinstance(modules[last_nodes[2].target], torch.nn.ReLU)
         if (is_match):
-            # print("0: ", last_nodes)
-            # print("1: ", last_nodes[1])
-            # print("2: ", last_nodes[1].args)
-            # print("3: ", last_nodes[1].args[0])
-            # print("")
             conv = modules[last_nodes[1].args[0].target]
             fused_conv = Conv2dAddReLU(conv.weight, conv.bias, conv.stride, conv.padding, conv.dilation, conv.groups)
-            # modules[last_nodes[2].target] = fused_conv
             replace_node_module(last_nodes[2], modules, fused_conv)
-            # setattr(modules[last_nodes[2].target], last_nodes[2].target, fused_conv)
             last_nodes[2].args = (last_nodes[0].args[0], last_nodes[1].args[1])
             new_graph.erase_node(last_nodes[1])
             new_graph.erase_node(last_nodes[0])
             count += 1
-    # new_graph.print_tabular()
     return fx.GraphModule(fx_model, new_graph)
 
 
