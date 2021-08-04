@@ -109,31 +109,22 @@ class Conv2dReLU(torch.nn.Module):
             self.slow_fusion = True
 
     def forward(self, inp):
-        # TODO: Reactive once cudnn_convolution_relu is fixed.
-        # if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
-        #     inp = inp.to(memory_format=torch.channels_last)
-        # if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
-        #     inp = inp.to(memory_format=torch.contiguous_format)
-        # if not self.slow_fusion and not self.weight_is_channels_last:
-        #     self.weight.data = self.weight.to(memory_format=torch.channels_last)
-        #     inp = inp.to(memory_format=torch.channels_last)
-        #     self.weight_is_channels_last = True
-        # return torch.cudnn_convolution_relu(inp,
-        #                                     self.weight,
-        #                                     self.bias,
-        #                                     self.stride,
-        #                                     self.padding,
-        #                                     self.dilation,
-        #                                     self.groups)
-        out = torch.conv2d(inp,
-                           self.weight,
-                           self.bias,
-                           self.stride,
-                           self.padding,
-                           self.dilation,
-                           self.groups)
-        out.relu_()
-        return out
+        # NOTE: This will be faster once https://github.com/pytorch/pytorch/pull/62482 lands
+        if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
+            inp = inp.to(memory_format=torch.channels_last)
+        if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
+            inp = inp.to(memory_format=torch.contiguous_format)
+        if not self.slow_fusion and not self.weight_is_channels_last:
+            self.weight.data = self.weight.to(memory_format=torch.channels_last)
+            inp = inp.to(memory_format=torch.channels_last)
+            self.weight_is_channels_last = True
+        return torch.cudnn_convolution_relu(inp,
+                                            self.weight,
+                                            self.bias,
+                                            self.stride,
+                                            self.padding,
+                                            self.dilation,
+                                            self.groups)
 
 class Conv2dAddReLU(torch.nn.Module):
     def __init__(self,
