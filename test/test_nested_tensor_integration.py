@@ -195,7 +195,10 @@ class TestIntegration(TestCase):
             from torch.fx import symbolic_trace
             model = build_model({"name": "resnext101_32x4d"}).eval().cuda()
             model._initialize_weights(False)
+            # This is needed to allow tracing, but for makes no difference for resnext
+            model = model.classy_model
             fused = nestedtensor.fuse_conv_bn(model)
+            fused = nestedtensor.fuse_conv_relu(fused)
             model = model.to(dtype)
             fused = fused.to(dtype)
             data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)

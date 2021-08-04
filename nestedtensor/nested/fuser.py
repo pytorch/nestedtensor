@@ -147,42 +147,38 @@ class Conv2dAddReLU(torch.nn.Module):
             self.slow_fusion = True
 
     def forward(self, inp, add_input):
+        # TODO: Reactivate this once cudnn_convolution_add_relu is fixed.
         # weight = self.weight.to(memory_format=torch.contiguous_format)
-        # print("0: ", inp.is_contiguous(memory_format=torch.channels_last))
-        # print("0: ", add_input.is_contiguous(memory_format=torch.channels_last))
-        # print("1: ", self.weight.is_contiguous(memory_format=torch.channels_last))
-        if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
-            inp = inp.to(memory_format=torch.channels_last)
-            add_input = add_input.to(memory_format=torch.channels_last)
-        if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
-            inp = inp.to(memory_format=torch.contiguous_format)
-            add_input = add_input.to(memory_format=torch.contiguous_format)
-        if not self.slow_fusion and not self.weight_is_channels_last:
-            self.weight.data = self.weight.to(memory_format=torch.channels_last)
-            inp = inp.to(memory_format=torch.channels_last)
-            add_input = add_input.to(memory_format=torch.channels_last)
-            self.weight_is_channels_last = True
-        out = torch.cudnn_convolution_add_relu(inp,
-                                               self.weight,
-                                               add_input,
-                                               1.0,
-                                               self.bias,
-                                               self.stride,
-                                               self.padding,
-                                               self.dilation,
-                                               self.groups)
-        # out = torch.conv2d(inp,
+        # if not self.slow_fusion and inp.is_contiguous(memory_format=torch.contiguous_format):
+        #     inp = inp.to(memory_format=torch.channels_last)
+        #     add_input = add_input.to(memory_format=torch.channels_last)
+        # if self.slow_fusion and inp.is_contiguous(memory_format=torch.channels_last):
+        #     inp = inp.to(memory_format=torch.contiguous_format)
+        #     add_input = add_input.to(memory_format=torch.contiguous_format)
+        # if not self.slow_fusion and not self.weight_is_channels_last:
+        #     self.weight.data = self.weight.to(memory_format=torch.channels_last)
+        #     inp = inp.to(memory_format=torch.channels_last)
+        #     add_input = add_input.to(memory_format=torch.channels_last)
+        #     self.weight_is_channels_last = True
+        # out = torch.cudnn_convolution_add_relu(inp,
         #                                        self.weight,
-        #                                        # add_input,
-        #                                        # 1.0,
+        #                                        add_input,
+        #                                        1.0,
         #                                        self.bias,
         #                                        self.stride,
         #                                        self.padding,
         #                                        self.dilation,
         #                                        self.groups)
-        # out += add_input
-        # out.relu_()
-        # out = out.to(memory_format=torch.channels_last)
+        out = torch.conv2d(inp,
+                           self.weight,
+                           self.bias,
+                           self.stride,
+                           self.padding,
+                           self.dilation,
+                           self.groups)
+        out += add_input
+        out.relu_()
+        out = out.to(memory_format=torch.channels_last)
         return out
 
 def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
