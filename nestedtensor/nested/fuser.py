@@ -160,15 +160,15 @@ class Conv2dAddReLU(torch.nn.Module):
         #     inp = inp.to(memory_format=torch.channels_last)
         #     add_input = add_input.to(memory_format=torch.channels_last)
         #     self.weight_is_channels_last = True
-        # out = torch.cudnn_convolution_add_relu(inp,
-        #                                        self.weight,
-        #                                        add_input,
-        #                                        1.0,
-        #                                        self.bias,
-        #                                        self.stride,
-        #                                        self.padding,
-        #                                        self.dilation,
-        #                                        self.groups)
+        # return torch.cudnn_convolution_add_relu(inp,
+        #                                         self.weight,
+        #                                         add_input,
+        #                                         1.0,
+        #                                         self.bias,
+        #                                         self.stride,
+        #                                         self.padding,
+        #                                         self.dilation,
+        #                                         self.groups)
         out = torch.conv2d(inp,
                            self.weight,
                            self.bias,
