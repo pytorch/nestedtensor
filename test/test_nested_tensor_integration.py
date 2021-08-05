@@ -2,6 +2,7 @@ import torch
 import nestedtensor
 import unittest
 from utils_test_case import TestCase
+from utils import debug_on
 
 try:
     import classy_vision
@@ -194,23 +195,24 @@ class TestIntegration(TestCase):
             from torch.fx import symbolic_trace
             model = build_model({"name": "resnext101_32x4d"}).eval().cuda()
             model._initialize_weights(False)
-            fused = symbolic_trace(model)
-            fused = nestedtensor.fuse_conv_bn(fused)
+            # This is needed to allow tracing, but for makes no difference for resnext
+            model = model.classy_model
+            fused = nestedtensor.fuse_conv_bn(model)
             fused = nestedtensor.fuse_conv_relu(fused)
             model = model.to(dtype)
             fused = fused.to(dtype)
             data = torch.randn(2, 3, 50, 50, device=torch.device('cuda'), dtype=dtype)
+            ref_output = model(data)
             if use_channels_last:
                 data = data.contiguous(memory_format=torch.channels_last)
-            ref_output = model(data)
             new_output = fused(data)
             if dtype == torch.float16:
                 self.assertEqual(ref_output, new_output, prec=2e-3)
             else:
                 self.assertEqual(ref_output, new_output)
-        _test(torch.float16, False)
         _test(torch.float32, False)
-        # _test(torch.float16, True)
+        _test(torch.float16, False)
+        _test(torch.float16, True)
         _test(torch.float32, True)
 
 
