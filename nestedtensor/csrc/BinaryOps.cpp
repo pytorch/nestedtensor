@@ -72,7 +72,7 @@ Tensor NestedTensor_add_Tensor(
       }
       at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
       Tensor nt_sizes_cumsum =
-          at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
+          at::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
       Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
       nt_sizes = nt_sizes.to(torch::kCUDA);
@@ -108,7 +108,7 @@ Tensor NestedTensor_add_Tensor(
   }
   std::tie(self, other) = _expand_other_as(self_, other_);
   return map_nested_tensor(
-      [&alpha](Tensor s, Tensor o) { 
+      [&alpha](Tensor s, Tensor o) {
       return at::add(s, o, alpha); },
       self,
       other);
@@ -270,7 +270,7 @@ Tensor NestedTensor_mul_Tensor(const Tensor& self_, const Tensor& other_) {
       }
       at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
       Tensor nt_sizes_cumsum =
-          at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
+          at::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
       Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
       nt_sizes = nt_sizes.to(torch::kCUDA);
@@ -295,7 +295,7 @@ Tensor NestedTensor_mul_Tensor(const Tensor& self_, const Tensor& other_) {
   }
   std::tie(self, other) = _expand_other_as(self_, other_);
   return map_nested_tensor(
-      [](Tensor s, Tensor o) { 
+      [](Tensor s, Tensor o) {
       return at::mul(s, o); }, self, other);
 }
 
@@ -389,7 +389,7 @@ Tensor NestedTensor_sub_Tensor(
       }
       at::Tensor numbers_t = torch::tensor(numbers).to(torch::kInt32);
       Tensor nt_sizes_cumsum =
-          at::native::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
+          at::cumsum(numbers_t, 0).to(torch::kInt32).reshape({-1});
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
       Tensor nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes_cumsum});
       nt_sizes = nt_sizes.to(torch::kCUDA);
@@ -414,7 +414,7 @@ Tensor NestedTensor_sub_Tensor(
   }
   std::tie(self, other) = _expand_other_as(self_, other_);
   return map_nested_tensor(
-      [&alpha](Tensor s, Tensor o) { 
+      [&alpha](Tensor s, Tensor o) {
       return at::sub(s, o, alpha); },
       self,
       other);

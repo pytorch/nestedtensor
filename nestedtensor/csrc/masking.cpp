@@ -261,7 +261,7 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
       Tensor nt_sizes = at::native::narrow(nt_sizes_, 1, 0, 1);
       int max_size_1 = nt_sizes.max().item<int>();
       nt_sizes =
-          at::native::cumsum(nt_sizes, 0).to(torch::kInt32).reshape({-1});
+          at::cumsum(nt_sizes, 0).to(torch::kInt32).reshape({-1});
       nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes});
       Tensor output = torch::zeros(
           {*nt_opt_size[0], max_size_1, *nt_opt_size[2]}, nt_buffer.options());
@@ -477,7 +477,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
   std::vector<at::Tensor> all_sizes = target_size.sizes().unbind();
   for (int64_t i = 0; i < all_sizes.size(); i++) {
     std::vector<int64_t> sizes_i(
-        all_sizes[i].data_ptr<int64_t>(), 
+        all_sizes[i].data_ptr<int64_t>(),
         all_sizes[i].data_ptr<int64_t>() + all_sizes[i].numel());
     at::Tensor mask_i = padded.new_full(
                                     IntArrayRef(sizes_i),
