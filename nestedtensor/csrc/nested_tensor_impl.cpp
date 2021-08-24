@@ -396,6 +396,26 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
+Tensor NestedTensor_to_dtype_layout(
+  const Tensor& self,
+  c10::optional<ScalarType> dtype,
+  c10::optional<Layout> layout,
+  c10::optional<Device> device,
+  c10::optional<bool> pin_memory,
+  bool non_blocking,
+  bool copy,
+  c10::optional<c10::MemoryFormat> optional_memory_format) {
+    auto input_buffer = get_buffer(self);
+    auto result_nt = wrap_buffer(input_buffer.to(dtype, layout, device, pin_memory,
+                                                 non_blocking, copy, c10::nullopt),
+                                 get_efficient_nested_size(self),
+                                 get_efficient_nested_stride(self));
+    if (optional_memory_format) {
+      return NestedTensor_contiguous(result_nt, *optional_memory_format);
+    }
+    return result_nt;
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "copy_", NestedTensor_copy_);
@@ -409,5 +429,6 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "unsqueeze", NestedTensor_unsqueeze);
+  nt_impl(m, "to.dtype_layout", NestedTensor_to_dtype_layout);
 }
 } // namespace at
