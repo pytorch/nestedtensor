@@ -399,8 +399,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
         return tuple(torch.ops.nestedtensor.sizes(self._impl))
 
     def to(self, *args, **kwargs):
-        raise NotImplementedError(
-            "NestedTensor.to is currently not implemented.")
+        return _wrap_result(self._impl.to(*args, **kwargs))
 
     def __str__(self):
         def _str(x, indent=0, tab="  "):

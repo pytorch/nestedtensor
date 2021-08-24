@@ -126,6 +126,24 @@ class Conv2dReLU(torch.nn.Module):
             self.weight.data = self.weight.to(memory_format=torch.channels_last)
             inp = inp.to(memory_format=torch.channels_last)
             self.weight_is_channels_last = True
+        # NOTE: Very hacky way of dealing with cudnn_convolution_relu's inability
+        # to support contiguous weight but channels last input. We also
+        # can't just set all weights to channels last in this model, because
+        # the first layer is very slow under channels last.
+        try:
+            return torch.cudnn_convolution_relu(inp,
+                                                self.weight,
+                                                self.bias,
+                                                self.stride,
+                                                self.padding,
+                                                self.dilation,
+                                                self.groups)
+        except RuntimeError:
+            if self.weight.is_contiguous(memory_format=torch.channels_last):
+                self.weight.data = self.weight.to(memory_format=torch.contiguous_format)
+            else:
+                self.weight.data = self.weight.to(memory_format=torch.channels_last)
+
         return torch.cudnn_convolution_relu(inp,
                                             self.weight,
                                             self.bias,
