@@ -5,6 +5,10 @@ import copy
 from torch.fx import symbolic_trace
 import time
 
+def my_add_relu(x: torch.Tensor, y: torch.Tensor):
+    assert x.is_cuda and y.is_cuda
+    return y.add_(x).relu_()
+
 def _parent_name(target : str) -> Tuple[str, str]:
     """
     Splits a qualname into parent path and last atom.
@@ -37,6 +41,7 @@ def replace_node_module(node: fx.Node, modules: Dict[str, Any], new_module: torc
     parent_name, name = _parent_name(node.target)
     setattr(modules[parent_name], name, new_module)
 
+
 def computeUpdatedConvWeightAndBias(
         bn_rv,
         bn_eps,
@@ -53,6 +58,7 @@ def computeUpdatedConvWeightAndBias(
     new_b = (conv_b - bn_rm) * bn_var_rsqrt * bn_w + bn_b
     return new_w, new_b
 
+
 def fuse_conv_bn_eval(conv, bn):
     assert(not (conv.training or bn.training)), "Fusion only for eval!"
     fused_conv = copy.deepcopy(conv)
@@ -62,6 +68,7 @@ def fuse_conv_bn_eval(conv, bn):
         torch.nn.Parameter(computeUpdatedConvWeightAndBias(bn.running_var, bn.eps, bn.weight, bn.bias, bn.running_mean, fused_conv.weight))
 
     return fused_conv
+
 
 def fuse_conv_bn(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
     """
@@ -87,6 +94,7 @@ def fuse_conv_bn(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
                 node.replace_all_uses_with(node.args[0])
                 new_graph.erase_node(node)
     return fx.GraphModule(fx_model, new_graph)
+
 
 class Conv2dReLU(torch.nn.Module):
     def __init__(self,
@@ -125,6 +133,7 @@ class Conv2dReLU(torch.nn.Module):
                                             self.padding,
                                             self.dilation,
                                             self.groups)
+
 
 class Conv2dAddReLU(torch.nn.Module):
     def __init__(self,
@@ -176,8 +185,9 @@ class Conv2dAddReLU(torch.nn.Module):
                            self.padding,
                            self.dilation,
                            self.groups)
-        out.add_(add_input)
-        out.relu_()
+        my_add_relu(add_input, out)
+        # out.add_(add_input)
+        # out.relu_()
         return out
 
 def fuse_conv_relu(model: torch.nn.Module, inplace=False) -> torch.nn.Module:
