@@ -17,7 +17,8 @@ at::Tensor cross_entropy(
     c10::optional<bool>& size_average, // TODO: use
     c10::optional<int64_t>& ignore_index,
     c10::optional<bool>& reduce, // TODO: use
-    c10::optional<std::string>& reduction) {
+    c10::optional<std::string>& reduction,
+    c10::optional<double> label_smoothing) {
   F::CrossEntropyFuncOptions::reduction_t redct;
   if (reduction.value() == "mean" || reduction.value() == "none") {
     redct = torch::kMean;
@@ -31,6 +32,9 @@ at::Tensor cross_entropy(
   auto options = F::CrossEntropyFuncOptions().reduction(redct);
   if (ignore_index.has_value()) {
     options = options.ignore_index(ignore_index.value());
+  }
+  if (label_smoothing.has_value()) {
+    options = options.label_smoothing(label_smoothing.value());
   }
 
   return map_nested_tensor(
@@ -244,7 +248,8 @@ void add_functions(pybind11::module m) {
          c10::optional<bool> size_average, // TODO: use
          c10::optional<int64_t> ignore_index,
          c10::optional<bool> reduce, // TODO: use
-         c10::optional<std::string> reduction) {
+         c10::optional<std::string> reduction,
+         c10::optional<double> label_smoothing) {
         return cross_entropy(
             input,
             target,
@@ -252,7 +257,8 @@ void add_functions(pybind11::module m) {
             size_average,
             ignore_index,
             reduce,
-            reduction);
+            reduction,
+            label_smoothing);
       },
       py::arg("input"),
       py::arg("target"),
@@ -260,7 +266,8 @@ void add_functions(pybind11::module m) {
       py::arg("size_average") = true,
       py::arg("ignore_index") = -100,
       py::arg("reduce") = true,
-      py::arg("reduction") = "mean");
+      py::arg("reduction") = "mean",
+      py::arg("label_smoothing") = 0.0);
 }
 } // namespace nested_tensor
 } // namespace torch
