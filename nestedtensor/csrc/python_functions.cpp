@@ -134,10 +134,14 @@ void add_functions(pybind11::module m) {
          c10::optional<THPArrayRef<double>> scale_factor,
          c10::optional<std::string> mode,
          c10::optional<bool> align_corners,
-         c10::optional<bool> recompute_scale_factor) {
+         c10::optional<bool> recompute_scale_factor,
+         bool antialias) {
         if (scale_factor.has_value() && size.has_value()) {
           throw std::runtime_error(
               "only one of size or scale_factor should be defined");
+        }
+        if (antialias) {
+          throw std::runtime_error("Antialias is not yet supported");
         }
 
         if (size.has_value()) {
@@ -162,7 +166,8 @@ void add_functions(pybind11::module m) {
       py::arg("scale_factor") = nullptr,
       py::arg("mode") = "nearest",
       py::arg("align_corners") = false,
-      py::arg("recompute_scale_factor") = false);
+      py::arg("recompute_scale_factor") = false,
+      py::arg("antialias") = false);
 
   m.def(
       "interpolate",
@@ -171,10 +176,14 @@ void add_functions(pybind11::module m) {
          c10::optional<THPArrayRef<double>> scale_factor,
          c10::optional<std::string> mode,
          c10::optional<bool> align_corners,
-         c10::optional<bool> recompute_scale_factor) {
+         c10::optional<bool> recompute_scale_factor,
+         bool antialias) {
         if (scale_factor.has_value() && size.has_value()) {
           throw std::runtime_error(
               "only one of size or scale_factor should be defined");
+        }
+        if (antialias) {
+          throw std::runtime_error("Antialias is not yet supported");
         }
 
         if (size.has_value()) {
@@ -199,7 +208,8 @@ void add_functions(pybind11::module m) {
       py::arg("scale_factor") = nullptr,
       py::arg("mode") = "nearest",
       py::arg("align_corners") = false,
-      py::arg("recompute_scale_factor") = false);
+      py::arg("recompute_scale_factor") = false,
+      py::arg("antialias") = false);
 
   m.def(
       "interpolate",
@@ -208,10 +218,14 @@ void add_functions(pybind11::module m) {
          c10::optional<THPArrayRef<double>> scale_factor,
          c10::optional<std::string> mode,
          c10::optional<bool> align_corners,
-         c10::optional<bool> recompute_scale_factor) {
+         c10::optional<bool> recompute_scale_factor,
+         bool antialias) {
         if (scale_factor.has_value() && size.has_value()) {
           throw std::runtime_error(
               "only one of size or scale_factor should be defined");
+        }
+        if (antialias) {
+          throw std::runtime_error("Antialias is not yet supported");
         }
 
         if (size.has_value()) {
@@ -238,7 +252,8 @@ void add_functions(pybind11::module m) {
       py::arg("scale_factor") = nullptr,
       py::arg("mode") = "nearest",
       py::arg("align_corners") = false,
-      py::arg("recompute_scale_factor") = false);
+      py::arg("recompute_scale_factor") = false,
+      py::arg("antialias") = false);
 
   m.def(
       "cross_entropy",
