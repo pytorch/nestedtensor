@@ -8,7 +8,7 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-Tensor NestedTensor_gelu(const Tensor& self, const int64_t approximate) {
+Tensor NestedTensor_gelu(const Tensor& self) {
   if (is_nested_tensor_impl(self) && get_is_contiguous(self)) {
     return wrap_buffer(
         at::gelu(get_buffer(self)),
@@ -16,7 +16,7 @@ Tensor NestedTensor_gelu(const Tensor& self, const int64_t approximate) {
         get_efficient_nested_stride(self));
   }
   return map_nested_tensor(
-      [&approximate](at::Tensor tensor) { return at::gelu(tensor, approximate); }, self);
+      [](at::Tensor tensor) { return at::gelu(tensor); }, self);
 }
 
 Tensor NestedTensor_elu(const Tensor& self, const Scalar& alpha, const Scalar& scale, const Scalar& input_scale) {
