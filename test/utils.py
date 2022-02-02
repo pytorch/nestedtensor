@@ -184,7 +184,7 @@ def get_unary_C_functions():
         "nonzero",
         "real",
         "reciprocal",
-        "round",
+        # "round",
         "rsqrt",
         "sigmoid",
         "sign",
@@ -234,7 +234,7 @@ def get_unary_functions():
         'reciprocal',
         # 'relu', # TODO: no relu_out in aten
         # 'renorm', # TODO: Requires extra kwargs
-        'round',
+        # 'round',
         'rsqrt',
         'sigmoid',
         'sign',
