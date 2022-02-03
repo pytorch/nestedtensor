@@ -180,7 +180,7 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // UNARY_OP(mvlgamma);
   UNARY_OP(neg);
   UNARY_OP(reciprocal);
-  UNARY_OP(round);
+  // UNARY_OP(round);
   UNARY_OP(rsqrt);
   UNARY_OP(sigmoid);
   UNARY_OP_INPLACE_METHOD(sign)
