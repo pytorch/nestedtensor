@@ -201,27 +201,27 @@ class TestNestedTensor(TestCase):
         for constructor in _iter_constructors():
             a = constructor([])
             self.assertEqual(len(a.nested_size()), 0)
-            self.assertRaises(RuntimeError, lambda: a.nested_size()[0])  # noqa: F821
+            self.assertRaises(RuntimeError, lambda: a.nested_size()[0])
 
             a = constructor([torch.tensor(1)])
             self.assertEqual(len(a.nested_size()), 1)
             self.assertEqual(a.nested_size()[0], torch.Size([]))
             self.assertEqual(a.nested_size(0), 1)
-            self.assertRaises(IndexError, lambda: a.nested_size(1))  # noqa: F821
+            self.assertRaises(IndexError, lambda: a.nested_size(1))
 
             a = constructor([torch.randn(1)])
             self.assertEqual(a.nested_size()[0], torch.Size([1]))
             self.assertEqual(a.nested_size()[0][0], 1)
             self.assertEqual(a.nested_size(0), 1)
             self.assertEqual(a.nested_size(1), (1,))
-            self.assertRaises(IndexError, lambda: a.nested_size(2))  # noqa: F821
+            self.assertRaises(IndexError, lambda: a.nested_size(2))
 
             a = constructor([torch.randn(1, 2)])
             self.assertEqual(a.nested_size()[0], torch.Size([1, 2]))
             self.assertEqual(a.nested_size(0), 1)
             self.assertEqual(a.nested_size(1), (1,))
             self.assertEqual(a.nested_size(2), (2,))
-            self.assertRaises(IndexError, lambda: a.nested_size(3))  # noqa: F821
+            self.assertRaises(IndexError, lambda: a.nested_size(3))
 
             # Make sure object is not bound to life-time of NestedTensor instance
             b = a.nested_size()
@@ -293,7 +293,6 @@ class TestNestedTensor(TestCase):
 
             a1 = constructor([torch.tensor([1, 2]),
                               torch.tensor([2, 8])])
-
             if constructor == nestedtensor.as_nested_tensor:
                 self.assertRaises(NotImplementedError, lambda: constructor([torch.tensor([0, 1]),
                                                                             torch.tensor([1, 0])], dtype=torch.bool))
