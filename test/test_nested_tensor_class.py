@@ -799,16 +799,19 @@ class TestNestedTensor(TestCase):
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_to_tensor_mask_cuda(self):
-        import random
-        random.seed(110)
-        tensors = [random.randint(2, 4) for _ in range(3)]
-        tensors = [torch.arange(t * 3).reshape(t, 3).float() for t in tensors]
-        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        data, mask = nt.to_tensor_mask(mask_dim=2)
-        nt1 = ntnt_nograd(tensors, device=torch.device('cpu'))
-        data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
-        self.assertEqual(data, data1)
-        self.assertEqual(mask, mask1)
+        def _test(dtype):
+            import random
+            random.seed(110)
+            tensors = [random.randint(2, 4) for _ in range(3)]
+            tensors = [torch.arange(t * 3).reshape(t, 3).float() for t in tensors]
+            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype)
+            data, mask = nt.to_tensor_mask(mask_dim=2)
+            nt1 = ntnt_nograd(tensors, device=torch.device('cpu'), dtype=dtype)
+            data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
+            self.assertEqual(data, data1)
+            self.assertEqual(mask, mask1)
+        _test(torch.float16)
+        _test(torch.float32)
 
     def test_to_mask(self):
         import random

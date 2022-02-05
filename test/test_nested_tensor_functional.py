@@ -1128,17 +1128,16 @@ class TestFunctional(TestCase):
             t1 = time.time()
             attn_output = attn_output.transpose(0, 1)
             attn_output = attn_output * torch.logical_not(not_input_mask.unsqueeze(-1))
-            custom_atol = 1e-4
-            custom_rtol = 1e-4
+            custom_atol = 1e-3
+            custom_rtol = 1e-3
             print("dtype: ", dtype)
             if dtype is torch.float16:
-                custom_atol = 1e-2
-                custom_rtol = 1e-2
+                custom_atol = 1e-3
+                custom_rtol = 1e-3
             r0 = result_nt.to_padded_tensor(padding=0)
             r1 = attn_output
             print("r0.sum(): ", r0.sum(), " r1.sum(): ", r1.sum())
-            if False:
-                self.assertTrue(torch.allclose(result_nt.to_padded_tensor(padding=0), attn_output, atol=custom_atol, rtol=custom_rtol))
+            self.assertTrue(torch.allclose(result_nt.to_padded_tensor(padding=0), attn_output, atol=custom_atol, rtol=custom_rtol))
             c = t1 - t0
             print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a, "\tdtype: ", dtype)
 
