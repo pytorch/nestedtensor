@@ -15,6 +15,7 @@
 */
 
 #include <nestedtensor/csrc/cuda/transformer_kernels.h>
+#include <c10/util/Half.h>
 
 namespace fastertransformer 
 {
@@ -324,6 +325,10 @@ void layer_norm(
     block.x = 1024;
 
   block.x = block.x / (4 / sizeof(T)); // if using half, only need half of block.x
+  // Note that this cannot be less than 32 because blockReduceSum above
+  // uses (threadIdx.x < blockDim.x >> 5), which is true if blockDim.x is 16
+  // which happens if n is 32 and we're using half.
+  block.x = max(32, block.x);
 
   /* should pay attention to the rsqrt precision*/
   layer_norm_kernel_generalize<T><<<grid, block, 0, stream>>>(input, gamma, beta, eps, output, m, n); // For gpt-3
@@ -356,6 +361,15 @@ template void layer_norm<float>(
   const float* beta,
   float eps,
   float* output,
+  int m, int n,
+  cudaStream_t stream);
+
+template void layer_norm<c10::Half>(
+  const c10::Half* input,
+  const c10::Half* gamma,
+  const c10::Half* beta,
+  c10::Half eps,
+  c10::Half* output,
   int m, int n,
   cudaStream_t stream);
 
