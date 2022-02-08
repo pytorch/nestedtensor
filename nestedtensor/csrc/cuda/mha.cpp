@@ -57,10 +57,6 @@ at::Tensor bt_min_mha(
   int64_t size_per_head = embedding_dim / head_num;
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
-  auto float_options =
-      torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
-  auto half_options =
-      torch::TensorOptions().dtype(torch::kHalf).device(torch::kCUDA);
 
   at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
 
@@ -84,24 +80,31 @@ at::Tensor bt_min_mha(
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
-  at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
+  auto mask_options =
+      torch::TensorOptions().dtype(query.dtype()).device(torch::kCUDA);
+  at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(mask_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
   if (query.dtype() == torch::kFloat16) {
-    attn_output_weights = attn_output_weights.to(float_options);
+    nteffectivetransformer::cuda::softmax_kernel_kernelLauncher<c10::Half>(
+        attn_output_weights.data_ptr<c10::Half>(),
+        attr_mask.data_ptr<c10::Half>(),
+        batch_size,
+        head_num,
+        seq_len,
+        (c10::Half)(scaling),
+        defaultStream);
   }
 
-  nteffectivetransformer::cuda::softmax_kernel_kernelLauncher<float>(
-      attn_output_weights.data_ptr<float>(),
-      attr_mask.data_ptr<float>(),
-      batch_size,
-      head_num,
-      seq_len,
-      (float)(scaling),
-      defaultStream);
-
-  if (query.dtype() == torch::kFloat16) {
-    attn_output_weights = attn_output_weights.to(half_options);
+  if (query.dtype() == torch::kFloat) {
+    nteffectivetransformer::cuda::softmax_kernel_kernelLauncher<float>(
+        attn_output_weights.data_ptr<float>(),
+        attr_mask.data_ptr<float>(),
+        batch_size,
+        head_num,
+        seq_len,
+        (float)(scaling),
+        defaultStream);
   }
 
   auto attn_output = at::matmul(attn_output_weights, val_buf).contiguous();
