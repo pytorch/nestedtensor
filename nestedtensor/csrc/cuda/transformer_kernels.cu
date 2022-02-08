@@ -15,6 +15,7 @@
 */
 
 #include <nestedtensor/csrc/cuda/transformer_kernels.h>
+#include <c10/util/Half.h>
 
 namespace fastertransformer 
 {
@@ -356,6 +357,15 @@ template void layer_norm<float>(
   const float* beta,
   float eps,
   float* output,
+  int m, int n,
+  cudaStream_t stream);
+
+template void layer_norm<c10::Half>(
+  const c10::Half* input,
+  const c10::Half* gamma,
+  const c10::Half* beta,
+  c10::Half eps,
+  c10::Half* output,
   int m, int n,
   cudaStream_t stream);
 

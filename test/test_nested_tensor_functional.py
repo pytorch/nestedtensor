@@ -893,7 +893,8 @@ class TestFunctional(TestCase):
 
     @torch.inference_mode()
     def test_layer_norm(self):
-        def _test(device):
+        def _test(device, dtype):
+            print(f'device {device} dtype {dtype}')
             # Currently only supporting nested dim 1.
             # layer_norm = torch.nn.LayerNorm((0,)).to(device)
             # t0 = torch.randn(3)
@@ -904,25 +905,25 @@ class TestFunctional(TestCase):
             # self.assertRaisesRegex(RuntimeError,
             #                        "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
-            t0 = utils.gen_float_tensor(1, (2, 32)).to(device)
-            t1 = utils.gen_float_tensor(2, (2, 32)).to(device)
+            t0 = utils.gen_float_tensor(1, (2, 32)).to(device).to(dtype)
+            t1 = utils.gen_float_tensor(2, (2, 32)).to(device).to(dtype)
             ts = [t0, t1, t0, t1]
-            nt = ntnt_nograd(ts, device=device)
-            layer_norm = torch.nn.LayerNorm(32).to(device)
+            nt = ntnt_nograd(ts, device=device, dtype=dtype)
+            layer_norm = torch.nn.LayerNorm(32).to(device).to(dtype)
             nt_result = layer_norm(nt)
             for i in range(len(ts)):
                 self.assertEqual(nt_result[i], layer_norm(
                     ts[i].reshape(1, -1, 32).squeeze(0)))
 
-            layer_norm = torch.nn.LayerNorm(16).to(device)
-            tt = utils.gen_float_tensor(1, (3, 23, 16)).to(device)
-            res = layer_norm(tt)
-            nt = nt + 3
-            res = res * 5
-            res = layer_norm(tt + 2)
-            t0 = utils.gen_float_tensor(1, (3, 16)).to(device)
-            t1 = utils.gen_float_tensor(2, (2, 16)).to(device)
-            t2 = utils.gen_float_tensor(3, (3, 16)).to(device)
+            # layer_norm = torch.nn.LayerNorm(16).to(device).to(dtype)
+            # tt = utils.gen_float_tensor(1, (3, 23, 16)).to(device).to(dtype)
+            # res = layer_norm(tt)
+            # nt = nt + 3
+            # res = res * 5
+            # res = layer_norm(tt + 2)
+            # t0 = utils.gen_float_tensor(1, (3, 16)).to(device)
+            # t1 = utils.gen_float_tensor(2, (2, 16)).to(device)
+            # t2 = utils.gen_float_tensor(3, (3, 16)).to(device)
 
             # Currently only supporting nested dim 1.
             # ts = [[t0, t1], [t2]]
@@ -947,9 +948,10 @@ class TestFunctional(TestCase):
             # self.assertRaisesRegex(RuntimeError,
             #                        "Currently only singleton tuples of integers supported for layer_norm.",
             #                        lambda: layer_norm(nt))
-        _test(torch.device('cpu'))
+        _test(torch.device('cpu'), torch.float32)
         if torch.cuda.is_available():
-            _test(torch.device('cuda'))
+            _test(torch.device('cuda'), torch.float32)
+            _test(torch.device('cuda'), torch.float16)
 
     @torch.inference_mode()
     def test_decoder(self):
