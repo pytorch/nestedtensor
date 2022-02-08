@@ -893,8 +893,8 @@ class TestFunctional(TestCase):
 
     @torch.inference_mode()
     def test_layer_norm(self):
-        def _test(device, dtype):
-            print(f'device {device} dtype {dtype}')
+        def _test(device, dtype, size):
+            print(f'device {device} dtype {dtype} size: {size}')
             # Currently only supporting nested dim 1.
             # layer_norm = torch.nn.LayerNorm((0,)).to(device)
             # t0 = torch.randn(3)
@@ -905,15 +905,17 @@ class TestFunctional(TestCase):
             # self.assertRaisesRegex(RuntimeError,
             #                        "Cannot normalize across irregular dimension 2", lambda: layer_norm(nt))
 
-            t0 = utils.gen_float_tensor(1, (2, 32)).to(device).to(dtype)
-            t1 = utils.gen_float_tensor(2, (2, 32)).to(device).to(dtype)
+            t0 = utils.gen_float_tensor(1, (2, size)).to(device).to(dtype)
+            t1 = utils.gen_float_tensor(2, (2, size)).to(device).to(dtype)
             ts = [t0, t1, t0, t1]
             nt = ntnt_nograd(ts, device=device, dtype=dtype)
-            layer_norm = torch.nn.LayerNorm(32).to(device).to(dtype)
+            layer_norm = torch.nn.LayerNorm(size).to(device).to(dtype)
             nt_result = layer_norm(nt)
             for i in range(len(ts)):
-                self.assertEqual(nt_result[i], layer_norm(
-                    ts[i].reshape(1, -1, 32).squeeze(0)))
+                a = nt_result[i]
+                b = layer_norm(
+                    ts[i].reshape(1, -1, size).squeeze(0))
+                self.assertEqual(a, b)
 
             # layer_norm = torch.nn.LayerNorm(16).to(device).to(dtype)
             # tt = utils.gen_float_tensor(1, (3, 23, 16)).to(device).to(dtype)
@@ -948,10 +950,11 @@ class TestFunctional(TestCase):
             # self.assertRaisesRegex(RuntimeError,
             #                        "Currently only singleton tuples of integers supported for layer_norm.",
             #                        lambda: layer_norm(nt))
-        _test(torch.device('cpu'), torch.float32)
-        if torch.cuda.is_available():
-            _test(torch.device('cuda'), torch.float32)
-            _test(torch.device('cuda'), torch.float16)
+        for size in [1024, 512, 256, 128, 2, 4, 32]:
+            _test(torch.device('cpu'), torch.float32, size)
+            if torch.cuda.is_available():
+                _test(torch.device('cuda'), torch.float16, size)
+                _test(torch.device('cuda'), torch.float32, size)
 
     @torch.inference_mode()
     def test_decoder(self):

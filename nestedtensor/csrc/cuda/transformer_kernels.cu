@@ -325,6 +325,10 @@ void layer_norm(
     block.x = 1024;
 
   block.x = block.x / (4 / sizeof(T)); // if using half, only need half of block.x
+  // Note that this cannot be less than 32 because blockReduceSum above
+  // uses (threadIdx.x < blockDim.x >> 5), which is true if blockDim.x is 16
+  // which happens if n is 32 and we're using half.
+  block.x = max(32, block.x);
 
   /* should pay attention to the rsqrt precision*/
   layer_norm_kernel_generalize<T><<<grid, block, 0, stream>>>(input, gamma, beta, eps, output, m, n); // For gpt-3
