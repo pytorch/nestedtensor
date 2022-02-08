@@ -25,7 +25,6 @@ void add_padding_1(
   const int grainsize = 16 * 256;
   const int batch_input_offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0];
   const int batch_output_offset = batch_id * output_sizes[1];
   for (int ii = 0; ii < (output_sizes[1] / grainsize); ii++) {
     const int i = ii * grainsize + tid;
@@ -65,7 +64,6 @@ void add_padding_2(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0] * sizes_i[1];
   const int output_offset = batch_id * output_sizes[1] * output_sizes[2];
   const int output_numel = output_sizes[1] * output_sizes[2];
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
@@ -110,7 +108,6 @@ void add_padding_3(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
   const int output_offset = batch_id * output_sizes[1] * output_sizes[2] * output_sizes[3];
   const int output_numel = output_sizes[1] * output_sizes[2] * output_sizes[3];
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
@@ -247,7 +244,7 @@ void add_padding_mask_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  add_padding_mask<float><<<grid, 1, 0, stream>>>(
+  add_padding_mask<T><<<grid, 1, 0, stream>>>(
       input,
       output,
       output_mask,
@@ -261,6 +258,17 @@ void add_padding_mask_kernelLauncher(
 template void add_padding_mask_kernelLauncher<float>(
     float* input,
     float* output,
+    int* output_mask,
+    const int* offsets,
+    const int batch_size,
+    const int mask_stride,
+    const int output_stride,
+    const int inner_size,
+    const cudaStream_t stream);
+
+template void add_padding_mask_kernelLauncher<c10::Half>(
+    c10::Half* input,
+    c10::Half* output,
     int* output_mask,
     const int* offsets,
     const int batch_size,

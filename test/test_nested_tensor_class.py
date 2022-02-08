@@ -84,9 +84,8 @@ class TestNestedTensor(TestCase):
 
         nested_tensor1 = nestedtensor.as_nested_tensor(nested_tensor)
         self.assertTrue(nested_tensor1 is nested_tensor)
-        self.assertRaises(NotImplementedError, lambda: nestedtensor.as_nested_tensor(
-            nested_tensor, dtype=torch.int64))
-        # self.assertTrue(nested_tensor2 is not nested_tensor)
+        nested_tensor2 = nestedtensor.as_nested_tensor(nested_tensor, dtype=torch.int64)
+        self.assertTrue(nested_tensor2 is nested_tensor)
 
     def test_constructor(self):
         for constructor in _iter_constructors():
@@ -293,20 +292,14 @@ class TestNestedTensor(TestCase):
 
             a1 = constructor([torch.tensor([1, 2]),
                               torch.tensor([2, 8])])
-            if constructor == nestedtensor.as_nested_tensor:
-                self.assertRaises(NotImplementedError, lambda: constructor([torch.tensor([0, 1]),
-                                                                            torch.tensor([1, 0])], dtype=torch.bool))
-                self.assertRaises(NotImplementedError, lambda: constructor([torch.tensor([1, 0]),
-                                                                            torch.tensor([0, 1])], dtype=torch.bool))
-            else:
-                a2 = constructor([torch.tensor([0, 1]),
-                                  torch.tensor([1, 0])], dtype=torch.bool)
-                a3 = constructor([torch.tensor([1, 0]),
-                                  torch.tensor([0, 1])], dtype=torch.bool)
-                self.assertEqual((a1 == 2), a2)
-                self.assertEqual((a1 != 2), a3)
-                self.assertEqual((a1 == 2.0), a2)
-                self.assertEqual((a1 != 2.0), a3)
+            a2 = constructor([torch.tensor([0, 1]),
+                              torch.tensor([1, 0])], dtype=torch.bool)
+            a3 = constructor([torch.tensor([1, 0]),
+                              torch.tensor([0, 1])], dtype=torch.bool)
+            self.assertEqual((a1 == 2), a2)
+            self.assertEqual((a1 != 2), a3)
+            self.assertEqual((a1 == 2.0), a2)
+            self.assertEqual((a1 != 2.0), a3)
 
     def test_dim(self):
         for constructor in _iter_constructors():
@@ -799,16 +792,19 @@ class TestNestedTensor(TestCase):
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
     def test_to_tensor_mask_cuda(self):
-        import random
-        random.seed(110)
-        tensors = [random.randint(2, 4) for _ in range(3)]
-        tensors = [torch.arange(t * 3).reshape(t, 3).float() for t in tensors]
-        nt = ntnt_nograd(tensors, device=torch.device('cuda'))
-        data, mask = nt.to_tensor_mask(mask_dim=2)
-        nt1 = ntnt_nograd(tensors, device=torch.device('cpu'))
-        data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
-        self.assertEqual(data, data1)
-        self.assertEqual(mask, mask1)
+        def _test(dtype):
+            import random
+            random.seed(110)
+            tensors = [random.randint(2, 4) for _ in range(3)]
+            tensors = [torch.arange(t * 3).reshape(t, 3).float() for t in tensors]
+            nt = ntnt_nograd(tensors, device=torch.device('cuda'), dtype=dtype)
+            data, mask = nt.to_tensor_mask(mask_dim=2)
+            nt1 = ntnt_nograd(tensors, device=torch.device('cpu'), dtype=dtype)
+            data1, mask1 = nt1.to_tensor_mask(mask_dim=2)
+            self.assertEqual(data, data1)
+            self.assertEqual(mask, mask1)
+        _test(torch.float16)
+        _test(torch.float32)
 
     def test_to_mask(self):
         import random
