@@ -1112,8 +1112,7 @@ class TestFunctional(TestCase):
             t1 = time.time()
             b = t1 - t0
 
-            if False:
-                self.assertEqual(result_nt, attn_output)
+            self.assertEqual(result_nt, attn_output)
 
             torch.cuda.synchronize()
             input_batch = input_batch.transpose(0, 1)
@@ -1133,18 +1132,14 @@ class TestFunctional(TestCase):
             t1 = time.time()
             attn_output = attn_output.transpose(0, 1)
             attn_output = attn_output * torch.logical_not(not_input_mask.unsqueeze(-1))
-            custom_atol = 1e-3
-            custom_rtol = 1e-3
-            print("dtype: ", dtype)
-            if dtype is torch.float16:
-                custom_atol = 1e-3
-                custom_rtol = 1e-3
+            custom_atol = 5e-4
+            custom_rtol = 1e-8
             r0 = result_nt.to_padded_tensor(padding=0)
             r1 = attn_output
-            print("r0.sum(): ", r0.sum(), " r1.sum(): ", r1.sum())
+            # print("r0.sum(): ", r0.sum(), " r1.sum(): ", r1.sum())
             self.assertTrue(torch.allclose(result_nt.to_padded_tensor(padding=0), attn_output, atol=custom_atol, rtol=custom_rtol))
             c = t1 - t0
-            print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a, "\tdtype: ", dtype)
+            # print("bt: ", a, "\tnt: ", b, "\tdense: ", c, "\tdense/bt: ", c/a, "\tdtype: ", dtype)
 
         for dtype in [torch.float32, torch.float16]:
             # test(dtype, 1, 1, 1, 4, 4, use_arange=True)
