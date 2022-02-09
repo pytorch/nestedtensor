@@ -58,29 +58,13 @@ at::Tensor bt_min_mha(
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
-  // at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
-  at::Tensor packed = at::matmul(query, attr_kernel.t());
+  at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
 
-//  // TODO: Move into implementation of chunk for NestedTensor
-//  at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
-//  std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
-//  at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
-//  at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
-//  at::Tensor v_buf_ = packed_chunks[2].contiguous().reshape({-1});
-//  at::Tensor q = wrap_buffer(std::move(q_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
-//  at::Tensor k = wrap_buffer(std::move(k_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
-//  at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
-//
-//  at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
-//  at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
-//  at::Tensor val_buf = to_padded_tensor(v, 0).contiguous();
-//  std::cout << "query_buf.sizes(): " << query_buf.sizes() << std::endl;
-//  std::cout << "input_mask.sizes(): " << input_mask.sizes() << std::endl;
-
-  at::Tensor query_buf;
-  at::Tensor key_buf;
-  at::Tensor val_buf;
-  std::tie(query_buf, key_buf, val_buf) = _mha_add_chunk_pad(packed, attr_bias, embedding_dim, query);
+  at::Tensor packed_padded = to_padded_tensor(packed, 0).contiguous();
+  std::vector<at::Tensor> packed_padded_chunks = packed_padded.chunk(3, -1);
+  at::Tensor query_buf = packed_padded_chunks[0];
+  at::Tensor key_buf = packed_padded_chunks[1];
+  at::Tensor val_buf = packed_padded_chunks[2];
 
   query_buf = query_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
   key_buf =     key_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);

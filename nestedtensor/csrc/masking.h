@@ -34,9 +34,3 @@ c10::optional<at::Tensor> nt_from_tensor_mask(
     at::Tensor tensor,
     at::Tensor mask,
     int64_t nested_dim);
-
-std::tuple<at::Tensor, at::Tensor, at::Tensor> _mha_add_chunk_pad(
-    at::Tensor packed,
-    at::Tensor attr_bias,
-    int64_t embedding_dim,
-    at::Tensor query);
