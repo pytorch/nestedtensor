@@ -25,7 +25,6 @@ void add_padding_1(
   const int grainsize = 16 * 256;
   const int batch_input_offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0];
   const int batch_output_offset = batch_id * output_sizes[1];
   for (int ii = 0; ii < (output_sizes[1] / grainsize); ii++) {
     const int i = ii * grainsize + tid;
@@ -65,7 +64,6 @@ void add_padding_2(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0] * sizes_i[1];
   const int output_offset = batch_id * output_sizes[1] * output_sizes[2];
   const int output_numel = output_sizes[1] * output_sizes[2];
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
@@ -110,7 +108,6 @@ void add_padding_3(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
   const int output_offset = batch_id * output_sizes[1] * output_sizes[2] * output_sizes[3];
   const int output_numel = output_sizes[1] * output_sizes[2] * output_sizes[3];
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
@@ -247,7 +244,7 @@ void add_padding_mask_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  add_padding_mask<float><<<grid, 1, 0, stream>>>(
+  add_padding_mask<T><<<grid, 1, 0, stream>>>(
       input,
       output,
       output_mask,
@@ -268,6 +265,52 @@ template void add_padding_mask_kernelLauncher<float>(
     const int output_stride,
     const int inner_size,
     const cudaStream_t stream);
+
+template void add_padding_mask_kernelLauncher<c10::Half>(
+    c10::Half* input,
+    c10::Half* output,
+    int* output_mask,
+    const int* offsets,
+    const int batch_size,
+    const int mask_stride,
+    const int output_stride,
+    const int inner_size,
+    const cudaStream_t stream);
+
+template<typename T>
+__global__
+void remove_padding_2(
+    const T* input,
+    T* output,
+    const int* offsets,
+    const int* input_sizes,
+    const int* output_sizes,
+    int output_dim,
+    const int batch_size)
+{
+  const int batch_id  = blockIdx.x;
+  const int grid_id  = blockIdx.y;
+  const int tid = threadIdx.x + grid_id * 256;
+  const int grainsize = 16 * 256;
+  const int offset = offsets[batch_id];
+  const int* sizes_i = output_sizes + batch_id * output_dim;
+  const int numel_i = sizes_i[0] * sizes_i[1];
+  int input_offset = batch_id * input_sizes[1] * input_sizes[2];
+  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+    const int i = ii * grainsize + tid;
+    const int i0 = i / sizes_i[1];
+    const int i1 = i % sizes_i[1];
+    const int i0_offset = i0 * input_sizes[2];
+    output[offset + i] = input[input_offset + i0_offset + i1];
+  }
+  const int i = (numel_i / grainsize) * grainsize + tid;
+  if (i < numel_i) {
+    const int i0 = i / sizes_i[1];
+    const int i1 = i % sizes_i[1];
+    const int i0_offset = i0 * input_sizes[2];
+    output[offset + i] = input[input_offset + i0_offset + i1];
+  }
+}
 
 template<typename T>
 __global__
@@ -323,14 +366,25 @@ void remove_padding_kernelLauncher(
   grid.x = batch_size;
   grid.y = 16;
 
-  remove_padding<T><<<grid, 256, 0, stream>>>(
-    input,
-    output,
-    offsets,
-    input_sizes,
-    output_sizes,
-    output_dim,
-    batch_size);
+  if (output_dim == 2) {
+    remove_padding_2<T><<<grid, 256, 0, stream>>>(
+      input,
+      output,
+      offsets,
+      input_sizes,
+      output_sizes,
+      output_dim,
+      batch_size);
+  } else {
+    remove_padding<T><<<grid, 256, 0, stream>>>(
+      input,
+      output,
+      offsets,
+      input_sizes,
+      output_sizes,
+      output_dim,
+      batch_size);
+  }
 }
 
 template void remove_padding_kernelLauncher<float>(

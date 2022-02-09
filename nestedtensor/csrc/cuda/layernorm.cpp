@@ -30,16 +30,28 @@ Tensor NestedTensor_layer_norm(
         at::Tensor zero_bias = torch::zeros({valid_word_num}, input.options());
         at::Tensor output_buffer = torch::zeros_like(input_buffer);
         at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-        fastertransformer::layer_norm(
-            input_buffer.data_ptr<float>(),
-            weight->data_ptr<float>(),
-            bias->data_ptr<float>(),
-            (float)(eps),
-            output_buffer.data_ptr<float>(),
-            valid_word_num,
-            size2,
-            defaultStream);
-        defaultStream.synchronize();
+        if (input_buffer.dtype() == torch::kFloat16) {
+          fastertransformer::layer_norm<c10::Half>(
+              input_buffer.data_ptr<c10::Half>(),
+              weight->data_ptr<c10::Half>(),
+              bias->data_ptr<c10::Half>(),
+              (c10::Half)(eps),
+              output_buffer.data_ptr<c10::Half>(),
+              valid_word_num,
+              size2,
+              defaultStream);
+        }
+        if (input_buffer.dtype() == torch::kFloat32) {
+          fastertransformer::layer_norm<float>(
+              input_buffer.data_ptr<float>(),
+              weight->data_ptr<float>(),
+              bias->data_ptr<float>(),
+              (float)(eps),
+              output_buffer.data_ptr<float>(),
+              valid_word_num,
+              size2,
+              defaultStream);
+        }
         return wrap_buffer(
             std::move(output_buffer),
             get_efficient_nested_size(input),

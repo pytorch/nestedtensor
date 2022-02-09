@@ -3,6 +3,7 @@
 #ifdef WITH_CUDA
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/cuda/padding.h>
+#include <nestedtensor/csrc/cuda/attention.h>
 #endif
 
 using namespace torch::nested_tensor;
@@ -270,16 +271,25 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
           {*nt_opt_size[0], max_size_1}, nt_buffer.options());
       output_mask = output_mask.to(torch::kInt32);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-      nested_tensor::cuda::add_padding_mask_kernelLauncher(
-          nt_buffer.data_ptr<float>(),
-          output.data_ptr<float>(),
-          output_mask.data_ptr<int>(),
-          nt_sizes.data_ptr<int>(),
-          *nt_opt_size[0],
-          output_mask.stride(0),
-          output.stride(0),
-          *nt_opt_size[2],
-          defaultStream);
+      if (nt.dtype() == torch::kFloat16) {
+        nt_buffer = nt_buffer.to(torch::kFloat);
+        output = output.to(torch::kFloat);
+      }
+      if (nt_buffer.dtype() == torch::kFloat) {
+        nested_tensor::cuda::add_padding_mask_kernelLauncher<float>(
+            nt_buffer.data_ptr<float>(),
+            output.data_ptr<float>(),
+            output_mask.data_ptr<int>(),
+            nt_sizes.data_ptr<int>(),
+            *nt_opt_size[0],
+            output_mask.stride(0),
+            output.stride(0),
+            *nt_opt_size[2],
+            defaultStream);
+      }
+      if (nt.dtype() == torch::kFloat16) {
+        output = output.to(torch::kFloat16);
+      }
       return std::make_tuple(output, output_mask.to(torch::kBool));
     }
   }
@@ -435,8 +445,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
   if (padded.dim() > 1 && padded.dim() < 5 &&
-      get_is_contiguous(padded) && padded.is_cuda() &&
-      padded.dtype() == torch::kFloat16) {
+      get_is_contiguous(padded) && padded.is_cuda()) {
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
@@ -458,15 +467,28 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     target_offsets = split[2];
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-    nested_tensor::cuda::remove_padding_kernelLauncher(
-        padded.data_ptr<c10::Half>(),
-        output.data_ptr<c10::Half>(),
-        target_offsets.data_ptr<int>(),
-        padded_sizes_tensor.data_ptr<int>(),
-        target_size_sizes.data_ptr<int>(),
-        padded.dim() - 1,
-        padded.size(0),
-        defaultStream);
+    if (padded.dtype() == torch::kFloat16) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<c10::Half>(),
+          output.data_ptr<c10::Half>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    if (padded.dtype() == torch::kFloat) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<float>(),
+          output.data_ptr<float>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
     return wrap_buffer(std::move(output), target_size);
   }
 #endif
