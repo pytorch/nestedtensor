@@ -279,6 +279,41 @@ template void add_padding_mask_kernelLauncher<c10::Half>(
 
 template<typename T>
 __global__
+void remove_padding_2(
+    const T* input,
+    T* output,
+    const int* offsets,
+    const int* input_sizes,
+    const int* output_sizes,
+    int output_dim,
+    const int batch_size)
+{
+  const int batch_id  = blockIdx.x;
+  const int grid_id  = blockIdx.y;
+  const int tid = threadIdx.x + grid_id * 256;
+  const int grainsize = 16 * 256;
+  const int offset = offsets[batch_id];
+  const int* sizes_i = output_sizes + batch_id * output_dim;
+  const int numel_i = sizes_i[0] * sizes_i[1];
+  int input_offset = batch_id * input_sizes[1] * input_sizes[2];
+  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
+    const int i = ii * grainsize + tid;
+    const int i0 = i / sizes_i[1];
+    const int i1 = i % sizes_i[1];
+    const int i0_offset = i0 * input_sizes[2];
+    output[offset + i] = input[input_offset + i0_offset + i1];
+  }
+  const int i = (numel_i / grainsize) * grainsize + tid;
+  if (i < numel_i) {
+    const int i0 = i / sizes_i[1];
+    const int i1 = i % sizes_i[1];
+    const int i0_offset = i0 * input_sizes[2];
+    output[offset + i] = input[input_offset + i0_offset + i1];
+  }
+}
+
+template<typename T>
+__global__
 void remove_padding(
     const T* input,
     T* output,
@@ -331,14 +366,25 @@ void remove_padding_kernelLauncher(
   grid.x = batch_size;
   grid.y = 16;
 
-  remove_padding<T><<<grid, 256, 0, stream>>>(
-    input,
-    output,
-    offsets,
-    input_sizes,
-    output_sizes,
-    output_dim,
-    batch_size);
+  if (output_dim == 2) {
+    remove_padding_2<T><<<grid, 256, 0, stream>>>(
+      input,
+      output,
+      offsets,
+      input_sizes,
+      output_sizes,
+      output_dim,
+      batch_size);
+  } else {
+    remove_padding<T><<<grid, 256, 0, stream>>>(
+      input,
+      output,
+      offsets,
+      input_sizes,
+      output_sizes,
+      output_dim,
+      batch_size);
+  }
 }
 
 template void remove_padding_kernelLauncher<float>(

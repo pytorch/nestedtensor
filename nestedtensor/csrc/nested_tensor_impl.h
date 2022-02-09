@@ -260,6 +260,7 @@ at::Tensor wrap_buffer(
 
 template <class F, class... A>
 inline at::Tensor map_nested_tensor(F&& fn, A... a) {
+  // std::cout << "Mapping " << typeid(F).name() << std::endl;
   // torch_check_tensor_shape_matches(a...);
   // torch_check_is_nested_tensor(a...);
   return wrap_tensor_node(
