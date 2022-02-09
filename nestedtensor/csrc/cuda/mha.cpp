@@ -107,7 +107,7 @@ at::Tensor bt_min_mha(
         defaultStream);
   }
 
-  auto attn_output = at::matmul(attn_output_weights, val_buf).contiguous();
+  auto attn_output = at::matmul(attn_output_weights, val_buf);
   attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
   at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query));
   return at::matmul(attr_out, out_proj_weight.t());
