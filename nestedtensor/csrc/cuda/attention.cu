@@ -18,6 +18,7 @@
 #include <cuda_fp16.h>
 #include <cmath>
 #include <nestedtensor/csrc/cuda/attention.h>
+#include <c10/util/Half.h>
 
 namespace nteffectivetransformer {
 namespace cuda {
@@ -304,6 +305,12 @@ template void softmax_kernel_kernelLauncher<float>(
     float* qk_buf_, const float* attr_mask, 
     const int batch_size, const int head_num, const int seq_len, 
     const float scaler,
+    const cudaStream_t stream);
+
+template void softmax_kernel_kernelLauncher<c10::Half>(
+    c10::Half* qk_buf_, const c10::Half* attr_mask, 
+    const int batch_size, const int head_num, const int seq_len, 
+    const c10::Half scaler,
     const cudaStream_t stream);
 
 /// *********************************** fin ***********************************
