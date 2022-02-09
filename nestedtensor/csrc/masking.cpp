@@ -444,8 +444,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
   if (padded.dim() > 1 && padded.dim() < 5 &&
-      get_is_contiguous(padded) && padded.is_cuda() &&
-      padded.dtype() == torch::kFloat16) {
+      get_is_contiguous(padded) && padded.is_cuda()) {
     // std::cout << "SJKDLF:JSDKL:" << std::endl;
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
@@ -476,15 +475,28 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     // std::cout << "padded.dim() - 1: " << padded.dim() - 1 << std::endl;
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-    nested_tensor::cuda::remove_padding_kernelLauncher(
-        padded.data_ptr<c10::Half>(),
-        output.data_ptr<c10::Half>(),
-        target_offsets.data_ptr<int>(),
-        padded_sizes_tensor.data_ptr<int>(),
-        target_size_sizes.data_ptr<int>(),
-        padded.dim() - 1,
-        padded.size(0),
-        defaultStream);
+    if (padded.dtype() == torch::kFloat16) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<c10::Half>(),
+          output.data_ptr<c10::Half>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    if (padded.dtype() == torch::kFloat) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<float>(),
+          output.data_ptr<float>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
     return wrap_buffer(std::move(output), target_size);
   }
 #endif
