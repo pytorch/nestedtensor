@@ -176,40 +176,79 @@ template void add_QKV_bias_padding_kernelLauncher<float>(
 
 
 /// ************************** softmax for attention **************************
-// softmax kernel code is copied from Nvidia's DeepLearningExamples :
-// https://github.com/NVIDIA/DeepLearningExamples/blob/master/FasterTransformer/v1/fastertransformer/cuda/open_attention.cu#L189-L268
+// softmax kernel code is copied from
+// https://raw.githubusercontent.com/NVIDIA/FasterTransformer/main/fastertransformer/cuda/attention_kernels.cu
+
 template <typename T>
 __global__
-void softmax_kernel(T* qk_buf_, const T* attr_mask, 
-  const int batch_size, const int head_num, const int seq_len, const T scaler)
+void softmax_kernel(T* qk_buf_, const T* attr_mask, const int batch_size, const int head_num, const int seq_len, 
+  const T scalar)
 {
-  int batch_id = blockIdx.x / head_num;
-  int qk_offset = blockIdx.x * seq_len * seq_len;
-  int mask_offset = batch_id * seq_len * seq_len;
+    int batch_id = blockIdx.x / head_num;
+    int qk_offset = blockIdx.x * seq_len * seq_len;
+    int mask_offset = batch_id * seq_len * seq_len;
 
-  __shared__ float s_sum, s_max;
+    __shared__ float s_sum, s_max;
 
-  for(int i = 0; i < seq_len; ++i)
-  {
-    float qk = threadIdx.x < seq_len 
-                  ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
-    float mask_val = threadIdx.x < seq_len 
-                  ? (float)attr_mask[threadIdx.x + mask_offset] : 0.0f;
-    
+    for(int i = 0; i < seq_len; ++i)
+    {
+      float qk = threadIdx.x < seq_len ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
+      float mask_val = threadIdx.x < seq_len ? (float)attr_mask[threadIdx.x + mask_offset] : 0.0f;
+      
+      mask_val = (1.0f - mask_val) * -10000.0f;
+
+      float tmp = threadIdx.x < seq_len ? (float)(qk * (float)scalar + mask_val): -1e20f;
+
+      float max_val = blockReduceMax<float>(tmp);
+
+      if(threadIdx.x == 0)
+        s_max = max_val;
+      __syncthreads();
+
+      qk = threadIdx.x < seq_len ? __expf(tmp - s_max) : 0.0f;
+
+      float sum_val = blockReduceSum<float>(qk);
+
+      if(threadIdx.x == 0)
+      {
+        s_sum = sum_val + 1e-6f;
+      }
+      __syncthreads();
+
+      if(threadIdx.x < seq_len)
+        qk_buf_[threadIdx.x + qk_offset] = (T)(qk / s_sum);
+
+      qk_offset += seq_len;
+      mask_offset += seq_len;
+    }
+}
+
+
+template <typename T>
+__global__
+void softmax_kernel_v2(T* qk_buf_, const T* attr_mask, const int batch_size, const int head_num, 
+  const int seq_len, const float scalar)
+{
+    int batch_id = blockIdx.x / head_num / seq_len;
+    int seq_id = blockIdx.x % seq_len;
+    int qk_offset = blockIdx.x * seq_len;
+    int mask_offset = batch_id * seq_len * seq_len + seq_id * seq_len;
+
+    __shared__ float s_sum, s_max;
+
+    float qk = threadIdx.x < seq_len ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
+    float mask_val = threadIdx.x < seq_len ? (float)attr_mask[threadIdx.x + mask_offset] : 0.0f;
+      
     mask_val = (1.0f - mask_val) * -10000.0f;
 
-    float tmp = threadIdx.x < seq_len 
-                  ? (float)(qk * (float)scaler + mask_val): -1e-20f;
-
+    float tmp = threadIdx.x < seq_len ? (float)(qk * (float)scalar + mask_val) : -1e20f;
     float max_val = blockReduceMax<float>(tmp);
-
     if(threadIdx.x == 0)
       s_max = max_val;
     __syncthreads();
 
-    qk = threadIdx.x < seq_len ? expf(tmp - s_max) : 0.0f;
-
-    float sum_val = blockReduceSum<float>(qk);
+    float qk_tmp = threadIdx.x < seq_len ? __expf((float)(tmp - s_max)) : 0.0f;
+    float sum_val = blockReduceSum<float>(qk_tmp);
 
     if(threadIdx.x == 0)
     {
@@ -218,86 +257,215 @@ void softmax_kernel(T* qk_buf_, const T* attr_mask,
     __syncthreads();
 
     if(threadIdx.x < seq_len)
-      qk_buf_[threadIdx.x + qk_offset] = (T)(qk / s_sum);
+      qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / s_sum);
+}
 
-    qk_offset += seq_len;
-    mask_offset += seq_len;
+//grid = (seq_len/word_per_thread, batch_size, head_num)
+//block.x = max(32, (seq_len + 31)/32*32)
+template <typename T>
+__global__
+void softmax_kernel_v3(T* qk_buf_, const T* attr_mask, const int batch_size, const int head_num, const int seq_len, const T scalar)
+{
+    
+  bool qual = threadIdx.x < seq_len;
+  for (int seq_id = blockIdx.x ; seq_id < seq_len ; seq_id += gridDim.x){
+    float tmp = -1e20f;
+    int qk_offset;
+    __shared__ float s_mean, s_max;
+    if (qual){
+      qk_offset = ((blockIdx.y*head_num + blockIdx.z)*seq_len + seq_id) *seq_len + threadIdx.x;
+      int mask_offset = (blockIdx.y * seq_len + seq_id) * seq_len + threadIdx.x;
+
+      float qk = static_cast<float>(qk_buf_[qk_offset]);
+      float mask_val = static_cast<float>(__ldg(&attr_mask[mask_offset]));
+
+      mask_val = (1.0f - mask_val) * -10000.0f;
+
+      tmp = qk * static_cast<float>(scalar) + mask_val;
+    }
+
+    float max_val = blockReduceMax<float>(tmp);
+    if (threadIdx.x == 0){
+      s_max = max_val;
+    }
+    __syncthreads();
+    
+    float qk_tmp = qual ? __expf(tmp - s_max) : 0.0f;
+    float sum_val = blockReduceSum<float>(qk_tmp);
+    if (threadIdx.x == 0){
+      s_mean = sum_val + 1e-6f;
+      s_mean = __fdividef(1.0f, s_mean);
+    }
+    __syncthreads();
+    
+    if(qual)
+      qk_buf_[qk_offset] = (T)(qk_tmp * s_mean);
+  }
+}  
+
+
+//grid = (seq_len/word_per_thread, batch_size, head_num)
+//block.x = max(32, (seq_len/2 + 31)/32*32)
+//seq_len % 2 == 0
+template <>
+__global__
+void softmax_kernel_v3(half* qk_buf_, const half* attr_mask, 
+                      const int batch_size, const int head_num, 
+                      const int seq_len, const half scalar)
+{
+  int threadIdx2 = threadIdx.x << 1;
+  bool qual = threadIdx2 < seq_len;
+  half2* qk_buf_half2Ptr = (half2*) qk_buf_;
+  const half2* attr_mask_half2Ptr = (const half2*) attr_mask;
+  __shared__ float s_mean, s_max;
+  for (int seq_id = blockIdx.x ; seq_id < seq_len ; seq_id += gridDim.x){
+    int qk_offset;
+    half2 tmp = __float2half2_rn(0.0f);
+
+    float max_val = -1e20f;
+    half2 qk;
+    if (qual){ 
+      qk_offset = ((((blockIdx.y*head_num + blockIdx.z)*seq_len + seq_id) *seq_len) >> 1) + threadIdx.x;
+      int mask_offset = (((blockIdx.y * seq_len + seq_id) * seq_len) >> 1) + threadIdx.x;
+
+      qk = qk_buf_half2Ptr[qk_offset];
+      half2 mask_val = __ldg(&attr_mask_half2Ptr[mask_offset]);
+      half2 mask_val_tmp = __hmul2(__hsub2(__float2half2_rn(1.0f), mask_val), __float2half2_rn(-10000.0f));
+      tmp = __hadd2(__hmul2(__half2half2(scalar), qk), mask_val_tmp);
+      max_val = fmax((float)c10::Half(tmp.x), (float)c10::Half(tmp.y));
+    }
+    
+    max_val = blockDim.x <= 32 ? warpReduceMax(max_val) : blockReduceMax<float>(max_val);
+
+    if (threadIdx.x == 0){
+      s_max = max_val;
+    }
+    __syncthreads();
+    
+    if (qual){
+      tmp = h2exp(__hsub2(tmp, __float2half2_rn(s_max)));
+    }
+    float sum_val = blockDim.x <= 32 ? warpReduceSum((float)(c10::Half(tmp.x) + c10::Half(tmp.y))) : blockReduceSum<float>((float)(c10::Half(tmp.x) + c10::Half(tmp.y)));
+
+    if (threadIdx.x == 0){
+      s_mean = sum_val + 1e-6f;
+      s_mean = __fdividef(1.0f, s_mean);
+    }
+    __syncthreads();
+
+    if(qual){
+      qk = __hmul2(tmp, __float2half2_rn(s_mean));
+      qk_buf_half2Ptr[qk_offset] = qk;
+    }
   }
 }
 
 template <typename T>
 __global__
-void softmax_kernel_v2(T* qk_buf_, const T* attr_mask, 
-  const int batch_size, const int head_num, 
-  const int seq_len, const float scaler)
+void softmax_kernel_v3_LE32(T* qk_buf_, const T* attr_mask, const int batch_size, const int head_num, const int seq_len, const T scalar)
 {
-  int batch_id = blockIdx.x / head_num / seq_len;
-  int seq_id = blockIdx.x % seq_len;
-  int qk_offset = blockIdx.x * seq_len;
-  int mask_offset = batch_id * seq_len * seq_len + seq_id * seq_len;
+  bool qual = threadIdx.x < seq_len;
+  for (int seq_id = blockIdx.x ; seq_id < seq_len ; seq_id += gridDim.x){
+    int qk_offset;
+    __shared__ float s_mean, s_max;
+    float tmp = -1e20f;
+    if (qual){
+      qk_offset = ((blockIdx.y*head_num + blockIdx.z)*seq_len + seq_id) *seq_len + threadIdx.x;
+      int mask_offset = (blockIdx.y * seq_len + seq_id) * seq_len + threadIdx.x;
 
-  __shared__ float s_sum, s_max;
+      float qk = static_cast<float>(qk_buf_[qk_offset]);
+      float mask_val = static_cast<float>(__ldg(&attr_mask[mask_offset]));
 
-  float qk = threadIdx.x < seq_len 
-                ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
-  float mask_val = threadIdx.x < seq_len 
-                ? (float)attr_mask[threadIdx.x + mask_offset] : 0.0f;
-    
-  mask_val = (1.0f - mask_val) * -10000.0f;
+      mask_val = (1.0f - mask_val) * -10000.0f;
 
-  float tmp = threadIdx.x < seq_len 
-                ? (float)(qk * (float)scaler + mask_val) : -1e-20f;
-  float max_val = blockReduceMax<float>(tmp);
-  if(threadIdx.x == 0)
-    s_max = max_val;
-  __syncthreads();
+      tmp = static_cast<float>(qk) * static_cast<float>(scalar) + mask_val;
+    }
+    float max_val = warpReduceMax<float>(tmp);
 
-  float qk_tmp = threadIdx.x < seq_len ? expf((float)(tmp - s_max)) : 0.0f;
-  float sum_val = blockReduceSum<float>(qk_tmp);
+    if (threadIdx.x == 0){
+      s_max = max_val;
+    }
+    __syncthreads();
 
-  if(threadIdx.x == 0)
-  {
-    s_sum = sum_val + 1e-6f;
+    tmp = qual ? __expf(tmp - s_max) : 0.0f;
+    float sum_val = warpReduceSum<float>(tmp);
+
+    if (threadIdx.x == 0){
+      s_mean = sum_val + 1e-6f;
+      s_mean = __fdividef(1.0f, s_mean);
+    }
+    __syncthreads();
+
+    if(qual)
+      qk_buf_[qk_offset] = (T)(tmp * s_mean);
   }
-  __syncthreads();
-
-  if(threadIdx.x < seq_len)
-    qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / s_sum);
 }
 
-template <typename T> 
+// Changed this align with prior API
+// Renamed and switched head_num with seq_len
+template<typename T>
 void softmax_kernel_kernelLauncher(
-    T* qk_buf_, const T* attr_mask, 
-    const int batch_size, const int head_num, const int seq_len, 
-    const T scaler,
-    const cudaStream_t stream) {
-  dim3 grid;
-  dim3 block;
+  T* buffer,
+  const T* attr_mask,
+  const int batch_size,
+  const int head_num,
+  const int seq_len,
+  const T scalar,
+  cudaStream_t stream)
+{
+  dim3 grid, block;
+  //deal with odd seq_len
+  if (seq_len % 2 != 0){
+    if(seq_len <= 32)
+      block.x = 32;
+    else if(seq_len > 32 && seq_len <= 64)
+      block.x = 64;
+    else if(seq_len > 64 && seq_len <= 128)
+      block.x = 128;
+    else if(seq_len > 128 && seq_len <= 256)
+      block.x = 256;
+    else if(seq_len > 256 && seq_len <= 512)
+      block.x = 512;
+    else
+      block.x = 1024;
 
-  if(seq_len <= 32)
-    block.x = 32;
-  else if(seq_len > 32 && seq_len <= 64)
-    block.x = 64;
-  else if(seq_len > 64 && seq_len <= 128)
-    block.x = 128;
-  else if(seq_len > 128 && seq_len <= 256)
-    block.x = 256;
-  else if(seq_len > 256 && seq_len <= 512)
-    block.x = 512;
-  else
-    block.x = 1024;
-
-  if(batch_size * head_num <= 120)
-  {
-    grid.x = batch_size * head_num * seq_len;
-    softmax_kernel_v2<T><<<grid, block, 0, stream>>>(
-      qk_buf_, attr_mask, batch_size, head_num, seq_len, scaler); 
+    if(batch_size * head_num <= 120)
+    {
+      grid.x = batch_size * head_num * seq_len;
+      softmax_kernel_v2<T><<<grid, block, 0, stream>>>(buffer, attr_mask, batch_size, head_num, seq_len, scalar);
+    }
+    else
+    {
+      grid.x = batch_size * head_num;
+      softmax_kernel<T><<<grid, block, 0, stream>>>(buffer, attr_mask, batch_size, head_num, seq_len, scalar);
+    }
   }
-  else
-  {
-    grid.x = batch_size * head_num;
-    softmax_kernel<T><<<grid, block, 0, stream>>>(
-      qk_buf_, attr_mask, batch_size, head_num, seq_len, scaler); 
+  //deal with even seq_len 
+  else{
+    grid.x = seq_len;
+    if (batch_size * head_num > 360)
+      grid.x = ceil(float(seq_len)/32.0f);
+    grid.y = batch_size;
+    grid.z = head_num;
+    if (seq_len <= 32){
+      block.x = 32;
+      softmax_kernel_v3_LE32<T><<<grid, block, 0, stream>>>(buffer, attr_mask, batch_size, head_num, seq_len, scalar);
+    }
+    else{
+      if (sizeof(T) == 2){
+        // We should be able to only need have the blocks
+        // but there is a bug that is triggered if we use less.
+        // This requires a closer auditing of the kernel.
+        // block.x = (seq_len/2 + 31)/32*32;
+        block.x = (seq_len + 31)/32*32;
+        softmax_kernel_v3<<<grid, block, 0, stream>>>(buffer, attr_mask, batch_size, head_num, seq_len, scalar);
+      }
+      else{
+        block.x = (seq_len + 31)/32*32;
+        softmax_kernel_v3<T><<<grid, block, 0, stream>>>(buffer, attr_mask, batch_size, head_num, seq_len, scalar);
+      }
+    }
+    grid.x = grid.y = grid.z = 1;
   }
 }
 
