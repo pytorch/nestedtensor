@@ -3,6 +3,7 @@
 #ifdef WITH_CUDA
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/cuda/padding.h>
+#include <nestedtensor/csrc/cuda/attention.h>
 #endif
 
 using namespace torch::nested_tensor;
@@ -442,43 +443,55 @@ Tensor to_mask(
 Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
   TORCH_CHECK(padded.dim() == target_size.dim(),
       "Target size has different dimension as input padded Tensor.");
-// #ifdef WITH_CUDA
-//   if (padded.dim() > 1 && padded.dim() < 5 &&
-//       get_is_contiguous(padded) && padded.is_cuda() &&
-//       padded.dtype() == torch::kFloat16) {
-//     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
-//     std::vector<int64_t> padded_sizes = padded.sizes().vec();
-//     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
-//     Tensor output = torch::empty({target_size.numel()}, padded.options());
-//     Tensor target_size_sizes = target_size.sizes();
-// 
-//     at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), padded_sizes_tensor, target_offsets});
-//     metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
-// 
-//     std::vector<int64_t> split_sizes;
-//     split_sizes.push_back(target_size_sizes.numel());
-//     split_sizes.push_back(padded_sizes_tensor.numel());
-//     split_sizes.push_back(target_offsets.numel());
-// 
-//     std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
-// 
-//     target_size_sizes = split[0];
-//     padded_sizes_tensor = split[1];
-//     target_offsets = split[2];
-// 
-//     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-//     nested_tensor::cuda::remove_padding_kernelLauncher(
-//         padded.data_ptr<c10::Half>(),
-//         output.data_ptr<c10::Half>(),
-//         target_offsets.data_ptr<int>(),
-//         padded_sizes_tensor.data_ptr<int>(),
-//         target_size_sizes.data_ptr<int>(),
-//         padded.dim() - 1,
-//         padded.size(0),
-//         defaultStream);
-//     return wrap_buffer(std::move(output), target_size);
-//   }
-// #endif
+#ifdef WITH_CUDA
+  if (padded.dim() > 1 && padded.dim() < 5 &&
+      get_is_contiguous(padded) && padded.is_cuda()) {
+    Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
+    std::vector<int64_t> padded_sizes = padded.sizes().vec();
+    Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
+    Tensor output = torch::empty({target_size.numel()}, padded.options());
+    Tensor target_size_sizes = target_size.sizes();
+
+    at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), padded_sizes_tensor, target_offsets});
+    metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
+
+    std::vector<int64_t> split_sizes;
+    split_sizes.push_back(target_size_sizes.numel());
+    split_sizes.push_back(padded_sizes_tensor.numel());
+    split_sizes.push_back(target_offsets.numel());
+
+    std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
+
+    target_size_sizes = split[0];
+    padded_sizes_tensor = split[1];
+    target_offsets = split[2];
+
+    at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+    if (padded.dtype() == torch::kFloat16) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<c10::Half>(),
+          output.data_ptr<c10::Half>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    if (padded.dtype() == torch::kFloat) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<float>(),
+          output.data_ptr<float>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    return wrap_buffer(std::move(output), target_size);
+  }
+#endif
   at::Tensor target_size_tensor = std::get<0>(at::max(target_size.sizes(), 0));
   std::vector<int64_t> target_size_vec(target_size_tensor.data_ptr<int64_t>(),
       target_size_tensor.data_ptr<int64_t>() + target_size_tensor.numel());

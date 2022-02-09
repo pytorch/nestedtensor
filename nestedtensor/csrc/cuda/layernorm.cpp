@@ -52,7 +52,6 @@ Tensor NestedTensor_layer_norm(
               size2,
               defaultStream);
         }
-        defaultStream.synchronize();
         return wrap_buffer(
             std::move(output_buffer),
             get_efficient_nested_size(input),
