@@ -453,7 +453,11 @@ void softmax_kernel_kernelLauncher(
     }
     else{
       if (sizeof(T) == 2){
-        block.x = (seq_len/2 + 31)/32*32;
+        // We should be able to only need have the blocks
+        // but there is a bug that is triggered if we use less.
+        // This requires a closer auditing of the kernel.
+        // block.x = (seq_len/2 + 31)/32*32;
+        block.x = (seq_len + 31)/32*32;
         softmax_kernel_v3<<<grid, block, 0, stream>>>(buffer, attr_mask, batch_size, head_num, seq_len, scalar);
       }
       else{
