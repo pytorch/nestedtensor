@@ -446,13 +446,11 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 #ifdef WITH_CUDA
   if (padded.dim() > 1 && padded.dim() < 5 &&
       get_is_contiguous(padded) && padded.is_cuda()) {
-    // std::cout << "SJKDLF:JSDKL:" << std::endl;
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
     Tensor output = torch::empty({target_size.numel()}, padded.options());
     Tensor target_size_sizes = target_size.sizes();
-    // std::cout << "target_size_sizes: " << target_size_sizes << std::endl;
 
     at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), padded_sizes_tensor, target_offsets});
     metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
@@ -467,13 +465,6 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     target_size_sizes = split[0];
     padded_sizes_tensor = split[1];
     target_offsets = split[2];
-
-    // std::cout << "target_size_sizes.numel(): " << target_size_sizes.numel() << std::endl;
-    // std::cout << "padded_sizes_tensor.numel(): " << padded_sizes_tensor.numel() << std::endl;
-    // std::cout << "target_offsets.numel(): " << target_offsets.numel() << std::endl;
-    // std::cout << "padded.sizes(): " << padded.sizes() << std::endl;
-    // std::cout << "padded.size(0): " << padded.size(0) << std::endl;
-    // std::cout << "padded.dim() - 1: " << padded.dim() - 1 << std::endl;
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
     if (padded.dtype() == torch::kFloat16) {
