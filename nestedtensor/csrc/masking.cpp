@@ -3,6 +3,7 @@
 #ifdef WITH_CUDA
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/cuda/padding.h>
+#include <nestedtensor/csrc/cuda/attention.h>
 #endif
 
 using namespace torch::nested_tensor;
@@ -608,6 +609,32 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     res_tensor.push_back(pad_tensor_to_shape(tensor, max_size, padding));
   }
   return at::stack(res_tensor);
+}
+
+std::tuple<at::Tensor, at::Tensor, at::Tensor> _mha_add_chunk_pad(
+    at::Tensor packed,
+    at::Tensor attr_bias,
+    int64_t embedding_dim,
+    at::Tensor query) {
+#ifdef WITH_CUDA
+  // packed = packed + attr_bias;
+
+  at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
+  packed_buf = packed_buf + attr_bias;
+  std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
+  at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
+  at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
+  at::Tensor v_buf_ = packed_chunks[2].contiguous().reshape({-1});
+  at::Tensor q = wrap_buffer(std::move(q_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  at::Tensor k = wrap_buffer(std::move(k_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+
+  at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
+  at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
+  at::Tensor val_buf = to_padded_tensor(v, 0).contiguous();
+  return std::make_tuple(query_buf, key_buf, val_buf);
+#endif
+  TORCH_CHECK(false, "Needs CUDA support.");
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
