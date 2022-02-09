@@ -621,18 +621,34 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> _mha_add_chunk_pad(
 
   at::Tensor packed_buf = get_buffer(packed).contiguous().reshape({-1, 3 * embedding_dim});
   packed_buf = packed_buf + attr_bias;
-  std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
-  at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
-  at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
-  at::Tensor v_buf_ = packed_chunks[2].contiguous().reshape({-1});
-  at::Tensor q = wrap_buffer(std::move(q_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
-  at::Tensor k = wrap_buffer(std::move(k_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
-  at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  // std::vector<at::Tensor> packed_chunks = packed_buf.chunk(3, -1);
+  // at::Tensor q_buf_ = packed_chunks[0].contiguous().reshape({-1});
+  // at::Tensor k_buf_ = packed_chunks[1].contiguous().reshape({-1});
+  // at::Tensor v_buf_ = packed_chunks[2].contiguous().reshape({-1});
+  // at::Tensor q = wrap_buffer(std::move(q_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  // at::Tensor k = wrap_buffer(std::move(k_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
+  // at::Tensor v = wrap_buffer(std::move(v_buf_), get_efficient_nested_size(query), get_efficient_nested_stride(query));
 
-  at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
-  at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
-  at::Tensor val_buf = to_padded_tensor(v, 0).contiguous();
-  return std::make_tuple(query_buf, key_buf, val_buf);
+  auto qens = get_efficient_nested_size(query);
+  auto qens_sizes = qens.sizes().clone();
+  qens_sizes.narrow(1, 1, 1).mul_(3);
+  // std::cout << "qens.sizes(): " << qens_sizes << std::endl;
+  at::Tensor packed_nt = wrap_buffer(packed_buf.reshape({-1}), EfficientSizeNode(qens.height(), qens.structure(), qens_sizes));
+  at::Tensor packed_padded = to_padded_tensor(packed_nt, 0).contiguous();
+
+  std::vector<at::Tensor> packed_padded_chunks = packed_padded.chunk(3, -1);
+
+  return std::make_tuple(
+      packed_padded_chunks[0],
+      packed_padded_chunks[1],
+      packed_padded_chunks[2]);
+
+
+
+//  at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
+//  at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
+//  at::Tensor val_buf = to_padded_tensor(v, 0).contiguous();
+//  return std::make_tuple(query_buf, key_buf, val_buf);
 #endif
   TORCH_CHECK(false, "Needs CUDA support.");
 }
