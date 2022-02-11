@@ -163,23 +163,21 @@ inline bool storage_is_contiguous_channels_last(
 
 struct PackedStorage {
   explicit PackedStorage(
-      at::Tensor&& buffer,
       EfficientSizeNode nested_size,
       EfficientSizeNode nested_stride)
-      : _buffer(buffer),
-        _nested_size(nested_size),
-        _nested_stride(nested_stride),
-        _data_type(buffer.dtype()),
-        _device(buffer.device()),
-        _is_pinned(buffer.is_pinned()),
-        _is_contiguous(impl::storage_is_contiguous(
-            _buffer,
-            _nested_size,
-            _nested_stride)),
-        _is_contiguous_channels_last(impl::storage_is_contiguous_channels_last(
-            _buffer,
-            _nested_size,
-            _nested_stride)) {
+      : _nested_size(nested_size),
+        _nested_stride(nested_stride) {
+        // _data_type(buffer.dtype()),
+        // _device(buffer.device()),
+        // _is_pinned(buffer.is_pinned()),
+        // _is_contiguous(impl::storage_is_contiguous(
+        //     _buffer,
+        //     _nested_size,
+        //     _nested_stride)),
+        // _is_contiguous_channels_last(impl::storage_is_contiguous_channels_last(
+        //     _buffer,
+        //     _nested_size,
+        //     _nested_stride)) {
     TORCH_CHECK(
         _nested_size.height(),
         "PackedStorage must be given NestedSize of at least height 1.");
@@ -189,56 +187,35 @@ struct PackedStorage {
   }
 
   explicit PackedStorage(
-      at::Tensor&& buffer,
+      // at::Tensor&& buffer,
       EfficientSizeNode nested_size)
-      : PackedStorage(std::move(buffer),
+      : PackedStorage(// std::move(buffer),
                       nested_size,
                       impl::_cont_stride(nested_size)) {}
 
   explicit PackedStorage(
-      at::Tensor&& buffer,
+      // at::Tensor&& buffer,
       SizeNode nested_size,
       SizeNode nested_stride)
       : PackedStorage(
-            std::move(buffer),
+            // std::move(buffer),
             EfficientSizeNode(nested_size),
             EfficientSizeNode(nested_stride)) {}
 
-  explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size)
+  explicit PackedStorage(// at::Tensor&& buffer,
+      SizeNode nested_size)
       : PackedStorage(
-            std::move(buffer),
+            // std::move(buffer),
             EfficientSizeNode(nested_size)) {}
 
   explicit PackedStorage(TensorNode structure)
       : PackedStorage(
-            impl::pack(structure),
             EfficientSizeNode(
               map([](at::Tensor tensor) { return tensor.sizes().vec(); },
                 structure))) {}
 
   int64_t dim() const {
     return _nested_size.dim();
-  }
-  TensorNode get_structure() const {
-    return std::get<0>(impl::build_structure(
-        _buffer.reshape({-1}),
-        _nested_size,
-        _nested_stride));
-  }
-  at::Tensor& get_buffer() {
-    return _buffer;
-  }
-  const at::Tensor& get_buffer() const {
-    return _buffer;
-  }
-  const caffe2::TypeMeta dtype() const {
-    return _data_type;
-  }
-  c10::Device device() const {
-    return _device;
-  }
-  bool is_pinned() const {
-    return _is_pinned;
   }
   const EfficientSizeNode& nested_size() const {
     return _nested_size;
@@ -249,32 +226,13 @@ struct PackedStorage {
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
     return _nested_size.opt_sizes();
   }
-  bool is_contiguous(at::MemoryFormat memory_format) const {
-    if (memory_format == at::MemoryFormat::Contiguous) {
-      return _is_contiguous;
-    }
-    if (memory_format == at::MemoryFormat::ChannelsLast) {
-      return _is_contiguous_channels_last;
-    }
-    TORCH_CHECK(false, "is_contiguous does not support memory format ", memory_format);
-    return false;
-  }
-  bool is_cuda() const {
-    return _buffer.is_cuda();
-  }
   int64_t numel() const {
     return _nested_size.numel();
   }
 
  private:
-  at::Tensor _buffer;
   EfficientSizeNode _nested_size;
   EfficientSizeNode _nested_stride;
-  const caffe2::TypeMeta _data_type;
-  c10::Device _device;
-  bool _is_pinned;
-  const bool _is_contiguous;
-  const bool _is_contiguous_channels_last;
 };
 
 } // namespace nested_tensor

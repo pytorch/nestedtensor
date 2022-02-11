@@ -44,7 +44,7 @@ inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(std::shared_ptr<PackedStorage> storage);
+  explicit NestedTensorImpl(at::Tensor&& buffer, std::shared_ptr<PackedStorage> storage);
 
 #ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   int64_t dim() const override {
@@ -66,7 +66,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
 #endif
   TensorNode get_structure() const {
-    return _storage->get_structure();
+    return std::get<0>(torch::nested_tensor::impl::build_structure(
+        _buffer.reshape({-1}),
+        _storage->nested_size(),
+        _storage->nested_stride()));
   }
   std::shared_ptr<PackedStorage> get_storage() {
     return _storage;
@@ -75,7 +78,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _storage->nested_size().height();
   }
   bool is_pinned() const {
-    return _storage->is_pinned();
+    return _buffer.is_pinned();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //
@@ -126,8 +129,48 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
 #endif
 
+  const at::Tensor& get_buffer() const {
+    return _buffer;
+  }
+
+  at::Tensor& get_buffer() {
+    return _buffer;
+  }
+
+  bool get_is_cuda() const {
+    return _buffer.is_cuda();
+  }
+
+  bool get_is_contiguous(at::MemoryFormat memory_format) const {
+    if (memory_format == at::MemoryFormat::Contiguous) {
+      return _is_contiguous;
+    }
+    if (memory_format == at::MemoryFormat::ChannelsLast) {
+      return _is_contiguous_channels_last;
+    }
+    TORCH_CHECK(false, "is_contiguous does not support memory format ", memory_format);
+    return false;
+  }
+
+  bool get_is_pinned() const {
+    return _is_pinned;
+  }
+
+  const caffe2::TypeMeta get_dtype() const {
+    return _data_type;
+  }
+  c10::Device get_device() const {
+    return _device;
+  }
+
  private:
+  at::Tensor _buffer;
   std::shared_ptr<PackedStorage> _storage;
+  const caffe2::TypeMeta _data_type;
+  c10::Device _device;
+  bool _is_pinned;
+  const bool _is_contiguous;
+  const bool _is_contiguous_channels_last;
 };
 
 int64_t nt_size(Tensor tensor, int64_t dim);
@@ -157,10 +200,7 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
 }
 
 inline at::Tensor get_buffer(const at::Tensor& tensor) {
-  auto storage = get_nested_tensor_impl(tensor)->get_storage();
-  PackedStorage* storagep = storage.get();
-  PackedStorage* ps = dynamic_cast<PackedStorage*>(storagep);
-  return ps->get_buffer();
+  return get_nested_tensor_impl(tensor)->get_buffer();
 }
 
 inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
@@ -203,7 +243,7 @@ inline int64_t get_dim(const at::Tensor& tensor) {
 
 inline const caffe2::TypeMeta get_dtype(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_storage()->dtype();
+    return get_nested_tensor_impl(tensor)->get_dtype();
   }
   return tensor.dtype();
 }
@@ -223,7 +263,7 @@ inline bool get_is_contiguous(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_storage()->is_contiguous(memory_format);
+    return get_nested_tensor_impl(tensor)->get_is_contiguous(memory_format);
   }
   return tensor.is_contiguous(memory_format);
 }
@@ -232,7 +272,7 @@ inline bool get_is_cuda(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_storage()->is_cuda();
+    return get_nested_tensor_impl(tensor)->get_is_cuda();
   }
   return tensor.is_cuda();
 }
