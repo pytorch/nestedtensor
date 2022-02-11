@@ -79,7 +79,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _nested_size;
   }
   EfficientSizeNode get_nested_stride() {
-    return _nested_size;
+    return _nested_stride;
   }
   int64_t nested_dim() const {
     return _nested_size.height();
