@@ -1,6 +1,5 @@
 #pragma once
 #include <nestedtensor/csrc/storage/EfficientSizeNode.h>
-#include <nestedtensor/csrc/storage/StorageBase.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <c10/core/MemoryFormat.h>
 
@@ -162,7 +161,7 @@ inline bool storage_is_contiguous_channels_last(
 
 } // namespace impl
 
-struct PackedStorage : public NestedTensorStorage {
+struct PackedStorage {
   explicit PackedStorage(
       at::Tensor&& buffer,
       EfficientSizeNode nested_size,
@@ -217,10 +216,10 @@ struct PackedStorage : public NestedTensorStorage {
               map([](at::Tensor tensor) { return tensor.sizes().vec(); },
                 structure))) {}
 
-  int64_t dim() const override {
+  int64_t dim() const {
     return _nested_size.dim();
   }
-  TensorNode get_structure() const override {
+  TensorNode get_structure() const {
     return std::get<0>(impl::build_structure(
         _buffer.reshape({-1}),
         _nested_size,
@@ -232,28 +231,25 @@ struct PackedStorage : public NestedTensorStorage {
   const at::Tensor& get_buffer() const {
     return _buffer;
   }
-  const caffe2::TypeMeta dtype() const override {
+  const caffe2::TypeMeta dtype() const {
     return _data_type;
   }
-  c10::Device device() const override {
+  c10::Device device() const {
     return _device;
   }
-  bool is_pinned() const override {
+  bool is_pinned() const {
     return _is_pinned;
   }
-  const EfficientSizeNode& nested_size() const override {
+  const EfficientSizeNode& nested_size() const {
     return _nested_size;
   }
-  const EfficientSizeNode& nested_stride() const override {
+  const EfficientSizeNode& nested_stride() const {
     return _nested_stride;
   }
-  const std::vector<c10::optional<int64_t>> opt_sizes() const override {
+  const std::vector<c10::optional<int64_t>> opt_sizes() const {
     return _nested_size.opt_sizes();
   }
-  NestedTensorStorageKind kind() const override {
-    return NestedTensorStorageKind::packed;
-  }
-  bool is_contiguous(at::MemoryFormat memory_format) const override {
+  bool is_contiguous(at::MemoryFormat memory_format) const {
     if (memory_format == at::MemoryFormat::Contiguous) {
       return _is_contiguous;
     }
@@ -263,10 +259,10 @@ struct PackedStorage : public NestedTensorStorage {
     TORCH_CHECK(false, "is_contiguous does not support memory format ", memory_format);
     return false;
   }
-  bool is_cuda() const override {
+  bool is_cuda() const {
     return _buffer.is_cuda();
   }
-  int64_t numel() const override {
+  int64_t numel() const {
     return _nested_size.numel();
   }
 
