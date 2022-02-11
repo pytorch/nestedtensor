@@ -36,7 +36,7 @@ Tensor _collapse_two_dims(Tensor input, int64_t dim1, int64_t dim2) {
     Tensor collapsed_sizes = sizes_dim2 * sizes_dim3;
     new_nt_sizes = at::cat({sizes_dim1, collapsed_sizes}, 1);
   }
-  auto new_esizes = torch::nested_tensor::EfficientSizeNode(1, input_esizes.structure(), new_nt_sizes);
+  auto new_esizes = torch::nested_tensor::EfficientSizeNode(input_esizes.structure(), new_nt_sizes);
   Tensor result = wrap_buffer(get_buffer(input), new_esizes);
   TORCH_CHECK(get_dim(result) == 3, "Expected result to be 3 dimensional.");
   return result;

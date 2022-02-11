@@ -26,7 +26,6 @@ inline at::Tensor stack_sizes(SizeNode size_node) {
 
 inline std::vector<c10::optional<int64_t>> construct_efficient_size(
     int64_t out,
-    int64_t height,
     const at::Tensor& sizes) {
   std::vector<c10::optional<int64_t>> result;
   result.push_back(out);
@@ -53,20 +52,17 @@ inline std::vector<c10::optional<int64_t>> construct_efficient_size(
 
 struct EfficientSizeNode {
   explicit EfficientSizeNode(const SizeNode& size_node)
-      : _height(size_node.height()),
-        _structure(size_node.degree()),
+      : _structure(size_node.degree()),
         _sizes(impl::stack_sizes(size_node)),
-        _opt_sizes(impl::construct_efficient_size(_structure, _height, _sizes))
+        _opt_sizes(impl::construct_efficient_size(_structure, _sizes))
   {}
 
   explicit EfficientSizeNode(
-      int64_t height,
       int64_t structure,
       const at::Tensor& sizes)
-      : _height(height),
-        _structure(structure),
+      : _structure(structure),
         _sizes(sizes),
-        _opt_sizes(impl::construct_efficient_size(_structure, _height, _sizes))
+        _opt_sizes(impl::construct_efficient_size(_structure, _sizes))
   {}
 
   SizeNode to_size_node() const {
@@ -88,7 +84,7 @@ struct EfficientSizeNode {
     return SizeNode(std::move(_tmp_size_nodes));
   }
   int64_t height() const {
-    return _height;
+    return 1;
   }
   int64_t degree() const {
     if (_sizes.dim() == 0) {
@@ -97,13 +93,13 @@ struct EfficientSizeNode {
     return _sizes.size(0);
   }
   int64_t dim() const {
-    return _sizes.dim() > 0 ? _height + _sizes.size(1) : _height;
+    return _sizes.dim() > 0 ? 1 + _sizes.size(1) : 1;
   }
   const std::vector<c10::optional<int64_t>>& opt_sizes() const {
     return _opt_sizes;
   }
   void refresh_opt_sizes() {
-    _opt_sizes = impl::construct_efficient_size(_structure, _height, _sizes);
+    _opt_sizes = impl::construct_efficient_size(_structure, _sizes);
   }
   const at::Tensor& sizes() const {
     return _sizes;
@@ -112,7 +108,7 @@ struct EfficientSizeNode {
     return _structure;
   }
   EfficientSizeNode clone() const {
-    return EfficientSizeNode(_height, _structure, _sizes.clone());
+    return EfficientSizeNode(_structure, _sizes.clone());
   }
   int64_t numel() const {
     if (_sizes.dim() == 0 && _structure > 0) {
@@ -135,7 +131,6 @@ struct EfficientSizeNode {
   }
 
  private:
-  int64_t _height;
   int64_t _structure;
   const at::Tensor _sizes;
   bool _opt_sizes_set = false;
@@ -149,8 +144,8 @@ inline bool efficient_size_structure_matches(
 }
 
 inline bool efficient_size_matches(
-    EfficientSizeNode& size_node0,
-    EfficientSizeNode& size_node1) {
+    const EfficientSizeNode& size_node0,
+    const EfficientSizeNode& size_node1) {
   if (!efficient_size_structure_matches(size_node0, size_node1)) {
     return false;
   }
@@ -165,13 +160,13 @@ inline EfficientSizeNode map_efficient_size(
     const EfficientSizeNode& size_node) {
   at::Tensor sizes = size_node.sizes().clone();
   if (sizes.dim() == 0) {
-    return EfficientSizeNode(size_node.height(), size_node.structure(), sizes);
+    return EfficientSizeNode(size_node.structure(), sizes);
   }
   int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
   for (int64_t i = 0; i < sizes.size(0); i++) {
     fn(sizes_ptr + i * sizes.size(1), sizes.size(1));
   }
-  return EfficientSizeNode(size_node.height(), size_node.structure(), sizes);
+  return EfficientSizeNode(size_node.structure(), sizes);
 }
 
 template <class F>
@@ -186,7 +181,7 @@ inline EfficientSizeNode map_efficient_size(
   at::Tensor sizes1 = size_node1.sizes().clone();
   TORCH_CHECK(sizes0.dim() == sizes1.dim(), "Sizes need to match in dim.");
   if (sizes0.dim() == 0) {
-    return EfficientSizeNode(size_node0.height(), size_node0.structure(), sizes0);
+    return EfficientSizeNode(size_node0.structure(), sizes0);
   }
   TORCH_CHECK(sizes0.size(0) == sizes1.size(0), "Sizes need to match in size(0).");
   TORCH_CHECK(sizes0.size(1) == sizes1.size(1), "Sizes need to match in size(1).");
@@ -195,7 +190,7 @@ inline EfficientSizeNode map_efficient_size(
   for (int64_t i = 0; i < sizes0.size(0); i++) {
     fn(sizes_ptr0 + i * sizes0.size(1), sizes_ptr1 + i * sizes1.size(1), sizes0.size(1));
   }
-  return EfficientSizeNode(size_node0.height(), size_node0.structure(), sizes0);
+  return EfficientSizeNode(size_node0.structure(), sizes0);
 }
 
 template <class F>

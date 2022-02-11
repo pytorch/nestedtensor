@@ -4,6 +4,7 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <c10/util/Half.h>
+#include <vector>
 
 namespace nested_tensor {
 namespace cuda {
@@ -16,7 +17,7 @@ void add_padding_kernelLauncher(
     const int* offsets,
     const int* input_sizes,
     int input_dim,
-    const int* output_sizes,
+    std::vector<int64_t> output_sizes,
     const int batch_size,
     const cudaStream_t stream);
 
