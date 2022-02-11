@@ -44,7 +44,11 @@ inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(at::Tensor&& buffer, std::shared_ptr<PackedStorage> storage);
+  explicit NestedTensorImpl(at::Tensor&& buffer, EfficientSizeNode nested_size, EfficientSizeNode nested_stride);
+  explicit NestedTensorImpl(at::Tensor&& buffer, EfficientSizeNode nested_size);
+  explicit NestedTensorImpl(at::Tensor&& buffer, SizeNode nested_size, SizeNode nested_stride);
+  explicit NestedTensorImpl(at::Tensor&& buffer, SizeNode nested_size);
+  explicit NestedTensorImpl(TensorNode structure);
 
 #ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   int64_t dim() const override {
@@ -68,14 +72,17 @@ struct NestedTensorImpl : public c10::TensorImpl {
   TensorNode get_structure() const {
     return std::get<0>(torch::nested_tensor::impl::build_structure(
         _buffer.reshape({-1}),
-        _storage->nested_size(),
-        _storage->nested_stride()));
+        _nested_size,
+        _nested_stride));
   }
-  std::shared_ptr<PackedStorage> get_storage() {
-    return _storage;
+  EfficientSizeNode get_nested_size() {
+    return _nested_size;
+  }
+  EfficientSizeNode get_nested_stride() {
+    return _nested_size;
   }
   int64_t nested_dim() const {
-    return _storage->nested_size().height();
+    return _nested_size.height();
   }
   bool is_pinned() const {
     return _buffer.is_pinned();
@@ -102,13 +109,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
   SizeNode nested_size() const {
-    return _storage->nested_size().to_size_node();
+    return _nested_size.to_size_node();
   }
   SizeNode nested_stride() const {
-    return _storage->nested_stride().to_size_node();
+    return _nested_stride.to_size_node();
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
-    return _storage->opt_sizes();
+    return _nested_size.opt_sizes();
   }
 #ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   IntArrayRef sizes() const override {
@@ -165,7 +172,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
  private:
   at::Tensor _buffer;
-  std::shared_ptr<PackedStorage> _storage;
+  EfficientSizeNode _nested_size;
+  EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
   bool _is_pinned;
@@ -210,33 +218,33 @@ inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
   return get_nested_tensor_impl(tensor)->opt_sizes();
 }
 
-inline const EfficientSizeNode& get_efficient_nested_size(const at::Tensor& tensor) {
+inline const EfficientSizeNode get_efficient_nested_size(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
-  return get_nested_tensor_impl(tensor)->get_storage()->nested_size();
+  return get_nested_tensor_impl(tensor)->get_nested_size();
 }
 
-inline const EfficientSizeNode& get_efficient_nested_stride(const at::Tensor& tensor) {
+inline const EfficientSizeNode get_efficient_nested_stride(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
-  return get_nested_tensor_impl(tensor)->get_storage()->nested_stride();
+  return get_nested_tensor_impl(tensor)->get_nested_stride();
 }
 
 inline SizeNode get_nested_size(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
-  return get_nested_tensor_impl(tensor)->nested_size();
+  return get_nested_tensor_impl(tensor)->get_nested_size().to_size_node();
 }
 
 inline SizeNode get_nested_stride(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
-  return get_nested_tensor_impl(tensor)->nested_stride();
+  return get_nested_tensor_impl(tensor)->get_nested_stride().to_size_node();
 }
 
 inline int64_t get_dim(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_storage()->dim();
+    return get_nested_tensor_impl(tensor)->get_nested_size().dim();
   }
   return tensor.dim();
 }
@@ -250,7 +258,7 @@ inline const caffe2::TypeMeta get_dtype(const at::Tensor& tensor) {
 
 inline int64_t get_numel(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_storage()->numel();
+    return get_nested_tensor_impl(tensor)->get_nested_size().numel();
   }
   return tensor.numel();
 }
