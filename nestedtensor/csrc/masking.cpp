@@ -516,13 +516,40 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
   return wrap_buffer(std::move(new_buffer), target_size);
 }
 
+Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
+  TORCH_CHECK(dim1 > 0, "dim1: Cannot collapse dim 0.");
+  TORCH_CHECK(dim2 > 0, "dim2: Cannot collapse dim 0.");
+  TORCH_CHECK(dim2 - 1 == dim1, "dim2 must be one more than dim1.")
+  TORCH_CHECK(dim1 == 1, "dim1 must be 1.")
+  TORCH_CHECK(get_dim(input) == 3, "Expected input to be 3 dim.");
+  auto input_esizes = get_efficient_nested_size(input);
+  Tensor nt_sizes = input_esizes.sizes();
+
+  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
+  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+
+  Tensor new_nt_sizes;
+  if (dim1 == 1) {
+    Tensor collapsed_sizes = sizes_dim1 * sizes_dim2;
+    new_nt_sizes = collapsed_sizes;
+  }
+  auto new_esizes = torch::nested_tensor::EfficientSizeNode(input_esizes.structure(), new_nt_sizes);
+  Tensor result = wrap_buffer(get_buffer(input), new_esizes);
+  TORCH_CHECK(get_dim(result) == 2, "Expected result to be 2 dimensional.");
+  return result;
+}
+
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
   if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
     nt = NestedTensor_contiguous(nt, c10::MemoryFormat::Contiguous);
     auto nt_opt_size = get_opt_sizes(nt);
+    auto orig_nt_dim = get_dim(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {
+      if (get_dim(nt) == 3 && nt_opt_size[2]) {
+        nt = _collapse_two_dims_3(nt, 1, 2);
+      }
       auto esize = get_efficient_nested_size(nt);
       at::Tensor nt_sizes = esize.sizes();
       Tensor offsets = batch_offsets_from_efficient_size(esize);
@@ -555,6 +582,9 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size,
             batch_size,
             defaultStream);
+        if (orig_nt_dim == 3 && nt_opt_size[2]) {
+          output = output.reshape({output.size(0), -1, *nt_opt_size[2]});
+        }
         return output;
       }
       if (nt_buffer.dtype() == torch::kFloat) {
@@ -568,8 +598,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size,
             batch_size,
             defaultStream);
+        if (orig_nt_dim == 3 && nt_opt_size[2]) {
+          output = output.reshape({output.size(0), -1, *nt_opt_size[2]});
+        }
         return output;
       }
+      return output;
       TORCH_CHECK(false, "Input datatype ", nt_buffer.dtype(), " is not supported.");
     }
   }

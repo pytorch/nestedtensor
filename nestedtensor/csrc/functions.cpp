@@ -48,11 +48,9 @@ Tensor NestedTensor_embedding(
     return wrap_buffer(
         std::move(result_buffer),
         EfficientSizeNode(
-            new_nested_size.height(),
             new_nested_size.structure(),
             new_nested_size_sizes),
         EfficientSizeNode(
-            new_nested_stride.height(),
             new_nested_stride.structure(),
             new_nested_stride_sizes));
   }
