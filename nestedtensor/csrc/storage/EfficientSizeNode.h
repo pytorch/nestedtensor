@@ -149,8 +149,8 @@ inline bool efficient_size_structure_matches(
 }
 
 inline bool efficient_size_matches(
-    EfficientSizeNode& size_node0,
-    EfficientSizeNode& size_node1) {
+    const EfficientSizeNode& size_node0,
+    const EfficientSizeNode& size_node1) {
   if (!efficient_size_structure_matches(size_node0, size_node1)) {
     return false;
   }

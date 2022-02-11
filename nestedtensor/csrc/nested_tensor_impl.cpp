@@ -38,8 +38,6 @@ NestedTensorImpl::NestedTensorImpl(at::Tensor&& buffer,
       _buffer(buffer),
       _nested_size(nested_size),
       _nested_stride(nested_stride),
-      _data_type(_buffer.dtype()),
-      _device(_buffer.device()),
       _is_pinned(_buffer.is_pinned()),
       _is_contiguous(torch::nested_tensor::impl::storage_is_contiguous(
           _buffer,

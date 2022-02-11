@@ -163,19 +163,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _is_pinned;
   }
 
-  const caffe2::TypeMeta get_dtype() const {
-    return _data_type;
-  }
-  c10::Device get_device() const {
-    return _device;
-  }
-
  private:
   at::Tensor _buffer;
-  EfficientSizeNode _nested_size;
-  EfficientSizeNode _nested_stride;
-  const caffe2::TypeMeta _data_type;
-  c10::Device _device;
+  const EfficientSizeNode _nested_size;
+  const EfficientSizeNode _nested_stride;
   bool _is_pinned;
   const bool _is_contiguous;
   const bool _is_contiguous_channels_last;
@@ -250,9 +241,6 @@ inline int64_t get_dim(const at::Tensor& tensor) {
 }
 
 inline const caffe2::TypeMeta get_dtype(const at::Tensor& tensor) {
-  if (is_nested_tensor_impl(tensor)) {
-    return get_nested_tensor_impl(tensor)->get_dtype();
-  }
   return tensor.dtype();
 }
 
