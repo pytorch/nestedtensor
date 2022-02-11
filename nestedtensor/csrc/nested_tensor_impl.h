@@ -2,7 +2,7 @@
 #include <ATen/ATen.h>
 #include <ATen/MemoryOverlap.h>
 #include <c10/util/Metaprogramming.h>
-#include <nestedtensor/csrc/storage/Storage.h>
+#include <nestedtensor/csrc/storage/Packed.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/autograd/autograd.h>
@@ -44,7 +44,7 @@ inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage);
+  explicit NestedTensorImpl(std::shared_ptr<PackedStorage> storage);
 
 #ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   int64_t dim() const override {
@@ -68,7 +68,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   TensorNode get_structure() const {
     return _storage->get_structure();
   }
-  std::shared_ptr<NestedTensorStorage> get_storage() {
+  std::shared_ptr<PackedStorage> get_storage() {
     return _storage;
   }
   int64_t nested_dim() const {
@@ -127,7 +127,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
 #endif
 
  private:
-  std::shared_ptr<NestedTensorStorage> _storage;
+  std::shared_ptr<PackedStorage> _storage;
 };
 
 int64_t nt_size(Tensor tensor, int64_t dim);
@@ -158,10 +158,7 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
 
 inline at::Tensor get_buffer(const at::Tensor& tensor) {
   auto storage = get_nested_tensor_impl(tensor)->get_storage();
-  TORCH_CHECK(
-      storage.get()->kind() == NestedTensorStorageKind::packed,
-      "Given Tensor doesn't have buffer.");
-  NestedTensorStorage* storagep = storage.get();
+  PackedStorage* storagep = storage.get();
   PackedStorage* ps = dynamic_cast<PackedStorage*>(storagep);
   return ps->get_buffer();
 }

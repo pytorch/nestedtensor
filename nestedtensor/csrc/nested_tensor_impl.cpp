@@ -28,7 +28,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensorImpl::NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage)
+NestedTensorImpl::NestedTensorImpl(std::shared_ptr<PackedStorage> storage)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey}),
           storage->dtype(),
@@ -67,9 +67,9 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
     return result.payload();
   }
   PackedStorage* ls = new PackedStorage(std::move(result));
-  NestedTensorStorage* ls_base = dynamic_cast<NestedTensorStorage*>(ls);
+  PackedStorage* ls_base = dynamic_cast<PackedStorage*>(ls);
   return at::detail::make_tensor<NestedTensorImpl>(
-      std::shared_ptr<NestedTensorStorage>(ls_base));
+      std::shared_ptr<PackedStorage>(ls_base));
 }
 
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
@@ -86,9 +86,9 @@ at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
     return buffer.reshape(IntArrayRef(nested_size.payload()));
   }
   PackedStorage* ps = new PackedStorage(std::move(buffer), nested_size);
-  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  PackedStorage* ps_base = dynamic_cast<PackedStorage*>(ps);
   return at::detail::make_tensor<NestedTensorImpl>(
-      std::shared_ptr<NestedTensorStorage>(ps_base));
+      std::shared_ptr<PackedStorage>(ps_base));
 }
 
 at::Tensor wrap_buffer(
@@ -104,9 +104,9 @@ at::Tensor wrap_buffer(
       "Internal error: expected nested_size of non-zero height.");
   PackedStorage* ps = new PackedStorage(
       std::move(buffer), efficient_nested_size, efficient_nested_stride);
-  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  PackedStorage* ps_base = dynamic_cast<PackedStorage*>(ps);
   return at::detail::make_tensor<NestedTensorImpl>(
-      std::shared_ptr<NestedTensorStorage>(ps_base));
+      std::shared_ptr<PackedStorage>(ps_base));
 }
 
 at::Tensor wrap_buffer(
@@ -118,9 +118,9 @@ at::Tensor wrap_buffer(
       "Internal error: expected nested_size of non-zero height.");
   PackedStorage* ps = new PackedStorage(
       std::move(buffer), efficient_nested_size);
-  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  PackedStorage* ps_base = dynamic_cast<PackedStorage*>(ps);
   return at::detail::make_tensor<NestedTensorImpl>(
-      std::shared_ptr<NestedTensorStorage>(ps_base));
+      std::shared_ptr<PackedStorage>(ps_base));
 }
 
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
@@ -147,9 +147,9 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
       return transpose_nhwc_nchw(self_transposed);
     }
     PackedStorage* ps = new PackedStorage(get_nested_tensor_structure(self));
-    NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+    PackedStorage* ps_base = dynamic_cast<PackedStorage*>(ps);
     return at::detail::make_tensor<NestedTensorImpl>(
-        std::shared_ptr<NestedTensorStorage>(ps_base));
+        std::shared_ptr<PackedStorage>(ps_base));
   }
   if (memory_format == at::MemoryFormat::ChannelsLast) {
     Tensor self_cont = self;
