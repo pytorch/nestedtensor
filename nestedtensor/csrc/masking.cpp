@@ -516,36 +516,60 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
   return wrap_buffer(std::move(new_buffer), target_size);
 }
 
+Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
+  TORCH_CHECK(dim1 > 0, "dim1: Cannot collapse dim 0.");
+  TORCH_CHECK(dim2 > 0, "dim2: Cannot collapse dim 0.");
+  TORCH_CHECK(dim2 - 1 == dim1, "dim2 must be one more than dim1.")
+  TORCH_CHECK(dim1 == 1, "dim1 must be 1.")
+  TORCH_CHECK(get_dim(input) == 3, "Expected input to be 3 dim.");
+  auto input_esizes = get_efficient_nested_size(input);
+  Tensor nt_sizes = input_esizes.sizes();
+
+  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
+  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+
+  Tensor new_nt_sizes;
+  if (dim1 == 1) {
+    Tensor collapsed_sizes = sizes_dim1 * sizes_dim2;
+    new_nt_sizes = collapsed_sizes;
+  }
+  auto new_esizes = torch::nested_tensor::EfficientSizeNode(input_esizes.structure(), new_nt_sizes);
+  Tensor result = wrap_buffer(get_buffer(input), new_esizes);
+  TORCH_CHECK(get_dim(result) == 2, "Expected result to be 2 dimensional.");
+  return result;
+}
+
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
   if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
     nt = NestedTensor_contiguous(nt, c10::MemoryFormat::Contiguous);
     auto nt_opt_size = get_opt_sizes(nt);
+    auto orig_nt_dim = get_dim(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {
+      if (get_dim(nt) == 3 && nt_opt_size[2]) {
+        nt = _collapse_two_dims_3(nt, 1, 2);
+      }
       auto esize = get_efficient_nested_size(nt);
       at::Tensor nt_sizes = esize.sizes();
       Tensor offsets = batch_offsets_from_efficient_size(esize);
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output = at::empty(IntArrayRef(new_size), nt_buffer.options());
-      Tensor new_size_tensor = torch::tensor(new_size);
 
       int64_t input_dim = nt_sizes.size(1);
       int64_t batch_size = nt_sizes.size(0);
-      at::Tensor metadata = at::cat({new_size_tensor, offsets, nt_sizes.reshape(-1)});
+      at::Tensor metadata = at::cat({offsets, nt_sizes.reshape(-1)});
       metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
       std::vector<int64_t> split_sizes;
-      split_sizes.push_back(new_size_tensor.numel());
       split_sizes.push_back(offsets.numel());
       split_sizes.push_back(nt_sizes.numel());
 
       std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
 
-      new_size_tensor = split[0];
-      offsets = split[1];
-      nt_sizes = split[2];
+      offsets = split[0];
+      nt_sizes = split[1];
 
       if (nt_buffer.dtype() == torch::kFloat16) {
         nested_tensor::cuda::add_padding_kernelLauncher(
@@ -555,9 +579,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
             input_dim,
-            new_size_tensor.data_ptr<int>(),
+            new_size,
             batch_size,
             defaultStream);
+        if (orig_nt_dim == 3 && nt_opt_size[2]) {
+          output = output.reshape({output.size(0), -1, *nt_opt_size[2]});
+        }
         return output;
       }
       if (nt_buffer.dtype() == torch::kFloat) {
@@ -568,11 +595,15 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
             input_dim,
-            new_size_tensor.data_ptr<int>(),
+            new_size,
             batch_size,
             defaultStream);
+        if (orig_nt_dim == 3 && nt_opt_size[2]) {
+          output = output.reshape({output.size(0), -1, *nt_opt_size[2]});
+        }
         return output;
       }
+      return output;
       TORCH_CHECK(false, "Input datatype ", nt_buffer.dtype(), " is not supported.");
     }
   }
