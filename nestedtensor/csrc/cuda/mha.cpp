@@ -48,10 +48,6 @@ at::Tensor bt_min_mha(
   // auto start = std::chrono::system_clock::now();
   auto options =
       torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA);
-  at::Tensor input_mask = to_mask(query, 2);
-  input_mask = input_mask.to(options);
-  int64_t batch_size = input_mask.size(0);
-  int64_t seq_len = input_mask.size(1);
   int64_t embedding_dim = head_dim * num_heads; //*(opt_sizes[2]);
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
@@ -65,6 +61,8 @@ at::Tensor bt_min_mha(
   at::Tensor query_buf = packed_padded_chunks[0];
   at::Tensor key_buf = packed_padded_chunks[1];
   at::Tensor val_buf = packed_padded_chunks[2];
+  int64_t batch_size = query_buf.size(0);
+  int64_t seq_len = query_buf.size(1);
 
   query_buf = query_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
   key_buf =     key_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
@@ -75,6 +73,8 @@ at::Tensor bt_min_mha(
 
   auto mask_options =
       torch::TensorOptions().dtype(query.dtype()).device(torch::kCUDA);
+  at::Tensor input_mask = to_mask(query, 2);
+  input_mask = input_mask.to(options);
   at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(mask_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
