@@ -433,6 +433,22 @@ Tensor to_mask(
     for (int64_t i = 1; i < *mask_dim; i++) {
       max_size.push_back(tmp_max_size[i - 1]);
     }
+    if (*mask_dim == 2 && get_dim(nt) == 3) {
+      auto nt_size = get_efficient_nested_size(nt);
+      auto esizes = nt_size.sizes();
+      auto options = torch::TensorOptions().dtype(torch::kByte);
+      auto result = torch::zeros({*opt_sizes[0], tmp_max_size[0]},
+                                options);
+      uint8_t* result_data = result.data_ptr<uint8_t>();
+      int64_t* esizes_ptr = esizes.data_ptr<int64_t>();
+      for (int64_t i = 0; i < esizes.size(0); i++) {
+        int64_t length = esizes_ptr[i * esizes.size(1)];
+        for (int64_t j = 0; j < length; j++) {
+          result_data[i * result.size(1) + j] = 1;
+        }
+      }
+      return result;
+    }
     return _create_nt_mask(get_efficient_nested_size(nt), max_size);
   }
   max_size = get_max_size(nt);
@@ -525,13 +541,13 @@ Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
   auto input_esizes = get_efficient_nested_size(input);
   Tensor nt_sizes = input_esizes.sizes();
 
-  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
-  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1);
+  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1);
 
   Tensor new_nt_sizes;
   if (dim1 == 1) {
     Tensor collapsed_sizes = sizes_dim1 * sizes_dim2;
-    new_nt_sizes = collapsed_sizes;
+    new_nt_sizes = collapsed_sizes.contiguous();
   }
   auto new_esizes = torch::nested_tensor::EfficientSizeNode(input_esizes.structure(), new_nt_sizes);
   Tensor result = wrap_buffer(get_buffer(input), new_esizes);
