@@ -433,6 +433,22 @@ Tensor to_mask(
     for (int64_t i = 1; i < *mask_dim; i++) {
       max_size.push_back(tmp_max_size[i - 1]);
     }
+    if (*mask_dim == 2 && get_dim(nt) == 3) {
+      auto nt_size = get_efficient_nested_size(nt);
+      auto esizes = nt_size.sizes();
+      auto options = torch::TensorOptions().dtype(torch::kByte);
+      auto result = torch::zeros({*opt_sizes[0], tmp_max_size[0]},
+                                options);
+      uint8_t* result_data = result.data_ptr<uint8_t>();
+      int64_t* esizes_ptr = esizes.data_ptr<int64_t>();
+      for (int64_t i = 0; i < esizes.size(0); i++) {
+        int64_t length = esizes_ptr[i * esizes.size(1)];
+        for (int64_t j = 0; j < length; j++) {
+          result_data[i * result.size(1) + j] = 1;
+        }
+      }
+      return result;
+    }
     return _create_nt_mask(get_efficient_nested_size(nt), max_size);
   }
   max_size = get_max_size(nt);
