@@ -541,13 +541,13 @@ Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
   auto input_esizes = get_efficient_nested_size(input);
   Tensor nt_sizes = input_esizes.sizes();
 
-  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
-  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
+  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1);
+  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1);
 
   Tensor new_nt_sizes;
   if (dim1 == 1) {
     Tensor collapsed_sizes = sizes_dim1 * sizes_dim2;
-    new_nt_sizes = collapsed_sizes;
+    new_nt_sizes = collapsed_sizes.contiguous();
   }
   auto new_esizes = torch::nested_tensor::EfficientSizeNode(input_esizes.structure(), new_nt_sizes);
   Tensor result = wrap_buffer(get_buffer(input), new_esizes);
