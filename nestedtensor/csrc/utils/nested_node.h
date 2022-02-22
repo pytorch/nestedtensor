@@ -100,44 +100,35 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
       const NestedNode<Args>&... nested_node) {
     size_t degree = 0;
     bool all_leaf = true;
-    c10::guts::tuple_map(
-        std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
-          all_leaf = all_leaf && (n.is_leaf());
-          if (degree > 1 && n.degree() > 1) {
-            TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
-          }
-          if (n.degree() > degree) {
-            degree = n.degree();
-          }
-          return nullptr;
-        });
+    auto find_max_degree = [&all_leaf, &degree](auto n) {
+      all_leaf = all_leaf && (n.is_leaf());
+      if (degree > 1 && n.degree() > 1) {
+        TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
+      }
+      if (n.degree() > degree) {
+        degree = n.degree();
+      }
+    };
+    std::initializer_list<int> unused = {(find_max_degree(nested_node), 0)...};
     if (all_leaf) {
       return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
     }
     std::vector<NestedNode<A>> result;
     for (size_t i = 0; i < degree; i++) {
-      std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
-          std::forward_as_tuple(nested_node...), [&i](auto a) {
-            static_assert(
-                c10::guts::is_instantiation_of<NestedNode, decltype(a)>::value,
+      auto get_child = [&i](auto a) {
+        static_assert(
+            c10::guts::is_instantiation_of<NestedNode, decltype(a)>::value,
                 "Internal error.");
-            if (a.is_leaf()) {
-              return a;
-            }
-            if (a.degree() == 1 && a.height() > 0) {
-              return a.children(0);
-            }
-            TORCH_CHECK(a.degree() > 0, "Internal assert.");
-            return a.children(i);
-          });
-      // TODO: Due to the experiences with to_vector and the inversion I'm a bit
-      // wary of apply but I haven't been able to reproduce the  argument
-      // inversion behavior in other contexts.
-      c10::guts::apply(
-          [&result, &fn](NestedNode<Args>... filtered) {
-            result.emplace_back(function(std::forward<F>(fn), filtered...));
-          },
-          std::move(children));
+        if (a.is_leaf()) {
+          return a;
+        }
+        if (a.degree() == 1 && a.height() > 0) {
+          return a.children(0);
+        }
+        TORCH_CHECK(a.degree() > 0, "Internal assert.");
+        return a.children(i);
+      };
+      result.emplace_back(function(std::forward<F>(fn), get_child(nested_node)...));
     }
     return NestedNode<A>(std::move(result));
   }
@@ -307,8 +298,7 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
   static void function(F&& fn, NestedNode<Args>... nested_node) {
     size_t degree = 0;
     bool all_leaf = true;
-    c10::guts::tuple_map(
-        std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
+    auto find_degree = [&all_leaf, &degree](auto n) {
           all_leaf = all_leaf && (n.is_leaf());
           if (degree == 0 && n.degree() > 0) {
             degree = n.degree();
@@ -317,31 +307,27 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
             TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
           }
           return nullptr;
-        });
+    };
+    std::initializer_list<int> unused =  {(find_degree(nested_node), 0)...};
     if (all_leaf) {
       std::forward<F>(fn)(nested_node.payload()...);
     } else {
       for (size_t i = 0; i < degree; i++) {
-        std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
-            std::forward_as_tuple(nested_node...), [&i](auto a) {
-              static_assert(
-                  c10::guts::is_instantiation_of<NestedNode, decltype(a)>::
-                      value,
-                  "Internal error.");
-              if (a.is_leaf()) {
-                return a;
-              }
-              if (a.degree() == 1) {
-                return a.children(0);
-              }
-              TORCH_CHECK(a.degree() > 0, "Internal assert.");
-              return a.children(i);
-            });
-        c10::guts::apply(
-            [&fn](NestedNode<Args>... filtered) {
-              function(std::forward<F>(fn), filtered...);
-            },
-            std::move(children));
+        auto get_child = [&i](auto a) {
+          static_assert(
+              c10::guts::is_instantiation_of<NestedNode, decltype(a)>::
+              value,
+              "Internal error.");
+          if (a.is_leaf()) {
+            return a;
+          }
+          if (a.degree() == 1) {
+            return a.children(0);
+          }
+          TORCH_CHECK(a.degree() > 0, "Internal assert.");
+          return a.children(i);
+        };
+        function(std::forward<F>(fn), get_child(nested_node)...);
       }
     }
   }
