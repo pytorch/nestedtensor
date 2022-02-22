@@ -104,7 +104,7 @@ struct EfficientSizeNode {
   const at::Tensor& sizes() const {
     return _sizes;
   }
-  const int64_t structure() const {
+  int64_t structure() const {
     return _structure;
   }
   EfficientSizeNode clone() const {
