@@ -52,7 +52,7 @@ Tensor& NestedTensor_relu_(Tensor& self) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu_" << std::endl;
 #endif
-    Tensor buffer = get_buffer(self);
+    Tensor& buffer = get_buffer(self);
     at::relu_(buffer);
     return self;
   }

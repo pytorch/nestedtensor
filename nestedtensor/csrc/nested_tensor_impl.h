@@ -198,7 +198,11 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-inline at::Tensor get_buffer(const at::Tensor& tensor) {
+inline const at::Tensor& get_buffer(const at::Tensor& tensor) {
+  return get_nested_tensor_impl(tensor)->get_buffer();
+}
+
+inline at::Tensor& get_buffer(at::Tensor& tensor) {
   return get_nested_tensor_impl(tensor)->get_buffer();
 }
 
@@ -282,13 +286,13 @@ inline int64_t get_nested_dim(const at::Tensor& tensor) {
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
-at::Tensor wrap_buffer(at::Tensor&&, SizeNode nested_size);
+at::Tensor wrap_buffer(at::Tensor, SizeNode nested_size);
 at::Tensor wrap_buffer(
-    at::Tensor&&,
+    at::Tensor,
     EfficientSizeNode efficient_nested_size,
     EfficientSizeNode efficient_nested_stride);
 at::Tensor wrap_buffer(
-    at::Tensor&&,
+    at::Tensor,
     EfficientSizeNode efficient_nested_size);
 
 template <class F, class... A>

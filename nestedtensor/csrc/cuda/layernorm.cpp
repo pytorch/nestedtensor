@@ -24,7 +24,7 @@ Tensor NestedTensor_layer_norm(
       auto input_opt_sizes = get_opt_sizes(input);
       if (get_dim(input) == 3 && get_is_contiguous(input) &&
           (*input_opt_sizes[2]) % 32 == 0) {
-        at::Tensor input_buffer = get_buffer(input);
+        const at::Tensor& input_buffer = get_buffer(input);
         int size2 = (int)(*input_opt_sizes[2]);
         int valid_word_num = (int)(input_buffer.numel() / size2);
         at::Tensor output_buffer = torch::zeros_like(input_buffer);

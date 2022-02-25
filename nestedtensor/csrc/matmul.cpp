@@ -15,7 +15,7 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
         auto self_opt_sizes = get_opt_sizes(self);
         if (self_opt_sizes[2]) {
           if (*self_opt_sizes[2] == other.size(0)) {
-            Tensor self_buffer = get_buffer(self);
+            const Tensor& self_buffer = get_buffer(self);
             Tensor result_buffer =
                 at::matmul(self_buffer.reshape({-1, other.size(0)}), other);
             result_buffer = result_buffer.reshape({-1});

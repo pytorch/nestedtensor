@@ -32,7 +32,7 @@ Tensor NestedTensor_embedding(
       get_dim(weight) == 2 &&
       get_is_contiguous(indices) &&
       get_is_contiguous(weight)) {
-    Tensor indices_buffer = get_buffer(indices);
+    const Tensor& indices_buffer = get_buffer(indices);
     Tensor result_buffer = at::embedding(
         weight, indices_buffer, padding_idx, scale_grad_by_freq, sparse);
     EfficientSizeNode new_nested_size = get_efficient_nested_size(indices);

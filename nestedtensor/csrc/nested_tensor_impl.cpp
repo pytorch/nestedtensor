@@ -116,7 +116,7 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
   return result;
 }
 
-at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
+at::Tensor wrap_buffer(at::Tensor buffer, SizeNode nested_size) {
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
   if (nested_size.is_leaf()) {
     return buffer.reshape(IntArrayRef(nested_size.payload()));
@@ -126,7 +126,7 @@ at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
 }
 
 at::Tensor wrap_buffer(
-    at::Tensor&& buffer,
+    at::Tensor buffer,
     EfficientSizeNode efficient_nested_size,
     EfficientSizeNode efficient_nested_stride) {
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
@@ -143,7 +143,7 @@ at::Tensor wrap_buffer(
 }
 
 at::Tensor wrap_buffer(
-    at::Tensor&& buffer,
+    at::Tensor buffer,
     EfficientSizeNode efficient_nested_size) {
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
   TORCH_CHECK(

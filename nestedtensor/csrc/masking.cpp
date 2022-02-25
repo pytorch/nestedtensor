@@ -2,6 +2,7 @@
 #include <chrono>
 #ifdef WITH_CUDA
 #include <c10/cuda/CUDAStream.h>
+#include <c10/util/MaybeOwned.h>
 #include <nestedtensor/csrc/cuda/padding.h>
 #include <nestedtensor/csrc/cuda/attention.h>
 #endif
@@ -254,8 +255,8 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
 #ifdef WITH_CUDA
   if (get_dim(nt) == 3 && get_is_contiguous(nt) && mask_dim && *mask_dim == 2) {
     auto nt_opt_size = get_opt_sizes(nt);
-    Tensor nt_buffer = get_buffer(nt);
-    if (nt_opt_size[2] && nt_buffer.is_cuda()) {
+    auto nt_buffer = c10::MaybeOwned<Tensor>::borrowed(get_buffer(nt));
+    if (nt_opt_size[2] && nt_buffer->is_cuda()) {
       Tensor nt_sizes_ =
           get_efficient_nested_size(nt).sizes().to(torch::kInt32);
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
@@ -265,19 +266,19 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
           at::cumsum(nt_sizes, 0).to(torch::kInt32).reshape({-1});
       nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes});
       Tensor output = torch::zeros(
-          {*nt_opt_size[0], max_size_1, *nt_opt_size[2]}, nt_buffer.options());
+          {*nt_opt_size[0], max_size_1, *nt_opt_size[2]}, nt_buffer->options());
       nt_sizes = nt_sizes.to(torch::kCUDA);
       Tensor output_mask = torch::zeros(
-          {*nt_opt_size[0], max_size_1}, nt_buffer.options());
+          {*nt_opt_size[0], max_size_1}, nt_buffer->options());
       output_mask = output_mask.to(torch::kInt32);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       if (nt.dtype() == torch::kFloat16) {
-        nt_buffer = nt_buffer.to(torch::kFloat);
+        nt_buffer = c10::MaybeOwned<Tensor>::owned(nt_buffer->to(torch::kFloat));
         output = output.to(torch::kFloat);
       }
-      if (nt_buffer.dtype() == torch::kFloat) {
+      if (nt_buffer->dtype() == torch::kFloat) {
         nested_tensor::cuda::add_padding_mask_kernelLauncher<float>(
-            nt_buffer.data_ptr<float>(),
+            nt_buffer->data_ptr<float>(),
             output.data_ptr<float>(),
             output_mask.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
@@ -305,11 +306,9 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
   auto opt_sizes = get_opt_sizes(nt);
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
     nt = NestedTensor_contiguous(nt);
-    Tensor nt_buffer = get_buffer(nt);
-    nt_buffer = nt_buffer.reshape({-1});
     Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true)
                                                      : torch::tensor({true});
-    return std::make_tuple(nt_buffer, result_mask);
+    return std::make_tuple(get_buffer(nt).reshape({-1}), result_mask);
   }
 
   auto max_size = get_max_size(nt);
@@ -561,7 +560,7 @@ Tensor to_padded_tensor(const Tensor& t, double padding) {
     auto nt = NestedTensor_contiguous(t, c10::MemoryFormat::Contiguous);
     auto nt_opt_size = get_opt_sizes(nt);
     auto orig_nt_dim = get_dim(nt);
-    Tensor nt_buffer = get_buffer(nt);
+    const Tensor& nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {
       if (get_dim(nt) == 3 && nt_opt_size[2]) {
         nt = _collapse_two_dims_3(nt, 1, 2);

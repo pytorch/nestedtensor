@@ -95,8 +95,8 @@ Tensor _transpose_nchw_nhwc(Tensor input, Tensor output) {
   Tensor block_offsets;
   std::tie(offsets, block_offsets) = _create_offsets<32>(collapsed_input);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-  Tensor input_buffer = get_buffer(input);
-  Tensor output_buffer = get_buffer(output);
+  const Tensor& input_buffer = get_buffer(input);
+  const Tensor& output_buffer = get_buffer(output);
   TORCH_CHECK(input_buffer.is_cuda(), "Expected input_buffer to be CUDA.");
   TORCH_CHECK(output_buffer.is_cuda(), "Expected output_buffer to be CUDA.");
   int* block_offsets_ptr = block_offsets.data_ptr<int>();
@@ -123,7 +123,7 @@ Tensor transpose_nchw_nhwc(Tensor input) {
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc input needs to be contiguous.");
   auto input_opt_sizes = get_opt_sizes(input);
   TORCH_CHECK(input_opt_sizes[1], "Expected first dimension to be regular.");
-  Tensor input_buffer = get_buffer(input);
+  const Tensor& input_buffer = get_buffer(input);
   auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
       int64_t tmp = size_ptr[0];
       size_ptr[0] = size_ptr[2];
@@ -153,8 +153,8 @@ Tensor _transpose_nhwc_nchw(Tensor input, Tensor output) {
   Tensor block_offsets;
   std::tie(offsets, block_offsets) = _create_offsets<32>(collapsed_input);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-  Tensor input_buffer = get_buffer(input);
-  Tensor output_buffer = get_buffer(output);
+  const Tensor& input_buffer = get_buffer(input);
+  const Tensor& output_buffer = get_buffer(output);
   int* block_offsets_ptr = block_offsets.data_ptr<int>();
   int batch_size = sizes_dim3.numel();
   int block_numel = block_offsets_ptr[batch_size];
@@ -179,7 +179,7 @@ Tensor transpose_nhwc_nchw(Tensor input) {
   TORCH_CHECK(get_is_contiguous(input), "transpose_nhwc_nchw input needs to be contiguous.");
   auto input_opt_sizes = get_opt_sizes(input);
   TORCH_CHECK(input_opt_sizes[3], "Expected last dimension to be regular.");
-  Tensor input_buffer = get_buffer(input);
+  const Tensor& input_buffer = get_buffer(input);
   auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
       // nhwc
       int64_t tmp = size_ptr[0];
