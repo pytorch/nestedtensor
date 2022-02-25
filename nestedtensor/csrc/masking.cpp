@@ -577,14 +577,10 @@ Tensor to_padded_tensor(const Tensor& t, double padding) {
       at::Tensor metadata = at::cat({offsets, nt_sizes.reshape(-1)});
       metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
-      std::vector<int64_t> split_sizes;
-      split_sizes.push_back(offsets.numel());
-      split_sizes.push_back(nt_sizes.numel());
+      std::vector<Tensor> split = at::split_with_sizes(metadata, {offsets.numel(), nt_sizes.numel()}, 0);
 
-      std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
-
-      offsets = split[0];
-      nt_sizes = split[1];
+      offsets = std::move(split[0]);
+      nt_sizes = std::move(split[1]);
 
       if (nt_buffer.dtype() == torch::kFloat16) {
         nested_tensor::cuda::add_padding_kernelLauncher(
