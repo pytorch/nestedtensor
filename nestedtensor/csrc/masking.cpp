@@ -81,10 +81,10 @@ std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<int64_t> get_max_size_from_efficient_size(EfficientSizeNode esize) {
+static std::vector<int64_t> get_max_size_from_efficient_size(const EfficientSizeNode& esize) {
   auto nt_opt_sizes = esize.opt_sizes();
   if (nt_opt_sizes.size() > 0 && *nt_opt_sizes[0] > 0) {
-    auto sizes = esize.sizes();
+    const auto& sizes = esize.sizes();
     int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
     int64_t sizes_size_0 = sizes.size(0);
     int64_t sizes_size_1 = sizes.size(1);
@@ -433,7 +433,7 @@ Tensor to_mask(
       max_size.push_back(tmp_max_size[i - 1]);
     }
     if (*mask_dim == 2 && get_dim(nt) == 3) {
-      auto nt_size = get_efficient_nested_size(nt);
+      const auto& nt_size = get_efficient_nested_size(nt);
       auto esizes = nt_size.sizes();
       auto options = torch::TensorOptions().dtype(torch::kByte);
       auto result = torch::zeros({*opt_sizes[0], tmp_max_size[0]},
@@ -537,7 +537,7 @@ Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
   TORCH_CHECK(dim2 - 1 == dim1, "dim2 must be one more than dim1.")
   TORCH_CHECK(dim1 == 1, "dim1 must be 1.")
   TORCH_CHECK(get_dim(input) == 3, "Expected input to be 3 dim.");
-  auto input_esizes = get_efficient_nested_size(input);
+  const auto& input_esizes = get_efficient_nested_size(input);
   Tensor nt_sizes = input_esizes.sizes();
 
   Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1);
@@ -565,7 +565,7 @@ Tensor to_padded_tensor(const Tensor& t, double padding) {
       if (get_dim(nt) == 3 && nt_opt_size[2]) {
         nt = _collapse_two_dims_3(nt, 1, 2);
       }
-      auto esize = get_efficient_nested_size(nt);
+      const auto& esize = get_efficient_nested_size(nt);
       at::Tensor nt_sizes = esize.sizes();
       Tensor offsets = batch_offsets_from_efficient_size(esize);
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);

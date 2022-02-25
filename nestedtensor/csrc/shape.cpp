@@ -61,8 +61,8 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  EfficientSizeNode ef_sizes = get_efficient_nested_size(self);
-  EfficientSizeNode ef_strides = get_efficient_nested_stride(self);
+  const EfficientSizeNode& ef_sizes = get_efficient_nested_size(self);
+  const EfficientSizeNode& ef_strides = get_efficient_nested_stride(self);
   auto new_ef_sizes = map_efficient_size(
       [dim0, dim1, nested_dim](int64_t* size_ptr, int64_t size) {
       int64_t tmp = size_ptr[dim0 - nested_dim];

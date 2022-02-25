@@ -21,7 +21,7 @@ Tensor _collapse_two_dims(Tensor input, int64_t dim1, int64_t dim2) {
   TORCH_CHECK(dim2 - 1 == dim1, "dim2 must be one more than dim1.")
   TORCH_CHECK(dim1 == 1 || dim1 == 2, "dim1 must be 1 or 2.")
   TORCH_CHECK(get_dim(input) == 4, "Expected input to be 4 dim.");
-  auto input_esizes = get_efficient_nested_size(input);
+  const auto& input_esizes = get_efficient_nested_size(input);
   Tensor nt_sizes = input_esizes.sizes();
 
   Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();

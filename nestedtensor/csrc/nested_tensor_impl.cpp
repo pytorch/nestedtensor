@@ -28,34 +28,38 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
+// We cannot delegate from the second constructor that uses this macro
+// to the first one because we would need to both move from
+// nested_size and use it.
+#define NESTED_TENSOR_IMPL_CONSTRUCTOR_BODY(stride)                     \
+  : TensorImpl(                                                         \
+      c10::DispatchKeySet({NestedTensorKey}),                           \
+      buffer.dtype(),                                                   \
+      buffer.device()),                                                 \
+    _buffer(std::move(buffer)),                                         \
+    _nested_size(std::move(nested_size)),                               \
+    _nested_stride(stride),                                             \
+    _is_pinned(_buffer.is_pinned()),                                    \
+    _is_contiguous(torch::nested_tensor::impl::storage_is_contiguous(   \
+                       _buffer,                                         \
+                       _nested_size,                                    \
+                       _nested_stride)),                                \
+    _is_contiguous_channels_last(torch::nested_tensor::impl::storage_is_contiguous_channels_last( \
+                                     _buffer,                           \
+                                     _nested_size,                      \
+                                     _nested_stride)) {                 \
+    remove_autograd_key();                                              \
+    key_set_ = key_set_ - c10::DispatchKeySet({c10::DispatchKey::ADInplaceOrView}); \
+  }
+
 NestedTensorImpl::NestedTensorImpl(at::Tensor&& buffer,
        EfficientSizeNode nested_size,
        EfficientSizeNode nested_stride)
-    : TensorImpl(
-          c10::DispatchKeySet({NestedTensorKey}),
-          buffer.dtype(),
-          buffer.device()),
-      _buffer(buffer),
-      _nested_size(nested_size),
-      _nested_stride(nested_stride),
-      _is_pinned(_buffer.is_pinned()),
-      _is_contiguous(torch::nested_tensor::impl::storage_is_contiguous(
-          _buffer,
-          _nested_size,
-          _nested_stride)),
-      _is_contiguous_channels_last(torch::nested_tensor::impl::storage_is_contiguous_channels_last(
-          _buffer,
-          _nested_size,
-          _nested_stride)) {
-  remove_autograd_key();
-  key_set_ = key_set_ - c10::DispatchKeySet({c10::DispatchKey::ADInplaceOrView});
-}
+NESTED_TENSOR_IMPL_CONSTRUCTOR_BODY(std::move(nested_stride))
 
 NestedTensorImpl::NestedTensorImpl(at::Tensor&& buffer,
        EfficientSizeNode nested_size)
-  : NestedTensorImpl(std::move(buffer),
-                     nested_size,
-                     torch::nested_tensor::impl::_cont_stride(nested_size)) {}
+NESTED_TENSOR_IMPL_CONSTRUCTOR_BODY(torch::nested_tensor::impl::_cont_stride(nested_size))
 
 NestedTensorImpl::NestedTensorImpl(at::Tensor&& buffer,
        SizeNode nested_size,
@@ -138,8 +142,8 @@ at::Tensor wrap_buffer(
       "Internal error: expected nested_size of non-zero height.");
   return at::detail::make_tensor<NestedTensorImpl>(
       std::move(buffer),
-      efficient_nested_size,
-      efficient_nested_stride);
+      std::move(efficient_nested_size),
+      std::move(efficient_nested_stride));
 }
 
 at::Tensor wrap_buffer(
@@ -151,7 +155,7 @@ at::Tensor wrap_buffer(
       "Internal error: expected nested_size of non-zero height.");
   return at::detail::make_tensor<NestedTensorImpl>(
       std::move(buffer),
-      efficient_nested_size);
+      std::move(efficient_nested_size));
 }
 
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {

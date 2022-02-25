@@ -37,7 +37,7 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
                 new_nested_size,
                 new_nested_stride);
             return wrap_buffer(
-                std::move(result_buffer), new_nested_size, new_nested_stride);
+                std::move(result_buffer), std::move(new_nested_size), std::move(new_nested_stride));
           }
         }
       }

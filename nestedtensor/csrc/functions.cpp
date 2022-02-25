@@ -35,7 +35,7 @@ Tensor NestedTensor_embedding(
     const Tensor& indices_buffer = get_buffer(indices);
     Tensor result_buffer = at::embedding(
         weight, indices_buffer, padding_idx, scale_grad_by_freq, sparse);
-    EfficientSizeNode new_nested_size = get_efficient_nested_size(indices);
+    const EfficientSizeNode& new_nested_size = get_efficient_nested_size(indices);
     auto new_nested_size_sizes = new_nested_size.sizes();
     auto tmp = torch::empty(
         {new_nested_size_sizes.size(0)}, new_nested_size_sizes.options());
