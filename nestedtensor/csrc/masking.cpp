@@ -555,10 +555,10 @@ Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
   return result;
 }
 
-Tensor to_padded_tensor(Tensor nt, double padding) {
+Tensor to_padded_tensor(const Tensor& t, double padding) {
 #ifdef WITH_CUDA
-  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
-    nt = NestedTensor_contiguous(nt, c10::MemoryFormat::Contiguous);
+  if ((get_dim(t) >= 2 && get_dim(t) <= 4)) {
+    auto nt = NestedTensor_contiguous(t, c10::MemoryFormat::Contiguous);
     auto nt_opt_size = get_opt_sizes(nt);
     auto orig_nt_dim = get_dim(nt);
     Tensor nt_buffer = get_buffer(nt);
@@ -624,13 +624,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     }
   }
 #endif
-  auto opt_sizes = get_opt_sizes(nt);
+  auto opt_sizes = get_opt_sizes(t);
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
-    nt = NestedTensor_contiguous(nt);
-    return get_buffer(nt);
+    return get_buffer(NestedTensor_contiguous(t));
   }
-  auto max_size = get_max_size(nt);
-  TensorNode structure = get_nested_tensor_structure(nt);
+  auto max_size = get_max_size(t);
+  TensorNode structure = get_nested_tensor_structure(t);
   if (structure.degree() == 0) {
     return torch::tensor({padding});
   }
