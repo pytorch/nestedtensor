@@ -434,7 +434,7 @@ Tensor to_mask(
     }
     if (*mask_dim == 2 && get_dim(nt) == 3) {
       const auto& nt_size = get_efficient_nested_size(nt);
-      auto esizes = nt_size.sizes();
+      const auto& esizes = nt_size.sizes();
       auto options = torch::TensorOptions().dtype(torch::kByte);
       auto result = torch::zeros({*opt_sizes[0], tmp_max_size[0]},
                                 options);
@@ -455,31 +455,30 @@ Tensor to_mask(
   return merge_mask(res_mask, mask_dim);
 }
 
-Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
+Tensor from_padded_tensor(const Tensor& padded, const EfficientSizeNode& target_size) {
   TORCH_CHECK(padded.dim() == target_size.dim(),
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
   if (padded.dim() > 1 && padded.dim() < 5 &&
       get_is_contiguous(padded) && padded.is_cuda()) {
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
-    std::vector<int64_t> padded_sizes = padded.sizes().vec();
-    Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
+    Tensor padded_sizes_tensor = torch::tensor(padded.sizes());
     Tensor output = torch::empty({target_size.numel()}, padded.options());
-    Tensor target_size_sizes = target_size.sizes();
+    Tensor target_size_sizes = target_size.sizes().reshape(-1);
 
-    at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), padded_sizes_tensor, target_offsets});
+    at::Tensor metadata = at::cat({target_size_sizes, padded_sizes_tensor, target_offsets});
     metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
-    std::vector<int64_t> split_sizes;
-    split_sizes.push_back(target_size_sizes.numel());
-    split_sizes.push_back(padded_sizes_tensor.numel());
-    split_sizes.push_back(target_offsets.numel());
+    std::array<int64_t, 3> split_sizes = {
+      target_size_sizes.numel(),
+      padded_sizes_tensor.numel(),
+      target_offsets.numel()};
 
-    std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
+    std::vector<Tensor> split = at::split_with_sizes(metadata, split_sizes, 0);
 
-    target_size_sizes = split[0];
-    padded_sizes_tensor = split[1];
-    target_offsets = split[2];
+    target_size_sizes = std::move(split[0]);
+    padded_sizes_tensor = std::move(split[1]);
+    target_offsets = std::move(split[2]);
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
     if (padded.dtype() == torch::kFloat16) {
