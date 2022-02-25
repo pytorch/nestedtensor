@@ -74,8 +74,7 @@ at::Tensor bt_min_mha(
 
   auto mask_options =
       torch::TensorOptions().dtype(query.dtype()).device(torch::kCUDA);
-  at::Tensor input_mask = to_mask(query, 2).to(options, /* non-blocking = */ true);
-  at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(mask_options);
+  at::Tensor attr_mask = to_mask(query, 2).view({-1, 1, 1, seq_len}).to(mask_options, /* non-blocking = */ true);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
   if (query.dtype() == torch::kFloat16) {
