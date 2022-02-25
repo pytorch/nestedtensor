@@ -111,8 +111,8 @@ std::vector<int64_t> get_max_size(const Tensor& nt) {
 Tensor batch_offsets_from_efficient_size(const EfficientSizeNode& ef, int64_t extra_elements) {
   const Tensor& ef_sizes = ef.sizes();
   int64_t* nt_sizes_ptr = ef_sizes.data_ptr<int64_t>();
-  Tensor offsets = torch::empty({1 + ef_sizes.size(0) + extra_elements}, torch::kInt64);
-  int64_t* offsets_ptr = offsets.data_ptr<int64_t>();
+  Tensor offsets = torch::empty({1 + ef_sizes.size(0) + extra_elements}, torch::kInt32);
+  int32_t* offsets_ptr = offsets.data_ptr<int32_t>();
   offsets_ptr[0] = 0;
   int64_t ef_sizes_size_1 = ef_sizes.size(1);
   const auto ef_sizes_size_0 = ef_sizes.size(0);
