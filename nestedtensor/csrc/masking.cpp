@@ -125,15 +125,11 @@ Tensor batch_offsets_from_efficient_size(EfficientSizeNode ef) {
   return offsets;
 }
 
-std::vector<int64_t> padded_size_from_efficient_size(EfficientSizeNode ef_size) {
-  Tensor nt_sizes = ef_size.sizes();
+static std::vector<int64_t> padded_size_from_efficient_size(const EfficientSizeNode& ef_size) {
+  const Tensor& nt_sizes = ef_size.sizes();
   auto max_size = get_max_size_from_efficient_size(ef_size);
-  std::vector<int64_t> new_size;
-  new_size.push_back(nt_sizes.size(0));
-  for (int64_t i = 0; i < max_size.size(); i++) {
-    new_size.push_back(max_size[i]);
-  }
-  return new_size;
+  max_size.insert(max_size.begin(), nt_sizes.size(0));
+  return max_size;
 }
 
 std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
