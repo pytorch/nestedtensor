@@ -27,7 +27,6 @@ Tensor NestedTensor_layer_norm(
         at::Tensor input_buffer = get_buffer(input);
         int size2 = (int)(*input_opt_sizes[2]);
         int valid_word_num = (int)(input_buffer.numel() / size2);
-        at::Tensor zero_bias = torch::zeros({valid_word_num}, input.options());
         at::Tensor output_buffer = torch::zeros_like(input_buffer);
         at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
         if (input_buffer.dtype() == torch::kFloat16) {
