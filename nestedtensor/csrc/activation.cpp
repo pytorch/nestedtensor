@@ -33,7 +33,6 @@ Tensor NestedTensor_elu(const Tensor& self, const Scalar& alpha, const Scalar& s
 // Registered below autograd
 Tensor NestedTensor_relu(const Tensor& self) {
   auto impl = get_nested_tensor_impl(self);
-  auto structure = get_nested_tensor_structure(self);
   if (get_is_contiguous(self)) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu" << std::endl;
