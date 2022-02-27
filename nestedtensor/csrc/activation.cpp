@@ -8,7 +8,7 @@ namespace F = torch::nn::functional;
 
 namespace at {
 
-Tensor NestedTensor_gelu(const Tensor& self) {
+Tensor NestedTensor_gelu(const Tensor& self, const c10::string_view approximate) {
   if (is_nested_tensor_impl(self) && get_is_contiguous(self)) {
     return wrap_buffer(
         at::gelu(get_buffer(self)),
@@ -16,7 +16,7 @@ Tensor NestedTensor_gelu(const Tensor& self) {
         get_efficient_nested_stride(self));
   }
   return map_nested_tensor(
-      [](at::Tensor tensor) { return at::gelu(tensor); }, self);
+      [&approximate](at::Tensor tensor) { return at::gelu(tensor, approximate); }, self);
 }
 
 Tensor NestedTensor_elu(const Tensor& self, const Scalar& alpha, const Scalar& scale, const Scalar& input_scale) {
@@ -33,7 +33,6 @@ Tensor NestedTensor_elu(const Tensor& self, const Scalar& alpha, const Scalar& s
 // Registered below autograd
 Tensor NestedTensor_relu(const Tensor& self) {
   auto impl = get_nested_tensor_impl(self);
-  auto structure = get_nested_tensor_structure(self);
   if (get_is_contiguous(self)) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu" << std::endl;
@@ -52,7 +51,7 @@ Tensor& NestedTensor_relu_(Tensor& self) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu_" << std::endl;
 #endif
-    Tensor buffer = get_buffer(self);
+    Tensor& buffer = get_buffer(self);
     at::relu_(buffer);
     return self;
   }

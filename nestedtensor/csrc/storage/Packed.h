@@ -88,7 +88,7 @@ inline at::Tensor pack(const TensorNode& structure) {
   at::Tensor result_buffer = empty({full_numel}, tensors[0].options());
   int64_t index = 0;
   for (size_t i = 0; i < tensors.size(); i++) {
-    at::Tensor narrowed_result_buffer = 
+    at::Tensor narrowed_result_buffer =
       result_buffer.narrow(0, index, tensors[i].numel());
     narrowed_result_buffer = narrowed_result_buffer.reshape(tensors[i].sizes());
     narrowed_result_buffer.copy_(tensors[i], true);
@@ -111,11 +111,14 @@ inline bool storage_is_contiguous(
   const at::Tensor& strides_sizes = nested_stride.sizes();
   int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
   int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
-  for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
+  const auto sizes_sizes_0 = sizes_sizes.size(0);
+  const auto sizes_sizes_1 = sizes_sizes.size(1);
+  const auto strides_sizes_1 = strides_sizes.size(1);
+  for (int64_t i = 0; i < sizes_sizes_0; i++) {
     if (!_is_cont_stride(
-            sizes_sizes_ptr + i * sizes_sizes.size(1),
-            strides_sizes_ptr + i * strides_sizes.size(1),
-            sizes_sizes.size(1))) {
+            sizes_sizes_ptr + i * sizes_sizes_1,
+            strides_sizes_ptr + i * strides_sizes_1,
+            sizes_sizes_1)) {
       return false;
     }
   }

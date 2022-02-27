@@ -18,17 +18,12 @@ at::Tensor to_mask(
     c10::optional<int64_t> mask_dim);
 
 at::Tensor to_padded_tensor(
-    at::Tensor nt,
+    const at::Tensor& nt,
     double padding);
 
 at::Tensor from_padded_tensor(
-    at::Tensor nt,
-    torch::nested_tensor::EfficientSizeNode target_size,
-    torch::nested_tensor::EfficientSizeNode target_stride);
-
-at::Tensor from_padded_tensor(
-    at::Tensor nt,
-    torch::nested_tensor::EfficientSizeNode target_size);
+    const at::Tensor& nt,
+    const torch::nested_tensor::EfficientSizeNode& target_size);
 
 c10::optional<at::Tensor> nt_from_tensor_mask(
     at::Tensor tensor,

@@ -41,9 +41,8 @@ Tensor NestedTensor_conv2d(
         get_is_cuda(input)
       ) {
       if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast)) {
-        Tensor input_buffer = get_buffer(input);
-        input_buffer = input_buffer.view({-1, weight.size(1)});
-        at::Tensor result_buffer = at::matmul(input_buffer, 
+        Tensor input_buffer = get_buffer(input).view({-1, weight.size(1)});
+        at::Tensor result_buffer = at::matmul(input_buffer,
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
@@ -60,9 +59,8 @@ Tensor NestedTensor_conv2d(
       }
       if (get_is_contiguous(input)) {
         input = transpose_nchw_nhwc(input);
-        Tensor input_buffer = get_buffer(input);
-        input_buffer = input_buffer.reshape({-1, weight.size(1)});
-        at::Tensor result_buffer = at::matmul(input_buffer, 
+        Tensor input_buffer = get_buffer(input).reshape({-1, weight.size(1)});
+        at::Tensor result_buffer = at::matmul(input_buffer,
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
@@ -130,9 +128,8 @@ Tensor NestedTensor_cudnn_convolution_relu(
         get_is_cuda(input)
       ) {
       if (get_is_contiguous(input, c10::MemoryFormat::ChannelsLast)) {
-        Tensor input_buffer = get_buffer(input);
-        input_buffer = input_buffer.view({-1, weight.size(1)});
-        at::Tensor result_buffer = at::matmul(input_buffer, 
+        Tensor input_buffer = get_buffer(input).view({-1, weight.size(1)});
+        at::Tensor result_buffer = at::matmul(input_buffer,
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
@@ -149,9 +146,8 @@ Tensor NestedTensor_cudnn_convolution_relu(
       }
       if (get_is_contiguous(input)) {
         input = transpose_nchw_nhwc(input);
-        Tensor input_buffer = get_buffer(input);
-        input_buffer = input_buffer.reshape({-1, weight.size(1)});
-        at::Tensor result_buffer = at::matmul(input_buffer, 
+        Tensor input_buffer = get_buffer(input).reshape({-1, weight.size(1)});
+        at::Tensor result_buffer = at::matmul(input_buffer,
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         int64_t weight_size_0 = weight.size(0);
         auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {

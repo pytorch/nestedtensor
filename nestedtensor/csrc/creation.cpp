@@ -208,8 +208,7 @@ at::Tensor nested_tensor_impl(
     }
   }
   Tensor result = wrap_tensor_node(std::move(ivalue_structure));
-  Tensor buffer = get_buffer(result);
-  buffer = buffer.to(device, dtype);
+  Tensor buffer = get_buffer(result).to(device, dtype);
   if (pin_memory) {
     buffer = buffer.pin_memory();
   }
