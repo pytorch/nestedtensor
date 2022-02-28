@@ -19,6 +19,44 @@ using namespace at;
 namespace torch {
 namespace nested_tensor {
 
+namespace {
+Tensor NestedTensor_times_Tensor_plus_Tensor_addmm(const Tensor& self, const Tensor& mat1, const Tensor& mat2, const Scalar& beta, const Scalar& alpha) {
+  // Interesting case: alpha * NT * T + beta * T
+  TORCH_INTERNAL_ASSERT(is_nested_tensor_impl(mat1));
+  TORCH_INTERNAL_ASSERT(!is_nested_tensor_impl(mat2));
+  TORCH_INTERNAL_ASSERT(!is_nested_tensor_impl(self));
+  TORCH_INTERNAL_ASSERT(get_is_contiguous(mat1));
+  TORCH_INTERNAL_ASSERT(get_dim(mat1) == 3 && get_dim(mat2) == 2);
+  auto mat1_opt_sizes = get_opt_sizes(mat1);
+  TORCH_INTERNAL_ASSERT(mat1_opt_sizes[2]);
+  TORCH_INTERNAL_ASSERT(mat1_opt_sizes[2] == mat2.sizes()[0]);
+  const Tensor& mat1_buffer = get_buffer(mat1);
+  Tensor result_buffer =
+    at::addmm(self, mat1_buffer.reshape({-1, mat2.sizes()[0]}), mat2, beta, alpha);
+  result_buffer = result_buffer.reshape({-1});
+  int64_t other_size_1 = mat2.sizes()[1];
+  EfficientSizeNode new_nested_size =
+    get_efficient_nested_size(mat1).clone();
+  EfficientSizeNode new_nested_stride =
+    get_efficient_nested_stride(mat1).clone();
+  apply_efficient_size(
+      [other_size_1](
+          int64_t* size_ptr,
+          int64_t size_size,
+          int64_t* stride_ptr,
+          int64_t stride_size) {
+        size_ptr[1] = other_size_1;
+        stride_ptr[1] = 1;
+        stride_ptr[0] = other_size_1;
+      },
+      new_nested_size,
+      new_nested_stride);
+  return wrap_buffer(
+      std::move(result_buffer), std::move(new_nested_size), std::move(new_nested_stride));
+}
+
+}
+
 at::Tensor bt_min_mha(
     int64_t num_heads,
     int64_t head_dim,
@@ -39,6 +77,7 @@ at::Tensor bt_min_mha(
   TORCH_CHECK(get_nested_dim(query) == 1, "Query nested dim isn't 1.");
   TORCH_CHECK(get_nested_dim(key) == 1, "Key nested dim isn't 1.");
   TORCH_CHECK(get_nested_dim(value) == 1, "Value nested dim isn't 1.");
+  TORCH_CHECK(out_proj_bias.dim() == 1, "out_proj_bias dim isn't 1.");
   // TORCH_CHECK(in_proj_bias, "Input projection bias needs to be defined.");
   // auto opt_sizes = get_opt_sizes(query);
   // if (!opt_sizes[2]) {
@@ -51,10 +90,11 @@ at::Tensor bt_min_mha(
   int64_t embedding_dim = head_dim * num_heads; //*(opt_sizes[2]);
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
+  TORCH_CHECK(out_proj_bias.sizes()[0] == embedding_dim, "out_proj_bias dim ", out_proj_bias.sizes()[0], " doesn't match embedding dim ", embedding_dim);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
-  at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
+  at::Tensor packed = NestedTensor_times_Tensor_plus_Tensor_addmm(attr_bias, query, attr_kernel.t(), 1, 1);
 
   at::Tensor packed_padded = to_padded_tensor(packed, 0).contiguous();
   std::vector<at::Tensor> packed_padded_chunks = packed_padded.chunk(3, -1);
@@ -102,7 +142,7 @@ at::Tensor bt_min_mha(
   auto attn_output = at::matmul(attn_output_weights, val_buf);
   attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
   at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query));
-  return at::matmul(attr_out, out_proj_weight.t()) + out_proj_bias;
+  return NestedTensor_times_Tensor_plus_Tensor_addmm(out_proj_bias, attr_out, out_proj_weight.t(), 1, 1);
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
