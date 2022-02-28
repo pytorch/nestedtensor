@@ -66,7 +66,7 @@ def multi_head_attention_forward(query,
                                                  in_proj_bias,
                                                  scaling,
                                                  out_proj_weight,
-                                                 in_proj_bias), None
+                                                 out_proj_bias), None
 
     return nestedtensor.nested.nested._wrap_result(
         torch.ops.nestedtensor.min_mha(num_heads,
