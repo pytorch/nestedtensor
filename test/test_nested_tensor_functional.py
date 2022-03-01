@@ -644,27 +644,35 @@ class TestFunctional(TestCase):
         nt = ntnt_nograd(ts)
         self._test_softmax(ts, nt)
 
-    @torch.inference_mode()
-    def test_mha(self):
+    def _test_mha_impl(self, device):
         embed_dim = 2
         num_heads = 2
         torch.manual_seed(1010)
-        mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
-        query = torch.randn(3, 1, embed_dim, requires_grad=True)
-        key = torch.randn(2, 1, embed_dim, requires_grad=True)
-        value = torch.randn(2, 1, embed_dim, requires_grad=True)
+        mha = torch.nn.MultiheadAttention(embed_dim, num_heads, device=device)
+        query = torch.randn(3, 1, embed_dim, requires_grad=True, device=device)
+        key = torch.randn(2, 1, embed_dim, requires_grad=True, device=device)
+        value = torch.randn(2, 1, embed_dim, requires_grad=True, device=device)
         attn_output, _ = mha(query, key, value)
-        nt_mha = torch.nn.MultiheadAttention(embed_dim, num_heads)
+        nt_mha = torch.nn.MultiheadAttention(embed_dim, num_heads, device=device)
         nt_mha.in_proj_weight = mha.in_proj_weight
         nt_mha.in_proj_bias = mha.in_proj_bias
         nt_mha.out_proj.weight = mha.out_proj.weight
         nt_mha.out_proj.bias = mha.out_proj.bias
-        query_nt = ntnt_nograd([query.squeeze(1)])
-        key_nt = ntnt_nograd([key.squeeze(1)])
-        value_nt = ntnt_nograd([value.squeeze(1)])
+        query_nt = ntnt_nograd([query.squeeze(1)], device=device)
+        key_nt = ntnt_nograd([key.squeeze(1)], device=device)
+        value_nt = ntnt_nograd([value.squeeze(1)], device=device)
         nt_attn_output, _ = nt_mha(
             query_nt, key_nt, value_nt, need_weights=False)
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
+
+    @torch.inference_mode()
+    def test_mha(self):
+        self._test_mha_impl(torch.device('cpu'))
+
+    @torch.inference_mode()
+    @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
+    def test_mha_cuda(self):
+        self._test_mha_impl(torch.device('cuda'))
 
     @torch.inference_mode()
     def test_mha_detr(self):
