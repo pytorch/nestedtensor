@@ -94,9 +94,9 @@ at::Tensor bt_min_mha(
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
-  at::Tensor packed = NestedTensor_times_Tensor_plus_Tensor_addmm(attr_bias, query, attr_kernel.t(), 1, 1);
+  at::Tensor packed = at::matmul(query, attr_kernel.t());
 
-  at::Tensor packed_padded = to_padded_tensor(packed, 0).contiguous();
+  at::Tensor packed_padded = to_padded_tensor(packed, 0).contiguous() + attr_bias;
   std::vector<at::Tensor> packed_padded_chunks = packed_padded.chunk(3, -1);
   at::Tensor query_buf = std::move(packed_padded_chunks[0]);
   at::Tensor key_buf = std::move(packed_padded_chunks[1]);
