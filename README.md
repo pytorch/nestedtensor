@@ -1,3 +1,15 @@
+# BIG UPDATE: NestedTensor [in core](https://pytorch.org/docs/master/nested.html)!
+
+## March 15 2022
+As of recently we landed a minimal version of NestedTensor [in core PyTorch](https://pytorch.org/docs/master/nested.html)!
+Operator coverage and migration of features is possible, but must be backed by issues (feature requests). If you have demand for specific NestedTensor operators, please open a feature request on [pytorch/pytorch](https://github.com/pytorch/pytorch/issues/new?assignees=&labels=&template=feature-request.yml). For a more impactful submission please include your motivation, use case and list of operators.
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+
 # The nestedtensor package [prototype](https://pytorch.org/blog/pytorch-feature-classification-changes/#prototype)
 
 If you are here because you ran into a runtime error due to a missing feature or some kind of bug, please [open an issue and fill in the appropiate template](https://github.com/pytorch/nestedtensor/issues/new/choose). If you have general feedback about this prototype [you can use our suggested template](https://github.com/pytorch/nestedtensor/issues/new?assignees=&labels=&template=prototype-feedback.md&title=) or just open a free-form issue if you like. Thank you for contributing to this project!
