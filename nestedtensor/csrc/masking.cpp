@@ -43,7 +43,7 @@ std::tuple<Tensor, Tensor> merge_tensor_mask(
   return std::make_tuple(tensor, mask);
 }
 
-Tensor pad_tensor_to_shape(Tensor t, const std::vector<int64_t>& goal_shape, double value = 0) {
+Tensor pad_tensor_to_shape(const Tensor& t, IntArrayRef goal_shape, double value = 0) {
   std::vector<int64_t> padd;
   auto tup = t.sizes();
   if (get_dim(t) != (int64_t)(goal_shape.size())) {
@@ -54,7 +54,7 @@ Tensor pad_tensor_to_shape(Tensor t, const std::vector<int64_t>& goal_shape, dou
     padd.push_back(goal_shape[i] - tup[i]);
   }
   Tensor new_tensor = at::constant_pad_nd(t, IntArrayRef(padd), value);
-  new_tensor = new_tensor.reshape(IntArrayRef(goal_shape));
+  new_tensor = new_tensor.reshape(goal_shape);
   return new_tensor;
 }
 
@@ -508,12 +508,12 @@ Tensor from_padded_tensor(const Tensor& padded, const EfficientSizeNode& target_
       target_size_tensor.data_ptr<int64_t>() + target_size_tensor.numel());
   std::vector<at::Tensor> masks;
   std::vector<at::Tensor> all_sizes = target_size.sizes().unbind();
-  for (int64_t i = 0; i < all_sizes.size(); i++) {
-    std::vector<int64_t> sizes_i(
-        all_sizes[i].data_ptr<int64_t>(),
-        all_sizes[i].data_ptr<int64_t>() + all_sizes[i].numel());
+  for (const auto& size : all_sizes) {
+    IntArrayRef sizes_i(
+        size.data_ptr<int64_t>(),
+        size.data_ptr<int64_t>() + size.numel());
     at::Tensor mask_i = padded.new_full(
-                                    IntArrayRef(sizes_i),
+                                    sizes_i,
                                     true,
                                     torch::kByte,
                                     c10::nullopt,
