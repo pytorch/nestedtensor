@@ -159,7 +159,7 @@ class TestIntegration(TestCase):
 
         import torchvision
         _test(10, lambda: torchvision.models.segmentation.__dict__["fcn_resnet101"](
-            num_classes=21, aux_loss="store_true", pretrained=True
+            num_classes=21, aux_loss=True, pretrained=True
         ).eval(), True)
 
         # _test(1010, lambda: IntermediateLayerGetter(getattr(torchvision.models, "resnet18")(
