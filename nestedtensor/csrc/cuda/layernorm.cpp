@@ -24,33 +24,9 @@ Tensor NestedTensor_layer_norm(
       auto input_opt_sizes = get_opt_sizes(input);
       if (get_dim(input) == 3 && get_is_contiguous(input) &&
           (*input_opt_sizes[2]) % 32 == 0) {
-        const at::Tensor& input_buffer = get_buffer(input);
         int size2 = (int)(*input_opt_sizes[2]);
-        int valid_word_num = (int)(input_buffer.numel() / size2);
-        at::Tensor output_buffer = torch::zeros_like(input_buffer);
-        at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-        if (input_buffer.dtype() == torch::kFloat16) {
-          fastertransformer::layer_norm<c10::Half>(
-              input_buffer.data_ptr<c10::Half>(),
-              weight->data_ptr<c10::Half>(),
-              bias->data_ptr<c10::Half>(),
-              (c10::Half)(eps),
-              output_buffer.data_ptr<c10::Half>(),
-              valid_word_num,
-              size2,
-              defaultStream);
-        }
-        if (input_buffer.dtype() == torch::kFloat32) {
-          fastertransformer::layer_norm<float>(
-              input_buffer.data_ptr<float>(),
-              weight->data_ptr<float>(),
-              bias->data_ptr<float>(),
-              (float)(eps),
-              output_buffer.data_ptr<float>(),
-              valid_word_num,
-              size2,
-              defaultStream);
-        }
+        const at::Tensor& input_buffer = get_buffer(input).view({-1, size2});
+        auto output_buffer = at::layer_norm(input_buffer, normalized_shape, weight, bias, eps, true);
         return wrap_buffer(
             std::move(output_buffer),
             get_efficient_nested_size(input),
