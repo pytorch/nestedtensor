@@ -75,10 +75,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
         _nested_size,
         _nested_stride));
   }
-  EfficientSizeNode get_nested_size() {
+  const EfficientSizeNode& get_nested_size() {
     return _nested_size;
   }
-  EfficientSizeNode get_nested_stride() {
+  const EfficientSizeNode& get_nested_stride() {
     return _nested_stride;
   }
   int64_t nested_dim() const {
@@ -198,7 +198,11 @@ inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-inline at::Tensor get_buffer(const at::Tensor& tensor) {
+inline const at::Tensor& get_buffer(const at::Tensor& tensor) {
+  return get_nested_tensor_impl(tensor)->get_buffer();
+}
+
+inline at::Tensor& get_buffer(at::Tensor& tensor) {
   return get_nested_tensor_impl(tensor)->get_buffer();
 }
 
@@ -209,13 +213,13 @@ inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
   return get_nested_tensor_impl(tensor)->opt_sizes();
 }
 
-inline const EfficientSizeNode get_efficient_nested_size(const at::Tensor& tensor) {
+inline const EfficientSizeNode& get_efficient_nested_size(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->get_nested_size();
 }
 
-inline const EfficientSizeNode get_efficient_nested_stride(const at::Tensor& tensor) {
+inline const EfficientSizeNode& get_efficient_nested_stride(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->get_nested_stride();
@@ -282,13 +286,13 @@ inline int64_t get_nested_dim(const at::Tensor& tensor) {
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
-at::Tensor wrap_buffer(at::Tensor&&, SizeNode nested_size);
+at::Tensor wrap_buffer(at::Tensor, SizeNode nested_size);
 at::Tensor wrap_buffer(
-    at::Tensor&&,
+    at::Tensor,
     EfficientSizeNode efficient_nested_size,
     EfficientSizeNode efficient_nested_stride);
 at::Tensor wrap_buffer(
-    at::Tensor&&,
+    at::Tensor,
     EfficientSizeNode efficient_nested_size);
 
 template <class F, class... A>

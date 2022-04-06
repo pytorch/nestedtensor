@@ -58,24 +58,23 @@ at::Tensor bt_min_mha(
 
   at::Tensor packed_padded = to_padded_tensor(packed, 0).contiguous();
   std::vector<at::Tensor> packed_padded_chunks = packed_padded.chunk(3, -1);
-  at::Tensor query_buf = packed_padded_chunks[0];
-  at::Tensor key_buf = packed_padded_chunks[1];
-  at::Tensor val_buf = packed_padded_chunks[2];
+  at::Tensor query_buf = std::move(packed_padded_chunks[0]);
+  at::Tensor key_buf = std::move(packed_padded_chunks[1]);
+  at::Tensor val_buf = std::move(packed_padded_chunks[2]);
   int64_t batch_size = query_buf.size(0);
   int64_t seq_len = query_buf.size(1);
 
-  query_buf = query_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
-  key_buf =     key_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
-  val_buf =     val_buf.reshape({batch_size, seq_len, head_num, size_per_head}).transpose(1, 2);
+  std::array<int64_t, 4> qkv_dims = {batch_size, seq_len, head_num, size_per_head};
+  query_buf = query_buf.reshape(qkv_dims).transpose(1, 2);
+  key_buf =     key_buf.reshape(qkv_dims).transpose(1, 2);
+  val_buf =     val_buf.reshape(qkv_dims).transpose(1, 2);
 
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
   auto mask_options =
       torch::TensorOptions().dtype(query.dtype()).device(torch::kCUDA);
-  at::Tensor input_mask = to_mask(query, 2);
-  input_mask = input_mask.to(options);
-  at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(mask_options);
+  at::Tensor attr_mask = to_mask(query, 2).view({-1, 1, 1, seq_len}).to(mask_options, /* non-blocking = */ true);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
   if (query.dtype() == torch::kFloat16) {
@@ -103,7 +102,7 @@ at::Tensor bt_min_mha(
   auto attn_output = at::matmul(attn_output_weights, val_buf);
   attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
   at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query));
-  return at::matmul(attr_out, out_proj_weight.t());
+  return at::matmul(attr_out, out_proj_weight.t()) + out_proj_bias;
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {

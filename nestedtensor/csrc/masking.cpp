@@ -2,6 +2,7 @@
 #include <chrono>
 #ifdef WITH_CUDA
 #include <c10/cuda/CUDAStream.h>
+#include <c10/util/MaybeOwned.h>
 #include <nestedtensor/csrc/cuda/padding.h>
 #include <nestedtensor/csrc/cuda/attention.h>
 #endif
@@ -80,10 +81,10 @@ std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<int64_t> get_max_size_from_efficient_size(EfficientSizeNode esize) {
+static std::vector<int64_t> get_max_size_from_efficient_size(const EfficientSizeNode& esize) {
   auto nt_opt_sizes = esize.opt_sizes();
   if (nt_opt_sizes.size() > 0 && *nt_opt_sizes[0] > 0) {
-    auto sizes = esize.sizes();
+    const auto& sizes = esize.sizes();
     int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
     int64_t sizes_size_0 = sizes.size(0);
     int64_t sizes_size_1 = sizes.size(1);
@@ -107,14 +108,15 @@ std::vector<int64_t> get_max_size(const Tensor& nt) {
 }
 
 
-Tensor batch_offsets_from_efficient_size(EfficientSizeNode ef) {
-  Tensor ef_sizes = ef.sizes();
+Tensor batch_offsets_from_efficient_size(const EfficientSizeNode& ef, int64_t extra_elements) {
+  const Tensor& ef_sizes = ef.sizes();
   int64_t* nt_sizes_ptr = ef_sizes.data_ptr<int64_t>();
-  Tensor offsets = torch::empty({1 + ef_sizes.size(0)}, torch::kInt64);
-  int64_t* offsets_ptr = offsets.data_ptr<int64_t>();
+  Tensor offsets = torch::empty({1 + ef_sizes.size(0) + extra_elements}, torch::kInt32);
+  int32_t* offsets_ptr = offsets.data_ptr<int32_t>();
   offsets_ptr[0] = 0;
   int64_t ef_sizes_size_1 = ef_sizes.size(1);
-  for (int64_t i = 0; i < ef_sizes.size(0); i++) {
+  const auto ef_sizes_size_0 = ef_sizes.size(0);
+  for (int64_t i = 0; i < ef_sizes_size_0; i++) {
     int64_t prod = 1;
     for (int64_t j = 0; j < ef_sizes_size_1; j++) {
       prod = prod * nt_sizes_ptr[i * ef_sizes_size_1 + j];
@@ -124,15 +126,11 @@ Tensor batch_offsets_from_efficient_size(EfficientSizeNode ef) {
   return offsets;
 }
 
-std::vector<int64_t> padded_size_from_efficient_size(EfficientSizeNode ef_size) {
-  Tensor nt_sizes = ef_size.sizes();
+static std::vector<int64_t> padded_size_from_efficient_size(const EfficientSizeNode& ef_size) {
+  const Tensor& nt_sizes = ef_size.sizes();
   auto max_size = get_max_size_from_efficient_size(ef_size);
-  std::vector<int64_t> new_size;
-  new_size.push_back(nt_sizes.size(0));
-  for (int64_t i = 0; i < max_size.size(); i++) {
-    new_size.push_back(max_size[i]);
-  }
-  return new_size;
+  max_size.insert(max_size.begin(), nt_sizes.size(0));
+  return max_size;
 }
 
 std::tuple<Tensor, Tensor> pad_nt(Tensor nt, std::vector<int64_t> shape) {
@@ -254,8 +252,8 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
 #ifdef WITH_CUDA
   if (get_dim(nt) == 3 && get_is_contiguous(nt) && mask_dim && *mask_dim == 2) {
     auto nt_opt_size = get_opt_sizes(nt);
-    Tensor nt_buffer = get_buffer(nt);
-    if (nt_opt_size[2] && nt_buffer.is_cuda()) {
+    auto nt_buffer = c10::MaybeOwned<Tensor>::borrowed(get_buffer(nt));
+    if (nt_opt_size[2] && nt_buffer->is_cuda()) {
       Tensor nt_sizes_ =
           get_efficient_nested_size(nt).sizes().to(torch::kInt32);
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
@@ -265,19 +263,19 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
           at::cumsum(nt_sizes, 0).to(torch::kInt32).reshape({-1});
       nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes});
       Tensor output = torch::zeros(
-          {*nt_opt_size[0], max_size_1, *nt_opt_size[2]}, nt_buffer.options());
+          {*nt_opt_size[0], max_size_1, *nt_opt_size[2]}, nt_buffer->options());
       nt_sizes = nt_sizes.to(torch::kCUDA);
       Tensor output_mask = torch::zeros(
-          {*nt_opt_size[0], max_size_1}, nt_buffer.options());
+          {*nt_opt_size[0], max_size_1}, nt_buffer->options());
       output_mask = output_mask.to(torch::kInt32);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       if (nt.dtype() == torch::kFloat16) {
-        nt_buffer = nt_buffer.to(torch::kFloat);
+        nt_buffer = c10::MaybeOwned<Tensor>::owned(nt_buffer->to(torch::kFloat));
         output = output.to(torch::kFloat);
       }
-      if (nt_buffer.dtype() == torch::kFloat) {
+      if (nt_buffer->dtype() == torch::kFloat) {
         nested_tensor::cuda::add_padding_mask_kernelLauncher<float>(
-            nt_buffer.data_ptr<float>(),
+            nt_buffer->data_ptr<float>(),
             output.data_ptr<float>(),
             output_mask.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
@@ -305,11 +303,9 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
   auto opt_sizes = get_opt_sizes(nt);
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
     nt = NestedTensor_contiguous(nt);
-    Tensor nt_buffer = get_buffer(nt);
-    nt_buffer = nt_buffer.reshape({-1});
     Tensor result_mask = !mask_dim || *mask_dim == 0 ? torch::tensor(true)
                                                      : torch::tensor({true});
-    return std::make_tuple(nt_buffer, result_mask);
+    return std::make_tuple(get_buffer(nt).reshape({-1}), result_mask);
   }
 
   auto max_size = get_max_size(nt);
@@ -434,8 +430,8 @@ Tensor to_mask(
       max_size.push_back(tmp_max_size[i - 1]);
     }
     if (*mask_dim == 2 && get_dim(nt) == 3) {
-      auto nt_size = get_efficient_nested_size(nt);
-      auto esizes = nt_size.sizes();
+      const auto& nt_size = get_efficient_nested_size(nt);
+      const auto& esizes = nt_size.sizes();
       auto options = torch::TensorOptions().dtype(torch::kByte);
       auto result = torch::zeros({*opt_sizes[0], tmp_max_size[0]},
                                 options);
@@ -456,31 +452,30 @@ Tensor to_mask(
   return merge_mask(res_mask, mask_dim);
 }
 
-Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
+Tensor from_padded_tensor(const Tensor& padded, const EfficientSizeNode& target_size) {
   TORCH_CHECK(padded.dim() == target_size.dim(),
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
   if (padded.dim() > 1 && padded.dim() < 5 &&
       get_is_contiguous(padded) && padded.is_cuda()) {
-    Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
-    std::vector<int64_t> padded_sizes = padded.sizes().vec();
-    Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
+    Tensor target_offsets = batch_offsets_from_efficient_size(target_size, 0);
+    Tensor padded_sizes_tensor = torch::tensor(padded.sizes());
     Tensor output = torch::empty({target_size.numel()}, padded.options());
-    Tensor target_size_sizes = target_size.sizes();
+    Tensor target_size_sizes = target_size.sizes().reshape(-1);
 
-    at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), padded_sizes_tensor, target_offsets});
+    at::Tensor metadata = at::cat({target_size_sizes, padded_sizes_tensor, target_offsets});
     metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
-    std::vector<int64_t> split_sizes;
-    split_sizes.push_back(target_size_sizes.numel());
-    split_sizes.push_back(padded_sizes_tensor.numel());
-    split_sizes.push_back(target_offsets.numel());
+    std::array<int64_t, 3> split_sizes = {
+      target_size_sizes.numel(),
+      padded_sizes_tensor.numel(),
+      target_offsets.numel()};
 
-    std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
+    std::vector<Tensor> split = at::split_with_sizes(metadata, split_sizes, 0);
 
-    target_size_sizes = split[0];
-    padded_sizes_tensor = split[1];
-    target_offsets = split[2];
+    target_size_sizes = std::move(split[0]);
+    padded_sizes_tensor = std::move(split[1]);
+    target_offsets = std::move(split[2]);
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
     if (padded.dtype() == torch::kFloat16) {
@@ -538,7 +533,7 @@ Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
   TORCH_CHECK(dim2 - 1 == dim1, "dim2 must be one more than dim1.")
   TORCH_CHECK(dim1 == 1, "dim1 must be 1.")
   TORCH_CHECK(get_dim(input) == 3, "Expected input to be 3 dim.");
-  auto input_esizes = get_efficient_nested_size(input);
+  const auto& input_esizes = get_efficient_nested_size(input);
   Tensor nt_sizes = input_esizes.sizes();
 
   Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1);
@@ -555,45 +550,40 @@ Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
   return result;
 }
 
-Tensor to_padded_tensor(Tensor nt, double padding) {
+Tensor to_padded_tensor(const Tensor& t, double padding) {
 #ifdef WITH_CUDA
-  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
-    nt = NestedTensor_contiguous(nt, c10::MemoryFormat::Contiguous);
+  if ((get_dim(t) >= 2 && get_dim(t) <= 4)) {
+    auto nt = NestedTensor_contiguous(t, c10::MemoryFormat::Contiguous);
     auto nt_opt_size = get_opt_sizes(nt);
     auto orig_nt_dim = get_dim(nt);
-    Tensor nt_buffer = get_buffer(nt);
+    const Tensor& nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {
       if (get_dim(nt) == 3 && nt_opt_size[2]) {
         nt = _collapse_two_dims_3(nt, 1, 2);
       }
-      auto esize = get_efficient_nested_size(nt);
-      at::Tensor nt_sizes = esize.sizes();
-      Tensor offsets = batch_offsets_from_efficient_size(esize);
+      const auto& esize = get_efficient_nested_size(nt);
+      const at::Tensor& nt_sizes = esize.sizes();
+      Tensor offsets = batch_offsets_from_efficient_size(esize, nt_sizes.numel());
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output = at::empty(IntArrayRef(new_size), nt_buffer.options());
 
       int64_t input_dim = nt_sizes.size(1);
       int64_t batch_size = nt_sizes.size(0);
-      at::Tensor metadata = at::cat({offsets, nt_sizes.reshape(-1)});
-      metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
+      TORCH_INTERNAL_ASSERT_DEBUG_ONLY(offsets.numel() == nt_sizes.numel() * 2 + 1, "error in metadata size logic");
+      at::native::narrow(offsets, 0, nt_sizes.numel() + 1, nt_sizes.numel()).copy_(nt_sizes.reshape({-1}));
+      at::Tensor metadata = offsets.to(at::Device(kCUDA), torch::kInt32, true, true);
 
-      std::vector<int64_t> split_sizes;
-      split_sizes.push_back(offsets.numel());
-      split_sizes.push_back(nt_sizes.numel());
-
-      std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
-
-      offsets = split[0];
-      nt_sizes = split[1];
+      const auto offsets_ptr = metadata.data_ptr<int>();
+      const auto nt_sizes_ptr = offsets_ptr + nt_sizes.numel() + 1;
 
       if (nt_buffer.dtype() == torch::kFloat16) {
         nested_tensor::cuda::add_padding_kernelLauncher(
             nt_buffer.data_ptr<c10::Half>(),
             output.data_ptr<c10::Half>(),
             (c10::Half)(padding),
-            offsets.data_ptr<int>(),
-            nt_sizes.data_ptr<int>(),
+            offsets_ptr,
+            nt_sizes_ptr,
             input_dim,
             new_size,
             batch_size,
@@ -608,8 +598,8 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             nt_buffer.data_ptr<float>(),
             output.data_ptr<float>(),
             (float)(padding),
-            offsets.data_ptr<int>(),
-            nt_sizes.data_ptr<int>(),
+            offsets_ptr,
+            nt_sizes_ptr,
             input_dim,
             new_size,
             batch_size,
@@ -624,13 +614,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     }
   }
 #endif
-  auto opt_sizes = get_opt_sizes(nt);
+  auto opt_sizes = get_opt_sizes(t);
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
-    nt = NestedTensor_contiguous(nt);
-    return get_buffer(nt);
+    return get_buffer(NestedTensor_contiguous(t));
   }
-  auto max_size = get_max_size(nt);
-  TensorNode structure = get_nested_tensor_structure(nt);
+  auto max_size = get_max_size(t);
+  TensorNode structure = get_nested_tensor_structure(t);
   if (structure.degree() == 0) {
     return torch::tensor({padding});
   }

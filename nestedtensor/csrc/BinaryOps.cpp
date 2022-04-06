@@ -58,7 +58,7 @@ Tensor NestedTensor_add_Tensor(
         self.dtype() ==  c10::ScalarType::Half &&
         other.dtype() == c10::ScalarType::Half) {
       other = other.contiguous();
-      at::Tensor self_buffer = get_buffer(self);
+      const at::Tensor& self_buffer = get_buffer(self);
       Tensor nt_sizes_ =
           get_efficient_nested_size(self).sizes().to(torch::kInt32);
       Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
@@ -96,7 +96,7 @@ Tensor NestedTensor_add_Tensor(
 #endif
     if (self_opt_sizes[self_dim - 1] && other.dim() == 1 &&
         (*(self_opt_sizes[self_dim - 1])) == other.size(0)) {
-      Tensor self_buffer = get_buffer(self);
+      const Tensor& self_buffer = get_buffer(self);
       Tensor result_buffer =
           at::add(self_buffer.reshape({-1, other.size(0)}), other)
               .reshape({-1});
@@ -256,7 +256,7 @@ Tensor NestedTensor_mul_Tensor(const Tensor& self_, const Tensor& other_) {
         self.dtype() ==  c10::ScalarType::Half &&
         other.dtype() == c10::ScalarType::Half) {
       other = other.contiguous();
-      at::Tensor self_buffer = get_buffer(self);
+      const at::Tensor& self_buffer = get_buffer(self);
       Tensor nt_sizes_ =
           get_efficient_nested_size(self).sizes().to(torch::kInt32);
       Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
@@ -375,7 +375,7 @@ Tensor NestedTensor_sub_Tensor(
         self.dtype() ==  c10::ScalarType::Half &&
         other.dtype() == c10::ScalarType::Half) {
       other = other.contiguous();
-      at::Tensor self_buffer = get_buffer(self);
+      const at::Tensor& self_buffer = get_buffer(self);
       Tensor nt_sizes_ =
           get_efficient_nested_size(self).sizes().to(torch::kInt32);
       Tensor nt_sizes_1 = at::native::narrow(nt_sizes_, 1, 1, 1);
